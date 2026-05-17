@@ -3,6 +3,7 @@ import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { SecurityContext } from '@ottabase/ottaorm';
 import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { claimPendingGroupInvitesForUser } from '../../ottabase/helpers/group-invites';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { resolveAppMailer } from './email-provider';
 import { createSecureToken } from './utils';
@@ -72,6 +73,13 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     options.onSignOut = async (_userId: string) => {
         if (!env.OBCF_KV) return;
         await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
+    };
+
+    // Claim any pending UserGroup invites (by email) on sign-in. Idempotent and runs on every
+    // sign-in, so it covers both credentials signup (also called directly from the signup route
+    // for immediate UX feedback) and OAuth first-login flows.
+    options.onSignIn = async ({ userId, email }) => {
+        await claimPendingGroupInvitesForUser(userId, email);
     };
 
     return options;

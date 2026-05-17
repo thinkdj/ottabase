@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
 import { usersTable } from './User.schema';
 import {
@@ -9,6 +9,26 @@ import {
     type UserGroupMemberType,
     type UserGroupType,
 } from './UserGroup.schema';
+
+/** Allowed values for `user_group_members.status`. */
+export type UserGroupMemberStatus = 'invited' | 'active' | 'declined' | 'removed';
+export const USER_GROUP_MEMBER_STATUSES: ReadonlyArray<UserGroupMemberStatus> = [
+    'invited',
+    'active',
+    'declined',
+    'removed',
+] as const;
+
+/** Allowed values for `user_group_members.role`. */
+export type UserGroupMemberRole = 'admin' | 'member';
+export const USER_GROUP_MEMBER_ROLES: ReadonlyArray<UserGroupMemberRole> = ['admin', 'member'] as const;
+
+/** Normalize an email for storage / comparison (lowercase + trim). */
+export function normalizeGroupInviteEmail(email: string | null | undefined): string | null {
+    if (!email) return null;
+    const trimmed = email.trim().toLowerCase();
+    return trimmed.length > 0 ? trimmed : null;
+}
 
 export class UserGroup extends BaseModel {
     static entity = 'user_groups';
@@ -38,15 +58,23 @@ export class UserGroup extends BaseModel {
     };
 
     protected static validationRules = {
-        name: { rules: 'required', fieldName: 'Name' },
-        slug: { rules: 'required', fieldName: 'Slug' },
+        name: { rules: 'required|min:1|max:120', fieldName: 'Name' },
+        slug: { rules: 'required|min:1|max:120', fieldName: 'Slug' },
         organizationId: { rules: 'required', fieldName: 'Organization' },
     };
 
+    /** List all groups in an organization (optionally scoped to an app), ordered by name. */
     static async forOrganization(organizationId: string, options?: { appId?: string | null }) {
         const where: Record<string, unknown> = { organizationId };
         if (options?.appId !== undefined) where.appId = options.appId;
         return this.where(where, { orderBy: 'name', orderDirection: 'asc' });
+    }
+
+    /** Find a group by slug within an organization (and optional app scope). */
+    static async findBySlug(organizationId: string, slug: string, options?: { appId?: string | null }) {
+        const where: Record<string, unknown> = { organizationId, slug };
+        if (options?.appId !== undefined) where.appId = options.appId;
+        return (await this.first(where)) ?? null;
     }
 
     async members() {
@@ -86,37 +114,109 @@ export class UserGroupMember extends BaseModel {
         updatedAt: { type: 'date', editable: false, sortable: true, uiConfig: { label: 'Updated' } },
     };
 
-    static async findExisting(params: { groupId: string; userId?: string | null; invitedEmail?: string | null }) {
+    /**
+     * Find an existing membership in a group, identified by either `userId` or a normalized
+     * `invitedEmail`. Returns the raw row (or undefined).
+     */
+    static async findExisting(params: {
+        groupId: string;
+        userId?: string | null;
+        invitedEmail?: string | null;
+    }): Promise<UserGroupMemberType | undefined> {
         const db = this.getDriver().getDb();
-        const identities = [];
-        if (params.userId) identities.push(eq(userGroupMembersTable.userId, params.userId));
-        if (params.invitedEmail) identities.push(eq(userGroupMembersTable.invitedEmail, params.invitedEmail));
-        if (identities.length === 0) return undefined;
 
-        const [member] = await db
-            .select()
-            .from(userGroupMembersTable)
-            .where(and(eq(userGroupMembersTable.groupId, params.groupId), or(...identities)!))
-            .limit(1);
-        return member;
+        if (params.userId) {
+            const [byUser] = await db
+                .select()
+                .from(userGroupMembersTable)
+                .where(
+                    and(
+                        eq(userGroupMembersTable.groupId, params.groupId),
+                        eq(userGroupMembersTable.userId, params.userId),
+                    ),
+                )
+                .limit(1);
+            if (byUser) return byUser;
+        }
+
+        const normalizedEmail = normalizeGroupInviteEmail(params.invitedEmail);
+        if (normalizedEmail) {
+            const [byEmail] = await db
+                .select()
+                .from(userGroupMembersTable)
+                .where(
+                    and(
+                        eq(userGroupMembersTable.groupId, params.groupId),
+                        eq(userGroupMembersTable.invitedEmail, normalizedEmail),
+                    ),
+                )
+                .limit(1);
+            if (byEmail) return byEmail;
+        }
+
+        return undefined;
     }
 
+    /**
+     * Securely add a member to a group. Server-derived fields (`status`, `joinedAt`, `invitedAt`)
+     * are computed here — callers cannot spoof them. `invitedEmail` is normalized.
+     *
+     * @returns the new (or pre-existing) membership row.
+     */
     static async addMember(data: NewUserGroupMemberType): Promise<UserGroupMemberType> {
         const db = this.getDriver().getDb();
+        const now = Date.now();
+
+        const normalizedEmail = normalizeGroupInviteEmail(data.invitedEmail ?? null);
+        const userId = data.userId ?? null;
+
+        if (!userId && !normalizedEmail) {
+            throw new Error('addMember requires either userId or invitedEmail');
+        }
+
+        // Idempotency: if the member already exists, return it instead of erroring on the unique index.
+        const existing = await this.findExisting({
+            groupId: data.groupId!,
+            userId,
+            invitedEmail: normalizedEmail,
+        });
+        if (existing) return existing;
+
+        const status: UserGroupMemberStatus = userId ? 'active' : 'invited';
+        const role: UserGroupMemberRole = USER_GROUP_MEMBER_ROLES.includes(data.role as UserGroupMemberRole)
+            ? (data.role as UserGroupMemberRole)
+            : 'member';
+
         const [member] = await db
             .insert(userGroupMembersTable)
             .values({
                 ...data,
-                invitedAt: data.invitedAt ?? Date.now(),
-                joinedAt: data.status === 'active' ? (data.joinedAt ?? Date.now()) : data.joinedAt,
+                userId,
+                invitedEmail: normalizedEmail,
+                role,
+                status,
+                invitedAt: data.invitedAt ?? now,
+                joinedAt: userId ? (data.joinedAt ?? now) : null,
             })
             .returning();
-        return member;
+        return member!;
     }
 
-    static async getGroupMembers(groupId: string): Promise<Array<UserGroupMemberType & { user?: any }>> {
+    /**
+     * List all members of a group, joined with user info (when registered).
+     * Pending invites (no `userId`) return with `user` = null.
+     */
+    static async getGroupMembers(
+        groupId: string,
+    ): Promise<
+        Array<
+            UserGroupMemberType & {
+                user: { id: string; name: string | null; email: string; image: string | null } | null;
+            }
+        >
+    > {
         const db = this.getDriver().getDb();
-        return db
+        const rows = await db
             .select({
                 id: userGroupMembersTable.id,
                 groupId: userGroupMembersTable.groupId,
@@ -142,12 +242,102 @@ export class UserGroupMember extends BaseModel {
             .leftJoin(usersTable, eq(userGroupMembersTable.userId, usersTable.id))
             .where(eq(userGroupMembersTable.groupId, groupId))
             .orderBy(desc(userGroupMembersTable.createdAt));
+
+        return rows.map((row: any) => ({
+            ...row,
+            user: row.user?.id ? row.user : null,
+        })) as any;
     }
 
+    /** List all groups a user belongs to (optionally scoped to an organization). */
     static async getUserGroups(userId: string, organizationId?: string) {
-        const where: Record<string, unknown> = { userId };
+        const where: Record<string, unknown> = { userId, status: 'active' };
         if (organizationId) where.organizationId = organizationId;
         return this.where(where);
+    }
+
+    /**
+     * Claim any pending email-invite memberships for the given user.
+     *
+     * Called on user signup / first OAuth sign-in. Rows with a matching (lowercased) `invitedEmail`
+     * and a NULL `userId` are atomically updated to bind them to the new user and flipped to
+     * status='active'. Rows where the user is already a member of the group are skipped to
+     * avoid violating the `(group_id, user_id)` unique index.
+     *
+     * Idempotent and safe to call on every sign-in.
+     *
+     * @returns the number of pending invites that were claimed.
+     */
+    static async claimPendingInvitesForEmail(email: string, userId: string): Promise<number> {
+        const normalizedEmail = normalizeGroupInviteEmail(email);
+        if (!normalizedEmail || !userId) return 0;
+
+        const db = this.getDriver().getDb();
+
+        // Find pending invites for this email
+        const pending = await db
+            .select({ id: userGroupMembersTable.id, groupId: userGroupMembersTable.groupId })
+            .from(userGroupMembersTable)
+            .where(and(eq(userGroupMembersTable.invitedEmail, normalizedEmail), isNull(userGroupMembersTable.userId)));
+
+        if (pending.length === 0) return 0;
+
+        // Pre-fetch existing memberships for this user across the candidate groups so we can
+        // skip rows that would violate the (group_id, user_id) unique index.
+        const groupIds = pending.map((p: { id: string; groupId: string }) => p.groupId);
+        const existingMemberships = await db
+            .select({ groupId: userGroupMembersTable.groupId })
+            .from(userGroupMembersTable)
+            .where(
+                and(
+                    eq(userGroupMembersTable.userId, userId),
+                    // Limit lookup to the candidate groups — small set, no need for `inArray` complexity
+                    sql`${userGroupMembersTable.groupId} IN (${sql.join(
+                        groupIds.map((id: string) => sql`${id}`),
+                        sql`, `,
+                    )})`,
+                ),
+            );
+        const alreadyMemberOf = new Set(existingMemberships.map((row: { groupId: string }) => row.groupId));
+
+        const now = Date.now();
+        let claimed = 0;
+        for (const row of pending) {
+            if (alreadyMemberOf.has(row.groupId)) {
+                // The user is already a registered member of this group via another path —
+                // leave the pending invite alone (admins can clean it up). Do not throw.
+                continue;
+            }
+            try {
+                const result = await db
+                    .update(userGroupMembersTable)
+                    .set({
+                        userId,
+                        status: 'active',
+                        joinedAt: now,
+                        // Clear the invited email so subsequent invites with the same address
+                        // can be created. The audit trail is preserved via createdAt/invitedAt.
+                        invitedEmail: null,
+                        updatedAt: now,
+                    })
+                    .where(
+                        and(
+                            eq(userGroupMembersTable.id, row.id),
+                            // Re-check the row is still pending — protects against races.
+                            isNull(userGroupMembersTable.userId),
+                            eq(userGroupMembersTable.invitedEmail, normalizedEmail),
+                        ),
+                    )
+                    .returning({ id: userGroupMembersTable.id });
+                if (result.length > 0) claimed += 1;
+            } catch (error) {
+                // A unique-constraint race may still occur if another path inserted a
+                // (group_id, user_id) row between our pre-check and the UPDATE. Log and continue.
+                console.warn('[UserGroupMember.claimPendingInvitesForEmail] skipped row due to conflict:', error);
+            }
+        }
+
+        return claimed;
     }
 }
 

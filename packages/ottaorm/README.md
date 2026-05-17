@@ -878,6 +878,74 @@ export async function getTenantContext(userId: string, orgSlug: string) {
 
 For complete RBAC integration with these models, see the [@ottabase/rbac](../rbac/README.md) package.
 
+### UserGroup / UserGroupMember (tenant-scoped collections)
+
+`UserGroup` is a tenant-scoped collection of users for access control, feature flags, targeted notifications, etc.
+Membership can be by `userId` (registered user) or `invitedEmail` (pending invite — auto-claimed when that user later
+signs up with the same email).
+
+```typescript
+import { UserGroup, UserGroupMember } from '@ottabase/ottaorm';
+
+// Admin creates a group and adds a registered member + a pending email invite
+const group = await UserGroup.create({
+    name: 'Beta testers',
+    slug: 'beta-testers',
+    organizationId: org.id,
+});
+
+// Registered user → immediately 'active'
+await UserGroupMember.addMember({
+    groupId: group.id,
+    organizationId: org.id,
+    userId: 'user-456',
+});
+
+// Email-only invite → 'invited' status, userId null
+await UserGroupMember.addMember({
+    groupId: group.id,
+    organizationId: org.id,
+    invitedEmail: 'userb@domain.com',
+});
+```
+
+#### Claim-on-signup flow
+
+When User B (no account yet) signs up with `userb@domain.com`, call
+`UserGroupMember.claimPendingInvitesForEmail(email, userId)` once to atomically bind all pending email-invite rows to
+the new user and flip their status to `active`. The helper is:
+
+- **Idempotent** — safe to call on every sign-in. It only updates rows where `userId IS NULL` and the (lowercased) email
+  matches.
+- **Race-safe** — re-checks `userId IS NULL` inside the UPDATE's WHERE clause and skips groups where the user is already
+  a member (so the `(group_id, user_id)` unique index is never violated).
+- **Non-throwing in the app helper** — the otta-web app wraps it in `claimPendingGroupInvitesForUser` which logs and
+  swallows errors so auth flows are never broken by a transient claim failure.
+
+In the otta-web template app this runs automatically:
+
+1. **Credentials signup** — `apps/otta-web/worker/routes/auth.ts` calls it right after creating the user.
+2. **OAuth first sign-in** — wired via the `onSignIn` hook added to `@ottabase/auth`'s `CreateAuthConfigOptions`. The
+   hook fires on every sign-in (Auth.js `events.signIn`), so it covers both new OAuth users and any later sign-in where
+   invites are still pending.
+
+#### Security model
+
+The schema, RLS policies, and `ottaorm-crud` route layer together enforce:
+
+- **Tenant isolation** — `user_groups` and `user_group_members` are `TenantScoped` and reject any write that targets a
+  different `organizationId`.
+- **Write-only permission gate** — reads are open to any tenant member (so members can see the groups they belong to),
+  but writes require `groups:manage`. Owners (`*:*`) and admins (`groups:*` or `*:*`) satisfy this automatically.
+- **No client-spoofing** — on `POST /api/ottaorm/user_group_members` the route forces `organizationId`, `status`,
+  `joinedAt`, `invitedBy` from the session and verifies any client-supplied `userId` is an active member of the active
+  org. Status is derived from whether the email resolves to a registered user (`active`) or not (`invited`).
+- **Unique constraints** — `(organization_id, app_id, slug)` on `user_groups`, `(group_id, user_id)` and
+  `(group_id, invited_email)` on `user_group_members`, so duplicate invites and duplicate memberships are impossible at
+  the database level.
+- **Idempotent invite** — the route returns the existing row (HTTP 200) instead of erroring when the same
+  `(group, user)` or `(group, email)` pair is re-invited.
+
 ## Row-Level Security (RLS)
 
 OttaORM includes a built-in RLS engine that enforces data isolation at the query level. Policies are defined per-model
@@ -903,6 +971,25 @@ const policies: ModelRLSConfig[] = [
     { model: 'todos', policy: RLSPolicies.UserScoped() },
     { model: 'audit_logs', policy: { ...RLSPolicies.TenantScoped(true), readOnly: true } },
     { model: 'config', policy: RLSPolicies.AdminOnly() },
+];
+```
+
+### Write-only permission gates (`requiredPermissionsForWrite`)
+
+When you want reads to be broad (any tenant member) but writes to be restricted to admins/owners, use
+`requiredPermissionsForWrite`. It is enforced on `create`/`update`/`delete` only — reads use the standard
+`requiredPermissions` (if any). Wildcards (`*:*`, `groups:*`) are honored, so a `groups:manage` requirement is satisfied
+by an owner with `*:*` or `groups:*`.
+
+```typescript
+const policies: ModelRLSConfig[] = [
+    {
+        model: 'user_groups',
+        policy: {
+            ...RLSPolicies.TenantScoped(false),
+            requiredPermissionsForWrite: ['groups:manage'],
+        },
+    },
 ];
 ```
 

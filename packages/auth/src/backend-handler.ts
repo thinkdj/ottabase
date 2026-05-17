@@ -174,6 +174,14 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
      * (e.g., RBAC) without overriding the core signOut event.
      */
     onSignOut?: (userId: string) => Promise<void> | void;
+
+    /**
+     * Called after a successful sign-in (every sign-in, not just signup). Receives the user's
+     * id and email, plus an `isNewUser` flag (true if this is the user's first OAuth sign-in
+     * and they were just created by the adapter). Use this to claim pending invites, run
+     * background onboarding, etc. Failures are isolated — they cannot break authentication.
+     */
+    onSignIn?: (params: { userId: string; email?: string | null; isNewUser: boolean }) => Promise<void> | void;
 }
 
 /**
@@ -626,6 +634,21 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                 },
             },
             events: {
+                async signIn(message: any) {
+                    // App-level hook (e.g., claim pending group invites by email). Receives
+                    // `isNewUser` flag from Auth.js — true for fresh OAuth users that the adapter
+                    // just created. Failures are isolated so they cannot break auth.
+                    try {
+                        const userId = message?.user?.id;
+                        const email = message?.user?.email;
+                        const isNewUser = Boolean(message?.isNewUser);
+                        if (typeof userId === 'string' && userId) {
+                            await options?.onSignIn?.({ userId, email: email ?? null, isNewUser });
+                        }
+                    } catch (error) {
+                        console.warn('onSignIn hook failed:', error);
+                    }
+                },
                 async signOut(message: any) {
                     if (!env.OBCF_KV) return;
                     const userId =

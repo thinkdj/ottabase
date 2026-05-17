@@ -89,6 +89,9 @@ export class RLSEngine {
         // Check permissions/roles
         this.checkAccess(model, context, policy);
 
+        // Additionally check write-only permissions (when policy gates writes more strictly than reads)
+        this.checkWriteAccess(model, context, policy);
+
         // Validate data matches security context
         this.validateDataIntegrity(model, policy, context, data, operation, config);
     }
@@ -188,6 +191,28 @@ export class RLSEngine {
             if (resourceMatches && actionMatches) return true;
         }
         return false;
+    }
+
+    /**
+     * Check write-only permission gates (only enforced on create/update/delete operations).
+     * Allows read access to be broader than write access — e.g., any tenant member can read
+     * `user_groups`, but writes require `groups:manage`.
+     */
+    private checkWriteAccess(model: string, context: SecurityContext, policy: RLSPolicy): void {
+        if (!policy.requiredPermissionsForWrite || policy.requiredPermissionsForWrite.length === 0) {
+            return;
+        }
+        const hasPermission = policy.requiredPermissionsForWrite.every((perm) => this.hasPermission(context, perm));
+        if (!hasPermission) {
+            throw new RLSError(
+                `Access denied: writes to ${model} require permissions: ${policy.requiredPermissionsForWrite.join(', ')}`,
+                {
+                    type: 'permission_denied',
+                    model,
+                    context,
+                },
+            );
+        }
     }
 
     /**

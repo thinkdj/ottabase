@@ -3,7 +3,14 @@ import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import {
+    normalizeGroupInviteEmail,
+    OrganizationMember,
+    User,
+    UserGroup,
+    UserGroupMember,
+    USER_GROUP_MEMBER_ROLES,
+} from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -180,6 +187,144 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
         if ((crudRequest.body as any).plan === undefined) {
             (crudRequest.body as any).plan = 'free';
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // User groups: server-side hardening
+    //
+    // On CREATE: stamp `createdBy` from session and let RLS auto-inject `organizationId`.
+    // On UPDATE: prevent reassignment of `organizationId` / `createdBy` (RLS handles cross-tenant).
+    // ──────────────────────────────────────────────────────────────────────
+    if (crudRequest.model === 'user_groups' && crudRequest.body) {
+        const sessionUserId = session?.user?.id;
+        if (!sessionUserId) {
+            return errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' });
+        }
+        const body = crudRequest.body as Record<string, unknown>;
+
+        if (crudRequest.method === 'POST') {
+            body.createdBy = sessionUserId;
+        } else if (crudRequest.method === 'PATCH' || crudRequest.method === 'PUT') {
+            // Server-controlled fields cannot be reassigned via update
+            delete body.id;
+            delete body.organizationId;
+            delete body.createdBy;
+            delete body.createdAt;
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // User group members: server-side hardening
+    //
+    // Threats mitigated here:
+    //  - Spoofing `userId` to claim someone else's identity. Only the inviter is trusted; we
+    //    derive `userId` server-side by resolving the email to an existing user (instant claim)
+    //    or by leaving it null until the invitee signs up (claim-on-signup flow).
+    //  - Spoofing `status` to skip the invite step. Status is derived: 'active' if userId
+    //    resolved, 'invited' otherwise.
+    //  - Spoofing `invitedBy`. We always stamp this from the session.
+    //  - Cross-org writes by setting groupId to a group in a different tenant. We verify
+    //    the group belongs to the active organization.
+    // ──────────────────────────────────────────────────────────────────────
+    if (crudRequest.model === 'user_group_members' && crudRequest.body) {
+        const sessionUserId = session?.user?.id;
+        if (!sessionUserId) {
+            return errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' });
+        }
+        const body = crudRequest.body as Record<string, unknown>;
+
+        if (crudRequest.method === 'POST') {
+            const groupId = typeof body.groupId === 'string' ? body.groupId : '';
+            if (!groupId) {
+                return errorResponse('groupId is required', 400, {
+                    code: 'VALIDATION_ERROR',
+                    fieldErrors: { groupId: ['groupId is required'] },
+                });
+            }
+
+            // Verify the group exists and belongs to the active org
+            const group = await UserGroup.find(groupId);
+            if (!group) {
+                return errorResponse('Group not found', 404, { code: 'NOT_FOUND' });
+            }
+            const groupOrgId = group.get('organizationId') as string | undefined;
+            if (!securityContext.organizationId || groupOrgId !== securityContext.organizationId) {
+                return errorResponse('Group not found', 404, { code: 'NOT_FOUND' });
+            }
+
+            // Normalize and resolve identity. Trust only invitedEmail / explicit existing-user
+            // selection. Anything else (status, joinedAt, role manipulation) is overwritten.
+            const rawEmail = typeof body.invitedEmail === 'string' ? body.invitedEmail : null;
+            const normalizedEmail = normalizeGroupInviteEmail(rawEmail);
+
+            let resolvedUserId: string | null = null;
+            const requestedUserId = typeof body.userId === 'string' ? body.userId : null;
+
+            if (requestedUserId) {
+                // Verify the user exists and is a member of the active org. Without this check,
+                // anyone could add an arbitrary user to a group across tenants.
+                const targetMembership = await OrganizationMember.first({
+                    userId: requestedUserId,
+                    organizationId: securityContext.organizationId,
+                    status: 'active',
+                });
+                if (!targetMembership) {
+                    return errorResponse('User is not a member of this organization', 400, {
+                        code: 'INVALID_USER',
+                        fieldErrors: { userId: ['User is not a member of this organization'] },
+                    });
+                }
+                resolvedUserId = requestedUserId;
+            } else if (normalizedEmail) {
+                // If the email already belongs to a registered user, resolve immediately so the
+                // membership is created in 'active' status — same UX as claim-on-signup.
+                const existingUser = await User.first({ email: normalizedEmail });
+                if (existingUser) {
+                    resolvedUserId = String(existingUser.get('id'));
+                }
+            } else {
+                return errorResponse('Either userId or invitedEmail is required', 400, {
+                    code: 'VALIDATION_ERROR',
+                    fieldErrors: { invitedEmail: ['Either userId or invitedEmail is required'] },
+                });
+            }
+
+            // Sanitize role (whitelist) and overwrite all server-controlled fields
+            const requestedRole = typeof body.role === 'string' ? body.role : 'member';
+            const role = (USER_GROUP_MEMBER_ROLES as readonly string[]).includes(requestedRole)
+                ? requestedRole
+                : 'member';
+
+            const now = Date.now();
+            body.groupId = groupId;
+            body.organizationId = securityContext.organizationId;
+            body.userId = resolvedUserId;
+            body.invitedEmail = resolvedUserId ? null : normalizedEmail;
+            body.role = role;
+            body.status = resolvedUserId ? 'active' : 'invited';
+            body.invitedBy = sessionUserId;
+            body.invitedAt = now;
+            body.joinedAt = resolvedUserId ? now : null;
+
+            // Idempotency: if the (group, user) or (group, email) pair already exists, return it.
+            const existing = await UserGroupMember.findExisting({
+                groupId,
+                userId: resolvedUserId,
+                invitedEmail: normalizedEmail,
+            });
+            if (existing) {
+                return jsonResponse({ data: existing }, 200);
+            }
+        } else if (crudRequest.method === 'PATCH' || crudRequest.method === 'PUT') {
+            // Only `role` and `metadata` are user-editable; everything else is server-controlled.
+            const allowed = new Set(['role', 'metadata']);
+            for (const key of Object.keys(body)) {
+                if (!allowed.has(key)) delete body[key];
+            }
+            if (typeof body.role === 'string' && !(USER_GROUP_MEMBER_ROLES as readonly string[]).includes(body.role)) {
+                body.role = 'member';
+            }
         }
     }
 

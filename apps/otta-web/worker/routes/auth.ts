@@ -12,6 +12,7 @@ import { isValidUrl } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
+import { claimPendingGroupInvitesForUser } from '../../ottabase/helpers/group-invites';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
@@ -623,6 +624,10 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         });
 
         const newUserId = newUser.get('id') as string;
+
+        // Claim any pending UserGroup invites that match this user's email. Non-fatal: failures
+        // are logged inside the helper but never break signup.
+        await claimPendingGroupInvitesForUser(newUserId, email);
 
         let organizationId: string | null = null;
         let organizationRole: string | null = null;

@@ -55,6 +55,17 @@ export interface RLSPolicy {
     requiredPermissions?: string[];
 
     /**
+     * Required permissions to *write* (create/update/delete) this model. When set, reads are
+     * still gated by `requiredPermissions` (if any), but writes additionally require these.
+     * Same wildcard rules as `requiredPermissions`.
+     *
+     * Use this to allow broad read access for tenant members while restricting writes to
+     * admins/owners (e.g., `user_groups` reads are open to all tenant members but writes
+     * require `groups:manage`, which `*:*` and `groups:*` wildcards satisfy).
+     */
+    requiredPermissionsForWrite?: string[];
+
+    /**
      * Required roles to access this model
      */
     requiredRoles?: string[];

@@ -55,24 +55,24 @@ export function useUserGroupMembers(groupId: string) {
 // User Group Members — Mutation Hooks
 // ============================================================================
 
-/** Add a member to a group — supports userId or invitedEmail. */
+/** Add a member to a group — supports userId or invitedEmail.
+ *
+ * Server derives organizationId, status, joinedAt, invitedAt, invitedBy. We send only the
+ * fields the inviter actually controls.
+ */
 export function useAddGroupMember(groupId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'user_group_members' },
-        mutationFn: async (data: InviteGroupMemberInput & { organizationId: string }) => {
+        mutationFn: async (data: InviteGroupMemberInput) => {
             const response = await api<{ data: UserGroupMemberRecord }>(`/api/ottaorm/user_group_members`, {
                 method: 'POST',
                 body: {
                     groupId,
-                    organizationId: data.organizationId,
                     userId: data.userId,
                     invitedEmail: data.invitedEmail,
                     role: data.role ?? 'member',
-                    status: data.userId ? 'active' : 'invited',
-                    invitedAt: Date.now(),
-                    joinedAt: data.userId ? Date.now() : undefined,
                 },
             });
             return response.data;

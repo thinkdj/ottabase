@@ -263,7 +263,8 @@ export function UserGroupMembersPage() {
     const handleAddSubmit = async (data: InviteGroupMemberInput) => {
         setAddLoading(true);
         try {
-            await addMemberMutation.mutateAsync({ ...data, organizationId });
+            // organizationId, status, joinedAt, invitedBy are all derived server-side.
+            await addMemberMutation.mutateAsync(data);
             toast.success('Member added');
             setIsDialogOpen(false);
         } catch (err) {

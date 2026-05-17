@@ -292,6 +292,37 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         policy: RLSPolicies.TenantScoped(false),
         auditEnabled: true,
     },
+
+    // ========================================
+    // USER GROUPS (tenant-scoped, write-gated)
+    // ========================================
+
+    // User groups — tenant-scoped. Any tenant member can READ groups in their org (so
+    // membership/feature-flag logic can resolve client-side or server-side). WRITES require
+    // `groups:manage`. Owners/admins get this via `*:*` or `groups:*` wildcards.
+    {
+        model: 'user_groups',
+        policy: {
+            ...RLSPolicies.TenantScoped(false),
+            requiredPermissionsForWrite: ['groups:manage'],
+        },
+        contextFields: ['organizationId', 'appId'],
+        auditEnabled: true,
+    },
+
+    // User group members — tenant-scoped. Reads visible to any tenant member (so a user can
+    // see which groups they belong to). WRITES require `groups:manage`. Note: the worker
+    // route layer also enforces that `groupId` belongs to the active org and rejects
+    // client-spoofed `userId`/`status`/`joinedAt`/`invitedBy`.
+    {
+        model: 'user_group_members',
+        policy: {
+            ...RLSPolicies.TenantScoped(false),
+            requiredPermissionsForWrite: ['groups:manage'],
+        },
+        contextFields: ['organizationId'],
+        auditEnabled: true,
+    },
 ];
 
 /**

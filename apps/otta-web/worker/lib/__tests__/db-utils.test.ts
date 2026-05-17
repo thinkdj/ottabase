@@ -66,6 +66,8 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     Role: class Role {},
     ScheduledTask: class ScheduledTask {},
     Session: class Session {},
+    UserGroup: class UserGroup {},
+    UserGroupMember: class UserGroupMember {},
     UserRole: class UserRole {},
     VerificationToken: class VerificationToken {},
 }));

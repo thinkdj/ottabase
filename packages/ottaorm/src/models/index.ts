@@ -36,10 +36,15 @@ export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } fro
 export {
     UserGroup,
     UserGroupMember,
+    USER_GROUP_MEMBER_ROLES,
+    USER_GROUP_MEMBER_STATUSES,
+    normalizeGroupInviteEmail,
     userGroupMembersTable,
     userGroupsTable,
     type NewUserGroupMemberType,
     type NewUserGroupType,
+    type UserGroupMemberRole,
+    type UserGroupMemberStatus,
     type UserGroupMemberType,
     type UserGroupType,
 } from './UserGroup';
