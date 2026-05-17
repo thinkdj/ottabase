@@ -26,7 +26,7 @@ import {
     TableRow,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Edit, Plus, Trash2, Users } from 'lucide-react';
+import { Edit, Plus, Trash2, Users, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import { OrganizationForm, type OrganizationFormData } from './components/OrganizationForm';
 
@@ -176,7 +176,13 @@ export function OrganizationsPage() {
                                                 <Button variant="outline" size="sm" className="gap-2" asChild>
                                                     <Link to={`/admin/access/organizations/${org.id}/members`}>
                                                         <Users className="h-4 w-4" />
-                                                        View Members
+                                                        Members
+                                                    </Link>
+                                                </Button>
+                                                <Button variant="outline" size="sm" className="gap-2" asChild>
+                                                    <Link to={`/admin/access/organizations/${org.id}/groups`}>
+                                                        <UserCog className="h-4 w-4" />
+                                                        Groups
                                                     </Link>
                                                 </Button>
                                                 <Button

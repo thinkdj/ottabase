@@ -97,16 +97,16 @@ export function OrganizationMembersPage() {
         setIsDialogOpen(true);
     };
 
-    const handleDelete = async (userId: string) => {
-        setDeleteDialog(userId);
+    const handleDelete = async (memberId: string) => {
+        setDeleteDialog(memberId);
     };
 
     const handleConfirmDelete = async () => {
         if (!deleteDialog) return;
 
-        const userId = deleteDialog;
+        const memberId = deleteDialog;
         removeMutation.mutate(
-            { userId, organizationId },
+            { userId: memberId, organizationId },
             {
                 onSuccess: () => {
                     toast.rbac.memberRemoved();
@@ -120,9 +120,9 @@ export function OrganizationMembersPage() {
     };
 
     // Optimistic role change with instant UI feedback
-    const handleQuickRoleChange = async (userId: string, newRole: MemberRole) => {
+    const handleQuickRoleChange = async (memberId: string, newRole: MemberRole) => {
         updateRoleMutation.mutate(
-            { userId, role: newRole, organizationId },
+            { userId: memberId, role: newRole, organizationId },
             {
                 onSuccess: () => {
                     toast.rbac.memberUpdated();
@@ -134,9 +134,9 @@ export function OrganizationMembersPage() {
         );
     };
 
-    const handleQuickStatusChange = async (userId: string, newStatus: 'active' | 'invited' | 'suspended') => {
+    const handleQuickStatusChange = async (memberId: string, newStatus: 'active' | 'invited' | 'suspended') => {
         updateStatusMutation.mutate(
-            { userId, status: newStatus, organizationId },
+            { userId: memberId, status: newStatus, organizationId },
             {
                 onSuccess: () => {
                     toast.rbac.memberUpdated();
@@ -153,14 +153,17 @@ export function OrganizationMembersPage() {
             if (editingMember) {
                 await updateMemberMutation.mutateAsync({
                     organizationId,
-                    userId: editingMember.userId,
+                    userId: editingMember.id,
                     role: data.role,
                     status: data.status,
                 });
                 toast.rbac.memberUpdated();
             } else {
                 await inviteMutation.mutateAsync({
-                    ...data,
+                    userId: data.userId,
+                    invitedEmail: data.invitedEmail,
+                    role: data.role,
+                    status: data.status,
                     organizationId,
                 });
                 toast.rbac.memberInvited();
@@ -190,6 +193,14 @@ export function OrganizationMembersPage() {
                             </Button>
                             <Button variant="outline" asChild>
                                 <Link to={'/admin/access/organizations' as never}>← Back to Organizations</Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <Link
+                                    to={'/admin/access/organizations/$organizationId/groups' as never}
+                                    params={{ organizationId } as never}
+                                >
+                                    Groups
+                                </Link>
                             </Button>
                             <Button onClick={handleInvite} className="gap-2">
                                 <UserPlus className="h-4 w-4" />
@@ -231,21 +242,28 @@ export function OrganizationMembersPage() {
                                         <TableCell>
                                             <div className="min-w-0 space-y-0.5">
                                                 <div className="truncate font-medium">
-                                                    {member.user?.name || 'Unknown user'}
+                                                    {member.user?.name || member.invitedEmail || 'Unknown user'}
                                                 </div>
                                                 <div className="truncate text-xs text-muted-foreground">
-                                                    {member.user?.email || member.userId}
+                                                    {member.user?.email || member.invitedEmail || member.userId}
                                                 </div>
-                                                <code className="text-[11px] text-muted-foreground">
-                                                    {member.userId}
-                                                </code>
+                                                {member.userId && (
+                                                    <code className="text-[11px] text-muted-foreground">
+                                                        {member.userId}
+                                                    </code>
+                                                )}
+                                                {!member.userId && (
+                                                    <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                                                        pending invite
+                                                    </span>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <Select
                                                 value={member.role}
                                                 onValueChange={(value: MemberRole) =>
-                                                    handleQuickRoleChange(member.userId, value)
+                                                    handleQuickRoleChange(member.id, value)
                                                 }
                                                 disabled={
                                                     updateRoleMutation.isPending || updateStatusMutation.isPending
@@ -265,7 +283,7 @@ export function OrganizationMembersPage() {
                                             <Select
                                                 value={member.status}
                                                 onValueChange={(value: 'active' | 'invited' | 'suspended') =>
-                                                    handleQuickStatusChange(member.userId, value)
+                                                    handleQuickStatusChange(member.id, value)
                                                 }
                                                 disabled={
                                                     updateRoleMutation.isPending || updateStatusMutation.isPending
@@ -304,7 +322,7 @@ export function OrganizationMembersPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => handleDelete(member.userId)}
+                                                    onClick={() => handleDelete(member.id)}
                                                     disabled={removeMutation.isPending}
                                                 >
                                                     <Trash2 className="h-4 w-4" />

@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - OrganizationMember model
 // ============================================================
 
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
 import { organizationsTable } from './Organization.schema';
 import {
@@ -19,7 +19,7 @@ import { usersTable } from './User.schema';
 export class OrganizationMember extends BaseModel {
     static entity = 'organization_members';
     static table = organizationMembersTable;
-    static primaryKey = 'userId'; // Composite key, but we'll use userId as primary
+    static primaryKey = 'id';
     static connection = 'default';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
@@ -37,12 +37,33 @@ export class OrganizationMember extends BaseModel {
     };
 
     protected static fields: ModelFields = {
-        userId: {
-            type: 'string',
+        id: {
+            type: 'id',
             primaryKey: true,
             editable: false,
             uiConfig: {
+                label: 'ID',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        userId: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
                 label: 'User ID',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        invitedEmail: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Invited Email',
             },
             tableConfig: {
                 visible: true,
@@ -157,9 +178,49 @@ export class OrganizationMember extends BaseModel {
             .insert(organizationMembersTable)
             .values({
                 ...data,
-                joinedAt: data.joinedAt || Date.now(),
+                joinedAt: data.status === 'active' ? (data.joinedAt ?? Date.now()) : data.joinedAt,
             })
             .returning();
+
+        return member;
+    }
+
+    static async findExistingInvite(params: {
+        organizationId: string;
+        userId?: string | null;
+        invitedEmail?: string | null;
+    }): Promise<OrganizationMemberType | undefined> {
+        const db = this.getDriver().getDb();
+        const identities = [];
+        if (params.userId) identities.push(eq(organizationMembersTable.userId, params.userId));
+        if (params.invitedEmail) identities.push(eq(organizationMembersTable.invitedEmail, params.invitedEmail));
+        if (identities.length === 0) return undefined;
+
+        const [member] = await db
+            .select()
+            .from(organizationMembersTable)
+            .where(and(eq(organizationMembersTable.organizationId, params.organizationId), or(...identities)!))
+            .limit(1);
+
+        return member;
+    }
+
+    static async findByMemberKey(
+        memberKey: string,
+        organizationId: string,
+    ): Promise<OrganizationMemberType | undefined> {
+        const db = this.getDriver().getDb();
+
+        const [member] = await db
+            .select()
+            .from(organizationMembersTable)
+            .where(
+                and(
+                    eq(organizationMembersTable.organizationId, organizationId),
+                    or(eq(organizationMembersTable.id, memberKey), eq(organizationMembersTable.userId, memberKey))!,
+                ),
+            )
+            .limit(1);
 
         return member;
     }
@@ -174,7 +235,7 @@ export class OrganizationMember extends BaseModel {
             .delete(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
             );
@@ -184,7 +245,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
             );
@@ -207,7 +268,7 @@ export class OrganizationMember extends BaseModel {
             .set({ role })
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
             )
@@ -231,7 +292,7 @@ export class OrganizationMember extends BaseModel {
             .set({ status })
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
             )
@@ -267,7 +328,9 @@ export class OrganizationMember extends BaseModel {
 
         let query = db
             .select({
+                id: organizationMembersTable.id,
                 userId: organizationMembersTable.userId,
+                invitedEmail: organizationMembersTable.invitedEmail,
                 organizationId: organizationMembersTable.organizationId,
                 role: organizationMembersTable.role,
                 status: organizationMembersTable.status,
@@ -285,7 +348,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .leftJoin(usersTable, eq(organizationMembersTable.userId, usersTable.id))
             .where(and(...conditions))
-            .orderBy(desc(organizationMembersTable.joinedAt), desc(organizationMembersTable.userId));
+            .orderBy(desc(organizationMembersTable.joinedAt), desc(organizationMembersTable.id));
 
         if (options?.limit) {
             query = query.limit(options.limit) as any;
@@ -375,7 +438,9 @@ export class OrganizationMember extends BaseModel {
 
         return db
             .select({
+                id: organizationMembersTable.id,
                 userId: organizationMembersTable.userId,
+                invitedEmail: organizationMembersTable.invitedEmail,
                 organizationId: organizationMembersTable.organizationId,
                 role: organizationMembersTable.role,
                 status: organizationMembersTable.status,
@@ -407,7 +472,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                     eq(organizationMembersTable.status, 'active'),
                 ),
@@ -428,7 +493,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                     eq(organizationMembersTable.role, role),
                     eq(organizationMembersTable.status, 'active'),
@@ -450,7 +515,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                     eq(organizationMembersTable.status, 'active'),
                     sql`${organizationMembersTable.role} IN ('owner', 'admin')`,
@@ -472,7 +537,7 @@ export class OrganizationMember extends BaseModel {
             .from(organizationMembersTable)
             .where(
                 and(
-                    eq(organizationMembersTable.userId, userId),
+                    or(eq(organizationMembersTable.id, userId), eq(organizationMembersTable.userId, userId))!,
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
             )

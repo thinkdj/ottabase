@@ -33,6 +33,16 @@ export {
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
 export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
 export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
+export {
+    UserGroup,
+    UserGroupMember,
+    userGroupMembersTable,
+    userGroupsTable,
+    type NewUserGroupMemberType,
+    type NewUserGroupType,
+    type UserGroupMemberType,
+    type UserGroupType,
+} from './UserGroup';
 
 // Audit logging (with tenant + app scoping)
 export { AuditLog, auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog';

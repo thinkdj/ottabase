@@ -32,14 +32,29 @@ import {
     accountsTable,
     authenticatorsTable,
     mediaTable,
+    organizationMembersTable,
+    organizationsTable,
     sessionsTable,
+    userGroupMembersTable,
+    userGroupsTable,
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
-export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTable, verificationTokensTable };
+export {
+    accountsTable,
+    authenticatorsTable,
+    mediaTable,
+    organizationMembersTable,
+    organizationsTable,
+    sessionsTable,
+    userGroupMembersTable,
+    userGroupsTable,
+    usersTable,
+    verificationTokensTable,
+};
 
 // ============================================================
 // APP-SPECIFIC TABLES

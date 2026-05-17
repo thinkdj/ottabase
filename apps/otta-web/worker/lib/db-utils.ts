@@ -30,6 +30,8 @@ import {
     Role,
     ScheduledTask,
     Session,
+    UserGroup,
+    UserGroupMember,
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
@@ -96,6 +98,8 @@ function registerAppModels(env: CloudflareEnv): void {
         Role,
         UserRole,
         Permission,
+        UserGroup,
+        UserGroupMember,
     ];
     const ottablogModels = packages.ottablog
         ? [

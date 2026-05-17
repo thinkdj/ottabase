@@ -217,11 +217,13 @@ export function useInviteMember() {
         mutationFn: async ({
             organizationId,
             userId,
+            invitedEmail,
             role,
             status,
         }: {
             organizationId: string;
-            userId: string;
+            userId?: string;
+            invitedEmail?: string;
             role: MemberRole;
             status: 'active' | 'invited' | 'suspended';
         }) => {
@@ -231,6 +233,7 @@ export function useInviteMember() {
                     method: 'POST',
                     body: {
                         userId,
+                        invitedEmail,
                         role,
                         status,
                     },

@@ -54,7 +54,10 @@ export interface UpdateOrganizationInput {
 
 export interface OrganizationMemberRecord {
     id: string;
-    userId: string;
+    /** Present for registered users; null for pending email invites */
+    userId: string | null;
+    /** Email used for pending invite (when userId is null) */
+    invitedEmail?: string | null;
     organizationId: string;
     role: MemberRole;
     status: MemberStatus;
@@ -74,8 +77,12 @@ export type MemberRole = 'owner' | 'admin' | 'member';
 
 export type MemberStatus = 'active' | 'invited' | 'suspended';
 
+/** Pass userId OR invitedEmail (not both). userId takes priority when present. */
 export interface InviteMemberInput {
-    userId: string;
+    /** Existing user id — mutually exclusive with invitedEmail */
+    userId?: string;
+    /** Email for a pending invite (no account yet) — mutually exclusive with userId */
+    invitedEmail?: string;
     organizationId: string;
     role: MemberRole;
     status: MemberStatus;
@@ -88,6 +95,71 @@ export interface UpdateMemberInput {
     status?: MemberStatus;
     joinedAt?: string;
     metadata?: Record<string, unknown>;
+}
+
+// ============================================================
+// User Group Types
+// ============================================================
+
+export interface UserGroupRecord {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    organizationId: string;
+    appId?: string | null;
+    createdBy?: string | null;
+    metadata?: Record<string, unknown> | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateUserGroupInput {
+    name: string;
+    slug: string;
+    description?: string;
+    organizationId: string;
+    appId?: string;
+}
+
+export interface UpdateUserGroupInput {
+    name?: string;
+    slug?: string;
+    description?: string;
+    appId?: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface UserGroupMemberRecord {
+    id: string;
+    groupId: string;
+    organizationId: string;
+    /** Present for registered users; null for pending email invites */
+    userId: string | null;
+    /** Email for pending invite (when userId is null) */
+    invitedEmail?: string | null;
+    role: string;
+    status: string;
+    invitedBy?: string | null;
+    invitedAt?: string | null;
+    joinedAt?: string | null;
+    metadata?: Record<string, unknown> | null;
+    createdAt: string;
+    updatedAt: string;
+    user?: {
+        id: string | null;
+        name: string | null;
+        email: string | null;
+        image: string | null;
+    };
+}
+
+export interface InviteGroupMemberInput {
+    /** Existing user id — mutually exclusive with invitedEmail */
+    userId?: string;
+    /** Email for a pending invite — mutually exclusive with userId */
+    invitedEmail?: string;
+    role?: string;
 }
 
 // ============================================================

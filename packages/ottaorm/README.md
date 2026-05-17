@@ -18,6 +18,8 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
 - **Field Metadata** - UI config, validation, form/table config
 - **Type Casting** - Automatic boolean, date, json conversion
 - **Per-App Models** - Core models + app-specific models
+- **Reusable User Groups** - Core `UserGroup` and `UserGroupMember` models for organization-scoped package features and
+  email invites
 
 ## Installation
 

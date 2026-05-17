@@ -340,6 +340,16 @@ const adminOrganizationMembersRoute = makeAdminRoute(
     () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
     'OrganizationMembersPage',
 );
+const adminOrganizationGroupsRoute = makeAdminRoute(
+    '/admin/access/organizations/$organizationId/groups',
+    () => import('@/pages/admin/access/organizations/UserGroupsPage'),
+    'UserGroupsPage',
+);
+const adminOrganizationGroupMembersRoute = makeAdminRoute(
+    '/admin/access/organizations/$organizationId/groups/$groupId/members',
+    () => import('@/pages/admin/access/organizations/UserGroupMembersPage'),
+    'UserGroupMembersPage',
+);
 const adminOrganizationSettingsRoute = makeAdminRoute(
     '/admin/access/organizations/$organizationId/settings',
     () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
@@ -556,6 +566,8 @@ const coreRoutes = [
     adminOrganizationsRoute,
     adminOrganizationNewRoute,
     adminOrganizationMembersRoute,
+    adminOrganizationGroupsRoute,
+    adminOrganizationGroupMembersRoute,
     adminOrganizationSettingsRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
