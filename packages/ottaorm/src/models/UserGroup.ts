@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
 import { usersTable } from './User.schema';
 import {
@@ -206,9 +206,7 @@ export class UserGroupMember extends BaseModel {
      * List all members of a group, joined with user info (when registered).
      * Pending invites (no `userId`) return with `user` = null.
      */
-    static async getGroupMembers(
-        groupId: string,
-    ): Promise<
+    static async getGroupMembers(groupId: string): Promise<
         Array<
             UserGroupMemberType & {
                 user: { id: string; name: string | null; email: string; image: string | null } | null;
@@ -291,11 +289,9 @@ export class UserGroupMember extends BaseModel {
             .where(
                 and(
                     eq(userGroupMembersTable.userId, userId),
-                    // Limit lookup to the candidate groups — small set, no need for `inArray` complexity
-                    sql`${userGroupMembersTable.groupId} IN (${sql.join(
-                        groupIds.map((id: string) => sql`${id}`),
-                        sql`, `,
-                    )})`,
+                    // Drizzle `inArray` builds a properly parameterized IN clause — no
+                    // hand-rolled SQL string interpolation.
+                    inArray(userGroupMembersTable.groupId, groupIds),
                 ),
             );
         const alreadyMemberOf = new Set(existingMemberships.map((row: { groupId: string }) => row.groupId));
@@ -332,8 +328,15 @@ export class UserGroupMember extends BaseModel {
                 if (result.length > 0) claimed += 1;
             } catch (error) {
                 // A unique-constraint race may still occur if another path inserted a
-                // (group_id, user_id) row between our pre-check and the UPDATE. Log and continue.
-                console.warn('[UserGroupMember.claimPendingInvitesForEmail] skipped row due to conflict:', error);
+                // (group_id, user_id) row between our pre-check and the UPDATE. Log full
+                // context (including stack) and continue.
+                console.warn('[UserGroupMember.claimPendingInvitesForEmail] skipped row due to conflict', {
+                    userId,
+                    email: normalizedEmail,
+                    rowId: row.id,
+                    groupId: row.groupId,
+                    error,
+                });
             }
         }
 

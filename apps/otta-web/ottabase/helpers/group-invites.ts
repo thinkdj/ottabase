@@ -35,7 +35,9 @@ export async function claimPendingGroupInvitesForUser(
         return { claimed };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error('[group-invites] Failed to claim pending invites:', message);
+        // Log full error (preserves stack trace) so transient claim failures can be debugged
+        // without breaking auth.
+        console.error('[group-invites] Failed to claim pending invites for user', { userId, email }, error);
         return { claimed: 0, error: message };
     }
 }
