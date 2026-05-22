@@ -1,4 +1,5 @@
 {
     "$schema": "./schemas/ottabase.config.schema.json",
-    "defaultApp": "otta-web"
+    "defaultApp": "otta-web",
+    "deployApps": ["otta-web", "otta-landing"]
 }

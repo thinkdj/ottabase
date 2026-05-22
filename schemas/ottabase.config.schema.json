@@ -1,13 +1,21 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Ottabase Monorepo Config",
-    "description": "Root-level config consumed by monorepo scripts (dev, build, cf:*) to resolve the active app.",
+    "description": "Root-level config consumed by monorepo scripts (dev, build, cf:*) and CI/CD workflows to resolve the active app and the deploy target set.",
     "type": "object",
     "properties": {
         "defaultApp": {
             "type": "string",
-            "description": "Directory name under apps/ to use when no --app flag or OTTABASE_APP env var is set.",
+            "description": "Directory name under apps/ used when no --app flag or OTTABASE_APP env var is set. Drives dev/build/cf:* scripts.",
             "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "deployApps": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+            },
+            "description": "Apps to deploy in CI (deploy.yml + pr-preview.yml). Auto-derived from apps/ with wrangler.jsonc when omitted. The APPS_TO_DEPLOY GitHub secret overrides this list."
         }
     },
     "additionalProperties": false

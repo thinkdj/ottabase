@@ -115,7 +115,9 @@ lower layer.
 
 ## Runtime Architecture (Primary App)
 
-Primary app: `apps/otta-web`
+Primary app (default): `apps/otta-web`. The "active app" for monorepo scripts and CI/CD is configured in
+`ottabase.config.json` (`defaultApp` + `deployApps`); rename the folder + update that one file to switch the default.
+Throughout this document, paths under `apps/otta-web/...` refer to whichever folder is currently the active app.
 
 ```mermaid
 flowchart LR

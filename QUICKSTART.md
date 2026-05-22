@@ -66,6 +66,9 @@ which avoids the common first-load race where the frontend boots before the back
 
 ## Step 2: Configure Environment (30 seconds)
 
+> The `apps/otta-web` path below assumes the default ships of the framework. If you've renamed the app or set
+> `defaultApp` in `ottabase.config.json` to something else, substitute that folder name everywhere below.
+
 ```bash
 # Copy the environment template
 cp apps/otta-web/.env.example apps/otta-web/.env.local

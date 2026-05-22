@@ -4,27 +4,27 @@
  * command with `{app}` and `{packageName}` placeholders replaced.
  *
  * Usage:
- *   node packages/scripts/bin/with-app.cjs pnpm --filter @ottabase/{app} dev
+ *   node packages/scripts/bin/with-app.cjs pnpm --filter {packageName} dev
  *   node packages/scripts/bin/with-app.cjs turbo build --filter=@ottabase/{app}...
  *
- * The wrapper accepts (and removes) `--app=<name>` before forwarding the rest
- * to the downstream command. The downstream command is spawned without a shell;
- * on Windows, `.cmd` is appended to bare binary names for compatibility.
+ * The wrapper accepts (and strips) `--app=<name>` (or `--app <name>`) before
+ * forwarding the rest. Spawns through a shell on Windows so PATHEXT picks up
+ * `.cmd`/`.bat` shims for `pnpm` / `turbo`; spawns directly on Unix.
  */
 
 const { spawn } = require('child_process');
 const { resolveActiveApp } = require('./lib/resolve-app.cjs');
 
-function getBinFor(cmd) {
-    if (process.platform !== 'win32') return cmd;
-    // Windows resolves `pnpm` / `turbo` shims as .cmd. Only mangle bare binary
-    // names; if the caller already passed a path or extension, leave it alone.
-    if (cmd.includes('/') || cmd.includes('\\') || cmd.includes('.')) return cmd;
-    return `${cmd}.cmd`;
-}
-
 function main() {
-    const { app, packageName, restArgv, root } = resolveActiveApp();
+    let resolved;
+    try {
+        resolved = resolveActiveApp();
+    } catch (err) {
+        console.error(`with-app: ${err.message}`);
+        process.exit(1);
+    }
+
+    const { app, packageName, restArgv, root } = resolved;
 
     if (restArgv.length === 0) {
         console.error('with-app: no command provided. Usage: with-app.cjs <cmd> [args...]');
@@ -32,16 +32,23 @@ function main() {
     }
 
     const substituted = restArgv.map((a) => a.replaceAll('{app}', app).replaceAll('{packageName}', packageName));
-    const [rawCmd, ...args] = substituted;
-    const cmd = getBinFor(rawCmd);
+    const [cmd, ...args] = substituted;
+
+    // On Windows, spawning bare `pnpm` / `turbo` without a shell fails because
+    // those are .cmd shims and the bare name isn't resolved via PATHEXT in
+    // child_process.spawn. Use shell mode on Windows; direct spawn elsewhere.
+    const useShell = process.platform === 'win32';
 
     const child = spawn(cmd, args, {
         stdio: 'inherit',
         cwd: root,
         env: { ...process.env, OTTABASE_APP: app },
+        shell: useShell,
     });
 
-    const forwardSignal = (sig) => () => child.kill(sig);
+    const forwardSignal = (sig) => () => {
+        if (!child.killed) child.kill(sig);
+    };
     process.on('SIGINT', forwardSignal('SIGINT'));
     process.on('SIGTERM', forwardSignal('SIGTERM'));
 

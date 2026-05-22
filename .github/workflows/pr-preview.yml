@@ -91,12 +91,16 @@ jobs:
                   # Always deploy previews for the configured apps.
                   # APPS_TO_DEPLOY is a comma-separated list of app *folder* names under apps/.
                   # Each app must have a cloudflare-config.json that drives its build + deploy.
-                  # When you rename/copy an app, update cloudflare-config.json + wrangler.jsonc
-                  # inside that app, then set the APPS_TO_DEPLOY secret - no yml editing needed.
+                  # When you rename/copy an app, update its cloudflare-config.json + wrangler.jsonc,
+                  # then either edit ottabase.config.json (committed) or set the APPS_TO_DEPLOY secret.
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="otta-web,otta-landing"
-                    echo "📋 Using default apps: ${APPS_TO_DEPLOY}"
+                    APPS_TO_DEPLOY=$(jq -r '.deployApps // [] | join(",")' ottabase.config.json 2>/dev/null || echo "")
+                    if [ -z "$APPS_TO_DEPLOY" ]; then
+                      echo "❌ No deploy targets: set deployApps in ottabase.config.json or the APPS_TO_DEPLOY secret."
+                      exit 1
+                    fi
+                    echo "📋 Using deployApps from ottabase.config.json: ${APPS_TO_DEPLOY}"
                   else
                     echo "📋 Apps from secret: ${APPS_TO_DEPLOY}"
                   fi
@@ -600,7 +604,11 @@ jobs:
               run: |
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="otta-web,otta-landing"
+                    APPS_TO_DEPLOY=$(jq -r '.deployApps // [] | join(",")' ottabase.config.json 2>/dev/null || echo "")
+                    if [ -z "$APPS_TO_DEPLOY" ]; then
+                      echo "ℹ️ Nothing to clean up: no deployApps in ottabase.config.json and no APPS_TO_DEPLOY secret."
+                      exit 0
+                    fi
                   fi
 
                   WORKER_SUBDOMAIN="${{ steps.cleanup-config.outputs.worker-subdomain }}"

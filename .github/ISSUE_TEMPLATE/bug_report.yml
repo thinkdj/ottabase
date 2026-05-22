@@ -42,7 +42,7 @@ body:
       id: affected-package
       attributes:
           label: Affected package or app
-          description: "Example: @ottabase/ottaorm, @ottabase/auth, apps/otta-web"
+          description: "Example: @ottabase/ottaorm, @ottabase/auth, or your app folder under apps/"
           placeholder: "@ottabase/..."
       validations:
           required: true

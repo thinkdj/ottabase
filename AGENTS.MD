@@ -109,10 +109,24 @@ export class Todo extends BaseModel {
 
 ```text
 ottabase/
+├── ottabase.config.json  # Tooling config — defaultApp + deployApps (single source of truth)
 ├── apps/
-│   └── otta-web/  # Primary app (Vite + Workers)
-└── packages/      # Shared code
+│   ├── otta-web/         # Default app (Vite + Workers) — referenced from ottabase.config.json
+│   └── otta-landing/     # Next.js landing template
+└── packages/             # Shared code
 ```
+
+### Active app resolution
+
+Monorepo scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`, `dev.js`) and CI/CD resolve their target app dynamically — no
+app name is hardcoded outside `ottabase.config.json`. Priority (highest → lowest):
+
+1. CLI flag `--app=<name>` (for scripts that accept it: `cf:setup`, `cf:validate`, `cf:login`)
+2. Env var `OTTABASE_APP=<name>`
+3. `ottabase.config.json` → `defaultApp`
+4. Single-app auto-detect (when only one app exists under `apps/`)
+
+CI deploy targets come from the same file's `deployApps` array, with the `APPS_TO_DEPLOY` GitHub secret as override.
 
 ## Local Development
 
@@ -471,7 +485,7 @@ Add locally when:
 # Add to specific package
 pnpm add --filter @ottabase/ottaeditor @editorjs/editorjs
 
-# Add to specific app
+# Add to a specific app (use the @ottabase/<dir-name> from apps/)
 pnpm add --filter @ottabase/otta-web some-package
 ```
 
@@ -670,16 +684,19 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 ### Starting the dev servers
 
-The `pnpm dev` command (or `node dev.js --noopen`) starts both Vite (port 3003) and Wrangler (port 3004) in parallel.
+The `pnpm dev` command (or `node dev.js --noopen`) starts both Vite (port 3003) and Wrangler (port 3004) in parallel for
+the **active app** — resolved from `ottabase.config.json` → `defaultApp`, overridable via `OTTABASE_APP=<name>` or
+`--app=<name>`. Below, `$APP` stands for the active app folder name (defaults to `otta-web`).
+
 Key caveats for Cloud agents:
 
-1. **Wrangler needs a `dist/` directory** in `apps/otta-web/`. If it doesn't exist (first run, or after `pnpm clean`),
-   create it: `mkdir -p apps/otta-web/dist && echo '<html></html>' > apps/otta-web/dist/index.html`.
+1. **Wrangler needs a `dist/` directory** in `apps/$APP/`. If it doesn't exist (first run, or after `pnpm clean`),
+   create it: `mkdir -p apps/$APP/dist && echo '<html></html>' > apps/$APP/dist/index.html`.
 2. **Wrangler needs `CLOUDFLARE_API_TOKEN`** in non-interactive (headless) environments. Set a dummy value for local
    dev: `export CLOUDFLARE_API_TOKEN=dummy-local-dev`. Use `--local` flag if needed.
 3. Start the servers separately for better control:
-    - Backend: `cd apps/otta-web && CLOUDFLARE_API_TOKEN=dummy-local-dev npx wrangler dev --port 3004 --local`
-    - Frontend: `cd apps/otta-web && npx vite --port 3003`
+    - Backend: `cd apps/$APP && CLOUDFLARE_API_TOKEN=dummy-local-dev npx wrangler dev --port 3004 --local`
+    - Frontend: `cd apps/$APP && npx vite --port 3003`
 4. **Build scripts for native packages** (esbuild, workerd) may be ignored by pnpm. After `pnpm install`, run:
    `for dir in node_modules/.pnpm/esbuild@*/node_modules/esbuild; do (cd "$dir" && node install.js); done` and
    `for dir in node_modules/.pnpm/workerd@*/node_modules/workerd; do (cd "$dir" && node install.js); done`.
@@ -693,7 +710,8 @@ account). Use the `/__bootstrap__` API:
 limits), then runs migrations — use this for a clean fresh install when KV may contain stale keys.
 
 ```bash
-BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/otta-web/.env.local | cut -d= -f2)
+# Replace $APP with the active app (folder under apps/, default otta-web)
+BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/$APP/.env.local | cut -d= -f2)
 curl -s -X POST http://localhost:3004/__bootstrap__/api/init -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
 curl -s -X POST http://localhost:3004/__bootstrap__/api/seed -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
 curl -s -X POST http://localhost:3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"<your-secure-password>","name":"Admin"}'

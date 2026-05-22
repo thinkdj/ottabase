@@ -112,9 +112,10 @@ Durable Objects.
 
 ```text
 ottabase/
+├── ottabase.config.json # Tooling config — defaultApp + deployApps (single source of truth)
 ├── apps/
-│   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
-│   └── otta-landing/ # Next.js + OpenNext (homepage/landing)
+│   ├── otta-web/       # TanStack Router + Vite + Workers (default, referenced from ottabase.config.json)
+│   └── otta-landing/   # Next.js + OpenNext (homepage/landing)
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
 │   ├── db/               # Drizzle D1 driver
@@ -421,22 +422,39 @@ All models include a nullable `appId` column:
 **Full-stack SPA** (TanStack Router, OttaORM, Auth, RBAC, all CF bindings):
 
 ```bash
-# Unix/macOS: cp -r apps/otta-web apps/my-new-app
-# Windows:    xcopy /E /I apps\otta-web apps\my-new-app
-cd apps/my-new-app
-# Update package.json name
+# Recommended: scaffolds + renames everything in one shot
+otta new web app1
+
+# Manual:
+# Unix/macOS: cp -r apps/otta-web apps/app1
+# Windows:    xcopy /E /I apps\otta-web apps\app1
+cd apps/app1
+# Update package.json name → @ottabase/app1
 # Delete src/pages/demo/  (optional - remove demo pages)
 ```
 
 **Marketing homepage** (Next.js, OpenNext, Brand Engine):
 
 ```bash
-# Unix/macOS: cp -r apps/otta-landing apps/my-new-homepage
-# Windows:    xcopy /E /I apps\otta-landing apps\my-new-homepage
-cd apps/my-new-homepage
-# Update package.json name
-# Edit config/brand.config.ts to customize theme
+otta new landing my-site
+# Or manual: cp -r apps/otta-landing apps/my-site
 ```
+
+### Pointing the monorepo at your renamed app
+
+Root-level scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`) and CI/CD resolve the active app from a single file —
+`ottabase.config.json` at the repo root. Change one line to switch the default app monorepo-wide:
+
+```jsonc
+{
+    "$schema": "./schemas/ottabase.config.schema.json",
+    "defaultApp": "app1", // ← drives pnpm dev, pnpm build, pnpm cf:*, dev.js, etc.
+    "deployApps": ["app1", "otta-landing"], // ← drives GitHub Actions deploy.yml + pr-preview.yml
+}
+```
+
+Resolution priority (highest → lowest): `--app=<name>` CLI flag → `OTTABASE_APP` env var → `ottabase.config.json` →
+single-app auto-detect. The flag/env var override per-invocation; the file is the persistent project default.
 
 ## Package Fat Model Pattern
 
@@ -479,19 +497,25 @@ export const { useList, useCreate, ... } = createModelHooks({ entityName: "short
 ## Commands
 
 ```bash
-pnpm dev              # Start all (Vite + Wrangler)
-pnpm build            # Build everything
+pnpm dev              # Start all (Vite + Wrangler) for the active app
+pnpm build            # Build packages + the active app
+pnpm build:app        # Build just the active app
 pnpm build:pkg        # Build packages only
-pnpm test             # Run tests
+pnpm test             # Run tests (all)
+pnpm test:app         # Test just the active app
 pnpm lint             # Lint
 pnpm type-check       # TypeScript check
 pnpm storybook        # Component docs
 ```
 
+> "Active app" is resolved from `ottabase.config.json` (see
+> [Pointing the monorepo at your renamed app](#pointing-the-monorepo-at-your-renamed-app)). Override per-invocation with
+> `OTTABASE_APP=<name> pnpm <script>` or, for CLI scripts that accept it, `pnpm cf:setup --app=<name>`.
+
 ## Cloudflare Deployment
 
 ```bash
-cd apps/otta-web
+cd apps/<your-app>    # e.g. apps/otta-web
 pnpm wrangler login
 pnpm deploy
 

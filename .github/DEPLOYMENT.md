@@ -62,10 +62,10 @@ PR preview uses isolated preview D1/KV/R2 so production data is never touched.
 
 ### Optional
 
-| Secret                | Default                 | Purpose                                                                              |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
-| `APPS_TO_DEPLOY`      | `otta-web,otta-landing` | Comma-separated app names or folder names to deploy (production and PR preview)      |
-| `CF_WORKER_SUBDOMAIN` | `apiary`                | Subdomain in `*.workers.dev` (for example `apiary` → `my-worker.apiary.workers.dev`) |
+| Secret                | Default                               | Purpose                                                                                                                                                  |
+| --------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APPS_TO_DEPLOY`      | `ottabase.config.json` → `deployApps` | Comma-separated app folder names to deploy (production and PR preview). Falls back to the `deployApps` array in `ottabase.config.json` at the repo root. |
+| `CF_WORKER_SUBDOMAIN` | `apiary`                              | Subdomain in `*.workers.dev` (for example `apiary` → `my-worker.apiary.workers.dev`)                                                                     |
 
 ## Production Deploy
 
