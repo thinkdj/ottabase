@@ -404,10 +404,10 @@ const config = createAppConfig({
 
 ### Environment Variables
 
-| Variable          | Default      | Description                 |
-| ----------------- | ------------ | --------------------------- |
-| `APP_ID`          | `"otta-web"` | Unique app identifier       |
-| `SCOPE_BY_APP_ID` | `"false"`    | Enable appId scoping for DB |
+| Variable          | Default   | Description                                                                               |
+| ----------------- | --------- | ----------------------------------------------------------------------------------------- |
+| `APP_ID`          | `"app"`   | Unique app identifier (apps usually set this explicitly via `createAppConfig({ appId })`) |
+| `SCOPE_BY_APP_ID` | `"false"` | Enable appId scoping for DB                                                               |
 
 ### Schema Support
 
@@ -442,19 +442,21 @@ otta new landing my-site
 
 ### Pointing the monorepo at your renamed app
 
-Root-level scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`) and CI/CD resolve the active app from a single file —
-`ottabase.config.json` at the repo root. Change one line to switch the default app monorepo-wide:
+Root-level scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`, `pnpm dev:landing`) and CI/CD resolve the target app from a
+single file — `ottabase.config.json` at the repo root. Change one line per role to retarget the monorepo:
 
 ```jsonc
 {
     "$schema": "./schemas/ottabase.config.schema.json",
-    "defaultApp": "app1", // ← drives pnpm dev, pnpm build, pnpm cf:*, dev.js, etc.
-    "deployApps": ["app1", "otta-landing"], // ← drives GitHub Actions deploy.yml + pr-preview.yml
+    "defaultApp": "app1", // ← primary (SaaS) app: drives pnpm dev, pnpm build, pnpm cf:*, dev.js, etc.
+    "landingApp": "my-marketing", // ← marketing/landing app: drives pnpm dev:landing, pnpm test:landing
+    "deployApps": ["app1", "my-marketing"], // ← drives GitHub Actions deploy.yml + pr-preview.yml
 }
 ```
 
-Resolution priority (highest → lowest): `--app=<name>` CLI flag → `OTTABASE_APP` env var → `ottabase.config.json` →
-single-app auto-detect. The flag/env var override per-invocation; the file is the persistent project default.
+Resolution priority for the primary app (highest → lowest): `--app=<name>` CLI flag → `OTTABASE_APP` env var →
+`ottabase.config.json` → single-app auto-detect. For named roles like `landingApp`, scripts pass `--config-key=<field>`
+to the resolver, which reads that field from the config (the env-var fallback is reserved for the primary app).
 
 ## Package Fat Model Pattern
 

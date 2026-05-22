@@ -2,10 +2,12 @@
  * Resolves the "active app" for monorepo scripts (dev, build, cf:*, etc.).
  *
  * Resolution priority (highest → lowest):
- *   1. CLI flag: `--app=<name>` or `--app <name>` anywhere in argv
+ *   1. CLI flag: `--app=<name>` (or `--app <name>`)
  *   2. Env var: `OTTABASE_APP`
- *   3. Root `ottabase.config.json` → `defaultApp` field
- *   4. Single-app auto-detect (when `apps/` contains exactly one app)
+ *   3. Config field — defaults to `ottabase.config.json` → `defaultApp`, or whichever
+ *      field is requested via `--config-key=<field>` / `options.configKey`
+ *      (e.g. `landingApp`)
+ *   4. Single-app auto-detect (only when reading the default field)
  *
  * Throws a helpful error when no app can be resolved.
  *
@@ -16,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const CONFIG_FILENAME = 'ottabase.config.json';
+const DEFAULT_CONFIG_KEY = 'defaultApp';
 
 let cachedRoot = null;
 let cachedApps = null;
@@ -65,9 +68,9 @@ function readConfig(root) {
     return data;
 }
 
-function readConfigDefaultApp(root) {
+function readConfigAppByKey(root, key) {
     const data = readConfig(root);
-    return typeof data.defaultApp === 'string' && data.defaultApp ? data.defaultApp : null;
+    return typeof data[key] === 'string' && data[key] ? data[key] : null;
 }
 
 /**
@@ -85,59 +88,58 @@ function getDeployApps(options = {}) {
 }
 
 /**
- * Extracts `--app=<name>` or `--app <name>` from argv.
- * Returns the name and the surviving argv (with the flag removed) so callers
+ * Extracts `--app=<name>` / `--app <name>` and `--config-key=<field>` / `--config-key <field>`
+ * from argv. Returns the parsed values and the surviving argv (with flags removed) so callers
  * can forward the rest to the underlying tool.
  */
-function extractAppFlag(argv) {
+function extractFlags(argv) {
     const out = [];
     let app = null;
+    let configKey = null;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
-        if (a === '--app' && i + 1 < argv.length) {
-            app = argv[++i];
-        } else if (a.startsWith('--app=')) {
-            app = a.slice('--app='.length);
-        } else {
-            out.push(a);
-        }
+        if (a === '--app' && i + 1 < argv.length) app = argv[++i];
+        else if (a.startsWith('--app=')) app = a.slice('--app='.length);
+        else if (a === '--config-key' && i + 1 < argv.length) configKey = argv[++i];
+        else if (a.startsWith('--config-key=')) configKey = a.slice('--config-key='.length);
+        else out.push(a);
     }
-    return { app, rest: out };
+    return { app, configKey, rest: out };
 }
 
 /**
- * @param {{ argv?: string[] }} options
- * @returns {{ app: string, packageName: string, appPath: string, root: string, restArgv: string[], source: string }}
+ * @param {{ argv?: string[], configKey?: string }} options
+ * @returns {{ app: string, packageName: string, appPath: string, root: string, restArgv: string[], source: string, configKey: string }}
  */
 function resolveActiveApp(options = {}) {
     const argv = options.argv ?? process.argv.slice(2);
-    const { app: cliApp, rest: restArgv } = extractAppFlag(argv);
+    const { app: cliApp, configKey: cliConfigKey, rest: restArgv } = extractFlags(argv);
+    const configKey = cliConfigKey || options.configKey || DEFAULT_CONFIG_KEY;
+    const isDefaultKey = configKey === DEFAULT_CONFIG_KEY;
     const root = findMonorepoRoot();
     const apps = listAppNames(root);
 
-    const pickSource = (name, source) => ({ name, source });
-
     let chosen = null;
-    if (cliApp) chosen = pickSource(cliApp, 'cli');
-    else if (process.env.OTTABASE_APP) chosen = pickSource(process.env.OTTABASE_APP, 'env');
+    if (cliApp) chosen = { name: cliApp, source: 'cli' };
+    else if (isDefaultKey && process.env.OTTABASE_APP) chosen = { name: process.env.OTTABASE_APP, source: 'env' };
     else {
-        const fromConfig = readConfigDefaultApp(root);
-        if (fromConfig) chosen = pickSource(fromConfig, 'config');
-        else if (apps.length === 1) chosen = pickSource(apps[0], 'auto');
+        const fromConfig = readConfigAppByKey(root, configKey);
+        if (fromConfig) chosen = { name: fromConfig, source: 'config' };
+        else if (isDefaultKey && apps.length === 1) chosen = { name: apps[0], source: 'auto' };
     }
 
     if (!chosen) {
         const list = apps.length ? apps.join(', ') : '(none found under apps/)';
-        throw new Error(
-            `Cannot determine active app. Set "defaultApp" in ${CONFIG_FILENAME} at the monorepo root, ` +
-                `export OTTABASE_APP=<name>, or pass --app=<name>. Available apps: ${list}`,
-        );
+        const hint = isDefaultKey
+            ? `Set "${configKey}" in ${CONFIG_FILENAME}, export OTTABASE_APP, or pass --app=<name>.`
+            : `Set "${configKey}" in ${CONFIG_FILENAME} or pass --app=<name>.`;
+        throw new Error(`Cannot determine active app. ${hint} Available apps: ${list}`);
     }
 
     if (apps.length && !apps.includes(chosen.name)) {
         throw new Error(
-            `App "${chosen.name}" (from ${chosen.source}) does not exist under apps/. ` +
-                `Available: ${apps.join(', ')}`,
+            `App "${chosen.name}" (from ${chosen.source}${isDefaultKey ? '' : `, key=${configKey}`}) ` +
+                `does not exist under apps/. Available: ${apps.join(', ')}`,
         );
     }
 
@@ -150,7 +152,7 @@ function resolveActiveApp(options = {}) {
         // package.json is missing or malformed — fall through with the conventional scoped name
     }
 
-    return { app: chosen.name, packageName, appPath, root, restArgv, source: chosen.source };
+    return { app: chosen.name, packageName, appPath, root, restArgv, source: chosen.source, configKey };
 }
 
 /** Test-only: clear in-process caches (root/apps/config). */
@@ -167,5 +169,6 @@ module.exports = {
     getDeployApps,
     readConfig,
     CONFIG_FILENAME,
+    DEFAULT_CONFIG_KEY,
     _resetCachesForTests,
 };

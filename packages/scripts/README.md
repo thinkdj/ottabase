@@ -13,9 +13,9 @@ resolve the active app dynamically — no app name is hardcoded. Resolution prio
 
 1. **CLI flag**: `--app=<name>` or `--app <name>`
 2. **Env var**: `OTTABASE_APP=<name>`
-3. **Config file**: `ottabase.config.json` at the monorepo root → `defaultApp` field
-4. **Auto-detect**: when `apps/` contains exactly one app
-5. **Fallback**: `otta-web` (if present)
+3. **Config field** in `ottabase.config.json` at the monorepo root — defaults to `defaultApp`, or whichever field is
+   addressed via `--config-key=<field>` (e.g. `landingApp` for `dev:landing` / `test:landing`)
+4. **Auto-detect**: when `apps/` contains exactly one app (default field only)
 
 Example overrides:
 
@@ -25,7 +25,17 @@ pnpm cf:setup --app=app1
 OTTABASE_APP=app1 pnpm dev
 
 # Persistent: edit ottabase.config.json
-{ "defaultApp": "app1" }
+{ "defaultApp": "app1", "landingApp": "my-marketing" }
+```
+
+### Named app roles
+
+Beyond the primary `defaultApp`, additional roles (currently `landingApp`) can be declared in `ottabase.config.json`.
+Scripts targeting a role pass `--config-key=<field>` to the resolver, which then reads `<field>` from the config:
+
+```jsonc
+// package.json
+"dev:landing": "node packages/scripts/bin/with-app.cjs --config-key=landingApp pnpm --filter {packageName} dev"
 ```
 
 The `with-app` wrapper (`packages/scripts/bin/with-app.cjs`) is used by root `package.json` scripts to substitute

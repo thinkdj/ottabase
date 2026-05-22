@@ -118,13 +118,18 @@ ottabase/
 
 ### Active app resolution
 
-Monorepo scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`, `dev.js`) and CI/CD resolve their target app dynamically — no
-app name is hardcoded outside `ottabase.config.json`. Priority (highest → lowest):
+Monorepo scripts (`pnpm dev`, `pnpm build`, `pnpm cf:*`, `pnpm dev:landing`, `dev.js`) and CI/CD resolve their target
+app dynamically — no app name is hardcoded outside `ottabase.config.json`. Priority for the **primary** app (highest →
+lowest):
 
-1. CLI flag `--app=<name>` (for scripts that accept it: `cf:setup`, `cf:validate`, `cf:login`)
+1. CLI flag `--app=<name>` (for scripts that accept it: `cf:setup`, `cf:validate`, `cf:login`, `with-app`)
 2. Env var `OTTABASE_APP=<name>`
 3. `ottabase.config.json` → `defaultApp`
 4. Single-app auto-detect (when only one app exists under `apps/`)
+
+**Named app roles** — beyond `defaultApp`, the config also declares `landingApp` (Next.js marketing site). Role-targeted
+scripts pass `--config-key=<field>` to the resolver to read that specific field. Example: `pnpm dev:landing` →
+`with-app --config-key=landingApp …` → reads `landingApp` from `ottabase.config.json`.
 
 CI deploy targets come from the same file's `deployApps` array, with the `APPS_TO_DEPLOY` GitHub secret as override.
 

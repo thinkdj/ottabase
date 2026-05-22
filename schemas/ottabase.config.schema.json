@@ -6,7 +6,12 @@
     "properties": {
         "defaultApp": {
             "type": "string",
-            "description": "Directory name under apps/ used when no --app flag or OTTABASE_APP env var is set. Drives dev/build/cf:* scripts.",
+            "description": "Directory name under apps/ used when no --app flag or OTTABASE_APP env var is set. Drives dev/build/cf:* scripts targeting the primary (SaaS) app.",
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "landingApp": {
+            "type": "string",
+            "description": "Directory name under apps/ for the marketing/landing site. Used by dev:landing / test:landing.",
             "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
         },
         "deployApps": {

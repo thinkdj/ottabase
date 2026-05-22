@@ -43,6 +43,7 @@ describe('resolveActiveApp', () => {
         expect(['config', 'auto']).toContain(result.source);
         expect(typeof result.app).toBe('string');
         expect(result.app.length).toBeGreaterThan(0);
+        expect(result.configKey).toBe('defaultApp');
     });
 
     it('returns the workspace package name from package.json', () => {
@@ -51,7 +52,7 @@ describe('resolveActiveApp', () => {
         expect(result.appPath).toMatch(/apps[/\\]otta-web$/);
     });
 
-    it('preserves non --app args in restArgv for forwarding', () => {
+    it('preserves non-resolver args in restArgv for forwarding', () => {
         const result = resolveActiveApp({ argv: ['--app=otta-web', '--force', 'extra'] });
         expect(result.restArgv).toEqual(['--force', 'extra']);
     });
@@ -64,6 +65,47 @@ describe('resolveActiveApp', () => {
 
     it('exports CONFIG_FILENAME pointing at ottabase.config.json', () => {
         expect(CONFIG_FILENAME).toBe('ottabase.config.json');
+    });
+
+    describe('--config-key', () => {
+        it('reads a non-default field from config when --config-key=<key> is passed', () => {
+            // ottabase.config.json ships with landingApp: otta-landing
+            const result = resolveActiveApp({ argv: ['--config-key=landingApp'] });
+            expect(result.app).toBe('otta-landing');
+            expect(result.source).toBe('config');
+            expect(result.configKey).toBe('landingApp');
+        });
+
+        it('reads from options.configKey when no CLI flag is present', () => {
+            const result = resolveActiveApp({ configKey: 'landingApp' });
+            expect(result.app).toBe('otta-landing');
+            expect(result.configKey).toBe('landingApp');
+        });
+
+        it('ignores OTTABASE_APP when targeting a non-default config key', () => {
+            // OTTABASE_APP is scoped to the primary "active app"; named roles must come from config.
+            process.env.OTTABASE_APP = 'otta-web';
+            const result = resolveActiveApp({ argv: ['--config-key=landingApp'] });
+            expect(result.app).toBe('otta-landing');
+            expect(result.source).toBe('config');
+        });
+
+        it('strips --config-key from restArgv', () => {
+            const result = resolveActiveApp({ argv: ['--config-key=landingApp', '--keep', 'me'] });
+            expect(result.restArgv).toEqual(['--keep', 'me']);
+        });
+
+        it('--app=<name> still wins over --config-key=<field>', () => {
+            const result = resolveActiveApp({ argv: ['--app=otta-web', '--config-key=landingApp'] });
+            expect(result.app).toBe('otta-web');
+            expect(result.source).toBe('cli');
+        });
+
+        it('throws with a key-aware hint when the requested role is unset', () => {
+            expect(() => resolveActiveApp({ argv: ['--config-key=noSuchRole'] })).toThrow(
+                /Set "noSuchRole" in ottabase\.config\.json/,
+            );
+        });
     });
 });
 

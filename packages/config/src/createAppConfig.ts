@@ -8,7 +8,9 @@ import { AppConfig, AppMeta, ConfigOptions, SupportedUIFramework, ThemeColors } 
 export function createAppConfig(options: ConfigOptions = {}): AppConfig {
     const {
         appName = 'Ottabase App',
-        appId = 'otta-web',
+        // Generic placeholder — real apps should pass `appId` explicitly or set the APP_ID env var.
+        // Kept generic so this module isn't coupled to any specific template app folder.
+        appId = 'app',
         defaults = {},
         envPrefix = '', // No prefix by default (Cloudflare/TanStack compatible)
     } = options;
