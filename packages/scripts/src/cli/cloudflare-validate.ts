@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import { resolveActiveApp } from '../lib/resolve-app.js';
 
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -33,9 +34,11 @@ function runCommand(command: string): string {
 
 async function main() {
     const force = process.argv.includes('--force');
+    const { app, packageName, appPath } = resolveActiveApp();
 
     log('', NC);
     log(`${BOLD}cf:validate - Cloudflare Configuration Check${NC}`);
+    log(`Target app: ${app} (${packageName})`, YELLOW);
     log('', NC);
     log('This will verify:', YELLOW);
     log('  • Cloudflare authentication');
@@ -61,7 +64,7 @@ async function main() {
     let hasErrors = false;
     let hasWarnings = false;
 
-    const wranglerPath = path.join(process.cwd(), 'apps', 'otta-web', 'wrangler.jsonc');
+    const wranglerPath = path.join(appPath, 'wrangler.jsonc');
 
     if (!fs.existsSync(wranglerPath)) {
         log(`Error: ${wranglerPath} not found.`, RED);
@@ -69,7 +72,7 @@ async function main() {
     }
 
     const wranglerContent = fs.readFileSync(wranglerPath, 'utf8');
-    const wranglerCmd = 'pnpm --filter @ottabase/otta-web exec wrangler';
+    const wranglerCmd = `pnpm --filter ${packageName} exec wrangler`;
 
     // Check wrangler login
     log('Checking Cloudflare authentication...', YELLOW);

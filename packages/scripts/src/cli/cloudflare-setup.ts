@@ -1,5 +1,6 @@
 import checkbox from '@inquirer/checkbox';
 import { execSync } from 'child_process';
+import { resolveActiveApp } from '../lib/resolve-app.js';
 
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -100,13 +101,15 @@ async function selectResources(force: boolean): Promise<ResourceId[]> {
 
 async function main() {
     const force = process.argv.includes('--force');
+    const { app, packageName } = resolveActiveApp();
 
     log('', NC);
     log(`${BOLD}cf:setup - Cloudflare Resource Creation${NC}`);
+    log(`Target app: ${app} (${packageName})`, YELLOW);
     log('', NC);
 
     // Check wrangler and auth first (fail fast before any prompts)
-    const wranglerCmd = 'pnpm --filter @ottabase/otta-web exec wrangler';
+    const wranglerCmd = `pnpm --filter ${packageName} exec wrangler`;
     try {
         runCommand(`${wranglerCmd} --version`);
     } catch (e) {
@@ -344,7 +347,7 @@ async function main() {
         log('cloudflare-env.d.ts updated.', GREEN);
     } catch (e) {
         log(`Warning: could not generate cloudflare-env.d.ts: ${e instanceof Error ? e.message : String(e)}`, YELLOW);
-        log('Run manually: cd apps/otta-web && npx wrangler types', YELLOW);
+        log(`Run manually: cd apps/${app} && npx wrangler types`, YELLOW);
     }
 }
 

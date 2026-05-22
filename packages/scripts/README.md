@@ -6,6 +6,31 @@ CLI tools for Ottabase monorepo — Cloudflare resource setup, schema generation
 
 This package provides the `pnpm cf:*`, `pnpm db:*`, and `pnpm clean:*` scripts used across the monorepo.
 
+## Active App Resolution
+
+Scripts that target a specific app (`cf:setup`, `cf:validate`, `cf:login`, `dev`, `dev:fe`, `dev:be`, `build`, etc.)
+resolve the active app dynamically — no app name is hardcoded. Resolution priority (highest → lowest):
+
+1. **CLI flag**: `--app=<name>` or `--app <name>`
+2. **Env var**: `OTTABASE_APP=<name>`
+3. **Config file**: `ottabase.config.json` at the monorepo root → `defaultApp` field
+4. **Auto-detect**: when `apps/` contains exactly one app
+5. **Fallback**: `otta-web` (if present)
+
+Example overrides:
+
+```bash
+# One-off
+pnpm cf:setup --app=app1
+OTTABASE_APP=app1 pnpm dev
+
+# Persistent: edit ottabase.config.json
+{ "defaultApp": "app1" }
+```
+
+The `with-app` wrapper (`packages/scripts/bin/with-app.cjs`) is used by root `package.json` scripts to substitute
+`{app}` and `{packageName}` in downstream commands (`pnpm`, `turbo`) — see those scripts for examples.
+
 ## Cloudflare Setup CLI
 
 ### `pnpm cf:login`

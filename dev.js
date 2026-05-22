@@ -9,6 +9,7 @@ const http = require('http');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { resolveActiveApp } = require('./packages/scripts/bin/lib/resolve-app.cjs');
 
 // ANSI color codes for better terminal output
 const colors = {
@@ -31,8 +32,8 @@ const log = {
 // Determine the current platform
 const isWindows = process.platform === 'win32';
 
-// App directory
-const appDir = path.join(__dirname, 'apps/otta-web');
+// Active app — resolved from --app flag, OTTABASE_APP, ottabase.config.json, or single-app auto-detect.
+const { app: activeApp, appPath: appDir, source: appSource } = resolveActiveApp();
 
 function ensureDistDirectory() {
     const distDir = path.join(appDir, 'dist');
@@ -164,18 +165,19 @@ function openBrowser(url) {
 }
 
 function spawnPnpm(args) {
+    const childEnv = { ...process.env, PORT_FE, PORT_BE, OTTABASE_APP: activeApp };
     if (isWindows) {
         return spawn('cmd.exe', ['/d', '/s', '/c', `pnpm ${args.join(' ')}`], {
             cwd: appDir,
             stdio: 'pipe',
-            env: { ...process.env, PORT_FE, PORT_BE },
+            env: childEnv,
         });
     }
 
     return spawn('pnpm', args, {
         cwd: appDir,
         stdio: 'pipe',
-        env: { ...process.env, PORT_FE, PORT_BE },
+        env: childEnv,
     });
 }
 
@@ -183,6 +185,7 @@ ensureDistDirectory();
 
 log.info('Starting Vite app in development mode...');
 log.info(`Platform: ${process.platform}`);
+log.info(`Active app: ${activeApp} (resolved from: ${appSource})`);
 log.info(`App directory: ${appDir}`);
 log.info(`Frontend Port: ${PORT_FE}`);
 log.info(`Backend Port: ${PORT_BE}`);

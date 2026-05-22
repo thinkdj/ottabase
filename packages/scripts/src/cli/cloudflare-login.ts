@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { resolveActiveApp } from '../lib/resolve-app.js';
 
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -24,7 +25,8 @@ function isAuthenticated(wranglerCmd: string): boolean {
 }
 
 function main() {
-    const wranglerCmd = 'pnpm --filter @ottabase/otta-web exec wrangler';
+    const { packageName } = resolveActiveApp();
+    const wranglerCmd = `pnpm --filter ${packageName} exec wrangler`;
 
     try {
         runCommand(`${wranglerCmd} --version`);
