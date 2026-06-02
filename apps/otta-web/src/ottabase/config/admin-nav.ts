@@ -9,7 +9,8 @@
  * then register the route in apps/otta-web/src/router.tsx.
  */
 
-import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { CUSTOM_PACKAGES_ENABLED, MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { PAYPORT_ADMIN_NAV } from '@ottabase/payport/admin';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
@@ -58,7 +59,7 @@ export interface AdminNavItem {
 
 export interface AdminNavGroup {
     /** Stable id used by sidebar for active-group detection (matches URL segment). */
-    id: 'overview' | 'appearance' | 'content' | 'access' | 'security' | 'infrastructure' | 'growth';
+    id: 'overview' | 'appearance' | 'content' | 'access' | 'security' | 'infrastructure' | 'growth' | 'billing';
     label: string;
     icon: AdminNavIcon;
     items: AdminNavItem[];
@@ -240,12 +241,20 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 
 /** Returns admin nav with package/feature gates applied; empty groups are dropped. */
 export function getEnabledAdminNav(): AdminNavGroup[] {
-    return ADMIN_NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => {
-            if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
-            if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
-            return true;
-        }),
-    })).filter((group) => group.items.length > 0);
+    // Payport is a custom package — only show its nav when enabled via ottabase.config.ts.
+    // PAYPORT_ADMIN_NAV is structurally compatible with AdminNavGroup (id 'billing' is in the union).
+    const groups: AdminNavGroup[] = CUSTOM_PACKAGES_ENABLED?.payport
+        ? [...ADMIN_NAV_GROUPS, PAYPORT_ADMIN_NAV as unknown as AdminNavGroup]
+        : ADMIN_NAV_GROUPS;
+
+    return groups
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => {
+                if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
+                if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+                return true;
+            }),
+        }))
+        .filter((group) => group.items.length > 0);
 }

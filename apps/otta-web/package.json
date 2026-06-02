@@ -53,6 +53,7 @@
         "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
+        "@ottabase/payport": "workspace:*",
         "@ottabase/queue": "workspace:*",
         "@ottabase/referrals": "workspace:*",
         "@ottabase/shortlinks": "workspace:*",

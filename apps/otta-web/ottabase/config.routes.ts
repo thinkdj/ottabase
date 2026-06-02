@@ -35,6 +35,7 @@
 
 import { handleMediaLibraryPurge } from '../worker/routes/media-library';
 import type { ApiRouteContext } from '../worker/routes/router';
+import { handlePayportRoute } from './config.payport.server';
 
 /**
  * Handle custom / premium package API routes.
@@ -50,6 +51,10 @@ export async function handleCustomRoutes(context: ApiRouteContext): Promise<Resp
     if (method === 'DELETE' && mediaPurgeMatch) {
         return handleMediaLibraryPurge(context, decodeURIComponent(mediaPurgeMatch[1]));
     }
+
+    // Payport (Polar/Stripe/Paddle) — flags/tables/plans in ./config.payport.ts, dispatcher in ./config.payport.server.ts
+    const payportResponse = await handlePayportRoute(context);
+    if (payportResponse) return payportResponse;
 
     return null;
 }

@@ -180,6 +180,20 @@ export class User extends BaseModel {
                 visible: false,
             },
         },
+        payportCustomerId: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'Payport Customer',
+                description: 'Optional link to a Payport billing customer (null when billing is disabled).',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
     };
 
     protected static validationRules = {

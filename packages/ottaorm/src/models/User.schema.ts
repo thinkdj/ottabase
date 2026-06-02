@@ -22,6 +22,9 @@ export const usersTable = sqliteTable('users', {
     referredById: text('referred_by_id'),
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
+    // Optional fast-link to a Payport (billing) customer. Stays NULL when the
+    // app does not use @ottabase/payport. Nullable add-column is migration-safe.
+    payportCustomerId: text('payport_customer_id'),
     createdAt: integer('created_at')
         .$defaultFn(() => Date.now())
         .notNull(),

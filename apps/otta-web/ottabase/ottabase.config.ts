@@ -12,6 +12,7 @@
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
+import { PAYPORT_ENABLED, PAYPORT_TABLES } from './config.payport';
 
 export default defineOttabaseConfig({
     // ── App Identity ──────────────────────────────────────────
@@ -53,7 +54,12 @@ export default defineOttabaseConfig({
     //   customPackages: {
     //     myPremiumFeature: { tables: { premiumTable } },
     //   },
-    customPackages: {},
+    //
+    // ── @ottabase/payport (Polar.sh / Stripe / Paddle) ────────
+    // Configured in one place: see ./config.payport.ts
+    customPackages: {
+        ...(PAYPORT_ENABLED ? { payport: { tables: PAYPORT_TABLES } } : {}),
+    },
 
     // ── Feature Configuration ─────────────────────────────────
     features: {

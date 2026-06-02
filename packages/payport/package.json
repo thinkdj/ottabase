@@ -1,0 +1,96 @@
+{
+    "name": "@ottabase/payport",
+    "version": "0.0.1",
+    "description": "Provider-agnostic payment abstraction layer for Ottabase. Polar.sh in v1; Stripe/Paddle/LemonSqueezy pluggable later.",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "import": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "import": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./server": {
+            "types": "./src/server/index.ts",
+            "import": "./src/server/index.ts",
+            "default": "./src/server/index.ts"
+        },
+        "./client": {
+            "types": "./src/client/index.ts",
+            "import": "./src/client/index.ts",
+            "default": "./src/client/index.ts"
+        },
+        "./providers/polar": {
+            "types": "./src/providers/polar/index.ts",
+            "import": "./src/providers/polar/index.ts",
+            "default": "./src/providers/polar/index.ts"
+        },
+        "./admin": {
+            "types": "./src/admin/index.ts",
+            "import": "./src/admin/index.ts",
+            "default": "./src/admin/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage",
+        "type-check": "tsc --noEmit"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "@ottabase/forms": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "lucide-react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        },
+        "@ottabase/forms": {
+            "optional": true
+        },
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        }
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "devDependencies": {
+        "@ottabase/config": "workspace:*",
+        "@ottabase/forms": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/payport"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/payport#readme"
+}

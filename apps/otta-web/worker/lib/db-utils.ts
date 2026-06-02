@@ -37,6 +37,7 @@ import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { PAYPORT_MODEL_REGISTRATIONS } from '../../ottabase/config.payport';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -119,8 +120,18 @@ function registerAppModels(env: CloudflareEnv): void {
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     const appModels = [Todo];
 
+    // Payport models — configured in ottabase/config.payport.ts (SSOT).
+    // Empty array when PAYPORT_ENABLED = false there.
+
     registerPolicy(mediaLibraryPolicy);
-    registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
+    registerModels([
+        ...coreModels,
+        ...ottablogModels,
+        ...packageModels,
+        ...brandModels,
+        ...appModels,
+        ...PAYPORT_MODEL_REGISTRATIONS,
+    ]);
     initRLS();
 }
 

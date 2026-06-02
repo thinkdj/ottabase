@@ -4,9 +4,10 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
-import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { CUSTOM_PACKAGES_ENABLED, MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
+import { createPayportAdminRoutes } from '@ottabase/payport/admin';
 import { Toaster } from '@ottabase/ui-shadcn';
 import {
     createBrowserHistory,
@@ -18,7 +19,7 @@ import {
     Router,
 } from '@tanstack/react-router';
 
-import { type ComponentType, type ReactNode } from 'react';
+import React, { type ComponentType, type ReactNode } from 'react';
 
 const ADMIN_REQUIRED_PERMISSIONS = ['admin'];
 
@@ -590,10 +591,37 @@ const packageRoutes = [
     { route: adminReferralsRoute, pkg: 'referrals' as const },
 ];
 
+// ─── /admin/billing (Payport) ────────────────────────────────────────────────
+// Custom-package routes — only built when payport is enabled in ottabase.config.ts.
+// Super-admin-only descriptors are gated on the `*:*` wildcard permission;
+// normal billing pages require the standard `admin` permission.
+const payportAdminRoutes = CUSTOM_PACKAGES_ENABLED?.payport
+    ? createPayportAdminRoutes((path, getElement, options) => {
+          const perms = options?.superAdminOnly ? ['*:*'] : ADMIN_REQUIRED_PERMISSIONS;
+          // Wrap in a React.lazy-compatible component to keep payport admin
+          // components out of the initial bundle — they're loaded on first visit.
+          const LazyPage = React.lazy(() => Promise.resolve({ default: () => getElement() }));
+          return new Route({
+              getParentRoute: () => rootRoute,
+              path,
+              component: () => (
+                  <ProtectedRoute requiredPermissions={perms} fallback={<AdminPrivilegeFallback />}>
+                      <AdminLayout>
+                          <React.Suspense fallback={null}>
+                              <LazyPage />
+                          </React.Suspense>
+                      </AdminLayout>
+                  </ProtectedRoute>
+              ),
+          });
+      })
+    : [];
+
 const routeTree = rootRoute.addChildren([
     ...coreRoutes,
     ...packageRoutes.filter((r) => PACKAGES_ENABLED[r.pkg]).map((r) => r.route),
     ...(MEDIA_LIBRARY_ENABLED ? [userMediaLibraryRoute, adminMediaLibraryRoute] : []),
+    ...payportAdminRoutes,
 ]);
 
 export const router = new Router({
