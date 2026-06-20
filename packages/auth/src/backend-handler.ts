@@ -395,18 +395,52 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         let permissions: string[] = [];
                         let createdAt: number | null = null;
 
+                        // Load user profile first to get their persisted org preference + createdAt.
+                        let preferredOrgId: string | null = null;
                         try {
-                            const membership = await d1
+                            const profile = await d1
                                 .prepare(
-                                    `SELECT organization_id as organizationId
-                                 FROM organization_members
-                                 WHERE user_id = ? AND status = 'active'
-                                 ORDER BY joined_at ASC
-                                 LIMIT 1`,
+                                    `SELECT active_organization_id as preferredOrgId, created_at as createdAt
+                                     FROM users WHERE id = ? LIMIT 1`,
                                 )
                                 .bind(userId)
                                 .first<any>();
+                            if (profile?.preferredOrgId) preferredOrgId = profile.preferredOrgId;
+                            if (profile?.createdAt) {
+                                const parsed = Number(profile.createdAt);
+                                createdAt = Number.isFinite(parsed) ? parsed : null;
+                            }
+                        } catch (error) {
+                            console.warn('Failed to load user profile for auth:', error);
+                        }
 
+                        try {
+                            // If user has a preferred org, validate active membership in that org first.
+                            // On failure (or no preference), fall back to oldest active membership.
+                            let membership: any = null;
+                            if (preferredOrgId) {
+                                membership = await d1
+                                    .prepare(
+                                        `SELECT organization_id as organizationId
+                                         FROM organization_members
+                                         WHERE user_id = ? AND organization_id = ? AND status = 'active'
+                                         LIMIT 1`,
+                                    )
+                                    .bind(userId, preferredOrgId)
+                                    .first<any>();
+                            }
+                            if (!membership) {
+                                membership = await d1
+                                    .prepare(
+                                        `SELECT organization_id as organizationId
+                                         FROM organization_members
+                                         WHERE user_id = ? AND status = 'active'
+                                         ORDER BY joined_at ASC
+                                         LIMIT 1`,
+                                    )
+                                    .bind(userId)
+                                    .first<any>();
+                            }
                             if (membership?.organizationId) {
                                 organizationId = membership.organizationId;
                             }
@@ -463,24 +497,6 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             }
                         }
 
-                        try {
-                            const profile = await d1
-                                .prepare(
-                                    `SELECT created_at as createdAt
-                                 FROM users
-                                 WHERE id = ?
-                                 LIMIT 1`,
-                                )
-                                .bind(userId)
-                                .first<any>();
-                            if (profile?.createdAt) {
-                                const parsed = Number(profile.createdAt);
-                                createdAt = Number.isFinite(parsed) ? parsed : null;
-                            }
-                        } catch (error) {
-                            console.warn('Failed to load user profile for auth:', error);
-                        }
-
                         return { organizationId, roles, permissions, createdAt };
                     }
 
@@ -498,7 +514,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             }
 
                             const dbUser = await env.OBCF_D1.prepare(
-                                `SELECT name, email, image, email_verified as emailVerified, created_at as createdAt FROM users WHERE id = ? LIMIT 1`,
+                                `SELECT name, email, image, email_verified as emailVerified, created_at as createdAt, active_organization_id as preferredOrgId FROM users WHERE id = ? LIMIT 1`,
                             )
                                 .bind(userId)
                                 .first<any>();
@@ -515,6 +531,14 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                     if (Number.isFinite(createdAtValue)) {
                                         token.createdAt = createdAtValue;
                                     }
+                                }
+                                // If the preferred org changed, reload org/roles/permissions via
+                                // loadUserContext (which validates membership before accepting it).
+                                if (dbUser.preferredOrgId && dbUser.preferredOrgId !== token.organizationId) {
+                                    const ctx = await loadUserContext(userId);
+                                    if (ctx.organizationId) token.organizationId = ctx.organizationId;
+                                    token.roles = ctx.roles;
+                                    token.permissions = ctx.permissions;
                                 }
                                 (token as any).profileVersion = version;
                             }

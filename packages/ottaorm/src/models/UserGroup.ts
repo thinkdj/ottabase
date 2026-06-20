@@ -50,8 +50,8 @@ export class UserGroup extends BaseModel {
         name: { type: 'string', editable: true, searchable: true, uiConfig: { label: 'Name' } },
         slug: { type: 'string', editable: true, searchable: true, uiConfig: { label: 'Slug' } },
         description: { type: 'string', editable: true, searchable: true, uiConfig: { label: 'Description' } },
-        organizationId: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'Organization' } },
-        appId: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'App' } },
+        organizationId: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'Organization' } },
+        appId: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'App' } },
         createdBy: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'Created by' } },
         metadata: { type: 'json', editable: true, uiConfig: { label: 'Metadata' } },
         createdAt: { type: 'date', editable: false, sortable: true, uiConfig: { label: 'Created' } },
@@ -129,9 +129,9 @@ export class UserGroupMember extends BaseModel {
 
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false, uiConfig: { label: 'ID' } },
-        groupId: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'Group' } },
-        organizationId: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'Organization' } },
-        userId: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'User' } },
+        groupId: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'Group' } },
+        organizationId: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'Organization' } },
+        userId: { type: 'string', editable: false, filterable: true, uiConfig: { label: 'User' } },
         invitedEmail: { type: 'string', editable: true, searchable: true, uiConfig: { label: 'Invited email' } },
         role: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'Role' } },
         status: { type: 'string', editable: true, filterable: true, uiConfig: { label: 'Status' } },
