@@ -160,6 +160,36 @@ describe('session revocation', () => {
         const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
         await expect(getSession(request, env)).resolves.toBeNull();
     });
+
+    it('fails closed (rejects the session) when OBCF_KV is not bound', async () => {
+        const env = createEnv();
+        const session = await createSessionForUser(
+            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
+            env,
+        );
+
+        const envWithoutKv = createEnv({ OBCF_KV: undefined });
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
+        await expect(getSession(request, envWithoutKv)).resolves.toBeNull();
+    });
+
+    it('fails closed (rejects the session) when the KV registry read throws', async () => {
+        const env = createEnv();
+        const session = await createSessionForUser(
+            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
+            env,
+        );
+
+        const throwingKv = {
+            ...env.OBCF_KV,
+            get: async () => {
+                throw new Error('KV outage');
+            },
+        };
+        const flakyEnv = createEnv({ OBCF_KV: throwingKv as any });
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
+        await expect(getSession(request, flakyEnv)).resolves.toBeNull();
+    });
 });
 
 describe('createSessionCookieForUser', () => {

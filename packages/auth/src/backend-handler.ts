@@ -242,7 +242,7 @@ async function handleOAuthSignIn(
         path: '/api/auth',
     });
 
-    const redirectUri = `${url.origin}/api/auth/callback/${providerId}`;
+    const redirectUri = `${resolveFrontendUrl(env)}/api/auth/callback/${providerId}`;
     const authorizationUrl = buildAuthorizationUrl(provider, { redirectUri, state, codeChallenge });
 
     return new Response(null, { status: 302, headers: { Location: authorizationUrl, 'Set-Cookie': stateCookie } });
@@ -290,13 +290,15 @@ async function handleOAuthCallback(
     let emailVerifiedAt: number | null = null;
 
     try {
-        const redirectUri = `${url.origin}/api/auth/callback/${providerId}`;
+        const redirectUri = `${resolveFrontendUrl(env)}/api/auth/callback/${providerId}`;
         const tokens = await exchangeCodeForTokens(provider, { code, redirectUri, codeVerifier: statePayload.codeVerifier });
         const profile = await fetchUserProfile(provider, tokens);
 
         if (!profile.email) {
             return errorRedirect(env, options, 'OAuthCallback');
         }
+
+        const normalizedEmail = profile.email.trim().toLowerCase();
 
         ensureOrmConnection(env);
 
@@ -313,7 +315,7 @@ async function handleOAuthCallback(
                 ? new Date(user.get('emailVerified') as any).getTime()
                 : null;
         } else {
-            const existingUser = await User.first({ email: profile.email });
+            const existingUser = await User.first({ email: normalizedEmail });
             if (existingUser) {
                 // An account already exists for this email but has never signed in with this
                 // provider before. Do not silently link -- that would let anyone able to
@@ -324,17 +326,17 @@ async function handleOAuthCallback(
             }
 
             const newUser = await User.create({
-                email: profile.email,
+                email: normalizedEmail,
                 name: profile.name,
                 image: profile.image,
-                emailVerified: Date.now(),
+                emailVerified: profile.emailVerified ? Date.now() : null,
             });
 
             userId = String(newUser.get('id'));
-            userEmail = profile.email;
+            userEmail = normalizedEmail;
             userName = profile.name;
             userImage = profile.image;
-            emailVerifiedAt = Date.now();
+            emailVerifiedAt = profile.emailVerified ? Date.now() : null;
 
             await Account.create({
                 userId,
@@ -350,8 +352,11 @@ async function handleOAuthCallback(
             });
         }
 
-        // OAuth identity providers are trusted to have verified the user's email themselves.
-        if (!emailVerifiedAt) {
+        // OAuth identity providers are trusted to have verified the user's email themselves --
+        // but only when this OAuth sign-in itself actually asserts the email is verified. An
+        // unverified provider email (e.g. GitHub falling back to an unverified primary/first
+        // address) must not silently mark a pre-existing account as verified.
+        if (!emailVerifiedAt && profile.emailVerified) {
             await User.update(userId, { emailVerified: Date.now() });
             emailVerifiedAt = Date.now();
         }
@@ -548,6 +553,6 @@ export async function handleAuthRequest(request: Request, env: AuthEnv, options?
         return jsonResponse({ error: 'Not found' }, 404);
     } catch (error) {
         console.error('Auth request error:', error);
-        return jsonResponse({ error: error instanceof Error ? error.message : 'Authentication error' }, 500);
+        return jsonResponse({ error: 'Authentication error' }, 500);
     }
 }

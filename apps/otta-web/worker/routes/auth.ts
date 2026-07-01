@@ -765,7 +765,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             return withAuthCors(errorResponse('Email already in use', 409, { code: 'EMAIL_EXISTS' }));
         }
         console.error('Registration error:', error);
-        return withAuthCors(errorResponse(message, 500));
+        return withAuthCors(errorResponse('Registration failed', 500, { code: 'REGISTRATION_FAILED' }));
     }
 }
 

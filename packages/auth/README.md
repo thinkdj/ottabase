@@ -97,6 +97,11 @@ overridable via `AUTH_COOKIE_NAME`. Verifying a request only needs the JWT signa
 to two KV reads; there's no database read on the hot path unless a profile-version bump flags the
 cached fields as stale.
 
+**`OBCF_KV` is required.** Session verification checks the KV revocation registry on every request
+and fails *closed*: if `OBCF_KV` isn't bound, or a KV read errors, `getSession` returns `null`
+rather than trusting an unverifiable token. Deploying without `OBCF_KV` bound means no one can stay
+signed in.
+
 Each session is paired with a lightweight KV registry record, `auth:usr:<userId>:sess:<jti>`:
 
 - **Single-session revocation** (normal sign-out) deletes that one registry key. Every other

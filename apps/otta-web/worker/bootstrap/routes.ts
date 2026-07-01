@@ -28,6 +28,7 @@ import { appMigrations } from '../../ottabase/migrations';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
+import { META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
 import type { PlatformStateResult } from './types';
 
 interface BootstrapContext {
@@ -473,14 +474,38 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
     try {
         ensureOrmConnection(env);
+        await ensureMetaTable(env);
 
         await Role.ensureDefaultRoles();
         await enforceDefaultRolePermissions(env);
 
-        // Check if users already exist
+        // Atomically claim the right to create the owner account. Unlike a
+        // SELECT COUNT(*) check, this INSERT is guarded by the `key` PRIMARY
+        // KEY on _ottabase_meta, so if two requests race, only one of them
+        // can win the insert — the other fails immediately and never
+        // proceeds to create a user, closing the TOCTOU window.
+        try {
+            await env.OBCF_D1.prepare(
+                `INSERT INTO ${META_TABLE} (key, value, updated_at) VALUES (?, ?, ?)`,
+            )
+                .bind(META_OWNER_CLAIMED_KEY, '1', Date.now())
+                .run();
+        } catch {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    code: 'OWNER_EXISTS',
+                },
+                409,
+            );
+        }
+
+        // Belt-and-braces: if an owner somehow already exists (e.g. a user
+        // was provisioned out-of-band while the claim was held), don't
+        // silently create a second one.
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
-
         if (userCount > 0) {
             return jsonResp(
                 {
@@ -567,10 +592,24 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             },
         });
     } catch (error: any) {
+        // The owner user row was never created (or creation itself failed) —
+        // release the claim so a legitimate retry isn't permanently blocked.
+        await releaseOwnerClaim(env);
+
         if (error.message?.toLowerCase().includes('unique')) {
             return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
         }
         return jsonResp({ success: false, error: error.message, code: 'CREATE_OWNER_FAILED' }, 500);
+    }
+}
+
+/** Best-effort release of the owner-creation claim (used when owner creation fails before a user row is committed). */
+async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
+    if (!env.OBCF_D1) return;
+    try {
+        await env.OBCF_D1.prepare(`DELETE FROM ${META_TABLE} WHERE key = ?`).bind(META_OWNER_CLAIMED_KEY).run();
+    } catch {
+        /* best-effort; a stuck claim only requires re-running init to clear _ottabase_meta */
     }
 }
 

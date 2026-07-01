@@ -316,24 +316,35 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
     }
     if (!payload || !payload.sub || !payload.jti) return null;
 
-    if (env.OBCF_KV) {
-        try {
-            const revokedAtRaw = await env.OBCF_KV.get(revokedSinceKey(payload.sub));
-            if (revokedAtRaw) {
-                const revokedAt = Number(revokedAtRaw);
-                const issuedAt = Number(payload.iat || 0);
-                if (Number.isFinite(revokedAt) && issuedAt > 0 && issuedAt <= revokedAt) return null;
-            }
-        } catch {
-            // Fail open on transient KV errors, matching prior behavior.
-        }
+    // The per-session registry record is the source of truth for revocation
+    // (sign-out deletes it; revokeAllUserSessions bumps the "revoked since"
+    // marker). Both checks must fail *closed*: a missing KV binding or a
+    // transient KV error must never be treated as "not revoked", or a
+    // captured JWT would stay valid for its full lifetime regardless of
+    // sign-out / forced revocation.
+    if (!env.OBCF_KV) {
+        console.error('[auth] OBCF_KV is not bound; refusing to trust session tokens without revocation checks.');
+        return null;
+    }
 
-        try {
-            const registryRecord = await env.OBCF_KV.get(sessionRegistryKey(payload.sub, payload.jti));
-            if (!registryRecord) return null;
-        } catch {
-            // Fail open on transient KV errors.
+    try {
+        const revokedAtRaw = await env.OBCF_KV.get(revokedSinceKey(payload.sub));
+        if (revokedAtRaw) {
+            const revokedAt = Number(revokedAtRaw);
+            const issuedAt = Number(payload.iat || 0);
+            if (Number.isFinite(revokedAt) && issuedAt > 0 && issuedAt <= revokedAt) return null;
         }
+    } catch (error) {
+        console.warn('Failed to check bulk revocation status; failing closed:', error);
+        return null;
+    }
+
+    try {
+        const registryRecord = await env.OBCF_KV.get(sessionRegistryKey(payload.sub, payload.jti));
+        if (!registryRecord) return null;
+    } catch (error) {
+        console.warn('Failed to check session registry; failing closed:', error);
+        return null;
     }
 
     let user: SessionUser = {
