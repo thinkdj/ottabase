@@ -128,7 +128,7 @@ function createHomeLandingEditorData(appName: string) {
                     items: [
                         { text: '<strong>OttaORM</strong>: fat models, RLS, hooks', checked: true },
                         { text: '<strong>Brand Engine</strong>: dynamic runtime theming (per-route!)', checked: true },
-                        { text: '<strong>Auth.js v5</strong>: OAuth + D1 sessions', checked: true },
+                        { text: '<strong>Ottabase Auth</strong>: OAuth + signed sessions', checked: true },
                         { text: '<strong>RBAC</strong>: per-org roles + guards', checked: true },
                         { text: '<strong>Ottablog</strong>: CMS, WYSIWYG, Tags, SEO', checked: true },
                         { text: '<strong>OttaRenderer</strong>: blocks + dark mode support', checked: true },

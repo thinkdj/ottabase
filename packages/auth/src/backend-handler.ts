@@ -1,828 +1,553 @@
 // ============================================================
-// @ottabase/auth - Backend Request Handler
+// @ottabase/auth - Backend Request Handler (Cloudflare Workers)
 // ============================================================
 //
-// Production-ready Auth.js request handler for Cloudflare Workers.
-// This module provides plug-and-play authentication for any Worker.
-//
-// Usage in cloudflare-worker.ts:
-//   import { handleAuthRequest } from "@ottabase/auth/backend";
-//
-//   if (url.pathname.startsWith("/api/auth/")) {
-//     return handleAuthRequest(request, env);
-//   }
+// Self-contained replacement for the Auth.js `Auth()` request handler.
+// `handleAuthRequest` is a small router covering every `/api/auth/*`
+// sub-path that isn't already owned by the host app (register,
+// verify-email, password reset/change stay in the app -- see
+// packages/auth/README.md for the full route table).
 //
 // ============================================================
 
-import { Auth, type AuthConfig } from '@auth/core';
-import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
-import { userKey } from '@ottabase/cf/cache-keys';
-import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
-import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
-import { createOttabaseAuthConfig } from './config';
-import type { ProviderEnv } from './providers';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { registerConnection } from '@ottabase/ottaorm';
+import { Account, User, VerificationToken } from '@ottabase/ottaorm/models';
+import { bootstrapFirstUser } from './bootstrap';
+import { serializeCookie, isHttpsRequest, parseCookies, clearCookie } from './cookies';
+import { hashPassword, verifyPassword, randomToken } from './crypto';
+import { createCsrfCookiePair, verifyCsrfToken } from './csrf';
+import { signJwt, verifyJwt } from './jwt';
+import { exchangeCodeForTokens, fetchUserProfile, buildAuthorizationUrl, createPkcePair } from './providers/oauth-client';
+import { getConfiguredProvider } from './providers/presets';
+import { resolveMagicLinkSender } from './providers';
 import {
-    autoConfigureProviders,
-    createCredentialsProvider,
-    createDevEmailTrapProvider,
-    createNodemailerProvider,
-    createResendProvider,
-    isDevEmailTrapConfigured,
-} from './providers';
+    buildClearSessionCookie,
+    createSessionCookieForUser,
+    getSession,
+    resolveAuthSecret,
+    resolveSessionCookieName,
+    resolveSessionMaxAge,
+    revokeSession,
+} from './session-store';
+import type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
 
-/**
- * Environment interface for auth handler
- * Your CloudflareEnv should extend this
- */
-export interface AuthEnv extends ProviderEnv {
-    AUTH_SECRET?: string;
-    AUTH_URL?: string;
-    NEXTAUTH_URL?: string;
-    ENVIRONMENT?: string;
-    OBCF_D1?: D1Database;
-    OBCF_KV?: KVNamespace;
+export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAuthorizeOptions } from './types';
+export { hashPassword, verifyPassword } from './crypto';
+export { getSession, revokeAllUserSessions, revokeSession, createSessionCookieForUser } from './session-store';
+
+const CSRF_COOKIE = 'ottabase.csrf-token';
+const CSRF_COOKIE_MAX_AGE = 60 * 60; // 1 hour
+const OAUTH_STATE_COOKIE = 'ottabase.oauth-state';
+const OAUTH_STATE_MAX_AGE = 10 * 60; // 10 minutes
+const MAGIC_LINK_MAX_AGE_SECONDS = 15 * 60; // 15 minutes -- short-lived, unlike the app's own 24h email-verification links
+
+function jsonResponse(data: unknown, status = 200, extraHeaders?: HeadersInit): Response {
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    if (extraHeaders) new Headers(extraHeaders).forEach((value, key) => headers.set(key, value));
+    return new Response(JSON.stringify(data), { status, headers });
 }
 
-/**
- * Options for credentials authorization callback
- */
-export interface CredentialsAuthorizeOptions {
-    /**
-     * Custom authorization function
-     * Return user object on success, null on failure
-     */
-    authorize?: (credentials: { email: string; password: string }) => Promise<{
-        id: string;
-        email: string;
-        name?: string;
-        [key: string]: any;
-    } | null>;
-
-    /**
-     * Minimum password length (default: 6)
-     */
-    minPasswordLength?: number;
-
-    /**
-     * Require verified email for credentials sign-in
-     */
-    requireVerifiedEmail?: boolean;
+function ensureOrmConnection(env: AuthEnv): void {
+    if (!env.OBCF_D1) return;
+    registerConnection('default', createD1Driver(env.OBCF_D1));
 }
 
-/**
- * Default credentials authorization (demo/placeholder)
- * In production, override with your own validation logic
- */
+function resolveFrontendUrl(env: AuthEnv): string {
+    return env.AUTH_URL || env.NEXTAUTH_URL || 'http://127.0.0.1:3003';
+}
+
+/** Only relative, single-leading-slash paths are accepted; anything else falls back, blocking open redirects. */
+function sanitizeCallbackPath(raw: string | null | undefined, fallback = '/dashboard'): string {
+    if (typeof raw !== 'string' || !raw) return fallback;
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return fallback;
+    try {
+        // Parsing against a dummy base rejects anything that smuggles a scheme/host (e.g. "/\evil.com").
+        const parsed = new URL(raw, 'http://ottabase.internal');
+        if (parsed.origin !== 'http://ottabase.internal') return fallback;
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return fallback;
+    }
+}
+
+function redirectTo(env: AuthEnv, path: string): Response {
+    return Response.redirect(`${resolveFrontendUrl(env)}${path}`, 302);
+}
+
+function errorRedirect(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): Response {
+    const errorPage = options?.authConfig?.pages?.error || '/login';
+    const separator = errorPage.includes('?') ? '&' : '?';
+    return redirectTo(env, `${errorPage}${separator}error=${encodeURIComponent(code)}`);
+}
+
 async function defaultCredentialsAuthorize(
     credentials: { email: string; password: string },
     env: AuthEnv,
-    options?: CredentialsAuthorizeOptions,
-): Promise<any> {
+    options?: CreateAuthConfigOptions,
+): Promise<AuthorizedUser | null> {
     const email = typeof credentials.email === 'string' ? credentials.email.trim().toLowerCase() : '';
     const password = typeof credentials.password === 'string' ? credentials.password : '';
     const minLength = options?.minPasswordLength ?? 6;
 
-    if (!email || !password) {
-        return null;
-    }
+    if (!email || !password || password.length < minLength) return null;
+    if (!env.OBCF_D1) throw new Error('OBCF_D1 database binding is required for credentials authentication');
 
-    // Validate password length (avoid leaking details)
-    if (password.length < minLength) {
-        return null;
-    }
+    ensureOrmConnection(env);
+    const user = await User.first({ email });
+    if (!user) return null;
 
-    if (!env.OBCF_D1) {
-        throw new Error('OBCF_D1 database binding is required for credentials authentication');
-    }
+    const passwordHash = user.get('passwordHash') as string | null;
+    if (!passwordHash) return null;
 
-    let result: any | null = null;
-    try {
-        result = await env.OBCF_D1.prepare(
-            `SELECT id, name, email, image, email_verified, password_hash
-                 FROM users
-                 WHERE email = ?`,
-        )
-            .bind(email)
-            .first<any>();
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.includes('no such column: email_verified') || message.includes('no such column: password_hash')) {
-            throw new Error('Missing auth columns on users table. Run /api/ottaorm/init to apply migrations.');
-        }
-        throw error;
-    }
+    const valid = await verifyPassword(password, passwordHash);
+    if (!valid) return null;
 
-    if (!result || !result.password_hash) {
-        if (result && !result.password_hash) {
-            console.warn('Credentials sign-in failed: user has no password_hash (OAuth-only or missing migration).');
-        }
-        return null;
-    }
-
-    const valid = await verifyPassword(password, String(result.password_hash));
-    if (!valid) {
-        return null;
-    }
-
-    const emailVerifiedMs = result.email_verified ? Number(result.email_verified) : null;
-    if (options?.requireVerifiedEmail && !emailVerifiedMs) {
-        return null;
-    }
+    const emailVerifiedRaw = user.get('emailVerified');
+    const emailVerified = emailVerifiedRaw
+        ? emailVerifiedRaw instanceof Date
+            ? emailVerifiedRaw.getTime()
+            : Number(emailVerifiedRaw)
+        : null;
 
     return {
-        id: result.id,
-        email: result.email,
-        name: result.name ?? undefined,
-        image: result.image ?? undefined,
-        emailVerified: emailVerifiedMs,
+        id: String(user.get('id')),
+        email: String(user.get('email')),
+        name: (user.get('name') as string | null) ?? undefined,
+        image: (user.get('image') as string | null) ?? undefined,
+        emailVerified,
+    };
+}
+
+/** Resolve the effective options for a request, applying environment-derived defaults. */
+function resolveOptions(env: AuthEnv, options?: CreateAuthConfigOptions): CreateAuthConfigOptions {
+    const envDisableCredentials = env.AUTH_DISABLE_CREDENTIALS === 'true' || env.AUTH_DISABLE_CREDENTIALS === '1';
+    const envRequireVerified = env.AUTH_REQUIRE_EMAIL_VERIFIED === 'true' || env.AUTH_REQUIRE_EMAIL_VERIFIED === '1';
+
+    return {
+        ...options,
+        disableCredentials: options?.disableCredentials ?? envDisableCredentials,
+        requireVerifiedEmail: options?.requireVerifiedEmail ?? envRequireVerified,
     };
 }
 
 /**
- * Options for creating auth configuration
+ * Resolve the effective auth configuration (providers + flags) for the current environment.
+ * Kept for API parity / introspection; `handleAuthRequest` does not require callers to use it.
  */
-export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
-    /**
-     * Session strategy
-     * - "jwt": Use JSON Web Tokens (recommended for edge/serverless)
-     * - "database": Store sessions in database (requires more D1 queries)
-     */
-    sessionStrategy?: 'jwt' | 'database';
-
-    /**
-     * Session max age in seconds (default: 30 days)
-     */
-    sessionMaxAge?: number;
-
-    /**
-     * Additional Auth.js config options
-     */
-    authConfig?: Partial<Omit<AuthConfig, 'adapter' | 'providers'>>;
-
-    /**
-     * Enable verbose logging
-     */
-    verbose?: boolean;
-
-    /**
-     * Disable credentials provider entirely
-     */
-    disableCredentials?: boolean;
-
-    /**
-     * Called after a user signs out. Use this to clear app-level caches
-     * (e.g., RBAC) without overriding the core signOut event.
-     */
-    onSignOut?: (userId: string) => Promise<void> | void;
-
-    /**
-     * Called when a user signs in, after the first-user bootstrap. Use this for post-sign-in side
-     * effects such as activating pending email invites. Receives the user's id and email.
-     */
-    onSignIn?: (params: { userId: string; email?: string | null }) => Promise<void> | void;
+export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions) {
+    const resolved = resolveOptions(env, options);
+    return {
+        sessionMaxAge: resolveSessionMaxAge(env, resolved),
+        disableCredentials: !!resolved.disableCredentials,
+        requireVerifiedEmail: !!resolved.requireVerifiedEmail,
+        cookieName: resolveSessionCookieName(env),
+    };
 }
 
-/**
- * Create Auth.js configuration with auto-configured providers
- * This is the core function that sets up authentication
- */
-export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions): AuthConfig {
-    const verbose = options?.verbose ?? false;
-    const envDisableCredentials =
-        (env as any).AUTH_DISABLE_CREDENTIALS === 'true' || (env as any).AUTH_DISABLE_CREDENTIALS === '1';
-    const disableCredentials = options?.disableCredentials ?? envDisableCredentials;
-    const envRequireVerified =
-        (env as any).AUTH_REQUIRE_EMAIL_VERIFIED === 'true' || (env as any).AUTH_REQUIRE_EMAIL_VERIFIED === '1';
-    const requireVerifiedEmail = options?.requireVerifiedEmail ?? envRequireVerified;
-    const envSessionMaxAge = Number((env as any).AUTH_SESSION_MAX_AGE);
-    const sessionMaxAge =
-        options?.sessionMaxAge ??
-        (Number.isFinite(envSessionMaxAge) && envSessionMaxAge > 0 ? envSessionMaxAge : undefined);
-    const sessionStrategy = options?.sessionStrategy ?? 'jwt';
-    const allowNullTenant = parseBooleanFlag((env as any).ALLOW_NULL_TENANT);
-
-    if (!env.OBCF_D1) {
-        throw new Error('OBCF_D1 database binding is required for authentication');
-    }
-
-    if (!env.AUTH_SECRET) {
-        const environment = (env.ENVIRONMENT || '').toLowerCase();
-        const isProduction = environment !== '' && !['development', 'dev', 'test'].includes(environment);
-
-        if (isProduction) {
-            throw new Error('AUTH_SECRET is required in production');
-        }
-
-        console.warn('⚠️  AUTH_SECRET is not configured. Using default (INSECURE FOR PRODUCTION!)');
-    }
-
-    const providers: any[] = [];
-
-    // Auto-configure OAuth providers
-    const oauthProviders = autoConfigureProviders(env);
-    providers.push(...oauthProviders);
-
-    if (verbose && oauthProviders.length > 0) {
-        console.log(`✅ OAuth providers: ${oauthProviders.map((p: any) => p.id).join(', ')}`);
-    } else if (verbose) {
-        console.warn('⚠️  No OAuth providers configured');
-    }
-
-    // Configure email provider (magic link)
-    if (isDevEmailTrapConfigured(env) && env.OBCF_KV) {
-        providers.push(
-            createDevEmailTrapProvider(env, {
-                store: createKvEmailTrapStore(env.OBCF_KV as any, {
-                    maxEntries: Math.max(1, Number(env.DEV_EMAIL_TRAP_MAX_EMAILS) || 50),
-                }),
-            }),
-        );
-        if (verbose) console.log('✅ Magic Link via Dev Email Trap enabled');
-    } else if (env.EMAIL_SERVER && env.EMAIL_FROM) {
-        providers.push(createNodemailerProvider(env));
-        if (verbose) console.log('✅ Magic Link via SMTP enabled');
-    } else if (env.EMAIL_RESEND_API_KEY) {
-        providers.push(createResendProvider(env));
-        if (verbose) console.log('✅ Magic Link via Resend enabled');
-    } else if (parseBooleanFlag(env.DEV_EMAIL_TRAP_ENABLED) && !env.OBCF_KV && verbose) {
-        console.warn('⚠️  DEV_EMAIL_TRAP_ENABLED is set but OBCF_KV is not configured');
-    } else if (verbose) {
-        console.warn('⚠️  Magic Link not configured');
-    }
-
-    if (!disableCredentials) {
-        providers.push(
-            createCredentialsProvider(async (credentials: any) => {
-                if (options?.authorize) {
-                    return options.authorize(credentials);
-                }
-                return defaultCredentialsAuthorize(credentials, env, {
-                    ...options,
-                    requireVerifiedEmail,
-                });
-            }),
-        );
-
-        if (verbose) console.log('✅ Credentials authentication enabled');
-    } else if (verbose) {
-        console.warn('⚠️  Credentials authentication disabled');
-    }
-
-    // Create the auth configuration
-    // Determine the frontend URL for redirects
-    // In development, use AUTH_URL env var or default to localhost:3003 (frontend)
-    // In production, this should be your public frontend URL
-    const authUrl = env.AUTH_URL || env.NEXTAUTH_URL || 'http://127.0.0.1:3003';
-
-    const config = createOttabaseAuthConfig({
-        d1: env.OBCF_D1,
-        providers,
-        sessionStrategy,
-        sessionMaxAge: sessionMaxAge ?? 30 * 24 * 60 * 60, // 30 days
-        authConfig: {
-            secret:
-                env.AUTH_SECRET ||
-                (process.env.NODE_ENV === 'production'
-                    ? (() => {
-                          throw new Error('[auth] AUTH_SECRET env var is required in production');
-                      })()
-                    : 'dev-secret-change-in-production'),
-            /**
-             * trustHost:
-             *   Cloudflare Workers and other edge runtimes often require `trustHost: true`
-             *   because the framework cannot reliably infer the public origin from the
-             *   incoming request (e.g. behind proxies / custom domains). In those
-             *   environments, Auth.js host checks would otherwise fail.
-             *
-             *   Security note:
-             *   - Enabling `trustHost` bypasses Auth.js' built‑in host validation and
-             *     makes this handler trust the host information provided by the platform.
-             *   - If your Cloudflare route / custom domain configuration is misconfigured
-             *     or if arbitrary Host headers are allowed to reach the Worker, this can
-             *     enable host‑header based attacks.
-             *
-             *   Recommended hardening:
-             *   - Configure a canonical external URL for your deployment (e.g. via
-             *     an `AUTH_URL`/`NEXTAUTH_URL` or similar env var at the application
-             *     level) and ensure Cloudflare only routes from trusted hostnames.
-             *   - Do NOT expose this Worker on untrusted / wildcard hosts without
-             *     additional protections.
-             *
-             *   Overrides / alternatives:
-             *   - If your environment does not require bypassing host checks, you can
-             *     override this setting via `options.authConfig.trustHost = false` and
-             *     configure Auth.js with an explicit `url` / allowed hosts.
-             */
-            trustHost: true,
-            callbacks: {
-                async signIn({ user, account }) {
-                    if (!env.OBCF_D1) return true;
-                    if (!user?.id || !account?.provider) return true;
-
-                    // Auto-mark verified for OAuth providers (non-credentials)
-                    if (account.provider !== 'credentials') {
-                        try {
-                            await env.OBCF_D1.prepare(
-                                `UPDATE users SET email_verified = ? WHERE id = ? AND (email_verified IS NULL OR email_verified = '')`,
-                            )
-                                .bind(Date.now(), user.id)
-                                .run();
-                        } catch (error) {
-                            console.warn('Failed to auto-verify OAuth user email:', error);
-                        }
-                    }
-
-                    await bootstrapFirstUser(env, user as any);
-
-                    try {
-                        await options?.onSignIn?.({ userId: String(user.id), email: user.email ?? null });
-                    } catch (error) {
-                        console.warn('onSignIn hook failed:', error);
-                    }
-
-                    return true;
-                },
-                async redirect({ url, baseUrl }) {
-                    // Ensure redirects go to the frontend URL, not the backend
-                    // If url is relative, make it absolute using the frontend baseUrl
-                    if (url.startsWith('/')) {
-                        return `${authUrl}${url}`;
-                    }
-                    // If url is already absolute but points to backend, replace with frontend
-                    if (url.startsWith('http://127.0.0.1:3004') || url.startsWith('http://localhost:3004')) {
-                        return url.replace(/:\d+/, ':3003');
-                    }
-                    // Otherwise, use the url as-is if it's already pointing to frontend or external
-                    return url;
-                },
-                async jwt({ token, user }) {
-                    if (!env.OBCF_D1) {
-                        return token;
-                    }
-
-                    // Ensure token has stable identifiers for revocation checks
-                    if (!token.jti) {
-                        token.jti = crypto.randomUUID();
-                    }
-                    if (!token.issuedAt) {
-                        token.issuedAt = Math.floor(Date.now() / 1000);
-                    }
-
-                    // Check for user-level revocation (logout / password reset)
-                    if (env.OBCF_KV && token.id) {
-                        try {
-                            const revokedAtRaw = await env.OBCF_KV.get(userKey('auth', String(token.id), 'revoked'));
-                            if (revokedAtRaw) {
-                                const revokedAt = Number(revokedAtRaw);
-                                const issuedAt = Number(token.issuedAt || 0);
-                                if (Number.isFinite(revokedAt) && issuedAt > 0 && issuedAt <= revokedAt) {
-                                    return null;
-                                }
-                            }
-                        } catch (error) {
-                            console.warn('Failed to check session revocation:', error);
-                        }
-                    }
-
-                    async function loadUserContext(userId: string) {
-                        const d1 = env.OBCF_D1;
-                        if (!d1) {
-                            return { organizationId: null, roles: [], permissions: [] };
-                        }
-
-                        let organizationId: string | null = null;
-                        let roles: string[] = [];
-                        let permissions: string[] = [];
-                        let createdAt: number | null = null;
-
-                        try {
-                            const membership = await d1
-                                .prepare(
-                                    `SELECT organization_id as organizationId
-                                 FROM organization_members
-                                 WHERE user_id = ? AND status = 'active'
-                                 ORDER BY joined_at ASC
-                                 LIMIT 1`,
-                                )
-                                .bind(userId)
-                                .first<any>();
-
-                            if (membership?.organizationId) {
-                                organizationId = membership.organizationId;
-                            }
-                        } catch (error) {
-                            console.warn('Failed to load organization membership for auth:', error);
-                        }
-
-                        if (!organizationId && allowNullTenant) {
-                            try {
-                                const systemRole = await d1
-                                    .prepare(
-                                        `SELECT 1 FROM user_roles WHERE user_id = ? AND organization_id = ? LIMIT 1`,
-                                    )
-                                    .bind(userId, SYSTEM_ORGANIZATION_ID)
-                                    .first<any>();
-
-                                if (systemRole) {
-                                    organizationId = SYSTEM_ORGANIZATION_ID;
-                                }
-                            } catch (error) {
-                                console.warn('Failed to detect system-scope roles for auth:', error);
-                            }
-                        }
-
-                        if (organizationId) {
-                            try {
-                                const roleResult = await d1
-                                    .prepare(
-                                        `SELECT r.name as name, r.permissions as permissions
-                                     FROM user_roles ur
-                                     JOIN roles r ON r.id = ur.role_id
-                                     WHERE ur.user_id = ? AND ur.organization_id = ?`,
-                                    )
-                                    .bind(userId, organizationId)
-                                    .all<any>();
-
-                                roles = (roleResult?.results || []).map((row: any) => String(row.name)).filter(Boolean);
-
-                                const permissionsSet = new Set<string>();
-                                for (const row of roleResult?.results || []) {
-                                    try {
-                                        const parsed = row.permissions ? JSON.parse(String(row.permissions)) : [];
-                                        if (Array.isArray(parsed)) {
-                                            parsed.forEach((perm) => permissionsSet.add(String(perm)));
-                                        }
-                                    } catch {
-                                        // ignore bad permissions
-                                    }
-                                }
-
-                                permissions = Array.from(permissionsSet);
-                            } catch (error) {
-                                console.warn('Failed to load user roles for auth:', error);
-                            }
-                        }
-
-                        try {
-                            const profile = await d1
-                                .prepare(
-                                    `SELECT created_at as createdAt
-                                 FROM users
-                                 WHERE id = ?
-                                 LIMIT 1`,
-                                )
-                                .bind(userId)
-                                .first<any>();
-                            if (profile?.createdAt) {
-                                const parsed = Number(profile.createdAt);
-                                createdAt = Number.isFinite(parsed) ? parsed : null;
-                            }
-                        } catch (error) {
-                            console.warn('Failed to load user profile for auth:', error);
-                        }
-
-                        return { organizationId, roles, permissions, createdAt };
-                    }
-
-                    async function refreshProfileIfNeeded(userId: string) {
-                        if (!env.OBCF_D1 || !env.OBCF_KV) return;
-                        try {
-                            const profileVersionKey = userKey('auth', userId, 'profile', 'version');
-                            const versionRaw = await env.OBCF_KV.get(profileVersionKey);
-                            if (!versionRaw) return;
-
-                            const version = Number(versionRaw);
-                            const tokenVersion = Number((token as any).profileVersion || 0);
-                            if (!Number.isFinite(version) || version <= tokenVersion) {
-                                return;
-                            }
-
-                            const dbUser = await env.OBCF_D1.prepare(
-                                `SELECT name, email, image, email_verified as emailVerified, created_at as createdAt FROM users WHERE id = ? LIMIT 1`,
-                            )
-                                .bind(userId)
-                                .first<any>();
-
-                            if (dbUser) {
-                                token.name = dbUser.name ?? token.name;
-                                token.email = dbUser.email ?? token.email;
-                                if (dbUser.image !== undefined) {
-                                    token.image = dbUser.image;
-                                }
-                                token.emailVerified = dbUser.emailVerified ? Number(dbUser.emailVerified) : null;
-                                if (dbUser.createdAt) {
-                                    const createdAtValue = Number(dbUser.createdAt);
-                                    if (Number.isFinite(createdAtValue)) {
-                                        token.createdAt = createdAtValue;
-                                    }
-                                }
-                                (token as any).profileVersion = version;
-                            }
-                        } catch (error) {
-                            console.warn('Failed to refresh profile from KV version:', error);
-                        }
-                    }
-
-                    if (user && user.id) {
-                        token.id = user.id;
-                        token.email = user.email;
-                        token.name = user.name;
-                        token.image = (user as any).image ?? token.image;
-                        const emailVerified = (user as any).emailVerified;
-                        if (emailVerified) {
-                            const emailVerifiedValue =
-                                emailVerified instanceof Date
-                                    ? emailVerified.getTime()
-                                    : typeof emailVerified === 'number'
-                                      ? emailVerified
-                                      : new Date(String(emailVerified)).getTime();
-                            token.emailVerified = Number.isFinite(emailVerifiedValue) ? emailVerifiedValue : null;
-                        } else {
-                            token.emailVerified = null;
-                        }
-
-                        const providedOrgId = (user as any).organizationId;
-                        const providedRoles = (user as any).roles;
-                        const providedPermissions = (user as any).permissions;
-
-                        if (providedOrgId) {
-                            token.organizationId = providedOrgId;
-                        }
-                        if (Array.isArray(providedRoles)) {
-                            token.roles = providedRoles;
-                        }
-                        if (Array.isArray(providedPermissions)) {
-                            token.permissions = providedPermissions;
-                        }
-
-                        if (!token.organizationId || !Array.isArray(token.roles) || !Array.isArray(token.permissions)) {
-                            const context = await loadUserContext(user.id);
-                            if (context.organizationId) {
-                                token.organizationId = context.organizationId;
-                            }
-                            if (!Array.isArray(token.roles)) {
-                                token.roles = context.roles;
-                            }
-                            if (!Array.isArray(token.permissions)) {
-                                token.permissions = context.permissions;
-                            }
-                            if (context.createdAt) {
-                                token.createdAt = context.createdAt;
-                            }
-                        }
-                        if (env.OBCF_KV) {
-                            const profileVersionKey = userKey('auth', String(user.id), 'profile', 'version');
-                            const versionRaw = await env.OBCF_KV.get(profileVersionKey);
-                            const version = Number(versionRaw || 0);
-                            if (Number.isFinite(version)) {
-                                (token as any).profileVersion = version;
-                            }
-                        }
-                    } else if (token?.id && (!token.organizationId || !Array.isArray(token.roles))) {
-                        const context = await loadUserContext(String(token.id));
-                        if (context.organizationId) {
-                            token.organizationId = context.organizationId;
-                        }
-                        if (!Array.isArray(token.roles)) {
-                            token.roles = context.roles;
-                        }
-                        if (!Array.isArray(token.permissions)) {
-                            token.permissions = context.permissions;
-                        }
-                        if (context.createdAt) {
-                            token.createdAt = context.createdAt;
-                        }
-                    }
-                    if (token?.id) {
-                        await refreshProfileIfNeeded(String(token.id));
-                    }
-                    return token;
-                },
-                async session({ session, token }) {
-                    if (session.user) {
-                        session.user.id = token.id as string;
-                        session.user.email = token.email as string;
-                        session.user.name = token.name as string;
-                        // Always sync image — use null when cleared (e.g. profile pic removal)
-                        session.user.image = (token.image as string) || null;
-                        if (token.emailVerified) {
-                            const emailVerified =
-                                typeof token.emailVerified === 'number'
-                                    ? token.emailVerified
-                                    : new Date(token.emailVerified as string).getTime();
-                            if (Number.isFinite(emailVerified)) {
-                                session.user.emailVerified = emailVerified as any;
-                            }
-                        }
-                        if (token.organizationId) {
-                            (session.user as any).organizationId = token.organizationId as string;
-                        }
-                        if (token.roles) {
-                            (session.user as any).roles = token.roles as string[];
-                        }
-                        if (token.permissions) {
-                            (session.user as any).permissions = token.permissions as string[];
-                        }
-                        if (token.createdAt) {
-                            (session.user as any).createdAt = token.createdAt;
-                        }
-                    }
-                    if (session.expires) {
-                        const expiresMs =
-                            typeof session.expires === 'number' ? session.expires : new Date(session.expires).getTime();
-                        if (Number.isFinite(expiresMs)) {
-                            (session as any).expires = expiresMs;
-                        }
-                    }
-                    return session;
-                },
-            },
-            events: {
-                async signOut(message: any) {
-                    if (!env.OBCF_KV) return;
-                    const userId =
-                        message?.token?.id || message?.session?.user?.id || message?.session?.user?.id?.toString();
-                    if (typeof userId !== 'string' || !userId) return;
-                    try {
-                        const revokedAt = Math.floor(Date.now() / 1000);
-                        await env.OBCF_KV.put(userKey('auth', userId, 'revoked'), String(revokedAt), {
-                            expirationTtl: sessionMaxAge ?? 30 * 24 * 60 * 60,
-                        });
-                    } catch (error) {
-                        console.warn('Failed to revoke session on signOut:', error);
-                    }
-                    // App-level hook (e.g., clear RBAC cache for the user)
-                    try {
-                        await options?.onSignOut?.(userId);
-                    } catch {
-                        // Hook failure is non-fatal
-                    }
-                },
-            },
-            ...options?.authConfig,
-            basePath: '/api/auth',
-        },
+async function handleCsrf(env: AuthEnv, request: Request): Promise<Response> {
+    const secret = resolveAuthSecret(env);
+    const { token, cookieValue } = await createCsrfCookiePair(secret);
+    const cookie = serializeCookie(CSRF_COOKIE, cookieValue, {
+        maxAgeSeconds: CSRF_COOKIE_MAX_AGE,
+        secure: isHttpsRequest(request),
+        sameSite: 'Lax',
+        httpOnly: true,
     });
-
-    return config;
+    return jsonResponse({ csrfToken: token }, 200, { 'Set-Cookie': cookie });
 }
 
-/**
- * Handle Auth.js requests in Cloudflare Workers
- *
- * This is the main entry point for authentication in your Worker.
- * Call this for any request to /api/auth/*
- *
- * @example
- * ```typescript
- * // In cloudflare-worker.ts
- * import { handleAuthRequest } from "@ottabase/auth/backend";
- *
- * if (url.pathname.startsWith("/api/auth/")) {
- *   return handleAuthRequest(request, env);
- * }
- * ```
- */
-export async function handleAuthRequest(
+async function handleGetSession(request: Request, env: AuthEnv, options: CreateAuthConfigOptions): Promise<Response> {
+    const session = await getSession(request, env, options);
+    return jsonResponse(session ?? null);
+}
+
+async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<boolean> {
+    const cookies = parseCookies(request.headers.get('Cookie'));
+    const secret = resolveAuthSecret(env);
+    return verifyCsrfToken(cookies[CSRF_COOKIE], typeof submittedToken === 'string' ? submittedToken : undefined, secret);
+}
+
+async function handleCredentialsCallback(
     request: Request,
     env: AuthEnv,
-    options?: CreateAuthConfigOptions,
+    options: CreateAuthConfigOptions,
 ): Promise<Response> {
-    try {
-        const config = createAuthConfig(env, options);
-        return await Auth(request, config);
-    } catch (error) {
-        console.error('Auth request error:', error);
-        return new Response(
-            JSON.stringify({
-                error: error instanceof Error ? error.message : 'Authentication error',
-            }),
-            {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            },
-        );
+    if (options.disableCredentials) {
+        return jsonResponse({ error: 'Credentials sign-in is disabled' }, 403);
     }
+
+    const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string; csrfToken?: string };
+
+    if (!(await requireCsrf(request, env, body.csrfToken))) {
+        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
+    }
+
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+
+    const user = options.authorize
+        ? await options.authorize({ email, password })
+        : await defaultCredentialsAuthorize({ email, password }, env, options);
+
+    if (!user) {
+        return jsonResponse({ error: 'Invalid email or password' }, 401);
+    }
+
+    if (options.requireVerifiedEmail && !user.emailVerified) {
+        return jsonResponse({ error: 'Please verify your email before signing in' }, 401);
+    }
+
+    ensureOrmConnection(env);
+    await bootstrapFirstUser(env, user);
+    await options.onSignIn?.({ userId: user.id, email: user.email });
+
+    const { cookie, session } = await createSessionCookieForUser(
+        { id: user.id, email: user.email, name: user.name, image: user.image, emailVerified: user.emailVerified },
+        env,
+        request,
+        options,
+    );
+
+    return jsonResponse(
+        { success: true, session: { user: session.user, expires: session.expiresAt } },
+        200,
+        { 'Set-Cookie': cookie },
+    );
 }
 
-/**
- * Get session from request
- *
- * @example
- * ```typescript
- * const session = await getSession(request, env);
- * if (!session) {
- *   return new Response("Unauthorized", { status: 401 });
- * }
- * ```
- */
-export async function getSession(request: Request, env: AuthEnv, options?: CreateAuthConfigOptions) {
+async function handleOAuthSignIn(
+    request: Request,
+    env: AuthEnv,
+    options: CreateAuthConfigOptions,
+    providerId: string,
+): Promise<Response> {
+    const provider = getConfiguredProvider(providerId, env);
+    if (!provider) {
+        return errorRedirect(env, options, 'OAuthSignin');
+    }
+
+    const url = new URL(request.url);
+    const callbackUrl = sanitizeCallbackPath(url.searchParams.get('callbackUrl'));
+    const state = randomToken(16);
+    const { codeVerifier, codeChallenge } = await createPkcePair();
+
+    const statePayload = { state, codeVerifier, callbackUrl, providerId };
+    const stateToken = await signJwt(statePayload, resolveAuthSecret(env), { expiresInSeconds: OAUTH_STATE_MAX_AGE });
+    const stateCookie = serializeCookie(OAUTH_STATE_COOKIE, stateToken, {
+        maxAgeSeconds: OAUTH_STATE_MAX_AGE,
+        secure: isHttpsRequest(request),
+        sameSite: 'Lax',
+        httpOnly: true,
+        path: '/api/auth',
+    });
+
+    const redirectUri = `${url.origin}/api/auth/callback/${providerId}`;
+    const authorizationUrl = buildAuthorizationUrl(provider, { redirectUri, state, codeChallenge });
+
+    return new Response(null, { status: 302, headers: { Location: authorizationUrl, 'Set-Cookie': stateCookie } });
+}
+
+async function handleOAuthCallback(
+    request: Request,
+    env: AuthEnv,
+    options: CreateAuthConfigOptions,
+    providerId: string,
+): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.searchParams.get('error')) {
+        return errorRedirect(env, options, 'OAuthSignin');
+    }
+
+    const code = url.searchParams.get('code');
+    const stateParam = url.searchParams.get('state');
+    const cookies = parseCookies(request.headers.get('Cookie'));
+    const stateToken = cookies[OAUTH_STATE_COOKIE];
+
+    if (!code || !stateParam || !stateToken) {
+        return errorRedirect(env, options, 'OAuthCallback');
+    }
+
+    const statePayload = await verifyJwt<{ state: string; codeVerifier: string; callbackUrl: string; providerId: string }>(
+        stateToken,
+        resolveAuthSecret(env),
+    );
+
+    if (!statePayload || statePayload.state !== stateParam || statePayload.providerId !== providerId) {
+        return errorRedirect(env, options, 'OAuthCallback');
+    }
+
+    const provider = getConfiguredProvider(providerId, env);
+    if (!provider) {
+        return errorRedirect(env, options, 'OAuthSignin');
+    }
+
+    let userId!: string;
+    let userEmail!: string;
+    let userName: string | null = null;
+    let userImage: string | null = null;
+    let emailVerifiedAt: number | null = null;
+
     try {
-        const config = createAuthConfig(env, options);
+        const redirectUri = `${url.origin}/api/auth/callback/${providerId}`;
+        const tokens = await exchangeCodeForTokens(provider, { code, redirectUri, codeVerifier: statePayload.codeVerifier });
+        const profile = await fetchUserProfile(provider, tokens);
 
-        const url = new URL(request.url);
-        url.pathname = '/api/auth/session';
-
-        const sessionRequest = new Request(url.toString(), {
-            method: 'GET',
-            headers: request.headers,
-        });
-
-        const response = await Auth(sessionRequest, config);
-
-        if (response.ok) {
-            return await response.json();
+        if (!profile.email) {
+            return errorRedirect(env, options, 'OAuthCallback');
         }
 
-        return null;
+        ensureOrmConnection(env);
+
+        const existingAccount = await Account.first({ provider: providerId, providerAccountId: profile.providerAccountId });
+
+        if (existingAccount) {
+            const user = await User.find(String(existingAccount.get('userId')));
+            if (!user) return errorRedirect(env, options, 'OAuthCallback');
+            userId = String(user.get('id'));
+            userEmail = String(user.get('email'));
+            userName = (user.get('name') as string | null) ?? null;
+            userImage = (user.get('image') as string | null) ?? null;
+            emailVerifiedAt = user.get('emailVerified')
+                ? new Date(user.get('emailVerified') as any).getTime()
+                : null;
+        } else {
+            const existingUser = await User.first({ email: profile.email });
+            if (existingUser) {
+                // An account already exists for this email but has never signed in with this
+                // provider before. Do not silently link -- that would let anyone able to
+                // register an OAuth identity with a matching (possibly unverified) email
+                // hijack an existing account. Require the user to sign in with their
+                // existing method first and link providers explicitly.
+                return errorRedirect(env, options, 'OAuthAccountNotLinked');
+            }
+
+            const newUser = await User.create({
+                email: profile.email,
+                name: profile.name,
+                image: profile.image,
+                emailVerified: Date.now(),
+            });
+
+            userId = String(newUser.get('id'));
+            userEmail = profile.email;
+            userName = profile.name;
+            userImage = profile.image;
+            emailVerifiedAt = Date.now();
+
+            await Account.create({
+                userId,
+                type: 'oauth',
+                provider: providerId,
+                providerAccountId: profile.providerAccountId,
+                accessToken: tokens.access_token ?? null,
+                refreshToken: tokens.refresh_token ?? null,
+                idToken: tokens.id_token ?? null,
+                tokenType: tokens.token_type ?? null,
+                scope: tokens.scope ?? null,
+                expiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + Number(tokens.expires_in) : null,
+            });
+        }
+
+        // OAuth identity providers are trusted to have verified the user's email themselves.
+        if (!emailVerifiedAt) {
+            await User.update(userId, { emailVerified: Date.now() });
+            emailVerifiedAt = Date.now();
+        }
     } catch (error) {
-        console.error('Get session error:', error);
-        return null;
+        console.error(`OAuth callback failed for provider "${providerId}":`, error);
+        return errorRedirect(env, options, 'OAuthCallback');
     }
-}
 
-const PBKDF2_PREFIX = 'pbkdf2';
-// Cloudflare Workers limits PBKDF2 to 100k iterations; OWASP recommends >= 100k for PBKDF2-SHA256
-const PBKDF2_ITERATIONS = 100000;
-const PBKDF2_SALT_BYTES = 16;
-const PBKDF2_HASH_BYTES = 32;
+    await bootstrapFirstUser(env, { id: userId, email: userEmail, name: userName });
+    await options.onSignIn?.({ userId, email: userEmail });
 
-function bufferToBase64(buffer: Uint8Array): string {
-    let binary = '';
-    for (const byte of buffer) {
-        binary += String.fromCharCode(byte);
-    }
-    return btoa(binary);
-}
-
-function base64ToBuffer(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-    if (a.length !== b.length) {
-        return false;
-    }
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) {
-        diff |= a[i] ^ b[i];
-    }
-    return diff === 0;
-}
-
-async function derivePbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-    const encoder = new TextEncoder();
-    const passwordBytes = encoder.encode(password);
-    const passwordBuffer = Uint8Array.from(passwordBytes).buffer;
-    const saltBuffer = Uint8Array.from(salt).buffer;
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordBuffer, 'PBKDF2', false, ['deriveBits']);
-    const derivedBits = await crypto.subtle.deriveBits(
-        {
-            name: 'PBKDF2',
-            salt: saltBuffer,
-            iterations,
-            hash: 'SHA-256',
-        },
-        keyMaterial,
-        PBKDF2_HASH_BYTES * 8,
+    const { cookie } = await createSessionCookieForUser(
+        { id: userId, email: userEmail, name: userName, image: userImage, emailVerified: emailVerifiedAt },
+        env,
+        request,
+        options,
     );
-    return new Uint8Array(derivedBits);
+
+    const clearState = clearCookie(OAUTH_STATE_COOKIE, { secure: isHttpsRequest(request), path: '/api/auth' });
+
+    return new Response(null, {
+        status: 302,
+        headers: [
+            ['Location', `${resolveFrontendUrl(env)}${statePayload.callbackUrl}`],
+            ['Set-Cookie', cookie],
+            ['Set-Cookie', clearState],
+        ],
+    });
 }
 
-/**
- * Password hashing using PBKDF2 (SHA-256)
- * Output format: pbkdf2$iterations$saltBase64$hashBase64
- */
-export async function hashPassword(password: string): Promise<string> {
-    const salt = crypto.getRandomValues(new Uint8Array(PBKDF2_SALT_BYTES));
-    const derived = await derivePbkdf2(password, salt, PBKDF2_ITERATIONS);
-    return `${PBKDF2_PREFIX}$${PBKDF2_ITERATIONS}$${bufferToBase64(salt)}$${bufferToBase64(derived)}`;
-}
+async function handleMagicLinkSend(request: Request, env: AuthEnv, options: CreateAuthConfigOptions): Promise<Response> {
+    const body = (await request.json().catch(() => ({}))) as { email?: string; csrfToken?: string; callbackUrl?: string };
 
-/**
- * Verify password against stored hash
- * Supports PBKDF2 format only.
- */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-    if (!hash) return false;
-
-    if (hash.startsWith(`${PBKDF2_PREFIX}$`)) {
-        const parts = hash.split('$');
-        if (parts.length !== 4) return false;
-
-        const iterations = Number(parts[1]);
-        if (!Number.isFinite(iterations) || iterations <= 0) return false;
-
-        const salt = base64ToBuffer(parts[2]);
-        const expected = base64ToBuffer(parts[3]);
-        const derived = await derivePbkdf2(password, salt, iterations);
-        return timingSafeEqual(derived, expected);
+    if (!(await requireCsrf(request, env, body.csrfToken))) {
+        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
     }
 
-    return false;
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    if (!email) {
+        return jsonResponse({ error: 'A valid email is required' }, 400);
+    }
+
+    const sender = resolveMagicLinkSender(env);
+    if (!sender) {
+        return jsonResponse({ error: 'Magic link sign-in is not configured' }, 500);
+    }
+
+    ensureOrmConnection(env);
+    const identifier = `login:${email}`;
+    const token = randomToken(32);
+    const expiresAtMs = Date.now() + MAGIC_LINK_MAX_AGE_SECONDS * 1000;
+
+    await VerificationToken.create({ identifier, token, expires: expiresAtMs });
+
+    const callbackUrl = sanitizeCallbackPath(body.callbackUrl);
+    const verifyUrl = new URL(request.url);
+    verifyUrl.pathname = '/api/auth/callback/email';
+    verifyUrl.search = '';
+    verifyUrl.searchParams.set('token', token);
+    verifyUrl.searchParams.set('email', email);
+    verifyUrl.searchParams.set('callbackUrl', callbackUrl);
+
+    await sender.send({ identifier: email, url: verifyUrl.toString(), expires: new Date(expiresAtMs) });
+
+    return jsonResponse({ success: true });
+}
+
+async function handleMagicLinkCallback(request: Request, env: AuthEnv, options: CreateAuthConfigOptions): Promise<Response> {
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token') || '';
+    const email = (url.searchParams.get('email') || '').trim().toLowerCase();
+    const callbackUrl = sanitizeCallbackPath(url.searchParams.get('callbackUrl'));
+
+    if (!token || !email) {
+        return errorRedirect(env, options, 'Verification');
+    }
+
+    ensureOrmConnection(env);
+    const identifier = `login:${email}`;
+    const verification = await VerificationToken.findByIdentifierAndToken(identifier, token);
+
+    if (!verification) {
+        return errorRedirect(env, options, 'Verification');
+    }
+
+    const expiresAt = Number(verification.get('expires'));
+    await VerificationToken.deleteByIdentifierAndToken(identifier, token);
+
+    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
+        return errorRedirect(env, options, 'Verification');
+    }
+
+    let user = await User.first({ email });
+    if (!user) {
+        user = await User.create({ email, name: null, emailVerified: Date.now() });
+    } else if (!user.get('emailVerified')) {
+        await User.update(String(user.get('id')), { emailVerified: Date.now() });
+    }
+
+    const userId = String(user.get('id'));
+    const userName = (user.get('name') as string | null) ?? null;
+    const userImage = (user.get('image') as string | null) ?? null;
+
+    await bootstrapFirstUser(env, { id: userId, email, name: userName });
+    await options.onSignIn?.({ userId, email });
+
+    const { cookie } = await createSessionCookieForUser(
+        { id: userId, email, name: userName, image: userImage, emailVerified: Date.now() },
+        env,
+        request,
+        options,
+    );
+
+    return new Response(null, {
+        status: 302,
+        headers: [
+            ['Location', `${resolveFrontendUrl(env)}${callbackUrl}`],
+            ['Set-Cookie', cookie],
+        ],
+    });
+}
+
+async function handleSignOut(request: Request, env: AuthEnv, options: CreateAuthConfigOptions): Promise<Response> {
+    const body = (await request.json().catch(() => ({}))) as { csrfToken?: string };
+    if (!(await requireCsrf(request, env, body.csrfToken))) {
+        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
+    }
+
+    const cookies = parseCookies(request.headers.get('Cookie'));
+    const token = cookies[resolveSessionCookieName(env)];
+    const payload = token ? await verifyJwt<SessionTokenPayload>(token, resolveAuthSecret(env)) : null;
+
+    if (payload?.sub && payload.jti) {
+        await revokeSession(payload.sub, payload.jti, env);
+        try {
+            await options.onSignOut?.(payload.sub);
+        } catch (error) {
+            console.warn('onSignOut hook failed:', error);
+        }
+    }
+
+    const cookie = buildClearSessionCookie(env, request);
+    return jsonResponse({ success: true }, 200, { 'Set-Cookie': cookie });
+}
+
+/**
+ * Handle every `/api/auth/*` request not already owned by the host app.
+ * Covers: csrf, session, credentials + OAuth + magic-link sign-in, sign-out.
+ */
+export async function handleAuthRequest(request: Request, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<Response> {
+    try {
+        if (!env.OBCF_D1) {
+            return jsonResponse({ error: 'OBCF_D1 database binding is required for authentication' }, 500);
+        }
+
+        const resolvedOptions = resolveOptions(env, options);
+        const url = new URL(request.url);
+        const match = url.pathname.match(/\/api\/auth\/(.+)$/);
+        const segments = (match?.[1] ?? '').split('/').filter(Boolean);
+        const [action, param] = segments;
+
+        if (action === 'csrf' && request.method === 'GET') {
+            return handleCsrf(env, request);
+        }
+
+        if (action === 'session' && request.method === 'GET') {
+            return handleGetSession(request, env, resolvedOptions);
+        }
+
+        if (action === 'callback' && param === 'credentials' && request.method === 'POST') {
+            return handleCredentialsCallback(request, env, resolvedOptions);
+        }
+
+        if (action === 'callback' && param === 'email' && request.method === 'GET') {
+            return handleMagicLinkCallback(request, env, resolvedOptions);
+        }
+
+        if (action === 'callback' && param && request.method === 'GET') {
+            return handleOAuthCallback(request, env, resolvedOptions, param);
+        }
+
+        if (action === 'signin' && param === 'email' && request.method === 'POST') {
+            return handleMagicLinkSend(request, env, resolvedOptions);
+        }
+
+        if (action === 'signin' && param && request.method === 'GET') {
+            return handleOAuthSignIn(request, env, resolvedOptions, param);
+        }
+
+        if (action === 'signout' && request.method === 'POST') {
+            return handleSignOut(request, env, resolvedOptions);
+        }
+
+        return jsonResponse({ error: 'Not found' }, 404);
+    } catch (error) {
+        console.error('Auth request error:', error);
+        return jsonResponse({ error: error instanceof Error ? error.message : 'Authentication error' }, 500);
+    }
 }

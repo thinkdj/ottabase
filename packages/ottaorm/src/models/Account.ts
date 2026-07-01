@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaorm - Account Model (NextAuth)
+// @ottabase/ottaorm - Account Model (OAuth provider accounts)
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
@@ -8,9 +8,9 @@ import { accountsTable } from './Account.schema';
 export { accountsTable, type AccountType, type NewAccountType } from './Account.schema';
 
 /**
- * Account model - NextAuth provider accounts
+ * Account model - OAuth provider accounts
  *
- * Stores OAuth and authentication provider data for NextAuth.js
+ * Stores OAuth and authentication provider data for @ottabase/auth
  *
  * @example
  * ```typescript

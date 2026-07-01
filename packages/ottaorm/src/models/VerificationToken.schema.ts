@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/ottaorm - VerificationToken table schema for Auth.js
+// @ottabase/ottaorm - VerificationToken table schema for email verification, password reset, and magic-link tokens
 // ============================================================
 
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * VerificationToken table schema for Auth.js
+ * VerificationToken table schema for email verification, password reset, and magic-link tokens
  * Composite primary key: (identifier, token)
  */
 export const verificationTokensTable = sqliteTable(

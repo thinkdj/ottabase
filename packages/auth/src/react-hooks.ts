@@ -3,7 +3,7 @@
 // ============================================================
 //
 // Reusable React hook for session management with Jotai.
-// Automatically syncs with Auth.js backend and persists to localStorage.
+// Automatically syncs with the auth backend and persists to localStorage.
 //
 // Usage:
 //   import { useSession } from "@ottabase/auth/react";

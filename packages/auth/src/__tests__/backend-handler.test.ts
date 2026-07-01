@@ -1,168 +1,129 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createAuthConfig } from '../backend-handler';
+import { describe, expect, it } from 'vitest';
+import { createAuthConfig, getSession, handleAuthRequest, hashPassword, verifyPassword } from '../backend-handler';
+import type { AuthEnv } from '../types';
 
-function createMockD1() {
-    const prepare = vi.fn((sql: string) => {
-        const base = (() => {
-            if (sql.includes('FROM organization_members')) {
-                return {
-                    first: vi.fn(async () => ({ organizationId: 'org-1' })),
-                };
-            }
-            if (sql.includes('FROM user_roles')) {
-                return {
-                    all: vi.fn(async () => ({
-                        results: [
-                            {
-                                name: 'member',
-                                permissions: JSON.stringify(['*:read']),
-                            },
-                        ],
-                    })),
-                };
-            }
-            if (sql.toLowerCase().includes('update users set email_verified')) {
-                return {
-                    run: vi.fn(async () => ({ success: true })),
-                };
-            }
-            if (sql.toLowerCase().includes('select count(*) as count from users')) {
-                return {
-                    first: vi.fn(async () => ({ count: 1 })),
-                };
-            }
-            return {};
-        })();
-
-        const stub = {
-            first: vi.fn(async () => null),
-            all: vi.fn(async () => ({ results: [] })),
-            run: vi.fn(async () => ({ success: true })),
-            ...base,
-        };
-
-        return { ...stub, bind: vi.fn(() => stub) };
-    });
-
-    return { prepare };
+function createFakeD1() {
+    // None of the routes exercised in this file (csrf/session/404/missing-binding) need real
+    // query results -- a truthy placeholder is enough to get past the `env.OBCF_D1` guard.
+    return {} as any;
 }
 
-describe('Auth Backend Handler', () => {
-    it('injects organization, roles, and permissions into jwt token', async () => {
-        const env = {
-            OBCF_D1: createMockD1() as any,
-            OBCF_KV: { get: vi.fn(async () => null) } as any,
-            AUTH_SECRET: 'test-secret',
-            ENVIRONMENT: 'test',
-        };
+function createEnv(overrides: Partial<AuthEnv> = {}): AuthEnv {
+    return {
+        AUTH_SECRET: 'test-secret',
+        ENVIRONMENT: 'test',
+        OBCF_D1: createFakeD1(),
+        ...overrides,
+    } as AuthEnv;
+}
 
-        const config = createAuthConfig(env as any);
-        const jwt = config.callbacks?.jwt!;
+function request(path: string, init?: RequestInit) {
+    return new Request(`https://app.example.com${path}`, init);
+}
 
-        const token = await jwt({
-            token: {},
-            user: { id: 'user-1', email: 'user@example.com', name: 'User One' },
-        } as any);
-
-        expect(token).not.toBeNull();
-        if (!token) {
-            throw new Error('Expected jwt callback to return a token');
-        }
-
-        expect(token.id).toBe('user-1');
-        expect(token.organizationId).toBe('org-1');
-        expect(Array.isArray(token.roles)).toBe(true);
-        expect(token.roles).toContain('member');
-        expect(Array.isArray(token.permissions)).toBe(true);
-        expect(token.permissions).toContain('*:read');
-        expect(token.jti).toBeTruthy();
-        expect(token.issuedAt).toBeTruthy();
+describe('handleAuthRequest', () => {
+    it('returns 500 when the D1 binding is missing', async () => {
+        const env = createEnv({ OBCF_D1: undefined });
+        const response = await handleAuthRequest(request('/api/auth/session'), env);
+        expect(response.status).toBe(500);
     });
 
-    it('maps organization, roles, and permissions into session', async () => {
-        const env = {
-            OBCF_D1: createMockD1() as any,
-            AUTH_SECRET: 'test-secret',
-            ENVIRONMENT: 'test',
-        };
-
-        const config = createAuthConfig(env as any);
-        const sessionCb = config.callbacks?.session!;
-
-        const session = await sessionCb({
-            session: { user: {} },
-            token: {
-                id: 'user-1',
-                email: 'user@example.com',
-                name: 'User One',
-                organizationId: 'org-1',
-                roles: ['member'],
-                permissions: ['*:read'],
-            },
-        } as any);
-
-        expect(session.user).toBeDefined();
-        if (!session.user) {
-            throw new Error('Expected session callback to populate session.user');
-        }
-
-        expect(session.user.id).toBe('user-1');
-        expect((session.user as any).organizationId).toBe('org-1');
-        expect((session.user as any).roles).toEqual(['member']);
-        expect((session.user as any).permissions).toEqual(['*:read']);
+    it('returns 404 for an unknown auth sub-route', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/nope'), env);
+        expect(response.status).toBe(404);
     });
 
-    it('revokes session on signOut via KV', async () => {
-        const kvPut = vi.fn(async (_key: string, _value: string, _options?: { expirationTtl?: number }) => undefined);
-        const env = {
-            OBCF_D1: createMockD1() as any,
-            OBCF_KV: { get: vi.fn(), put: kvPut } as any,
-            AUTH_SECRET: 'test-secret',
-            ENVIRONMENT: 'test',
-        };
+    it('issues a CSRF token with a paired Set-Cookie header', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/csrf'), env);
+        const body = await response.json();
 
-        const config = createAuthConfig(env as any, { sessionMaxAge: 3600 });
-        const signOut = config.events?.signOut!;
+        expect(response.status).toBe(200);
+        expect(typeof body.csrfToken).toBe('string');
+        expect(body.csrfToken.length).toBeGreaterThan(0);
 
-        await signOut({ token: { id: 'user-1' } } as any);
-
-        expect(kvPut).toHaveBeenCalled();
-        const firstCall = kvPut.mock.calls[0];
-        expect(firstCall).toBeDefined();
-        if (!firstCall) {
-            throw new Error('Expected KV put to be called during signOut');
-        }
-
-        const key = firstCall[0];
-        const value = firstCall[1];
-        const options = firstCall[2];
-        expect(key).toBe('auth:usr:user-1:revoked');
-        expect(typeof value).toBe('string');
-        expect(options).toBeDefined();
-        if (!options) {
-            throw new Error('Expected KV put options to be provided');
-        }
-
-        expect(options.expirationTtl).toBe(3600);
+        const setCookie = response.headers.get('Set-Cookie');
+        expect(setCookie).toContain('ottabase.csrf-token=');
+        expect(setCookie).toContain('HttpOnly');
     });
 
-    it('auto-verifies OAuth users on signIn', async () => {
-        const d1 = createMockD1();
-        const env = {
-            OBCF_D1: d1 as any,
-            AUTH_SECRET: 'test-secret',
-            ENVIRONMENT: 'test',
-        };
+    it('returns null for /session when there is no session cookie', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/session'), env);
+        const body = await response.json();
 
-        const config = createAuthConfig(env as any);
-        const signIn = config.callbacks?.signIn!;
+        expect(response.status).toBe(200);
+        expect(body).toBeNull();
+    });
 
-        const result = await signIn({
-            user: { id: 'user-1', email: 'user@example.com' },
-            account: { provider: 'google' },
-        } as any);
+    it('rejects a credentials sign-in with a missing/invalid CSRF token', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(
+            request('/api/auth/callback/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'user@example.com', password: 'whatever', csrfToken: 'guessed' }),
+            }),
+            env,
+        );
 
-        expect(result).toBe(true);
-        expect(d1.prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET email_verified'));
+        expect(response.status).toBe(403);
+    });
+
+    it('rejects credentials sign-in outright when credentials are disabled', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(
+            request('/api/auth/callback/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'user@example.com', password: 'whatever' }),
+            }),
+            env,
+            { disableCredentials: true },
+        );
+
+        expect(response.status).toBe(403);
+    });
+
+    it('redirects unknown/unconfigured OAuth providers to the error page', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/signin/not-a-real-provider'), env);
+
+        expect(response.status).toBe(302);
+        const location = response.headers.get('Location');
+        expect(location).toContain('/login');
+        expect(location).toContain('error=OAuthSignin');
+    });
+});
+
+describe('createAuthConfig', () => {
+    it('resolves session/credential/verification flags from env and options', () => {
+        const env = createEnv({ AUTH_DISABLE_CREDENTIALS: 'true', AUTH_SESSION_MAX_AGE: '3600' });
+        const config = createAuthConfig(env);
+
+        expect(config.disableCredentials).toBe(true);
+        expect(config.sessionMaxAge).toBe(3600);
+        expect(config.cookieName).toBe('ottabase.session-token');
+    });
+
+    it('lets explicit options override environment-derived defaults', () => {
+        const env = createEnv({ AUTH_DISABLE_CREDENTIALS: 'true' });
+        const config = createAuthConfig(env, { disableCredentials: false });
+        expect(config.disableCredentials).toBe(false);
+    });
+});
+
+describe('re-exported crypto helpers', () => {
+    it('hashPassword/verifyPassword round-trip through the backend entry point', async () => {
+        const hash = await hashPassword('Sup3r$ecret!');
+        await expect(verifyPassword('Sup3r$ecret!', hash)).resolves.toBe(true);
+    });
+});
+
+describe('getSession re-export', () => {
+    it('returns null without a session cookie', async () => {
+        const env = createEnv();
+        await expect(getSession(request('/api/auth/session'), env)).resolves.toBeNull();
     });
 });

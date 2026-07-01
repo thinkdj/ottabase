@@ -47,7 +47,7 @@ import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './
 import { handleAuditLogs } from './audit';
 import {
     handleAuthConfig,
-    handleAuthJsRequest,
+    handleAuthApiRequest,
     handleAuthRegister,
     handlePasswordChange,
     handlePasswordResetConfirm,
@@ -704,7 +704,7 @@ async function handleMethodAgnosticRoutes(context: ApiRouteContext): Promise<Res
     }
 
     if (route.startsWith('/api/auth/')) {
-        return handleAuthJsRequest(context);
+        return handleAuthApiRequest(context);
     }
 
     return null;

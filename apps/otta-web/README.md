@@ -12,7 +12,7 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Owner Safety Guardrail** - Admin member APIs prevent demoting, deactivating, or removing the last active
   organization owner
 - **Ottablog CMS** - Feature-rich content package with rich content blocks and CMS features
-- **Auth.js** - OAuth, Magic Link, and Credentials authentication
+- **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
 - **Mantine + shadcn/ui** - Flexible UI component libraries
@@ -67,7 +67,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 ## Authentication
 
-This template ships with Auth.js + D1 integration and tighter session handling:
+This template ships with a custom, dependency-free auth implementation + D1 integration and tighter session handling:
 
 - **UI**: `/login`, `/register`, `/dashboard`, `/profile`
 - **Backend**: `/api/auth/*`, `/api/auth/register`, `/api/users/me`
@@ -364,7 +364,7 @@ apps/otta-web/
 - `/api/health` - Worker health check
 - `/api/brand/*` - Brand Engine API (presets, kits, logos)
 - `/api/cloudflare/*` - Cloudflare service demos
-- `/api/auth/*` - Auth.js routes (signin, signout, session, callbacks)
+- `/api/auth/*` - Custom auth routes (signin, signout, session, callbacks)
 - `/api/auth/register` - Credentials registration
 - `/api/auth/config` - Auth UI configuration
 - `/api/ottaorm/*` - OttaORM CRUD endpoints

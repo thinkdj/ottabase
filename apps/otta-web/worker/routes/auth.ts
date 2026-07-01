@@ -769,7 +769,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
     }
 }
 
-export async function handleAuthJsRequest(context: AuthRouteContext): Promise<Response> {
+export async function handleAuthApiRequest(context: AuthRouteContext): Promise<Response> {
     const { request, env, url, withAuthCors } = context;
 
     if (request.method === 'POST') {

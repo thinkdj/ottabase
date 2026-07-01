@@ -20,7 +20,6 @@
         "localflare": "localflare"
     },
     "dependencies": {
-        "@auth/core": "catalog:",
         "@hookform/resolvers": "catalog:",
         "@mantine/carousel": "catalog:",
         "@mantine/core": "catalog:",

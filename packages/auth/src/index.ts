@@ -2,64 +2,43 @@
 // @ottabase/auth - Authentication Package
 // ============================================================
 //
-// Complete Auth.js (NextAuth.js) integration for Ottabase applications
-// with Cloudflare D1 support, provider presets, and framework helpers.
+// A lightweight, dependency-free (Web Crypto only) authentication
+// implementation for Ottabase apps on Cloudflare Workers + D1: signed
+// session cookies, PBKDF2 credentials, generic OAuth2/OIDC (Google,
+// GitHub, Discord, Azure AD, Auth0), and magic-link email sign-in.
 //
-// Quick Start:
-//   1. Add "auth" to features in db.config.ts
-//   2. Run pnpm ottaorm:migrate
-//   3. Create auth configuration with createOttabaseAuthConfig
-//   4. Use in your framework (Next.js, Remix, etc.)
-//
-// @see README.md for detailed documentation
+// @see README.md for the full route table and usage guide.
 //
 // ============================================================
 
 // ============================================================
-// D1 ADAPTER - Unified Factory
-// ============================================================
-export { createD1AuthAdapter, createD1AuthAdapterCached, type D1AuthAdapterOptions } from './adapter';
-
-// ============================================================
-// DRIZZLE ADAPTER (Direct Exports)
+// PROVIDERS (OAuth presets + magic-link email)
 // ============================================================
 export {
-    createDrizzleD1AuthAdapter,
-    createDrizzleD1AuthAdapterCached,
-    type DrizzleD1AuthAdapterOptions,
-} from './adapters/drizzle-adapter';
-
-// ============================================================
-// CONFIGURATION HELPERS
-// ============================================================
-export { createOttabaseAuthConfig, createOttabaseAuthConfigDev, type OttabaseAuthConfigOptions } from './config';
-
-// ============================================================
-// PROVIDER PRESETS
-// ============================================================
-export {
-    // OAuth Providers
     autoConfigureProviders,
     createAuth0Provider,
     createAzureAdProvider,
-    // Credentials Provider
-    createCredentialsProvider,
-    createCustomCredentialsProvider,
-    createDevEmailTrapProvider,
+    createDevEmailTrapMagicLinkSender,
     createDiscordProvider,
     createGitHubProvider,
     createGoogleProvider,
+    createNodemailerMagicLinkSender,
+    createResendMagicLinkSender,
+    getConfiguredProvider,
     isDevEmailTrapConfigured,
-    createNodemailerProvider,
-    // Email Providers (Magic Link)
-    createResendProvider,
-    // Types
+    resolveMagicLinkSender,
+    type MagicLinkSender,
+    type MagicLinkSendParams,
+    type MagicLinkTemplateOptions,
+    type OAuthProfile,
+    type OAuthProviderConfig,
+    type OAuthTokenResponse,
     type ProviderEnv,
     type ProviderOptions,
 } from './providers';
 
 // ============================================================
-// SESSION UTILITIES
+// SESSION UTILITIES (pure helpers)
 // ============================================================
 export {
     getUserEmail,
@@ -69,7 +48,9 @@ export {
     requireAuth,
     serializeSession,
     type OttabaseSession,
+    type Session,
     type SessionData,
+    type SessionUser,
 } from './session';
 
 // ============================================================
@@ -77,17 +58,21 @@ export {
 // ============================================================
 export {
     createAuthConfig,
+    createSessionCookieForUser,
     getSession,
     handleAuthRequest,
     hashPassword,
+    revokeAllUserSessions,
+    revokeSession,
     verifyPassword,
     type AuthEnv,
+    type AuthorizedUser,
     type CreateAuthConfigOptions,
     type CredentialsAuthorizeOptions,
 } from './backend-handler';
 
 // ============================================================
-// CLIENT API (Frontend)
+// CLIENT API (frontend)
 // ============================================================
 export {
     changePassword,
@@ -104,9 +89,9 @@ export {
     signOut,
     verifyEmail,
     type AuthClientOptions,
-    type ChangePasswordResponse,
     type AuthResponse,
     type AuthSession,
+    type ChangePasswordResponse,
     type EmailVerificationResponse,
     type PasswordResetResponse,
     type RegisterCredentials,
@@ -118,15 +103,10 @@ export {
 // REACT HOOKS
 // ============================================================
 export {
-    useSession,
-    clearAuthSessionStorage,
     AUTH_STORAGE_KEY,
-    type Session,
+    clearAuthSessionStorage,
+    useSession,
+    type Session as ReactSession,
     type User,
     type UseSessionOptions,
 } from './react-hooks';
-
-// ============================================================
-// TYPE DEFINITIONS
-// ============================================================
-export type { AuthConfig } from './types';

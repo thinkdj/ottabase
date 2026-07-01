@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/ottaorm - Account table schema (NextAuth)
+// @ottabase/ottaorm - Account table schema (OAuth provider accounts)
 // ============================================================
 
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * Account table schema (NextAuth)
+ * Account table schema (OAuth provider accounts)
  */
 export const accountsTable = sqliteTable('accounts', {
     id: text('id')

@@ -11,8 +11,7 @@
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
-import { encode as encodeAuthJwt } from '@auth/core/jwt';
-import { hashPassword } from '@ottabase/auth/backend';
+import { createSessionCookieForUser, hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     autoInit,
@@ -530,57 +529,21 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             );
         }
 
-        // Auto-login: create auth cookie so the user is immediately authenticated
-        const cookieName = (env as any).AUTH_COOKIE_NAME || 'authjs.session-token';
-        const maxAgeSeconds = 30 * 24 * 60 * 60;
-        let sessionToken: string | null = null;
-
-        // Primary path: JWT session strategy (default)
-        // Owner role gets *:* permissions; Auth.js callbacks will enrich from DB on /session, but JWT must have them for immediate use
+        // Auto-login: create the session cookie so the browser is immediately authenticated.
         const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
-        try {
-            const nowSeconds = Math.floor(Date.now() / 1000);
-            const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
-            sessionToken = await encodeAuthJwt({
-                token: {
-                    id: userId,
-                    sub: userId,
-                    email,
-                    name: name || null,
-                    emailVerified: Date.now(),
-                    organizationId: organizationId || undefined,
-                    roles: assignedRole ? [assignedRole] : undefined,
-                    permissions: ownerPermissions,
-                    jti: crypto.randomUUID(),
-                    iat: nowSeconds,
-                    exp: nowSeconds + maxAgeSeconds,
-                },
-                secret: authSecret,
-                maxAge: maxAgeSeconds,
-                salt: cookieName,
-            });
-        } catch (error) {
-            console.warn('JWT cookie generation failed during bootstrap auto-login:', error);
-            sessionToken = null;
-        }
-
-        // Fallback for database-session strategy deployments
-        if (!sessionToken) {
-            try {
-                sessionToken = crypto.randomUUID();
-                const expiresMs = Date.now() + maxAgeSeconds * 1000;
-                const nowMs = Date.now();
-                await env.OBCF_D1.prepare(
-                    `INSERT INTO sessions (id, session_token, user_id, expires, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?)`,
-                )
-                    .bind(crypto.randomUUID(), sessionToken, userId, expiresMs, nowMs, nowMs)
-                    .run();
-            } catch {
-                // Session creation is non-fatal; user can log in manually
-                sessionToken = null;
-            }
-        }
+        const { cookie, session } = await createSessionCookieForUser(
+            {
+                id: userId,
+                email,
+                name: name || null,
+                emailVerified: Date.now(),
+                organizationId,
+                roles: assignedRole ? [assignedRole] : [],
+                permissions: ownerPermissions,
+            },
+            env as any,
+            request,
+        );
 
         const responseData = {
             success: true,
@@ -591,26 +554,18 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 role: assignedRole || 'owner',
             },
             organizationId,
-            sessionToken: sessionToken ? true : false,
-            sessionExpires: Date.now() + maxAgeSeconds * 1000,
+            sessionToken: true,
+            sessionExpires: session.expiresAt,
             timestamp: Date.now(),
         };
 
-        // Set session cookie so the browser is immediately authenticated
-        if (sessionToken) {
-            const reqUrl = new URL(request.url);
-            const secure = reqUrl.protocol === 'https:';
-            const cookie = `${cookieName}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`;
-            return new Response(JSON.stringify(responseData), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Set-Cookie': cookie,
-                },
-            });
-        }
-
-        return jsonResp(responseData);
+        return new Response(JSON.stringify(responseData), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Set-Cookie': cookie,
+            },
+        });
     } catch (error: any) {
         if (error.message?.toLowerCase().includes('unique')) {
             return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);

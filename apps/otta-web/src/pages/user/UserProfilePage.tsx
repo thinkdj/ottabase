@@ -125,7 +125,7 @@ export function UserProfilePage() {
         }
     }, [user?.name, user?.email, (user as { timezone?: string })?.timezone]);
 
-    // Fetch full profile (including timezone) - Auth.js session may not include DB-only fields
+    // Fetch full profile (including timezone) - the session may not include DB-only fields
     useEffect(() => {
         if (!user?.id) return;
         let cancelled = false;

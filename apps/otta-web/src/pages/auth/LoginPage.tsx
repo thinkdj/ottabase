@@ -294,7 +294,7 @@ export function LoginPage() {
                             <CheckCircle2 className="h-4 w-4" />
                             Production-Ready Auth
                         </CardTitle>
-                        <CardDescription className="text-xs">Powered by Auth.js with Cloudflare D1</CardDescription>
+                        <CardDescription className="text-xs">Powered by Ottabase Auth with Cloudflare D1</CardDescription>
                     </CardHeader>
                     <CardContent className="text-xs space-y-2">
                         <p>

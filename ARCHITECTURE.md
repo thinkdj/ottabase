@@ -94,7 +94,7 @@ flowchart TD
     rbac --> ottaorm & auth
     ottablog --> ottaorm
     brandEngine --> ottaorm & cf & audit
-    auth --> cf
+    auth --> cf & ottaorm
     queue --> cf
     audit --> ottaorm
     shortlinks --> ottaorm
@@ -230,27 +230,33 @@ CORS is centralized in the worker entry. The `Origin` header is read (defaulting
 
 ### Auth Flow
 
-Authentication uses Auth.js v5 (`@ottabase/auth`) with session resolution **per route**, not globally:
+Authentication is a custom, dependency-free implementation (`@ottabase/auth`, Web Crypto only — no Auth.js): sessions
+are a signed HS256 JWT stored in an HttpOnly/Secure cookie, paired with a lightweight KV registry record per session so
+sign-out can revoke a single session immediately. Session resolution happens **per route**, not globally:
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant W as Worker
-    participant A as Auth.js
-    participant D as D1
+    participant A as @ottabase/auth
+    participant K as KV
 
     C->>W: API request with session cookie
     W->>W: resolveApiRoute()
     W->>A: getSession(request, env)
-    A->>D: Lookup session + user
-    D-->>A: Session data
+    A->>A: Verify JWT signature + expiry
+    A->>K: Check revocation + session registry
+    K-->>A: Registry state
     A-->>W: User session or null
     W->>W: getSecurityContext(session)
     W->>W: Apply RLS context to query
 ```
 
-Session cookies are `HttpOnly` and `Secure`. OAuth providers (Google, GitHub) and credentials are supported. Auth routes
-live at `/api/auth/*` and are handled by `handleAuthJsRequest`.
+Session cookies are `HttpOnly` and `Secure`. OAuth2/PKCE providers (Google, GitHub, Discord, Azure AD, Auth0),
+credentials, and magic-link email sign-in are supported. Auth routes live at `/api/auth/*` and are handled by
+`handleAuthApiRequest` (`apps/otta-web/worker/routes/auth.ts`), which delegates to `handleAuthRequest` from
+`@ottabase/auth/backend` for the sub-routes that package owns (csrf, session, credentials callback, per-provider OAuth
+signin/callback, email signin/callback, signout). There is no external Auth.js dependency.
 
 ### Row-Level Security (RLS)
 

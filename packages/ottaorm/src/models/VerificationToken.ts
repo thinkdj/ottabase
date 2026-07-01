@@ -12,7 +12,7 @@ export {
 } from './VerificationToken.schema';
 
 /**
- * VerificationToken model for Auth.js email/SMS verification
+ * VerificationToken model for email verification, password reset, and magic-link sign-in
  *
  * Used for passwordless sign-in and email verification flows.
  * Composite primary key: (identifier, token)

@@ -105,7 +105,7 @@ const customAtom = atom('custom value');
 
 ## Session Sync (app integration)
 
-In Ottabase apps the `userAtom` is kept in sync with Auth.js via `useSession().user`. After you mutate `/api/users/me`,
+In Ottabase apps the `userAtom` is kept in sync with the auth session via `useSession().user`. After you mutate `/api/users/me`,
 call `refreshSession()` (or `updateUser()`) so the session cache (persisted via `atomWithStorage`) picks up the
 server-side profile version bump (`auth:profile:version:{userId}`) without hitting D1 on every request. This keeps
 global state, UI headers, and KV-backed JWTs consistent while avoiding unnecessary polling.

@@ -138,7 +138,7 @@ async function getUserFromRequest(request: Request): Promise<User | null> {
         return User.find(userId);
     }
 
-    // Try to get from auth session (Auth.js)
+    // Try to get from auth session
     // This is a simplified example - in real usage, you'd use the auth session
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {

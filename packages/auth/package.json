@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/auth",
-    "version": "1.0.0",
-    "description": "Authentication package for Ottabase with Auth.js (NextAuth.js) support",
+    "version": "2.0.0",
+    "description": "Lightweight, dependency-free authentication for Ottabase (signed sessions, PBKDF2, OAuth2/OIDC, magic links)",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -10,16 +10,6 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
-        },
-        "./adapter": {
-            "types": "./dist/adapter.d.ts",
-            "import": "./dist/adapter.mjs",
-            "require": "./dist/adapter.js"
-        },
-        "./config": {
-            "types": "./dist/config.d.ts",
-            "import": "./dist/config.mjs",
-            "require": "./dist/config.js"
         },
         "./providers": {
             "types": "./dist/providers.d.ts",
@@ -30,11 +20,6 @@
             "types": "./dist/session.d.ts",
             "import": "./dist/session.mjs",
             "require": "./dist/session.js"
-        },
-        "./adapters/drizzle": {
-            "types": "./dist/adapters/drizzle-adapter.d.ts",
-            "import": "./dist/adapters/drizzle-adapter.mjs",
-            "require": "./dist/adapters/drizzle-adapter.js"
         },
         "./components": {
             "types": "./dist/components/index.d.ts",
@@ -72,10 +57,12 @@
     },
     "keywords": [
         "auth",
-        "authjs",
-        "nextauth",
-        "drizzle",
-        "cloudflare-d1"
+        "authentication",
+        "oauth",
+        "jwt",
+        "session",
+        "cloudflare-d1",
+        "edge"
     ],
     "author": "thinkdj",
     "license": "MIT",
@@ -89,21 +76,12 @@
     },
     "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/auth#readme",
     "peerDependencies": {
-        "@auth/core": "catalog:",
         "@ottabase/cf": "workspace:*",
         "@ottabase/db": "workspace:*",
-        "drizzle-orm": "catalog:",
+        "@ottabase/ottaorm": "workspace:*",
         "jotai": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
-    },
-    "peerDependenciesMeta": {
-        "@auth/core": {
-            "optional": true
-        },
-        "drizzle-orm": {
-            "optional": true
-        }
     },
     "dependencies": {
         "@ottabase/cf": "workspace:*",
@@ -113,9 +91,9 @@
         "lucide-react": "catalog:"
     },
     "devDependencies": {
-        "@auth/core": "catalog:",
         "@cloudflare/workers-types": "catalog:",
         "@ottabase/db": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",

@@ -17,7 +17,7 @@ const CURRENT_ORG_KEY = 'ottabase.current-org-id';
  * Get auth token from storage/context.
  */
 function getAuthToken(): string | null {
-    // Cookie-based Auth.js sessions do not require a bearer token by default.
+    // Cookie-based sessions do not require a bearer token by default.
     return null;
 }
 

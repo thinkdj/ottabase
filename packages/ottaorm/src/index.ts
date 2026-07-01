@@ -76,7 +76,7 @@ export type { ValidationResult } from './validation';
 export {
     Account,
     AuditLog,
-    // Auth.js SQL models (Edge-safe)
+    // Auth SQL models (Edge-safe)
     Authenticator,
     // Media (core — tracks all uploaded files)
     Media,

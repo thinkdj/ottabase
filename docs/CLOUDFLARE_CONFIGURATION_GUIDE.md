@@ -84,7 +84,7 @@ Create `apps/otta-web/.env.local` with the following (if using .env for local au
 
 
 # ============================================================
-# AUTHENTICATION (Optional - Auth.js v5)
+# AUTHENTICATION (Optional)
 # ============================================================
 # Generate with: openssl rand -base64 32
 AUTH_SECRET=your-32-character-secret-here
@@ -287,7 +287,7 @@ export default {
 
 ## 🔐 Authentication Setup (Optional)
 
-The `@ottabase/auth` package provides Auth.js v5 integration with D1.
+The `@ottabase/auth` package provides a lightweight, dependency-free auth implementation with D1.
 
 ### 1. Enable Auth Feature
 
@@ -562,7 +562,7 @@ pnpm cf-typegen
 | Variable         | Required      | Purpose                                 |
 | ---------------- | ------------- | --------------------------------------- |
 | `D1_DATABASE_ID` | Yes (deploy)  | D1 database UUID (wrangler placeholder) |
-| `AUTH_SECRET`    | If using auth | Auth.js secret                          |
+| `AUTH_SECRET`    | If using auth | Session signing secret                  |
 | `CF_ACCOUNT_ID`  | Optional      | Cloudflare API access                   |
 | `CF_API_TOKEN`   | Optional      | Cloudflare API access                   |
 

@@ -2,137 +2,42 @@
 // @ottabase/auth - Session Utilities
 // ============================================================
 //
-// Helper functions for managing user sessions and authentication
-// state in Ottabase applications.
+// Pure helper functions for reading authentication state out of a
+// `Session` object. No I/O -- see `session-store.ts` for verifying a
+// request's session cookie.
 //
 // ============================================================
 
-import type { Session } from '@auth/core/types';
+import type { Session } from './types';
 
-/**
- * User session data
- * Extends the default Auth.js session with common fields
- */
-export interface OttabaseSession extends Session {
-    user: {
-        id: string;
-        name?: string | null;
-        email?: string | null;
-        image?: string | null;
-        emailVerified?: number | null;
-        organizationId?: string | null;
-        roles?: string[];
-        permissions?: string[];
-    };
-}
+export type { Session, SessionUser } from './types';
 
-/**
- * Check if a session exists and is valid
- *
- * @param session - The session to check
- * @returns True if the session is valid
- *
- * @example
- * ```typescript
- * import { isAuthenticated } from "@ottabase/auth/session";
- *
- * const session = await auth();
- * if (isAuthenticated(session)) {
- *   // User is logged in
- *   console.log(session.user.email);
- * }
- * ```
- */
-export function isAuthenticated(session: Session | null): session is OttabaseSession {
+/** @deprecated Use `Session` from `@ottabase/auth` instead. Kept as an alias for readability. */
+export type OttabaseSession = Session;
+
+export function isAuthenticated(session: Session | null): session is Session {
     return session !== null && !!session.user && !!session.user.id;
 }
 
-/**
- * Require authentication, throw error if not authenticated
- *
- * @param session - The session to check
- * @returns The validated session
- * @throws Error if not authenticated
- *
- * @example
- * ```typescript
- * import { requireAuth } from "@ottabase/auth/session";
- *
- * const session = requireAuth(await auth());
- * // session.user.id is guaranteed to exist here
- * ```
- */
-export function requireAuth(session: Session | null): OttabaseSession {
+export function requireAuth(session: Session | null): Session {
     if (!isAuthenticated(session)) {
         throw new Error('Authentication required');
     }
     return session;
 }
 
-/**
- * Get the current user ID from a session
- *
- * @param session - The session to extract the user ID from
- * @returns The user ID, or null if not authenticated
- *
- * @example
- * ```typescript
- * import { getUserId } from "@ottabase/auth/session";
- *
- * const userId = getUserId(await auth());
- * if (userId) {
- *   // User is logged in
- *   // const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
- * }
- * ```
- */
 export function getUserId(session: Session | null): string | null {
     return isAuthenticated(session) ? session.user.id : null;
 }
 
-/**
- * Get the current user email from a session
- *
- * @param session - The session to extract the email from
- * @returns The user email, or null if not authenticated or no email
- *
- * @example
- * ```typescript
- * import { getUserEmail } from "@ottabase/auth/session";
- *
- * const email = getUserEmail(await auth());
- * if (email) {
- *   console.log(`User email: ${email}`);
- * }
- * ```
- */
 export function getUserEmail(session: Session | null): string | null {
     return isAuthenticated(session) ? (session.user.email ?? null) : null;
 }
 
-/**
- * Check if the current user has a verified email
- *
- * @param session - The session to check
- * @returns True if the user has a verified email
- *
- * @example
- * ```typescript
- * import { hasVerifiedEmail } from "@ottabase/auth/session";
- *
- * const session = await auth();
- * if (hasVerifiedEmail(session)) {
- *   // User's email is verified
- * }
- * ```
- */
 export function hasVerifiedEmail(session: Session | null): boolean {
     return isAuthenticated(session) && !!session.user.emailVerified;
 }
 
-/**
- * Session data for API responses
- */
 export interface SessionData {
     authenticated: boolean;
     user: {
@@ -147,28 +52,10 @@ export interface SessionData {
     } | null;
 }
 
-/**
- * Convert a session to a serializable format for API responses
- *
- * @param session - The session to serialize
- * @returns Serializable session data
- *
- * @example
- * ```typescript
- * import { serializeSession } from "@ottabase/auth/session";
- *
- * export async function GET() {
- *   const session = await auth();
- *   return Response.json(serializeSession(session));
- * }
- * ```
- */
+/** Convert a session to a serializable shape for API responses. */
 export function serializeSession(session: Session | null): SessionData {
     if (!isAuthenticated(session)) {
-        return {
-            authenticated: false,
-            user: null,
-        };
+        return { authenticated: false, user: null };
     }
 
     return {
@@ -179,9 +66,9 @@ export function serializeSession(session: Session | null): SessionData {
             email: session.user.email ?? null,
             image: session.user.image ?? null,
             emailVerified: session.user.emailVerified ?? null,
-            organizationId: (session.user as any).organizationId ?? null,
-            roles: (session.user as any).roles ?? undefined,
-            permissions: (session.user as any).permissions ?? undefined,
+            organizationId: session.user.organizationId ?? null,
+            roles: session.user.roles ?? undefined,
+            permissions: session.user.permissions ?? undefined,
         },
     };
 }

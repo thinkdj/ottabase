@@ -1,5 +1,15 @@
+// ============================================================
+// @ottabase/auth - First-User Bootstrap
+// ============================================================
+//
+// When the very first user account is created (credentials registration,
+// OAuth sign-in, or magic link), grant it the system "owner" role and --
+// unless multi-tenant mode is disabled -- provision a personal organization.
+//
+// ============================================================
+
 import { makeSlug } from '@ottabase/utils/url';
-import type { AuthEnv } from './backend-handler';
+import type { AuthEnv } from './types';
 
 export const SYSTEM_ORGANIZATION_ID = 'system';
 export const OWNER_ROLE_NAME = 'owner';
@@ -126,7 +136,7 @@ export async function bootstrapFirstUser(
             .bind(user.id, ownerRoleId, SYSTEM_ORGANIZATION_ID, now)
             .run();
 
-        const multiTenantFlag = (env as any).MULTI_TENANT_ENABLED;
+        const multiTenantFlag = env.MULTI_TENANT_ENABLED;
         const multiTenantEnabled = multiTenantFlag === undefined ? true : parseBooleanFlag(multiTenantFlag);
         if (multiTenantEnabled) {
             await createPersonalOrganizationIfMissing(env, user.id, user.email ?? null, user.name ?? null);
