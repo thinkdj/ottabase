@@ -467,7 +467,8 @@ entire implementation is built on `Request`, `Response`, `URL`, and `Headers` �
 runtime implements — so it also runs unmodified on:
 
 - **Deno** and **Bun**
-- **Node.js ≥ 18** (native `fetch`/`Request`/`Response`/`Headers` globals)
+- **Node.js ≥ 18.2** (native `fetch`/`Request`/`Response`/`Headers` globals; the default 404 uses the static
+  `Response.json()`, added in 18.2)
 - **Browsers**, for client-side routing over `Request`/`Response` (e.g. inside a Service Worker)
 
 `ctx` is optional on both `handle()` and `fetch()` — call them without a third argument outside Workers and

@@ -104,13 +104,26 @@ export function withHeaders(res: Response, headers: HeadersInit): Response {
     if (res.status === 101 || (res as Response & { webSocket?: unknown }).webSocket) {
         return res;
     }
-    const toSet = new Headers(headers);
+    // Replace each incoming header name once, then append — so a repeated name
+    // (most notably Set-Cookie, which Headers deliberately never combines)
+    // keeps every value instead of the last write clobbering the rest.
+    const apply = (target: Headers): void => {
+        const toSet = new Headers(headers);
+        const replaced = new Set<string>();
+        toSet.forEach((value, key) => {
+            if (!replaced.has(key)) {
+                target.delete(key);
+                replaced.add(key);
+            }
+            target.append(key, value);
+        });
+    };
     try {
-        toSet.forEach((value, key) => res.headers.set(key, value));
+        apply(res.headers);
         return res;
     } catch {
         const clone = new Response(res.body, res);
-        toSet.forEach((value, key) => clone.headers.set(key, value));
+        apply(clone.headers);
         return clone;
     }
 }
@@ -157,6 +170,9 @@ function parsePattern(pattern: string): Seg[] {
             const name = part.slice(1);
             if (name === '') {
                 throw new Error(`Invalid pattern "${pattern}": ":" must be followed by a parameter name.`);
+            }
+            if (name === '*') {
+                throw new Error(`Invalid pattern "${pattern}": ":*" is reserved — "*" is the wildcard capture key.`);
             }
             if (names.has(name)) {
                 throw new Error(`Invalid pattern "${pattern}": duplicate parameter name ":${name}".`);
@@ -215,7 +231,13 @@ function matchSegments(segs: Seg[], pathSegs: string[]): Params | null {
             if (pathSegs.length <= i) {
                 return null;
             }
-            params['*'] = pathSegs.slice(i).join('/');
+            const tail = pathSegs.slice(i);
+            // An empty segment (from "//") never matches anything, including the
+            // wildcard — "one or more remaining segments" means real segments.
+            if (tail.some((s) => s === '')) {
+                return null;
+            }
+            params['*'] = tail.join('/');
             return params;
         }
         if (pathSegs.length <= i) {
@@ -293,6 +315,11 @@ const NOOP_EXECUTION_CONTEXT: ExecutionContextLike = {
     passThroughOnException: () => undefined,
 };
 
+/** Internal marker: onError itself threw. Propagates untouched — one safety net, not two. */
+class OnErrorFailure {
+    constructor(readonly cause: unknown) {}
+}
+
 export class Router<Env = unknown> {
     private readonly routeTable: RouteEntry<Env>[] = [];
     private readonly middlewareTable: MiddlewareEntry<Env>[] = [];
@@ -315,8 +342,26 @@ export class Router<Env = unknown> {
         this.assertOpen('register routes');
         const methods = typeof method === 'string' ? [method] : method;
         const segs = parsePattern(pattern);
-        for (const m of methods) {
-            this.addRoute(m.toUpperCase(), pattern, segs, [], handler as Handler<Env, Params>, pattern);
+        const upper = methods.map((m) => m.toUpperCase());
+
+        // Validate every method against a disposable snapshot first — a
+        // conflict (including a duplicate within this same call) must leave
+        // the router untouched rather than half-registering the pattern.
+        const shape = shapeKey(segs);
+        const snapshot = new Map(this.shapes.get(shape) ?? []);
+        for (const m of upper) {
+            if (!/^[A-Z]+$/.test(m)) {
+                throw new Error(`Invalid method "${m}".`);
+            }
+            const existing = snapshot.get(m);
+            if (existing !== undefined) {
+                throw new RouteConflictError(`${m} ${existing}`, `${m} ${pattern}`);
+            }
+            snapshot.set(m, pattern);
+        }
+
+        for (const m of upper) {
+            this.addRoute(m, pattern, segs, [], handler as Handler<Env, Params>, pattern);
         }
         return this;
     }
@@ -387,15 +432,45 @@ export class Router<Env = unknown> {
         if (sub.errorHandler || sub.customNotFound) {
             throw new Error('onError/notFound belong to the root router only — remove them from the mounted router.');
         }
+        if (sub.frozen) {
+            throw new Error(
+                'This router has already been mounted (or already served a request) — mount a fresh Router instance instead.',
+            );
+        }
         const prefixSegs = parseStaticPrefix(prefix, 'mount prefix');
-        sub.frozen = true;
         const gate = opts?.when;
-        for (const route of sub.routeTable) {
+
+        const newRoutes = sub.routeTable.map((route) => {
             const pattern =
                 prefix === '/' ? route.pattern : route.pattern === '/' ? prefix : `${prefix}${route.pattern}`;
             const segs = [...prefixSegs.map((text): Seg => ({ kind: STATIC, text })), ...route.segs];
             const gates = gate ? [gate, ...route.gates] : route.gates;
-            this.addRoute(route.method, pattern, segs, gates, route.handler, pattern);
+            return { method: route.method, pattern, segs, gates, handler: route.handler };
+        });
+
+        // Validate every new route against a disposable snapshot first — a
+        // conflicting mount must leave both routers completely untouched.
+        const snapshot = new Map<string, Map<string, string>>();
+        for (const [shape, methods] of this.shapes) {
+            snapshot.set(shape, new Map(methods));
+        }
+        for (const route of newRoutes) {
+            const shape = shapeKey(route.segs);
+            let methods = snapshot.get(shape);
+            if (!methods) {
+                methods = new Map();
+                snapshot.set(shape, methods);
+            }
+            const existing = methods.get(route.method);
+            if (existing !== undefined) {
+                throw new RouteConflictError(`${route.method} ${existing}`, `${route.method} ${route.pattern}`);
+            }
+            methods.set(route.method, route.pattern);
+        }
+
+        // Validated — commit for real, then freeze the sub last.
+        for (const route of newRoutes) {
+            this.addRoute(route.method, route.pattern, route.segs, route.gates, route.handler, route.pattern);
         }
         for (const mw of sub.middlewareTable) {
             this.middlewareTable.push({
@@ -404,6 +479,7 @@ export class Router<Env = unknown> {
                 fn: mw.fn,
             });
         }
+        sub.frozen = true;
         return this;
     }
 
@@ -476,7 +552,7 @@ export class Router<Env = unknown> {
             for (const gate of gates) {
                 let pass = gateResults.get(gate);
                 if (pass === undefined) {
-                    pass = gate(c) === true;
+                    pass = !!gate(c);
                     gateResults.set(gate, pass);
                 }
                 if (!pass) {
@@ -484,6 +560,23 @@ export class Router<Env = unknown> {
                 }
             }
             return true;
+        };
+
+        // A handler-path error (route handler throw, gate throw, :param decode
+        // URIError — from either the dispatch loop or a mounted middleware's
+        // gate) is replaced by onError's Response, which unwinds through the
+        // onion like any other matched response. If onError itself throws, that
+        // failure is wrapped so the outer boundary below rethrows it untouched
+        // instead of invoking onError a second time.
+        const handleError = async (err: unknown): Promise<Response> => {
+            if (!this.errorHandler) {
+                throw err;
+            }
+            try {
+                return await this.errorHandler(err, c);
+            } catch (onErrorErr) {
+                throw new OnErrorFailure(onErrorErr);
+            }
         };
 
         const dispatch = async (): Promise<Response | null> => {
@@ -505,10 +598,7 @@ export class Router<Env = unknown> {
                         return result;
                     }
                 } catch (err) {
-                    if (this.errorHandler) {
-                        return await this.errorHandler(err, c);
-                    }
-                    throw err;
+                    return await handleError(err);
                 } finally {
                     c.params = {};
                 }
@@ -519,7 +609,13 @@ export class Router<Env = unknown> {
         const applicable = this.middlewareTable.filter((mw) => isScopePrefix(mw.scope, pathSegs));
         const runFrom = async (start: number): Promise<Response | null> => {
             for (let i = start; i < applicable.length; i++) {
-                if (!passes(applicable[i].gates)) {
+                let passed: boolean;
+                try {
+                    passed = passes(applicable[i].gates);
+                } catch (err) {
+                    return await handleError(err);
+                }
+                if (!passed) {
                     continue;
                 }
                 let called = false;
@@ -539,6 +635,9 @@ export class Router<Env = unknown> {
         try {
             return { response: await runFrom(0), c };
         } catch (err) {
+            if (err instanceof OnErrorFailure) {
+                throw err.cause;
+            }
             if (this.errorHandler) {
                 return { response: await this.errorHandler(err, c), c };
             }

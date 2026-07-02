@@ -303,26 +303,31 @@ apiRouter.all('/api/admin/queues/dlq/:jobId', (c) => handleAdminQueuesDLQJob(ctx
 
 // -------------------------------------------------------
 // Admin: DB browser (table names are charset-restricted; anything
-// else declines so the request falls through, as before)
+// else declines so the request falls through, as before).
+//
+// Registered as `*` wildcards rather than `:tableName` so the charset
+// test runs on the RAW segment: `*` captures are never auto-decoded,
+// so a percent-encoded table name (valid or malformed) simply fails
+// the charset test and falls through, exactly like the legacy regex
+// that matched against the raw pathname.
 // -------------------------------------------------------
 apiRouter.get('/api/admin/db/tables', h(handleAdminDbTables));
-apiRouter.get('/api/admin/db/tables/:tableName', (c) =>
-    TABLE_NAME.test(c.params.tableName) ? handleAdminDbTableData({ ...ctxOf(c), tableName: c.params.tableName }) : null,
-);
-apiRouter.delete('/api/admin/db/tables/:tableName', (c) =>
-    TABLE_NAME.test(c.params.tableName)
-        ? handleAdminDbTableDelete({ ...ctxOf(c), tableName: c.params.tableName })
-        : null,
-);
-apiRouter.delete('/api/admin/db/tables/:tableName/*', (c) =>
-    TABLE_NAME.test(c.params.tableName)
-        ? handleAdminDbRowDelete(
-              { ...ctxOf(c), tableName: c.params.tableName },
-              c.params['*'],
-              c.url.searchParams.get('pk') || 'id',
-          )
-        : null,
-);
+apiRouter.get('/api/admin/db/tables/*', (c) => {
+    const tableName = c.params['*'];
+    return TABLE_NAME.test(tableName) ? handleAdminDbTableData({ ...ctxOf(c), tableName }) : null;
+});
+apiRouter.delete('/api/admin/db/tables/*', (c) => {
+    const tail = c.params['*'];
+    const slashIndex = tail.indexOf('/');
+    if (slashIndex === -1) {
+        return TABLE_NAME.test(tail) ? handleAdminDbTableDelete({ ...ctxOf(c), tableName: tail }) : null;
+    }
+    const tableName = tail.slice(0, slashIndex);
+    const rowId = tail.slice(slashIndex + 1);
+    return TABLE_NAME.test(tableName)
+        ? handleAdminDbRowDelete({ ...ctxOf(c), tableName }, rowId, c.url.searchParams.get('pk') || 'id')
+        : null;
+});
 
 // -------------------------------------------------------
 // Admin: dev mail

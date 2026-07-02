@@ -806,6 +806,24 @@ describe('router dispatch parity', () => {
             expect(handleAdminDbTableDelete).not.toHaveBeenCalled();
             expect(handleAdminDbRowDelete).not.toHaveBeenCalled();
         });
+
+        it('GET /api/admin/db/tables/us%65rs (percent-encoded, decodes to alnum) still matches nothing — charset is checked on the raw segment', async () => {
+            const { response } = await dispatch('GET', '/api/admin/db/tables/us%65rs');
+            expect(response).toBeNull();
+            expect(handleAdminDbTableData).not.toHaveBeenCalled();
+        });
+
+        it('DELETE /api/admin/db/tables/%zz (malformed percent-encoding) falls through instead of 400-walling', async () => {
+            const { response } = await dispatch('DELETE', '/api/admin/db/tables/%zz');
+            expect(response).toBeNull();
+            expect(handleAdminDbTableDelete).not.toHaveBeenCalled();
+        });
+
+        it('DELETE /api/admin/db/tables/us%65rs/row-1 (percent-encoded table name) falls through, not routed as a row delete', async () => {
+            const { response } = await dispatch('DELETE', '/api/admin/db/tables/us%65rs/row-1');
+            expect(response).toBeNull();
+            expect(handleAdminDbRowDelete).not.toHaveBeenCalled();
+        });
     });
 
     describe('admin dev-mail', () => {

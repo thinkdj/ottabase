@@ -276,13 +276,16 @@ describe('withHeaders()', () => {
         expect(out.headers.get('x-b')).toBe('2');
     });
 
-    it('returns a CLONE (headers set, status/body/existing headers preserved) when headers.set throws', async () => {
+    it('returns a CLONE (headers set, status/body/existing headers preserved) when headers are immutable', async () => {
         const res = new Response('payload', { status: 201, headers: { 'x-orig': 'kept' } });
-        Object.defineProperty(res.headers, 'set', {
-            value: () => {
-                throw new TypeError('immutable headers');
-            },
-        });
+        // A genuinely immutable Headers instance throws on every mutator, not just set().
+        for (const method of ['set', 'delete', 'append'] as const) {
+            Object.defineProperty(res.headers, method, {
+                value: () => {
+                    throw new TypeError('immutable headers');
+                },
+            });
+        }
 
         const out = withHeaders(res, { 'x-new': '1' });
 
