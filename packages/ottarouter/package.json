@@ -1,0 +1,62 @@
+{
+    "name": "@ottabase/ottarouter",
+    "version": "0.0.1",
+    "description": "The simplest opinionated router for Cloudflare Workers. Zero dependencies, deterministic precedence (static > param > wildcard), middleware, sub-router mounting, and clean fall-through.",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "cloudflare",
+        "workers",
+        "router",
+        "routing",
+        "middleware",
+        "edge",
+        "fetch",
+        "typescript",
+        "zero-dependency",
+        "ottabase"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "devDependencies": {
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/ottarouter"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/ottarouter#readme"
+}

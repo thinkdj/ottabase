@@ -47,6 +47,7 @@ export default defineConfig({
             '@ottabase/cf-ai': path.resolve(__dirname, '../../packages/cf-ai/src/index.ts'),
             '@ottabase/cf-realtime/server': path.resolve(__dirname, './src/test-mocks/cf-realtime-server.ts'),
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
+            '@ottabase/ottarouter': path.resolve(__dirname, '../../packages/ottarouter/src/index.ts'),
             '@ottabase/auth/backend': path.resolve(__dirname, '../../packages/auth/src/backend-handler'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../../packages/utils/src/http-response'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors'),

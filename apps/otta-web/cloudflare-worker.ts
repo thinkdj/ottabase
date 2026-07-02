@@ -6,7 +6,7 @@ import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from 
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
-import { resolveApiRoute } from './worker/routes/router';
+import { handleApiRequest } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
 
 export { RealtimeActor };
@@ -73,46 +73,8 @@ export default {
                 ensureDbConnection(env);
             }
 
-            const origin = request.headers.get('Origin') || '*';
-            const route = normalizedPathname;
-            const method = request.method;
-            const corsHeaders = {
-                'Access-Control-Allow-Origin': origin,
-                'Access-Control-Allow-Credentials': 'true',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-                Vary: 'Origin',
-            };
-            const withAuthCors = (response: Response) => {
-                try {
-                    Object.entries(corsHeaders).forEach(([key, value]) => {
-                        response.headers.set(key, value);
-                    });
-                    return response;
-                } catch {
-                    // Headers are immutable (e.g. from cache or subrequest) — clone to get mutable headers
-                    const cloned = response.clone();
-                    const headers = new Headers(cloned.headers);
-                    Object.entries(corsHeaders).forEach(([key, value]) => {
-                        headers.set(key, value);
-                    });
-                    return new Response(cloned.body, {
-                        status: cloned.status,
-                        statusText: cloned.statusText,
-                        headers,
-                    });
-                }
-            };
-
-            const apiResponse = await resolveApiRoute({
-                request,
-                env,
-                url,
-                route,
-                method,
-                withAuthCors,
-                corsHeaders,
-            });
+            // API routes (built-ins, then user-zone custom routes) — null falls through
+            const apiResponse = await handleApiRequest(request, env);
 
             if (apiResponse) {
                 return apiResponse;
