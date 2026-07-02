@@ -11,7 +11,7 @@
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
-import { createSessionCookieForUser, hashPassword } from '@ottabase/auth/backend';
+import { bootstrapFirstUser, createSessionCookieForUser, hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     autoInit,
@@ -89,9 +89,12 @@ function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     const { env, request, url } = context;
     const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
 
-    // If no secret is configured, allow in non-production
+    // If no secret is configured, only allow in an EXPLICIT dev environment. An unset or
+    // unknown ENVIRONMENT is treated as production and denied, so a real deploy cannot run
+    // the owner-creation wizard unauthenticated just because ENVIRONMENT wasn't set.
     if (!expectedSecret) {
-        return (env as any).ENVIRONMENT !== 'production';
+        const environment = String((env as any).ENVIRONMENT || '').toLowerCase();
+        return ['development', 'dev', 'test', 'local'].includes(environment);
     }
 
     const headerSecret = request.headers.get('X-Bootstrap-Secret');
@@ -553,6 +556,12 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 500,
             );
         }
+
+        // Claim the SYSTEM-scope owner grant for this account. provisionDefaultOrganizationForUser
+        // only assigns the owner role at the personal-organization scope; without this the
+        // system-scope owner slot stays unclaimed, so the first person to sign in afterwards
+        // would seize global ownership via bootstrapFirstUser. This is idempotent.
+        await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
         const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];

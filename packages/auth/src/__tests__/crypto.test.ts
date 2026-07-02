@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
     base64UrlDecode,
     base64UrlEncode,
+    getDummyPasswordHash,
     hashPassword,
+    hashToken,
     hmacSign,
     hmacVerify,
     randomBytes,
@@ -25,6 +27,24 @@ describe('password hashing (PBKDF2-SHA256)', () => {
     it('verifies the correct password', async () => {
         const hash = await hashPassword('correct horse battery staple');
         await expect(verifyPassword('correct horse battery staple', hash)).resolves.toBe(true);
+    });
+
+    it('returns false (never throws) for malformed / corrupt hashes', async () => {
+        await expect(verifyPassword('x', '')).resolves.toBe(false);
+        await expect(verifyPassword('x', 'not-a-hash')).resolves.toBe(false);
+        await expect(verifyPassword('x', 'pbkdf2$100000$notbase64!!!$alsobad')).resolves.toBe(false);
+        await expect(verifyPassword('x', 'pbkdf2$abc$AAAA$BBBB')).resolves.toBe(false); // non-numeric iterations
+        await expect(verifyPassword('x', 'pbkdf2$999999999$AAAA$BBBB')).resolves.toBe(false); // over the 100k cap
+        await expect(verifyPassword('x', 'pbkdf2$1.5$AAAA$BBBB')).resolves.toBe(false); // float iterations
+    });
+
+    it('provides a stable, valid dummy hash for timing equalization', async () => {
+        const dummy = await getDummyPasswordHash();
+        expect(dummy.startsWith('pbkdf2$')).toBe(true);
+        // It is a real (always-failing) hash: verifying any password against it returns false, not throws.
+        await expect(verifyPassword('anything', dummy)).resolves.toBe(false);
+        // Memoized: same reference/value across calls.
+        expect(await getDummyPasswordHash()).toBe(dummy);
     });
 
     it('rejects an incorrect password', async () => {
@@ -101,6 +121,19 @@ describe('sha256Base64Url', () => {
         const a = await sha256Base64Url('a');
         const b = await sha256Base64Url('b');
         expect(a).not.toBe(b);
+    });
+});
+
+describe('hashToken', () => {
+    it('is deterministic and URL-safe (for at-rest token hashing)', async () => {
+        const a = await hashToken('verification-token-abc');
+        const b = await hashToken('verification-token-abc');
+        expect(a).toBe(b);
+        expect(a).toMatch(/^[A-Za-z0-9_-]+$/);
+    });
+
+    it('differs for different tokens', async () => {
+        expect(await hashToken('token-a')).not.toBe(await hashToken('token-b'));
     });
 });
 

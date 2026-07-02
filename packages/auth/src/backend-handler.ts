@@ -14,8 +14,8 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Account, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { bootstrapFirstUser } from './bootstrap';
-import { serializeCookie, isHttpsRequest, parseCookies, clearCookie } from './cookies';
-import { hashPassword, verifyPassword, randomToken } from './crypto';
+import { serializeCookie, parseCookies, clearCookie } from './cookies';
+import { hashPassword, verifyPassword, randomToken, getDummyPasswordHash, hashToken } from './crypto';
 import { createCsrfCookiePair, verifyCsrfToken } from './csrf';
 import { signJwt, verifyJwt } from './jwt';
 import { exchangeCodeForTokens, fetchUserProfile, buildAuthorizationUrl, createPkcePair } from './providers/oauth-client';
@@ -25,7 +25,9 @@ import {
     buildClearSessionCookie,
     createSessionCookieForUser,
     getSession,
+    isProductionCookieEnv,
     resolveAuthSecret,
+    resolveSecureCookie,
     resolveSessionCookieName,
     resolveSessionMaxAge,
     revokeSession,
@@ -33,14 +35,47 @@ import {
 import type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
 
 export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAuthorizeOptions } from './types';
-export { hashPassword, verifyPassword } from './crypto';
+export { hashPassword, verifyPassword, hashToken } from './crypto';
+export { bootstrapFirstUser } from './bootstrap';
 export { getSession, revokeAllUserSessions, revokeSession, createSessionCookieForUser } from './session-store';
 
-const CSRF_COOKIE = 'ottabase.csrf-token';
+const CSRF_COOKIE_BASE = 'ottabase.csrf-token';
 const CSRF_COOKIE_MAX_AGE = 60 * 60; // 1 hour
-const OAUTH_STATE_COOKIE = 'ottabase.oauth-state';
+const OAUTH_STATE_COOKIE_BASE = 'ottabase.oauth-state';
 const OAUTH_STATE_MAX_AGE = 10 * 60; // 10 minutes
 const MAGIC_LINK_MAX_AGE_SECONDS = 15 * 60; // 15 minutes -- short-lived, unlike the app's own 24h email-verification links
+
+// __Host- pins to the exact host with Path=/ (used for the root-scoped CSRF cookie);
+// the OAuth-state cookie is scoped to Path=/api/auth so it can only use __Secure-.
+function csrfCookieName(env: AuthEnv): string {
+    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${CSRF_COOKIE_BASE}`;
+}
+function oauthStateCookieName(env: AuthEnv): string {
+    return `${isProductionCookieEnv(env) ? '__Secure-' : ''}${OAUTH_STATE_COOKIE_BASE}`;
+}
+
+/**
+ * Origin allowlist check for state-changing requests: a browser always sends `Origin`
+ * on cross-origin (and most same-origin) POSTs, so a present-but-mismatched Origin is
+ * rejected as a defense-in-depth backstop to the double-submit CSRF token. A missing
+ * Origin (some non-browser clients) falls through to the CSRF-token check.
+ */
+function isTrustedOrigin(request: Request, env: AuthEnv): boolean {
+    const origin = request.headers.get('Origin');
+    if (!origin) return true;
+    try {
+        const submitted = new URL(origin).origin;
+        const allowed = new Set<string>([new URL(request.url).origin]);
+        try {
+            allowed.add(new URL(resolveFrontendUrl(env)).origin);
+        } catch {
+            // ignore malformed configured URL
+        }
+        return allowed.has(submitted);
+    } catch {
+        return false;
+    }
+}
 
 function jsonResponse(data: unknown, status = 200, extraHeaders?: HeadersInit): Response {
     const headers = new Headers({ 'Content-Type': 'application/json' });
@@ -95,10 +130,16 @@ async function defaultCredentialsAuthorize(
 
     ensureOrmConnection(env);
     const user = await User.first({ email });
-    if (!user) return null;
 
-    const passwordHash = user.get('passwordHash') as string | null;
-    if (!passwordHash) return null;
+    const passwordHash = (user?.get('passwordHash') as string | null) ?? null;
+
+    // Equalize timing between "no such user / no password set" and "wrong password":
+    // both paths run exactly one PBKDF2 derive, so response time does not reveal whether
+    // an account exists (user-enumeration oracle).
+    if (!user || !passwordHash) {
+        await verifyPassword(password, await getDummyPasswordHash());
+        return null;
+    }
 
     const valid = await verifyPassword(password, passwordHash);
     if (!valid) return null;
@@ -148,9 +189,9 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
 async function handleCsrf(env: AuthEnv, request: Request): Promise<Response> {
     const secret = resolveAuthSecret(env);
     const { token, cookieValue } = await createCsrfCookiePair(secret);
-    const cookie = serializeCookie(CSRF_COOKIE, cookieValue, {
+    const cookie = serializeCookie(csrfCookieName(env), cookieValue, {
         maxAgeSeconds: CSRF_COOKIE_MAX_AGE,
-        secure: isHttpsRequest(request),
+        secure: resolveSecureCookie(env, request),
         sameSite: 'Lax',
         httpOnly: true,
     });
@@ -163,9 +204,11 @@ async function handleGetSession(request: Request, env: AuthEnv, options: CreateA
 }
 
 async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<boolean> {
+    // Defense in depth: reject a mismatched Origin outright before the token check.
+    if (!isTrustedOrigin(request, env)) return false;
     const cookies = parseCookies(request.headers.get('Cookie'));
     const secret = resolveAuthSecret(env);
-    return verifyCsrfToken(cookies[CSRF_COOKIE], typeof submittedToken === 'string' ? submittedToken : undefined, secret);
+    return verifyCsrfToken(cookies[csrfCookieName(env)], typeof submittedToken === 'string' ? submittedToken : undefined, secret);
 }
 
 async function handleCredentialsCallback(
@@ -232,11 +275,11 @@ async function handleOAuthSignIn(
     const state = randomToken(16);
     const { codeVerifier, codeChallenge } = await createPkcePair();
 
-    const statePayload = { state, codeVerifier, callbackUrl, providerId };
+    const statePayload = { state, codeVerifier, callbackUrl, providerId, purpose: 'oauth-state' };
     const stateToken = await signJwt(statePayload, resolveAuthSecret(env), { expiresInSeconds: OAUTH_STATE_MAX_AGE });
-    const stateCookie = serializeCookie(OAUTH_STATE_COOKIE, stateToken, {
+    const stateCookie = serializeCookie(oauthStateCookieName(env), stateToken, {
         maxAgeSeconds: OAUTH_STATE_MAX_AGE,
-        secure: isHttpsRequest(request),
+        secure: resolveSecureCookie(env, request),
         sameSite: 'Lax',
         httpOnly: true,
         path: '/api/auth',
@@ -248,6 +291,15 @@ async function handleOAuthSignIn(
     return new Response(null, { status: 302, headers: { Location: authorizationUrl, 'Set-Cookie': stateCookie } });
 }
 
+/** Redirect to the error page and clear the OAuth-state cookie (cleaned up on every terminal path). */
+function oauthErrorRedirect(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string, request: Request): Response {
+    const errorPage = options?.authConfig?.pages?.error || '/login';
+    const separator = errorPage.includes('?') ? '&' : '?';
+    const location = `${resolveFrontendUrl(env)}${errorPage}${separator}error=${encodeURIComponent(code)}`;
+    const clearState = clearCookie(oauthStateCookieName(env), { secure: resolveSecureCookie(env, request), path: '/api/auth' });
+    return new Response(null, { status: 302, headers: [['Location', location], ['Set-Cookie', clearState]] });
+}
+
 async function handleOAuthCallback(
     request: Request,
     env: AuthEnv,
@@ -257,30 +309,38 @@ async function handleOAuthCallback(
     const url = new URL(request.url);
 
     if (url.searchParams.get('error')) {
-        return errorRedirect(env, options, 'OAuthSignin');
+        return oauthErrorRedirect(env, options, 'OAuthSignin', request);
     }
 
     const code = url.searchParams.get('code');
     const stateParam = url.searchParams.get('state');
     const cookies = parseCookies(request.headers.get('Cookie'));
-    const stateToken = cookies[OAUTH_STATE_COOKIE];
+    const stateToken = cookies[oauthStateCookieName(env)];
 
     if (!code || !stateParam || !stateToken) {
-        return errorRedirect(env, options, 'OAuthCallback');
+        return oauthErrorRedirect(env, options, 'OAuthCallback', request);
     }
 
-    const statePayload = await verifyJwt<{ state: string; codeVerifier: string; callbackUrl: string; providerId: string }>(
-        stateToken,
-        resolveAuthSecret(env),
-    );
+    const statePayload = await verifyJwt<{
+        state: string;
+        codeVerifier: string;
+        callbackUrl: string;
+        providerId: string;
+        purpose?: string;
+    }>(stateToken, resolveAuthSecret(env));
 
-    if (!statePayload || statePayload.state !== stateParam || statePayload.providerId !== providerId) {
-        return errorRedirect(env, options, 'OAuthCallback');
+    if (
+        !statePayload ||
+        statePayload.purpose !== 'oauth-state' ||
+        statePayload.state !== stateParam ||
+        statePayload.providerId !== providerId
+    ) {
+        return oauthErrorRedirect(env, options, 'OAuthCallback', request);
     }
 
     const provider = getConfiguredProvider(providerId, env);
     if (!provider) {
-        return errorRedirect(env, options, 'OAuthSignin');
+        return oauthErrorRedirect(env, options, 'OAuthSignin', request);
     }
 
     let userId!: string;
@@ -295,7 +355,7 @@ async function handleOAuthCallback(
         const profile = await fetchUserProfile(provider, tokens);
 
         if (!profile.email) {
-            return errorRedirect(env, options, 'OAuthCallback');
+            return oauthErrorRedirect(env, options, 'OAuthCallback', request);
         }
 
         const normalizedEmail = profile.email.trim().toLowerCase();
@@ -306,7 +366,7 @@ async function handleOAuthCallback(
 
         if (existingAccount) {
             const user = await User.find(String(existingAccount.get('userId')));
-            if (!user) return errorRedirect(env, options, 'OAuthCallback');
+            if (!user) return oauthErrorRedirect(env, options, 'OAuthCallback', request);
             userId = String(user.get('id'));
             userEmail = String(user.get('email'));
             userName = (user.get('name') as string | null) ?? null;
@@ -322,7 +382,7 @@ async function handleOAuthCallback(
                 // register an OAuth identity with a matching (possibly unverified) email
                 // hijack an existing account. Require the user to sign in with their
                 // existing method first and link providers explicitly.
-                return errorRedirect(env, options, 'OAuthAccountNotLinked');
+                return oauthErrorRedirect(env, options, 'OAuthAccountNotLinked', request);
             }
 
             const newUser = await User.create({
@@ -338,18 +398,30 @@ async function handleOAuthCallback(
             userImage = profile.image;
             emailVerifiedAt = profile.emailVerified ? Date.now() : null;
 
-            await Account.create({
-                userId,
-                type: 'oauth',
-                provider: providerId,
-                providerAccountId: profile.providerAccountId,
-                accessToken: tokens.access_token ?? null,
-                refreshToken: tokens.refresh_token ?? null,
-                idToken: tokens.id_token ?? null,
-                tokenType: tokens.token_type ?? null,
-                scope: tokens.scope ?? null,
-                expiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + Number(tokens.expires_in) : null,
-            });
+            try {
+                await Account.create({
+                    userId,
+                    type: 'oauth',
+                    provider: providerId,
+                    providerAccountId: profile.providerAccountId,
+                    accessToken: tokens.access_token ?? null,
+                    refreshToken: tokens.refresh_token ?? null,
+                    idToken: tokens.id_token ?? null,
+                    tokenType: tokens.token_type ?? null,
+                    scope: tokens.scope ?? null,
+                    expiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + Number(tokens.expires_in) : null,
+                });
+            } catch (accountError) {
+                // Roll back the just-created user so a failed Account insert does not leave an
+                // orphan user row -- which would otherwise trip the "existingUser but no account"
+                // branch above and lock this email into OAuthAccountNotLinked forever.
+                try {
+                    await User.delete(userId);
+                } catch (cleanupError) {
+                    console.error('Failed to roll back orphaned OAuth user:', cleanupError);
+                }
+                throw accountError;
+            }
         }
 
         // OAuth identity providers are trusted to have verified the user's email themselves --
@@ -362,7 +434,13 @@ async function handleOAuthCallback(
         }
     } catch (error) {
         console.error(`OAuth callback failed for provider "${providerId}":`, error);
-        return errorRedirect(env, options, 'OAuthCallback');
+        return oauthErrorRedirect(env, options, 'OAuthCallback', request);
+    }
+
+    // Honor the verified-email requirement for OAuth too: if the deployment requires a
+    // verified email and this provider did not assert one, do not sign the user in.
+    if (options.requireVerifiedEmail && !emailVerifiedAt) {
+        return oauthErrorRedirect(env, options, 'Verification', request);
     }
 
     await bootstrapFirstUser(env, { id: userId, email: userEmail, name: userName });
@@ -375,7 +453,7 @@ async function handleOAuthCallback(
         options,
     );
 
-    const clearState = clearCookie(OAUTH_STATE_COOKIE, { secure: isHttpsRequest(request), path: '/api/auth' });
+    const clearState = clearCookie(oauthStateCookieName(env), { secure: resolveSecureCookie(env, request), path: '/api/auth' });
 
     return new Response(null, {
         status: 302,
@@ -406,20 +484,32 @@ async function handleMagicLinkSend(request: Request, env: AuthEnv, options: Crea
 
     ensureOrmConnection(env);
     const identifier = `login:${email}`;
+    // The plaintext token goes only in the emailed link; the database stores just its
+    // hash, so a DB read leak cannot be replayed to mint a session.
     const token = randomToken(32);
+    const tokenHash = await hashToken(token);
     const expiresAtMs = Date.now() + MAGIC_LINK_MAX_AGE_SECONDS * 1000;
 
-    await VerificationToken.create({ identifier, token, expires: expiresAtMs });
+    // Invalidate any prior outstanding link for this email (one active link at a time).
+    await VerificationToken.deleteByIdentifier(identifier).catch(() => {});
+    await VerificationToken.create({ identifier, token: tokenHash, expires: expiresAtMs });
 
     const callbackUrl = sanitizeCallbackPath(body.callbackUrl);
-    const verifyUrl = new URL(request.url);
-    verifyUrl.pathname = '/api/auth/callback/email';
-    verifyUrl.search = '';
+    // Derive the link origin from the configured frontend URL, NOT the incoming Host
+    // header, so a spoofed/forwarded Host cannot poison the emailed link.
+    const verifyUrl = new URL('/api/auth/callback/email', resolveFrontendUrl(env));
     verifyUrl.searchParams.set('token', token);
     verifyUrl.searchParams.set('email', email);
     verifyUrl.searchParams.set('callbackUrl', callbackUrl);
 
-    await sender.send({ identifier: email, url: verifyUrl.toString(), expires: new Date(expiresAtMs) });
+    try {
+        await sender.send({ identifier: email, url: verifyUrl.toString(), expires: new Date(expiresAtMs) });
+    } catch (error) {
+        // Don't leave a live token behind if the email never went out.
+        await VerificationToken.deleteByIdentifierAndToken(identifier, tokenHash).catch(() => {});
+        console.error('Failed to send magic link email:', error);
+        return jsonResponse({ error: 'Failed to send magic link' }, 502);
+    }
 
     return jsonResponse({ success: true });
 }
@@ -436,15 +526,16 @@ async function handleMagicLinkCallback(request: Request, env: AuthEnv, options: 
 
     ensureOrmConnection(env);
     const identifier = `login:${email}`;
-    const verification = await VerificationToken.findByIdentifierAndToken(identifier, token);
+    const tokenHash = await hashToken(token);
+    // Atomic single-use consume: exactly one concurrent request can win the delete, so
+    // the same link cannot be redeemed twice (double-spend race).
+    const verification = await VerificationToken.consumeByIdentifierAndToken(identifier, tokenHash);
 
     if (!verification) {
         return errorRedirect(env, options, 'Verification');
     }
 
     const expiresAt = Number(verification.get('expires'));
-    await VerificationToken.deleteByIdentifierAndToken(identifier, token);
-
     if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
         return errorRedirect(env, options, 'Verification');
     }

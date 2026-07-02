@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCookies } from '../cookies';
+import { signJwt } from '../jwt';
 import {
     createSessionCookieForUser,
     createSessionForUser,
@@ -9,9 +10,11 @@ import {
     resolveSessionMaxAge,
     revokeAllUserSessions,
     revokeSession,
-    SESSION_COOKIE_DEFAULT,
+    SESSION_COOKIE_BASE,
 } from '../session-store';
 import type { AuthEnv } from '../types';
+
+const TEST_SECRET = 'test-secret-at-least-32-chars-long!!';
 
 /** Minimal in-memory KVNamespace stand-in -- just enough of the surface `session-store.ts` uses. */
 function createFakeKv() {
@@ -32,7 +35,7 @@ function createFakeKv() {
 
 function createEnv(overrides: Partial<AuthEnv> = {}): AuthEnv {
     return {
-        AUTH_SECRET: 'test-secret',
+        AUTH_SECRET: TEST_SECRET,
         ENVIRONMENT: 'test',
         OBCF_KV: createFakeKv(),
         ...overrides,
@@ -43,15 +46,37 @@ function cookieHeaderRequest(cookieHeader: string) {
     return new Request('https://app.example.com/api/auth/session', { headers: { Cookie: cookieHeader } });
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 describe('resolveAuthSecret', () => {
     it('returns the configured secret', () => {
-        expect(resolveAuthSecret(createEnv({ AUTH_SECRET: 'my-secret' }))).toBe('my-secret');
+        expect(resolveAuthSecret(createEnv({ AUTH_SECRET: 'a-sufficiently-long-secret-value' }))).toBe(
+            'a-sufficiently-long-secret-value',
+        );
     });
 
-    it('falls back to an insecure default outside production', () => {
-        expect(resolveAuthSecret(createEnv({ AUTH_SECRET: undefined, ENVIRONMENT: 'development' }))).toBe(
-            'dev-secret-change-in-production',
+    it('rejects a too-short secret', () => {
+        expect(() => resolveAuthSecret(createEnv({ AUTH_SECRET: 'short' }))).toThrow(/too short/);
+    });
+
+    it('uses the insecure default ONLY with a dev env AND the explicit opt-in flag', () => {
+        expect(
+            resolveAuthSecret(
+                createEnv({ AUTH_SECRET: undefined, ENVIRONMENT: 'development', AUTH_ALLOW_INSECURE_DEV_SECRET: 'true' }),
+            ),
+        ).toBe('dev-secret-change-in-production');
+    });
+
+    it('fails closed when the opt-in flag is absent even in a dev env', () => {
+        expect(() => resolveAuthSecret(createEnv({ AUTH_SECRET: undefined, ENVIRONMENT: 'development' }))).toThrow(
+            /AUTH_SECRET is required/,
         );
+    });
+
+    it('fails closed when ENVIRONMENT is unset (treated as production)', () => {
+        expect(() =>
+            resolveAuthSecret(createEnv({ AUTH_SECRET: undefined, ENVIRONMENT: undefined, AUTH_ALLOW_INSECURE_DEV_SECRET: 'true' })),
+        ).toThrow(/AUTH_SECRET is required/);
     });
 
     it('throws when missing in production', () => {
@@ -75,152 +100,173 @@ describe('resolveSessionMaxAge', () => {
     });
 });
 
+describe('cookie name hardening', () => {
+    it('uses no prefix in a dev/test environment', () => {
+        expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'test' }))).toBe(SESSION_COOKIE_BASE);
+    });
+
+    it('applies the __Host- prefix in production', () => {
+        expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'production' }))).toBe(`__Host-${SESSION_COOKIE_BASE}`);
+    });
+
+    it('honors a custom cookie name from AUTH_COOKIE_NAME', () => {
+        expect(resolveSessionCookieName(createEnv({ AUTH_COOKIE_NAME: 'my-app.session' }))).toBe('my-app.session');
+    });
+});
+
 describe('createSessionForUser + getSession round-trip', () => {
-    it('creates a verifiable session carrying the provided org/roles/permissions', async () => {
+    it('carries org/roles/permissions via the KV snapshot, not the cookie', async () => {
         const env = createEnv();
         const created = await createSessionForUser(
             { id: 'user-1', email: 'user@example.com', name: 'User One', organizationId: 'org-1', roles: ['owner'], permissions: ['*:*'] },
             env,
         );
 
-        expect(created.user.id).toBe('user-1');
-        expect(created.user.organizationId).toBe('org-1');
         expect(created.user.roles).toEqual(['owner']);
+        // The heavy claims must NOT be embedded in the cookie JWT (4KB cap protection).
+        const jwtPayload = JSON.parse(atob(created.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        expect(jwtPayload.permissions).toBeUndefined();
+        expect(jwtPayload.roles).toBeUndefined();
 
-        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${created.token}`);
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${created.token}`);
         const session = await getSession(request, env);
 
-        expect(session).not.toBeNull();
         expect(session?.user.id).toBe('user-1');
         expect(session?.user.email).toBe('user@example.com');
         expect(session?.user.roles).toEqual(['owner']);
+        expect(session?.user.permissions).toEqual(['*:*']);
+        expect(session?.user.organizationId).toBe('org-1');
     });
 
     it('returns null when there is no session cookie', async () => {
-        const env = createEnv();
         const request = new Request('https://app.example.com/api/auth/session');
-        await expect(getSession(request, env)).resolves.toBeNull();
+        await expect(getSession(request, createEnv())).resolves.toBeNull();
     });
 
     it('returns null for a token signed with a different secret', async () => {
-        const env = createEnv({ AUTH_SECRET: 'secret-a' });
-        const created = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
-
-        const otherEnv = createEnv({ AUTH_SECRET: 'secret-b', OBCF_KV: env.OBCF_KV });
-        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${created.token}`);
+        const env = createEnv({ AUTH_SECRET: 'secret-a-least-32-characters-long!!' });
+        const created = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        const otherEnv = createEnv({ AUTH_SECRET: 'secret-b-least-32-characters-long!!', OBCF_KV: env.OBCF_KV });
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${created.token}`);
         await expect(getSession(request, otherEnv)).resolves.toBeNull();
     });
+});
 
-    it('honors a custom cookie name from AUTH_COOKIE_NAME', async () => {
-        const env = createEnv({ AUTH_COOKIE_NAME: 'my-app.session' });
-        const created = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+describe('KV eventual-consistency grace window', () => {
+    it('tolerates a missing registry record for a freshly-issued session (self-heal window)', async () => {
+        const env = createEnv();
+        const created = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
 
-        expect(resolveSessionCookieName(env)).toBe('my-app.session');
-        const request = cookieHeaderRequest(`my-app.session=${created.token}`);
+        // Simulate the registry write not having propagated to this colo yet.
+        (env.OBCF_KV as any).store.clear();
+
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${created.token}`);
+        // Within grace + no D1 to self-heal from -> still a valid session built from the JWT identity.
         await expect(getSession(request, env)).resolves.not.toBeNull();
+    });
+
+    it('rejects a session past the grace window whose registry record is gone', async () => {
+        const env = createEnv();
+        // Hand-sign a token with an old iat (issued ~10 minutes ago), no registry record.
+        const oldIat = Math.floor(Date.now() / 1000) - 600;
+        const token = await signJwt(
+            { sub: 'user-1', jti: 'jti-old', email: 'u@e.com', iat: oldIat },
+            TEST_SECRET,
+            { expiresInSeconds: 3600 },
+        );
+        const request = cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${token}`);
+        await expect(getSession(request, env)).resolves.toBeNull();
     });
 });
 
 describe('session revocation', () => {
-    it('revokeSession invalidates only that session, not other sessions for the same user', async () => {
+    it('revokeSession invalidates only that session (per-jti tombstone)', async () => {
         const env = createEnv();
-        const sessionA = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
-        const sessionB = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const a = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        const b = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
 
-        await revokeSession('user-1', sessionA.jti, env);
+        await revokeSession('user-1', a.jti, env);
 
-        const requestA = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${sessionA.token}`);
-        const requestB = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${sessionB.token}`);
-
-        await expect(getSession(requestA, env)).resolves.toBeNull();
-        await expect(getSession(requestB, env)).resolves.not.toBeNull();
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${a.token}`), env)).resolves.toBeNull();
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${b.token}`), env)).resolves.not.toBeNull();
     });
 
-    it('revokeAllUserSessions invalidates every session issued before the call', async () => {
+    it('the sign-out tombstone wins even inside the grace window', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const a = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        await revokeSession('user-1', a.jti, env); // deletes registry, writes tombstone
+        // Freshly issued + registry gone would normally be tolerated by the grace window,
+        // but the tombstone must still reject it.
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${a.token}`), env)).resolves.toBeNull();
+    });
 
+    it('revokeAllUserSessions invalidates sessions issued before the call', async () => {
+        const env = createEnv();
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        await delay(3); // ensure the revoke timestamp is strictly after creation
         await revokeAllUserSessions('user-1', env);
-
-        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
-        await expect(getSession(request, env)).resolves.toBeNull();
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${session.token}`), env)).resolves.toBeNull();
     });
 
-    it('fails closed (rejects the session) when OBCF_KV is not bound', async () => {
+    it('a session reissued after revoke-all survives (ms granularity, strict comparison)', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        await revokeAllUserSessions('user-1', env);
+        await delay(3);
+        const reissued = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${reissued.token}`), env)).resolves.not.toBeNull();
+    });
 
+    it('fails closed when OBCF_KV is not bound', async () => {
+        const env = createEnv();
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
         const envWithoutKv = createEnv({ OBCF_KV: undefined });
-        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
-        await expect(getSession(request, envWithoutKv)).resolves.toBeNull();
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${session.token}`), envWithoutKv)).resolves.toBeNull();
     });
 
-    it('fails closed (rejects the session) when the KV registry read throws', async () => {
+    it('fails closed when the KV read throws', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
-
-        const throwingKv = {
-            ...env.OBCF_KV,
-            get: async () => {
-                throw new Error('KV outage');
-            },
-        };
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] }, env);
+        const throwingKv = { get: async () => { throw new Error('KV outage'); }, put: async () => {}, delete: async () => {} };
         const flakyEnv = createEnv({ OBCF_KV: throwingKv as any });
-        const request = cookieHeaderRequest(`${SESSION_COOKIE_DEFAULT}=${session.token}`);
-        await expect(getSession(request, flakyEnv)).resolves.toBeNull();
+        await expect(getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${session.token}`), flakyEnv)).resolves.toBeNull();
     });
 });
 
 describe('createSessionCookieForUser', () => {
-    it('builds a Set-Cookie string with the session token and security flags', async () => {
+    it('builds a Set-Cookie with the token and security flags over https', async () => {
         const env = createEnv();
-        const request = new Request('https://app.example.com/');
         const { cookie } = await createSessionCookieForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
+            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
             env,
-            request,
+            new Request('https://app.example.com/'),
         );
-
-        expect(cookie).toContain(`${SESSION_COOKIE_DEFAULT}=`);
+        expect(cookie).toContain(`${SESSION_COOKIE_BASE}=`);
         expect(cookie).toContain('HttpOnly');
         expect(cookie).toContain('Secure');
         expect(cookie).toContain('SameSite=Lax');
 
-        const [, tokenPart] = cookie.split('=');
-        const token = tokenPart.split(';')[0];
-        expect(parseCookies(`${SESSION_COOKIE_DEFAULT}=${token}`)[SESSION_COOKIE_DEFAULT]).toBe(token);
+        const token = cookie.split('=')[1].split(';')[0];
+        expect(parseCookies(`${SESSION_COOKIE_BASE}=${token}`)[SESSION_COOKIE_BASE]).toBe(token);
     });
 
-    it('omits Secure over a plain-http request', async () => {
+    it('omits Secure over a plain-http request in a dev env', async () => {
         const env = createEnv();
-        const request = new Request('http://localhost:3004/');
         const { cookie } = await createSessionCookieForUser(
-            { id: 'user-1', email: 'user@example.com', organizationId: null, roles: [], permissions: [] },
+            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
             env,
-            request,
+            new Request('http://localhost:3004/'),
         );
-
         expect(cookie).not.toContain('Secure');
+    });
+
+    it('forces Secure in production even over a plain-http (proxied) request', async () => {
+        const env = createEnv({ ENVIRONMENT: 'production' });
+        const { cookie } = await createSessionCookieForUser(
+            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
+            env,
+            new Request('http://internal/'),
+        );
+        expect(cookie).toContain('Secure');
+        expect(cookie).toContain(`__Host-${SESSION_COOKIE_BASE}=`);
     });
 });

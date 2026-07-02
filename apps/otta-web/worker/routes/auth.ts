@@ -1,4 +1,12 @@
-import { getSession, handleAuthRequest, hashPassword, verifyPassword } from '@ottabase/auth/backend';
+import {
+    createSessionCookieForUser,
+    getSession,
+    handleAuthRequest,
+    hashPassword,
+    hashToken,
+    revokeAllUserSessions,
+    verifyPassword,
+} from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
 import { userKey } from '@ottabase/cf/cache-keys';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
@@ -135,7 +143,9 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
     }
 
     const identifier = `verify:${email}`;
-    const verification = await VerificationToken.findByIdentifierAndToken(identifier, token);
+    const tokenHash = await hashToken(token);
+    // Atomic single-use consume (tokens are stored hashed).
+    const verification = await VerificationToken.consumeByIdentifierAndToken(identifier, tokenHash);
     if (!verification) {
         return withAuthCors(
             errorResponse('Verification token is invalid or expired', 400, {
@@ -146,7 +156,6 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
 
     const expiresAt = Number(verification.get('expires'));
     if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
-        await VerificationToken.deleteByIdentifierAndToken(identifier, token);
         return withAuthCors(
             errorResponse('Verification token is invalid or expired', 400, {
                 code: 'TOKEN_EXPIRED',
@@ -159,8 +168,6 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
         user.set('emailVerified', Date.now());
         await user.save();
     }
-
-    await VerificationToken.deleteByIdentifierAndToken(identifier, token);
 
     const accept = request.headers.get('Accept') || '';
     if (accept.includes('text/html')) {
@@ -286,7 +293,9 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     }
 
     const identifier = `reset:${email}`;
-    const verification = await VerificationToken.findByIdentifierAndToken(identifier, token);
+    const tokenHash = await hashToken(token);
+    // Atomic single-use consume (tokens are stored hashed).
+    const verification = await VerificationToken.consumeByIdentifierAndToken(identifier, tokenHash);
     if (!verification) {
         return withAuthCors(
             errorResponse('Reset token is invalid or expired', 400, {
@@ -297,7 +306,6 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
 
     const expiresAt = Number(verification.get('expires'));
     if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
-        await VerificationToken.deleteByIdentifierAndToken(identifier, token);
         return withAuthCors(
             errorResponse('Reset token is invalid or expired', 400, {
                 code: 'TOKEN_EXPIRED',
@@ -318,17 +326,18 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     user.set('passwordHash', passwordHash);
     await user.save();
 
-    await VerificationToken.deleteByIdentifierAndToken(identifier, token);
-
-    if (env.OBCF_KV) {
-        try {
-            const revokedAt = Math.floor(Date.now() / 1000);
-            await env.OBCF_KV.put(userKey('auth', String(user.get('id')), 'revoked'), String(revokedAt), {
-                expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
-            });
-        } catch {
-            // ignore revocation errors
-        }
+    // Revoke every existing session after a password reset. This is the exact scenario
+    // revocation exists for, so a KV failure must surface (fail loud) rather than return
+    // success while the attacker's stolen sessions stay valid.
+    try {
+        await revokeAllUserSessions(String(user.get('id')), env as any, getAuthOptions(env));
+    } catch (error) {
+        console.error('Failed to revoke sessions after password reset:', error);
+        return withAuthCors(
+            errorResponse('Password was reset but existing sessions could not be revoked. Please try again.', 500, {
+                code: 'REVOCATION_FAILED',
+            }),
+        );
     }
 
     return withAuthCors(jsonResponse({ success: true }));
@@ -424,18 +433,36 @@ export async function handlePasswordChange(context: AuthRouteContext): Promise<R
     user.set('passwordHash', passwordHash);
     await user.save();
 
-    if (env.OBCF_KV) {
-        try {
-            const revokedAt = Math.floor(Date.now() / 1000);
-            await env.OBCF_KV.put(userKey('auth', String(user.get('id')), 'revoked'), String(revokedAt), {
-                expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
-            });
-        } catch {
-            // ignore revocation errors
-        }
+    // Revoke every existing session (including any stolen ones). This is security-critical,
+    // so a KV failure must surface rather than silently leave old sessions valid.
+    try {
+        await revokeAllUserSessions(userId, env as any, getAuthOptions(env));
+    } catch (error) {
+        console.error('Failed to revoke sessions after password change:', error);
+        return withAuthCors(
+            errorResponse('Password was changed but existing sessions could not be revoked. Please sign in again.', 500, {
+                code: 'REVOCATION_FAILED',
+            }),
+        );
     }
 
-    return withAuthCors(jsonResponse({ success: true }));
+    // Re-issue a session for THIS device so the user stays signed in. The reissued session
+    // is created after the revocation marker, so it survives while all prior sessions die.
+    const emailVerifiedRaw = user.get('emailVerified');
+    const { cookie } = await createSessionCookieForUser(
+        {
+            id: userId,
+            email: String(user.get('email')),
+            name: (user.get('name') as string | null) ?? null,
+            image: (user.get('image') as string | null) ?? null,
+            emailVerified: emailVerifiedRaw ? new Date(emailVerifiedRaw as any).getTime() : null,
+        },
+        env as any,
+        request,
+        getAuthOptions(env),
+    );
+
+    return withAuthCors(jsonResponse({ success: true }, 200, { headers: { 'Set-Cookie': cookie } }));
 }
 
 export async function handleUserProfile(context: AuthRouteContext): Promise<Response> {

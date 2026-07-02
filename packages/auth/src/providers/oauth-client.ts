@@ -74,7 +74,17 @@ export async function exchangeCodeForTokens(
         throw new Error(`OAuth token exchange failed for provider "${provider.id}" (HTTP ${response.status})`);
     }
 
-    return (await response.json()) as OAuthTokenResponse;
+    const tokens = (await response.json()) as OAuthTokenResponse & { error?: string; error_description?: string };
+    // Some providers (notably GitHub) return HTTP 200 with an error body on failure; a
+    // missing access_token must not silently flow on as "Bearer undefined".
+    if (tokens.error || !tokens.access_token) {
+        throw new Error(
+            `OAuth token exchange for provider "${provider.id}" returned no access_token` +
+                (tokens.error ? ` (${tokens.error})` : ''),
+        );
+    }
+
+    return tokens;
 }
 
 function base64UrlEncodeAscii(value: string): string {

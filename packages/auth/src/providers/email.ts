@@ -4,7 +4,6 @@
 
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
 import { createDevEmailTrapMailer, type DevEmailTrapStore } from '@ottabase/email/providers/dev-trap';
-import { createNodemailerMailer } from '@ottabase/email/providers/nodemailer';
 import { createResendMailer } from '@ottabase/email/providers/resend';
 import type { ProviderEnv } from './types';
 
@@ -78,11 +77,21 @@ export function createNodemailerMagicLinkSender(
 ): MagicLinkSender {
     const from = options.from || env.EMAIL_FROM || 'noreply@example.com';
     const appName = options.appName || 'Ottabase';
-    const mailer = createNodemailerMailer({ server: env.EMAIL_SERVER || '' });
+
+    // Lazily import Nodemailer only when a magic link is actually sent over SMTP, so the
+    // (Node-only, heavy) Nodemailer chain is never bundled into Workers that use Resend
+    // or the dev trap. The import is memoized per sender instance.
+    const loadNodemailer = async () => {
+        const { createNodemailerMailer } = await import('@ottabase/email/providers/nodemailer');
+        return createNodemailerMailer({ server: env.EMAIL_SERVER || '' });
+    };
+    let mailerPromise: ReturnType<typeof loadNodemailer> | null = null;
 
     return {
         id: 'email',
         async send({ identifier, url, expires }) {
+            if (!mailerPromise) mailerPromise = loadNodemailer();
+            const mailer = await mailerPromise;
             const result = await sendTemplatedEmail(mailer, {
                 from,
                 to: identifier,

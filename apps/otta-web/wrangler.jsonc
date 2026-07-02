@@ -169,6 +169,10 @@
     "vars": {
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
+        // Local dev only: lets @ottabase/auth fall back to its built-in insecure signing
+        // secret when AUTH_SECRET is unset. Intentionally NOT set in env.production, so a
+        // production deploy without AUTH_SECRET fails closed instead of using a public secret.
+        "AUTH_ALLOW_INSECURE_DEV_SECRET": "true",
         // R2 proxy path - works in dev and production (same origin)
         // For custom R2 domain, set to: https://cdn.yourdomain.com
         "R2_PUBLIC_URL": "/api/upload/file",

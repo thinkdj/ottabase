@@ -123,7 +123,15 @@ export function createAzureAdProvider(env: ProviderEnv, options: ProviderOptions
             email: profile.email ?? null,
             name: profile.name ?? null,
             image: null,
-            emailVerified: !!profile.email,
+            // Azure AD's OIDC userinfo does not assert email verification via the mere
+            // presence of an `email` claim, so we must NOT fabricate it. Only trust an
+            // explicit boolean verification claim if the tenant provides one.
+            emailVerified:
+                profile.email_verified === true ||
+                profile.email_verified === 'true' ||
+                (profile as Record<string, unknown>).verified_primary_email != null &&
+                    Array.isArray((profile as Record<string, unknown>).verified_primary_email) &&
+                    ((profile as Record<string, unknown>).verified_primary_email as unknown[]).length > 0,
         }),
     };
 }

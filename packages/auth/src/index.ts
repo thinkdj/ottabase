@@ -57,11 +57,13 @@ export {
 // BACKEND HANDLER (Cloudflare Workers)
 // ============================================================
 export {
+    bootstrapFirstUser,
     createAuthConfig,
     createSessionCookieForUser,
     getSession,
     handleAuthRequest,
     hashPassword,
+    hashToken,
     revokeAllUserSessions,
     revokeSession,
     verifyPassword,

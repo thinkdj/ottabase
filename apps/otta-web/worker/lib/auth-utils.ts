@@ -1,4 +1,4 @@
-import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
+import { CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
@@ -22,6 +22,9 @@ export async function createVerificationToken(
     }
 
     const token = createSecureToken(32);
+    // Store only the hash: the plaintext token lives solely in the emailed link, so a
+    // database read leak cannot be replayed to verify an email or reset a password.
+    const tokenHash = await hashToken(token);
     const expiresAt = Date.now() + ttlSeconds * 1000;
 
     try {
@@ -32,7 +35,7 @@ export async function createVerificationToken(
 
     await VerificationToken.create({
         identifier,
-        token,
+        token: tokenHash,
         expires: expiresAt,
     });
 

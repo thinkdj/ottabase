@@ -156,14 +156,10 @@ export function useSession(options?: UseSessionOptions) {
                         setPersistentSession(null);
                     }
                 } else {
-                    // Backend returned null – clear only if we don't have a valid stored session
-                    // (e.g. bootstrap create-owner pre-hydrates localStorage; cookie may not be set yet)
-                    setPersistentSession((prev) => {
-                        if (!prev) return null;
-                        const expiresAt = Number(prev.expires);
-                        if (Number.isFinite(expiresAt) && expiresAt > Date.now()) return prev;
-                        return null;
-                    });
+                    // Backend authoritatively reports no session (signed out / revoked / expired).
+                    // Clear the locally cached session so a server-revoked session cannot keep
+                    // appearing signed-in until its own client-side expiry.
+                    setPersistentSession(null);
                     setMemorySession(null);
                 }
             } catch (error) {

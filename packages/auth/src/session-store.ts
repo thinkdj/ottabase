@@ -2,18 +2,29 @@
 // @ottabase/auth - Session Store (signed JWT + KV registry)
 // ============================================================
 //
-// Sessions are a signed, self-contained JWT cookie (no DB read needed to
-// validate a request) paired with a lightweight KV registry record keyed
-// by the session id ("jti"). The registry record is what makes sign-out
-// immediate and precise:
+// A session is a signed, self-contained JWT cookie holding only the
+// user's IDENTITY (sub, jti, email, and small display fields). The
+// mutable authorization SNAPSHOT (organization, roles, permissions) is
+// stored in a per-session KV "registry" record keyed by the session id
+// ("jti"), NOT in the cookie -- so the cookie can never exceed the ~4KB
+// browser limit no matter how many permissions a user has, and revoked
+// roles do not linger in a signed token for the session's whole lifetime.
 //
-//   - Deleting the one session's registry key revokes *that* session only
-//     (used by normal sign-out).
-//   - A separate "revoked since <timestamp>" KV key can invalidate every
-//     session for a user at once (used by password change/reset).
+// Revocation is a deny-list, which is the KV-appropriate primitive under
+// eventual consistency:
 //
-// Both checks are single KV reads on the request hot path, so the request
-// overhead is unchanged from a plain JWT-only design.
+//   - Single sign-out writes a per-session tombstone (`revoked:{jti}`)
+//     and drops the registry record.
+//   - Bulk revoke (password change/reset) writes a "revoked since <ms>"
+//     marker for the user; any session created before it is rejected.
+//
+// The per-session registry record is an allow-list snapshot cache. A
+// freshly-issued session may land on a colo that has not yet seen the
+// registry write (KV is eventually consistent across colos), so within a
+// short issued-at GRACE window a missing registry record is tolerated and
+// self-healed from the database instead of bouncing the user back to
+// login. Past the grace window a missing record means the session was
+// signed out / expired and is rejected.
 //
 // ============================================================
 
@@ -26,11 +37,49 @@ import { clearCookie, isHttpsRequest, parseCookies, serializeCookie } from './co
 import { signJwt, verifyJwt } from './jwt';
 import type { AuthEnv, CreateAuthConfigOptions, Session, SessionTokenPayload, SessionUser } from './types';
 
-export const SESSION_COOKIE_DEFAULT = 'ottabase.session-token';
+export const SESSION_COOKIE_BASE = 'ottabase.session-token';
+/** @deprecated use SESSION_COOKIE_BASE / resolveSessionCookieName */
+export const SESSION_COOKIE_DEFAULT = SESSION_COOKIE_BASE;
 export const DEFAULT_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
+/**
+ * How long after a session's `iat` a MISSING registry record is tolerated,
+ * to absorb KV cross-colo propagation delay (read-your-write is only
+ * guaranteed at the writing colo). Kept well under a minute; revocation
+ * tombstones are still honored inside this window.
+ */
+const REGISTRY_GRACE_SECONDS = 120;
+
+const DEV_ENVIRONMENTS = new Set(['development', 'dev', 'test', 'local']);
+
+/** Environments explicitly marked as non-production dev/test. Unset ENVIRONMENT is NOT dev. */
+export function isDevEnvironment(env: AuthEnv): boolean {
+    return DEV_ENVIRONMENTS.has((env.ENVIRONMENT || '').trim().toLowerCase());
+}
+
+/**
+ * Whether to treat this deployment as production for COOKIE hardening (Secure +
+ * __Host- prefix). Only an explicit non-dev ENVIRONMENT counts, so local dev over
+ * plain HTTP (ENVIRONMENT unset) still works. Note this is deliberately the OPPOSITE
+ * default from `resolveAuthSecret`, whose secret must fail CLOSED on an unknown env.
+ */
+export function isProductionCookieEnv(env: AuthEnv): boolean {
+    const environment = (env.ENVIRONMENT || '').trim().toLowerCase();
+    return environment !== '' && !DEV_ENVIRONMENTS.has(environment);
+}
+
+/** In production, force Secure regardless of proxy headers; elsewhere follow the actual scheme. */
+export function resolveSecureCookie(env: AuthEnv, request: Request): boolean {
+    return isProductionCookieEnv(env) || isHttpsRequest(request);
+}
+
 export function resolveSessionCookieName(env: AuthEnv): string {
-    return env.AUTH_COOKIE_NAME || SESSION_COOKIE_DEFAULT;
+    const configured = env.AUTH_COOKIE_NAME;
+    if (configured) return configured;
+    // __Host- pins the cookie to the exact host over HTTPS with Path=/ and no Domain,
+    // preventing subdomain cookie-tossing / fixation. Only valid with Secure, so only
+    // applied when we know we are production (always-Secure) to avoid breaking dev HTTP.
+    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${SESSION_COOKIE_BASE}`;
 }
 
 export function resolveSessionMaxAge(env: AuthEnv, options?: CreateAuthConfigOptions): number {
@@ -42,19 +91,34 @@ export function resolveSessionMaxAge(env: AuthEnv, options?: CreateAuthConfigOpt
 
 /**
  * Resolve the HMAC secret used to sign session/CSRF/OAuth-state tokens.
- * Required in production; falls back to an insecure default (with a warning) elsewhere.
+ *
+ * Fails CLOSED: the insecure development default is only ever used when ENVIRONMENT
+ * is explicitly a known dev value. An unset/unknown ENVIRONMENT is treated as
+ * production, so a real deploy that forgets to set AUTH_SECRET throws instead of
+ * silently signing every token with a publicly-known constant.
  */
 export function resolveAuthSecret(env: AuthEnv): string {
-    if (env.AUTH_SECRET) return env.AUTH_SECRET;
-
-    const environment = (env.ENVIRONMENT || '').toLowerCase();
-    const isProduction = environment !== '' && !['development', 'dev', 'test'].includes(environment);
-
-    if (isProduction) {
-        throw new Error('AUTH_SECRET is required in production');
+    if (env.AUTH_SECRET) {
+        if (env.AUTH_SECRET.length < 16) {
+            throw new Error('AUTH_SECRET is too short; use at least 32 random characters (e.g. `openssl rand -base64 32`)');
+        }
+        return env.AUTH_SECRET;
     }
 
-    console.warn('[auth] AUTH_SECRET is not configured. Using an insecure default -- do not deploy this way.');
+    // The well-known insecure default is only ever used when BOTH an explicit dev
+    // ENVIRONMENT and an explicit opt-in flag are set. This double gate means a deploy
+    // that merely declares ENVIRONMENT=development in its wrangler vars (or forgets to set
+    // ENVIRONMENT at all) still fails closed instead of silently signing every token with
+    // a publicly-known constant.
+    const allowInsecure = isDevEnvironment(env) && parseBooleanFlag(env.AUTH_ALLOW_INSECURE_DEV_SECRET);
+    if (!allowInsecure) {
+        throw new Error(
+            'AUTH_SECRET is required (set it via `wrangler secret put AUTH_SECRET`). ' +
+                'To use the insecure default locally, set ENVIRONMENT to a dev value AND AUTH_ALLOW_INSECURE_DEV_SECRET=true.',
+        );
+    }
+
+    console.warn('[auth] AUTH_SECRET is not configured. Using an insecure development default -- never deploy this way.');
     return 'dev-secret-change-in-production';
 }
 
@@ -65,6 +129,10 @@ function ensureOrmConnection(env: AuthEnv): void {
 
 function sessionRegistryKey(userId: string, jti: string): string {
     return userKey('auth', userId, 'sess', jti);
+}
+
+function revokedJtiKey(userId: string, jti: string): string {
+    return userKey('auth', userId, 'revoked-jti', jti);
 }
 
 function revokedSinceKey(userId: string): string {
@@ -82,12 +150,18 @@ interface UserContext {
     createdAt: number | null;
 }
 
-/**
- * Resolve a user's active organization, org-scoped roles/permissions, and creation
- * timestamp -- computed once at session-creation time and embedded in the JWT.
- * (Real authorization decisions are re-checked live per-request by `@ottabase/rbac`;
- * this snapshot only drives optimistic client-side UI gating.)
- */
+/** The mutable snapshot stored in the KV registry record (kept out of the cookie). */
+interface RegistrySnapshot {
+    /** createdMs -- session creation time in epoch ms (used for bulk-revocation comparison). */
+    c: number;
+    /** profile version this snapshot reflects. */
+    v: number;
+    organizationId: string | null;
+    roles: string[];
+    permissions: string[];
+    createdAt: number | null;
+}
+
 async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContext> {
     ensureOrmConnection(env);
 
@@ -162,7 +236,37 @@ export interface CreatedSession {
     user: SessionUser;
 }
 
-/** Create a new signed session for a user, registering it in the KV revocation registry. */
+async function readProfileVersion(userId: string, env: AuthEnv): Promise<number> {
+    if (!env.OBCF_KV) return 0;
+    try {
+        const raw = await env.OBCF_KV.get(profileVersionKey(userId));
+        const parsed = Number(raw || 0);
+        return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+        return 0;
+    }
+}
+
+async function writeRegistrySnapshot(
+    userId: string,
+    jti: string,
+    snapshot: RegistrySnapshot,
+    maxAgeSeconds: number,
+    env: AuthEnv,
+): Promise<void> {
+    if (!env.OBCF_KV) return;
+    await env.OBCF_KV.put(sessionRegistryKey(userId, jti), JSON.stringify(snapshot), {
+        expirationTtl: maxAgeSeconds,
+    });
+}
+
+/**
+ * Create a new signed session for a user, registering its snapshot in the KV registry.
+ *
+ * The registry write is REQUIRED and fails loudly: a session whose registry record is
+ * missing cannot be validated after the grace window, so silently issuing a cookie
+ * whose prerequisite failed to persist would strand the user in a login loop.
+ */
 export async function createSessionForUser(
     input: CreateSessionInput,
     env: AuthEnv,
@@ -176,17 +280,11 @@ export async function createSessionForUser(
     const maxAgeSeconds = resolveSessionMaxAge(env, options);
     const jti = crypto.randomUUID();
     const secret = resolveAuthSecret(env);
+    const profileVersion = await readProfileVersion(input.id, env);
+    const createdMs = Date.now();
 
-    let profileVersion = 0;
-    if (env.OBCF_KV) {
-        try {
-            const versionRaw = await env.OBCF_KV.get(profileVersionKey(input.id));
-            profileVersion = Number(versionRaw || 0) || 0;
-        } catch {
-            // Non-fatal; profile-version sync is a best-effort cache-busting mechanism.
-        }
-    }
-
+    // The cookie JWT carries only identity + small display fields. Roles/permissions
+    // (potentially large / frequently changing) live in the registry snapshot below.
     const payload: SessionTokenPayload = {
         sub: input.id,
         jti,
@@ -195,22 +293,33 @@ export async function createSessionForUser(
         image: input.image ?? null,
         emailVerified: input.emailVerified ?? null,
         organizationId: context.organizationId,
-        roles: context.roles,
-        permissions: context.permissions,
         createdAt: context.createdAt,
         profileVersion,
     };
 
     const token = await signJwt(payload, secret, { expiresInSeconds: maxAgeSeconds });
-    const expiresAt = Date.now() + maxAgeSeconds * 1000;
+    const expiresAt = createdMs + maxAgeSeconds * 1000;
+
+    const snapshot: RegistrySnapshot = {
+        c: createdMs,
+        v: profileVersion,
+        organizationId: context.organizationId,
+        roles: context.roles,
+        permissions: context.permissions,
+        createdAt: context.createdAt,
+    };
 
     if (env.OBCF_KV) {
         try {
-            await env.OBCF_KV.put(sessionRegistryKey(input.id, jti), String(Date.now()), {
-                expirationTtl: maxAgeSeconds,
-            });
+            await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env);
         } catch (error) {
-            console.warn('Failed to register session in KV:', error);
+            // Retry once, then fail the sign-in: fail-closed must be end-to-end.
+            try {
+                await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env);
+            } catch (retryError) {
+                console.error('Failed to persist session registry record:', retryError);
+                throw new Error('Failed to persist session; sign-in aborted');
+            }
         }
     }
 
@@ -224,10 +333,10 @@ export async function createSessionForUser(
             name: payload.name,
             image: payload.image,
             emailVerified: payload.emailVerified,
-            organizationId: payload.organizationId,
-            roles: payload.roles,
-            permissions: payload.permissions,
-            createdAt: payload.createdAt,
+            organizationId: context.organizationId,
+            roles: context.roles,
+            permissions: context.permissions,
+            createdAt: context.createdAt,
         },
     };
 }
@@ -235,14 +344,14 @@ export async function createSessionForUser(
 export function buildSessionCookie(token: string, env: AuthEnv, request: Request, maxAgeSeconds: number): string {
     return serializeCookie(resolveSessionCookieName(env), token, {
         maxAgeSeconds,
-        secure: isHttpsRequest(request),
+        secure: resolveSecureCookie(env, request),
         sameSite: 'Lax',
         httpOnly: true,
     });
 }
 
 export function buildClearSessionCookie(env: AuthEnv, request: Request): string {
-    return clearCookie(resolveSessionCookieName(env), { secure: isHttpsRequest(request) });
+    return clearCookie(resolveSessionCookieName(env), { secure: resolveSecureCookie(env, request) });
 }
 
 /**
@@ -261,47 +370,76 @@ export async function createSessionCookieForUser(
     return { cookie: buildSessionCookie(session.token, env, request, maxAgeSeconds), session };
 }
 
-async function refreshProfileIfStale(user: SessionUser, payload: SessionTokenPayload, env: AuthEnv): Promise<SessionUser> {
-    if (!env.OBCF_KV || !env.OBCF_D1) return user;
+function parseSnapshot(raw: string | null): RegistrySnapshot | null {
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw) as Partial<RegistrySnapshot>;
+        if (typeof parsed !== 'object' || parsed === null) return null;
+        return {
+            c: Number(parsed.c) || 0,
+            v: Number(parsed.v) || 0,
+            organizationId: parsed.organizationId ?? null,
+            roles: Array.isArray(parsed.roles) ? parsed.roles : [],
+            permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
+            createdAt: parsed.createdAt ?? null,
+        };
+    } catch {
+        return null;
+    }
+}
+
+/** Refresh a stale snapshot (profile/role change) from D1 exactly once, rewriting the registry record. */
+async function refreshSnapshotIfStale(
+    userId: string,
+    jti: string,
+    snapshot: RegistrySnapshot,
+    currentVersion: number,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<RegistrySnapshot> {
+    if (!env.OBCF_KV || !env.OBCF_D1) return snapshot;
+    if (currentVersion <= snapshot.v) return snapshot;
 
     try {
-        const versionRaw = await env.OBCF_KV.get(profileVersionKey(user.id));
-        if (!versionRaw) return user;
-
-        const version = Number(versionRaw);
-        const tokenVersion = Number(payload.profileVersion || 0);
-        if (!Number.isFinite(version) || version <= tokenVersion) return user;
-
-        ensureOrmConnection(env);
-        const dbUser = await User.find(user.id);
-        if (!dbUser) return user;
-
-        const emailVerifiedRaw = dbUser.get('emailVerified');
-        const emailVerified = emailVerifiedRaw
-            ? emailVerifiedRaw instanceof Date
-                ? emailVerifiedRaw.getTime()
-                : Number(emailVerifiedRaw)
-            : null;
-
-        return {
-            ...user,
-            name: (dbUser.get('name') as string | null) ?? user.name,
-            email: (dbUser.get('email') as string) ?? user.email,
-            image: dbUser.get('image') !== undefined ? (dbUser.get('image') as string | null) : user.image,
-            emailVerified: Number.isFinite(emailVerified as number) ? emailVerified : user.emailVerified,
+        const context = await loadUserContext(userId, env);
+        const refreshed: RegistrySnapshot = {
+            c: snapshot.c,
+            v: currentVersion,
+            organizationId: context.organizationId,
+            roles: context.roles,
+            permissions: context.permissions,
+            createdAt: context.createdAt ?? snapshot.createdAt,
         };
+        // Rewrite so the version matches and subsequent requests skip the D1 read.
+        await writeRegistrySnapshot(userId, jti, refreshed, resolveSessionMaxAge(env, options), env).catch(() => {});
+        return refreshed;
     } catch (error) {
-        console.warn('Failed to refresh profile from KV version:', error);
-        return user;
+        console.warn('Failed to refresh session snapshot from D1:', error);
+        return snapshot;
     }
+}
+
+function buildUser(payload: SessionTokenPayload, snapshot: RegistrySnapshot | null, freshUser?: Partial<SessionUser>): SessionUser {
+    return {
+        id: payload.sub,
+        email: payload.email,
+        name: freshUser?.name ?? payload.name ?? null,
+        image: freshUser?.image ?? payload.image ?? null,
+        emailVerified: freshUser?.emailVerified ?? payload.emailVerified ?? null,
+        organizationId: snapshot?.organizationId ?? payload.organizationId ?? null,
+        roles: snapshot?.roles ?? [],
+        permissions: snapshot?.permissions ?? [],
+        createdAt: snapshot?.createdAt ?? payload.createdAt ?? null,
+    };
 }
 
 /**
  * Resolve the current session from a request's cookies.
  *
- * Fast path: JWT signature + expiry check, plus up to two KV reads
- * (bulk revocation timestamp + per-session registry). No database read
- * unless a profile-version bump flags the cached fields as stale.
+ * Hot path: JWT signature + expiry check, then a single parallel batch of KV reads
+ * (bulk-revocation marker, per-session tombstone, registry snapshot). No database
+ * read unless a profile-version bump flags the snapshot stale, or a freshly-issued
+ * session's registry record has not yet propagated (self-healed within the grace window).
  */
 export async function getSession(request: Request, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<Session | null> {
     const cookies = parseCookies(request.headers.get('Cookie'));
@@ -316,75 +454,96 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
     }
     if (!payload || !payload.sub || !payload.jti) return null;
 
-    // The per-session registry record is the source of truth for revocation
-    // (sign-out deletes it; revokeAllUserSessions bumps the "revoked since"
-    // marker). Both checks must fail *closed*: a missing KV binding or a
-    // transient KV error must never be treated as "not revoked", or a
-    // captured JWT would stay valid for its full lifetime regardless of
-    // sign-out / forced revocation.
+    // Revocation is enforced via KV and MUST fail closed: without KV we cannot know
+    // whether a captured JWT was signed out, so we refuse to trust it.
     if (!env.OBCF_KV) {
         console.error('[auth] OBCF_KV is not bound; refusing to trust session tokens without revocation checks.');
         return null;
     }
 
+    const iatMs = (Number(payload.iat) || 0) * 1000;
+
+    // One parallel batch for the whole hot path: bulk-revocation marker, per-session
+    // sign-out tombstone, registry snapshot, and the profile-version counter. All keys
+    // are known upfront from the verified payload, so this is a single KV round trip.
+    let revokedSinceRaw: string | null;
+    let tombstoneRaw: string | null;
+    let registryRaw: string | null;
+    let profileVersionRaw: string | null;
     try {
-        const revokedAtRaw = await env.OBCF_KV.get(revokedSinceKey(payload.sub));
-        if (revokedAtRaw) {
-            const revokedAt = Number(revokedAtRaw);
-            const issuedAt = Number(payload.iat || 0);
-            if (Number.isFinite(revokedAt) && issuedAt > 0 && issuedAt <= revokedAt) return null;
+        [revokedSinceRaw, tombstoneRaw, registryRaw, profileVersionRaw] = await Promise.all([
+            env.OBCF_KV.get(revokedSinceKey(payload.sub)),
+            env.OBCF_KV.get(revokedJtiKey(payload.sub, payload.jti)),
+            env.OBCF_KV.get(sessionRegistryKey(payload.sub, payload.jti)),
+            env.OBCF_KV.get(profileVersionKey(payload.sub)),
+        ]);
+    } catch (error) {
+        // A transient KV read error must not silently trust the token.
+        console.warn('Failed to read session revocation state; failing closed:', error);
+        return null;
+    }
+
+    // Single sign-out tombstone -- always wins, even inside the grace window.
+    if (tombstoneRaw) return null;
+
+    const currentVersion = Number(profileVersionRaw || 0) || 0;
+    let snapshot = parseSnapshot(registryRaw);
+
+    // Bulk revocation ("revoked since <ms>"): reject any session created before it.
+    if (revokedSinceRaw) {
+        const revokedAtMs = Number(revokedSinceRaw);
+        const createdMs = snapshot?.c || iatMs;
+        if (Number.isFinite(revokedAtMs) && createdMs > 0 && createdMs < revokedAtMs) return null;
+    }
+
+    if (snapshot) {
+        snapshot = await refreshSnapshotIfStale(payload.sub, payload.jti, snapshot, currentVersion, env, options);
+    } else {
+        // No registry record. Either (a) freshly issued and not yet propagated across
+        // colos / registry write is catching up, or (b) signed out / expired.
+        const ageSeconds = iatMs > 0 ? (Date.now() - iatMs) / 1000 : Number.POSITIVE_INFINITY;
+        if (ageSeconds > REGISTRY_GRACE_SECONDS) return null;
+
+        // Within grace: self-heal by loading the context from D1 and re-writing the
+        // registry record so later requests hit the fast path.
+        if (env.OBCF_D1) {
+            const context = await loadUserContext(payload.sub, env);
+            snapshot = {
+                c: iatMs || Date.now(),
+                v: currentVersion,
+                organizationId: context.organizationId,
+                roles: context.roles,
+                permissions: context.permissions,
+                createdAt: context.createdAt,
+            };
+            await writeRegistrySnapshot(payload.sub, payload.jti, snapshot, resolveSessionMaxAge(env, options), env).catch(
+                () => {},
+            );
         }
-    } catch (error) {
-        console.warn('Failed to check bulk revocation status; failing closed:', error);
-        return null;
     }
 
-    try {
-        const registryRecord = await env.OBCF_KV.get(sessionRegistryKey(payload.sub, payload.jti));
-        if (!registryRecord) return null;
-    } catch (error) {
-        console.warn('Failed to check session registry; failing closed:', error);
-        return null;
-    }
+    void options;
 
-    let user: SessionUser = {
-        id: payload.sub,
-        email: payload.email,
-        name: payload.name ?? null,
-        image: payload.image ?? null,
-        emailVerified: payload.emailVerified ?? null,
-        organizationId: payload.organizationId ?? null,
-        roles: payload.roles ?? [],
-        permissions: payload.permissions ?? [],
-        createdAt: payload.createdAt ?? null,
-    };
-
-    user = await refreshProfileIfStale(user, payload, env);
-
-    void options; // reserved for future per-call overrides; kept for API-shape parity with createAuthConfig
-
-    return { user, expires: (payload.exp ?? 0) * 1000 };
+    return { user: buildUser(payload, snapshot), expires: (payload.exp ?? 0) * 1000 };
 }
 
-/** Revoke a single session (used by normal sign-out). */
-export async function revokeSession(userId: string, jti: string, env: AuthEnv): Promise<void> {
+/** Revoke a single session (used by normal sign-out). Fails loudly so callers can surface it. */
+export async function revokeSession(userId: string, jti: string, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<void> {
     if (!env.OBCF_KV) return;
-    try {
-        await env.OBCF_KV.delete(sessionRegistryKey(userId, jti));
-    } catch (error) {
-        console.warn('Failed to revoke session:', error);
-    }
+    const maxAgeSeconds = resolveSessionMaxAge(env, options);
+    // Write a deny-list tombstone (honored even within the registry grace window) and
+    // drop the allow-list snapshot. The tombstone TTL covers the max session lifetime.
+    await env.OBCF_KV.put(revokedJtiKey(userId, jti), '1', { expirationTtl: maxAgeSeconds });
+    await env.OBCF_KV.delete(sessionRegistryKey(userId, jti)).catch((error) => {
+        console.warn('Failed to delete session registry record on sign-out:', error);
+    });
 }
 
-/** Revoke every session for a user (used by password change/reset). */
+/** Revoke every session for a user (used by password change/reset). Fails loudly. */
 export async function revokeAllUserSessions(userId: string, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<void> {
     if (!env.OBCF_KV) return;
-    try {
-        const maxAgeSeconds = resolveSessionMaxAge(env, options);
-        await env.OBCF_KV.put(revokedSinceKey(userId), String(Math.floor(Date.now() / 1000)), {
-            expirationTtl: maxAgeSeconds,
-        });
-    } catch (error) {
-        console.warn('Failed to revoke sessions:', error);
-    }
+    const maxAgeSeconds = resolveSessionMaxAge(env, options);
+    // Millisecond granularity so a session reissued in the same second as the revoke
+    // (e.g. change-password-then-stay-signed-in) is not wrongly invalidated.
+    await env.OBCF_KV.put(revokedSinceKey(userId), String(Date.now()), { expirationTtl: maxAgeSeconds });
 }

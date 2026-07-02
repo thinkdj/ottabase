@@ -2,6 +2,7 @@
 // @ottabase/ottaorm - VerificationToken Model
 // ============================================================
 
+import { and, eq, lt } from 'drizzle-orm';
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
 import { verificationTokensTable } from './VerificationToken.schema';
 
@@ -77,40 +78,88 @@ export class VerificationToken extends BaseModel {
     };
 
     /**
-     * Find verification token by identifier and token
+     * Find verification token by identifier and token.
+     *
+     * NOTE: `getDb()` returns a Drizzle instance (not the raw D1 binding), so this
+     * uses the Drizzle query builder rather than the D1 `.prepare().bind()` API.
+     * For single-use consumption prefer {@link consumeByIdentifierAndToken}, which
+     * deletes and returns the row atomically and is therefore race-safe.
      */
     static async findByIdentifierAndToken(identifier: string, token: string): Promise<VerificationToken | null> {
-        const driver = this.getDriver();
-        const db = driver.getDb();
-        const result = await db
-            .prepare(`SELECT * FROM ${this.entity} WHERE identifier = ? AND token = ?`)
-            .bind(identifier, token)
-            .first();
+        const db = this.getDriver().getDb();
+        const rows = await db
+            .select()
+            .from(verificationTokensTable)
+            .where(and(eq(verificationTokensTable.identifier, identifier), eq(verificationTokensTable.token, token)))
+            .limit(1);
 
-        if (!result) return null;
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        if (!row) return null;
 
-        return new this({ entity: this.entity, data: result as any });
+        return new this({ entity: this.entity, data: row as any });
     }
 
     /**
-     * Delete verification token by identifier and token
-     * Used when consuming a token during verification
+     * Atomically consume a verification token: delete it and return the deleted row
+     * in a single statement (`DELETE ... RETURNING`). SQLite/D1 serializes writes, so
+     * of any number of concurrent callers passing the same (identifier, token) exactly
+     * one receives the row and the rest receive `null`. This enforces single-use and
+     * closes the find-then-delete double-spend race. Callers must still validate expiry
+     * on the returned row.
+     *
+     * @returns the consumed token, or `null` if it did not exist / was already consumed.
+     */
+    static async consumeByIdentifierAndToken(identifier: string, token: string): Promise<VerificationToken | null> {
+        const db = this.getDriver().getDb();
+        const deleted = await db
+            .delete(verificationTokensTable)
+            .where(and(eq(verificationTokensTable.identifier, identifier), eq(verificationTokensTable.token, token)))
+            .returning();
+
+        const row = Array.isArray(deleted) ? deleted[0] : deleted;
+        if (!row) return null;
+
+        return new this({ entity: this.entity, data: row as any });
+    }
+
+    /**
+     * Delete verification token by identifier and token.
+     * Returns whether a row was actually deleted (affected rows > 0).
      */
     static async deleteByIdentifierAndToken(identifier: string, token: string): Promise<boolean> {
-        const driver = this.getDriver();
-        const db = driver.getDb();
-        const result = await db.run(`DELETE FROM ${this.entity} WHERE identifier = ? AND token = ?`, identifier, token);
-        return (result.changes || 0) > 0;
+        const db = this.getDriver().getDb();
+        const deleted = await db
+            .delete(verificationTokensTable)
+            .where(and(eq(verificationTokensTable.identifier, identifier), eq(verificationTokensTable.token, token)))
+            .returning();
+
+        return Array.isArray(deleted) ? deleted.length > 0 : !!deleted;
+    }
+
+    /**
+     * Delete all tokens for an identifier (e.g. invalidate previous magic links on re-send).
+     * Returns the number of rows removed.
+     */
+    static async deleteByIdentifier(identifier: string): Promise<number> {
+        const db = this.getDriver().getDb();
+        const deleted = await db
+            .delete(verificationTokensTable)
+            .where(eq(verificationTokensTable.identifier, identifier))
+            .returning();
+
+        return Array.isArray(deleted) ? deleted.length : 0;
     }
 
     /**
      * Delete expired tokens for cleanup
      */
     static async deleteExpired(): Promise<number> {
-        const now = Date.now();
-        const driver = this.getDriver();
-        const db = driver.getDb();
-        const result = await db.run(`DELETE FROM ${this.entity} WHERE expires < ?`, now);
-        return result.changes || 0;
+        const db = this.getDriver().getDb();
+        const deleted = await db
+            .delete(verificationTokensTable)
+            .where(lt(verificationTokensTable.expires, Date.now()))
+            .returning();
+
+        return Array.isArray(deleted) ? deleted.length : 0;
     }
 }

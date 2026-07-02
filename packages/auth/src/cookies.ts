@@ -11,7 +11,20 @@ export interface CookieOptions {
     domain?: string;
 }
 
+// RFC 6265 cookie-name token chars; a cookie value must not contain control chars,
+// whitespace, quotes, comma, semicolon or backslash (which would inject attributes or
+// corrupt the Set-Cookie header). We reject rather than silently truncate.
+const COOKIE_NAME_RE = /^[!#$%&'*+._`|~0-9A-Za-z^-]+$/;
+const COOKIE_VALUE_INVALID_RE = /[\x00-\x20\x7f",;\\]/;
+
 export function serializeCookie(name: string, value: string, options: CookieOptions = {}): string {
+    if (!COOKIE_NAME_RE.test(name)) {
+        throw new Error(`Invalid cookie name: ${JSON.stringify(name)}`);
+    }
+    if (value !== '' && COOKIE_VALUE_INVALID_RE.test(value)) {
+        throw new Error(`Invalid cookie value for ${name}: contains disallowed characters`);
+    }
+
     const { maxAgeSeconds, path = '/', secure = true, sameSite = 'Lax', httpOnly = true, domain } = options;
     const parts = [`${name}=${value}`, `Path=${path}`];
 

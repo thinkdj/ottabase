@@ -89,20 +89,57 @@ export async function hashPassword(password: string): Promise<string> {
     return `${PBKDF2_PREFIX}$${PBKDF2_ITERATIONS}$${bufferToBase64(salt)}$${bufferToBase64(derived)}`;
 }
 
-/** Verify a password against a stored PBKDF2 hash using a constant-time comparison. */
+/**
+ * Verify a password against a stored PBKDF2 hash using a constant-time comparison.
+ *
+ * Returns `false` (never throws) for any malformed/corrupt/unsupported hash: a single
+ * bad row must degrade to a clean auth failure, not an uncaught 500. Iteration counts
+ * are clamped to a sane range so an out-of-range value can't make `deriveBits` throw
+ * (Cloudflare Workers hard-caps PBKDF2 at 100k).
+ */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-    if (!hash || !hash.startsWith(`${PBKDF2_PREFIX}$`)) return false;
+    try {
+        if (!hash || !hash.startsWith(`${PBKDF2_PREFIX}$`)) return false;
 
-    const parts = hash.split('$');
-    if (parts.length !== 4) return false;
+        const parts = hash.split('$');
+        if (parts.length !== 4) return false;
 
-    const iterations = Number(parts[1]);
-    if (!Number.isFinite(iterations) || iterations <= 0) return false;
+        const iterations = Number(parts[1]);
+        if (!Number.isInteger(iterations) || iterations < 1 || iterations > PBKDF2_ITERATIONS) return false;
 
-    const salt = base64ToBuffer(parts[2]);
-    const expected = base64ToBuffer(parts[3]);
-    const derived = await derivePbkdf2(password, salt, iterations);
-    return timingSafeEqual(derived, expected);
+        const salt = base64ToBuffer(parts[2]);
+        const expected = base64ToBuffer(parts[3]);
+        if (salt.length === 0 || expected.length === 0) return false;
+
+        const derived = await derivePbkdf2(password, salt, iterations);
+        return timingSafeEqual(derived, expected);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * A cached, valid dummy password hash used to equalize timing on the "user/hash not
+ * found" credential path. Verifying a submitted password against this (always-failing)
+ * hash makes the unknown-account path cost the same PBKDF2 derive as the known-account
+ * path, closing the user-enumeration timing oracle. Computed once per isolate.
+ */
+let dummyPasswordHashPromise: Promise<string> | null = null;
+export function getDummyPasswordHash(): Promise<string> {
+    if (!dummyPasswordHashPromise) {
+        dummyPasswordHashPromise = hashPassword('ottabase::timing-equalization::do-not-use');
+    }
+    return dummyPasswordHashPromise;
+}
+
+/**
+ * Hash a single-use verification token for storage at rest (SHA-256, base64url).
+ * The plaintext token is only ever put in the emailed link; the database stores the
+ * hash, so a database read leak cannot be replayed to mint sessions or reset passwords.
+ * SHA-256 is appropriate here (tokens are high-entropy random, unlike passwords).
+ */
+export async function hashToken(token: string): Promise<string> {
+    return sha256Base64Url(token);
 }
 
 async function importHmacKey(secret: string): Promise<CryptoKey> {

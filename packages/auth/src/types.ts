@@ -49,6 +49,8 @@ export interface SessionTokenPayload extends Record<string, unknown> {
 /** Cloudflare bindings + environment variables consumed by the auth backend. */
 export interface AuthEnv extends ProviderEnv {
     AUTH_SECRET?: string;
+    /** Explicit opt-in to the insecure built-in dev secret (only honored in a dev ENVIRONMENT). */
+    AUTH_ALLOW_INSECURE_DEV_SECRET?: string;
     AUTH_URL?: string;
     NEXTAUTH_URL?: string;
     AUTH_COOKIE_NAME?: string;

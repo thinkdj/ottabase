@@ -47,6 +47,20 @@ export function LoginPage() {
     );
     const passwordChanged = new URLSearchParams(window.location.search).get('passwordChanged') === '1';
 
+    // Surface OAuth / magic-link failures that redirect back as ?error=CODE.
+    useEffect(() => {
+        const code = new URLSearchParams(window.location.search).get('error');
+        if (!code) return;
+        const messages: Record<string, string> = {
+            OAuthAccountNotLinked:
+                'An account already exists for this email. Sign in with your original method, then link this provider from your profile.',
+            OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
+            OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
+            Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
+        };
+        setError(messages[code] ?? 'Sign-in failed. Please try again.');
+    }, []);
+
     useEffect(() => {
         let mounted = true;
 

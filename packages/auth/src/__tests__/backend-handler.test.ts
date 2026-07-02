@@ -10,7 +10,7 @@ function createFakeD1() {
 
 function createEnv(overrides: Partial<AuthEnv> = {}): AuthEnv {
     return {
-        AUTH_SECRET: 'test-secret',
+        AUTH_SECRET: 'test-secret-at-least-32-chars-long!!',
         ENVIRONMENT: 'test',
         OBCF_D1: createFakeD1(),
         ...overrides,
