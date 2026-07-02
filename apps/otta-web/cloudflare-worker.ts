@@ -73,16 +73,41 @@ export default {
                 ensureDbConnection(env);
             }
 
-            const origin = request.headers.get('Origin') || '*';
             const route = normalizedPathname;
             const method = request.method;
-            const corsHeaders = {
-                'Access-Control-Allow-Origin': origin,
-                'Access-Control-Allow-Credentials': 'true',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-                Vary: 'Origin',
-            };
+
+            // CORS: never reflect an arbitrary Origin together with credentials. Doing so lets
+            // any site issue credentialed cross-origin reads (e.g. GET /api/auth/csrf, which
+            // would leak the CSRF token, or GET /api/auth/session, which would leak session
+            // data). Only echo the Origin when it is same-origin, matches the configured
+            // AUTH_URL/NEXTAUTH_URL, or is in the CORS_ALLOWED_ORIGINS allowlist; otherwise
+            // omit Access-Control-Allow-Origin so the browser blocks the cross-origin read.
+            const requestOrigin = request.headers.get('Origin');
+            const allowedOrigins = new Set<string>();
+            try {
+                allowedOrigins.add(new URL(request.url).origin);
+            } catch {
+                /* ignore */
+            }
+            for (const candidate of [env.AUTH_URL, env.NEXTAUTH_URL, ...String((env as { CORS_ALLOWED_ORIGINS?: string }).CORS_ALLOWED_ORIGINS || '').split(',')]) {
+                const trimmed = (candidate || '').trim();
+                if (!trimmed) continue;
+                try {
+                    allowedOrigins.add(new URL(trimmed).origin);
+                } catch {
+                    /* ignore malformed configured origin */
+                }
+            }
+            const corsOrigin = requestOrigin && allowedOrigins.has(requestOrigin) ? requestOrigin : null;
+            const corsHeaders: Record<string, string> = corsOrigin
+                ? {
+                      'Access-Control-Allow-Origin': corsOrigin,
+                      'Access-Control-Allow-Credentials': 'true',
+                      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                      Vary: 'Origin',
+                  }
+                : { Vary: 'Origin' };
             const withAuthCors = (response: Response) => {
                 try {
                     Object.entries(corsHeaders).forEach(([key, value]) => {

@@ -90,25 +90,45 @@ These routes already didn't depend on Auth.js and are unaffected by this package
 
 ## Session Model
 
-A session is a signed, self-contained JWT (`sub`, `jti`, `email`, `name`, `image`,
-`emailVerified`, `organizationId`, `roles`, `permissions`, `createdAt`, `profileVersion`, `iat`,
-`exp`) stored in an HttpOnly/Secure/`SameSite=Lax` cookie — `ottabase.session-token` by default,
-overridable via `AUTH_COOKIE_NAME`. Verifying a request only needs the JWT signature check plus up
-to two KV reads; there's no database read on the hot path unless a profile-version bump flags the
-cached fields as stale.
+The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a
+signed, self-contained JWT carrying only **identity** claims — `sub`, `jti`, `email`, `name`,
+`image`, `emailVerified`, `organizationId`, `createdAt`, `cms` (creation time in ms),
+`profileVersion`, `iat`, `exp`. The potentially large / frequently-changing **authorization
+snapshot** (`roles`, `permissions`) is deliberately kept **out of the cookie** and stored in the
+per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no
+matter how many permissions a user has, and revoked roles don't linger in a signed token for the
+session's whole lifetime. `getSession()` merges the identity claims with the snapshot into the
+returned `user`.
 
-**`OBCF_KV` is required.** Session verification checks the KV revocation registry on every request
-and fails *closed*: if `OBCF_KV` isn't bound, or a KV read errors, `getSession` returns `null`
-rather than trusting an unverifiable token. Deploying without `OBCF_KV` bound means no one can stay
-signed in.
+In production the cookie is `Secure` and uses the `__Host-` name prefix (pinned to the host, `Path=/`,
+no `Domain`) so it can't be tossed/shadowed by a sibling subdomain; in an explicit dev environment
+over plain HTTP the prefix and `Secure` are dropped so local development still works.
 
-Each session is paired with a lightweight KV registry record, `auth:usr:<userId>:sess:<jti>`:
+Verifying a request is the JWT signature/expiry check plus **one parallel batch of KV reads**
+(bulk-revocation marker, per-session sign-out tombstone, registry snapshot, and the profile-version
+counter). There's no database read on the hot path unless a profile-version bump flags the snapshot
+stale (refreshed once from D1, then the registry record is rewritten so later requests skip the read)
+or a freshly-issued session's registry record hasn't propagated yet (see the grace window below).
 
-- **Single-session revocation** (normal sign-out) deletes that one registry key. Every other
-  session for the user is untouched.
-- **All-sessions revocation** (password change/reset) writes a bulk
-  `auth:usr:<userId>:revoked` key with a "revoked since &lt;timestamp&gt;" value; any session whose
-  `iat` is at or before that timestamp is rejected.
+**`OBCF_KV` is required.** Session verification consults KV on every request and fails *closed*: if
+`OBCF_KV` isn't bound, or a KV read errors, `getSession` returns `null` rather than trusting an
+unverifiable token. Deploying without `OBCF_KV` bound means no one can stay signed in.
+
+Revocation is a **deny-list**, which is the correct primitive under KV's eventual consistency:
+
+- **Single-session revocation** (normal sign-out) writes a per-session tombstone
+  `auth:usr:<userId>:revoked-jti:<jti>` and drops the registry snapshot. The tombstone is honored on
+  every request (even inside the grace window), so sign-out wins.
+- **All-sessions revocation** (password change/reset) writes a bulk `auth:usr:<userId>:revoked` key
+  with a "revoked since &lt;ms&gt;" value; any session created strictly *before* that millisecond is
+  rejected. Millisecond granularity + the strict comparison mean a session reissued in the same
+  second as a revoke-all (e.g. staying signed in after a password change) is **not** wrongly killed.
+
+**KV eventual-consistency grace window:** the per-session registry snapshot is written at one colo at
+sign-in; a request landing on another colo before it propagates would otherwise be rejected. Within a
+short issued-at grace window (~120s) a *missing* registry record is tolerated and self-healed from D1,
+so a just-signed-in user is never bounced. Both deny-list checks still apply inside the window, so
+this never weakens revocation.
 
 ```typescript
 import { revokeSession, revokeAllUserSessions } from '@ottabase/auth/backend';
@@ -151,10 +171,13 @@ const valid = await verifyPassword(password, passwordHash);
 ## CSRF Protection
 
 CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie
-(`ottabase.csrf-token`) containing `token.hmac(token)` and returns the plain `token` in the JSON
-body. State-changing endpoints (credentials sign-in, magic-link send, sign-out) require the client
-to echo that token back in the request body; the server re-derives the HMAC from the cookie and
-compares. The client API handles this automatically:
+(`ottabase.csrf-token`, `__Host-` prefixed in production) containing `token.hmac(token)` and returns
+the plain `token` in the JSON body. State-changing endpoints (credentials sign-in, magic-link send,
+sign-out) require the client to echo that token back in the request body; the server re-derives the
+HMAC from the cookie and compares. As defense-in-depth the server also rejects any request whose
+`Origin` header is present but not in the allowlist (same-origin or the configured `AUTH_URL`), so a
+cross-site request is refused even before the token check. The client API handles the token
+automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';
@@ -220,6 +243,12 @@ account).
 `POST /api/auth/signin/email` sends a short-lived (15 minute) sign-in link, distinct from the
 app's own 24-hour email-verification links. `GET /api/auth/callback/email` verifies the token,
 creates a session, and redirects.
+
+Tokens are stored **hashed** (SHA-256) at rest — only the plaintext lives in the emailed link — so a
+database read leak can't be replayed to mint a session. Consumption is a single atomic
+`DELETE ... RETURNING`, so a link is strictly single-use even under concurrent clicks, and the link
+origin is derived from the configured `AUTH_URL` rather than the request `Host` (no host-header
+poisoning). Sending a new link invalidates any prior outstanding one for that address.
 
 `resolveMagicLinkSender(env)` (from `@ottabase/auth/providers`) picks a sender using this priority
 order:
@@ -339,8 +368,10 @@ Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `Regist
 
 | Variable                        | Required                       | Purpose                                                        |
 | -------------------------------- | ------------------------------- | ------------------------------------------------------------- |
-| `AUTH_SECRET`                    | Yes in production                | HMAC secret for session JWTs, CSRF tokens, OAuth state/PKCE cookies |
-| `AUTH_URL` / `NEXTAUTH_URL`      | No                                | Frontend origin used for redirects (defaults to `http://127.0.0.1:3003`) |
+| `AUTH_SECRET`                    | Yes (fails closed without it)    | HMAC secret (>= 16 chars, 32+ recommended) for session JWTs, CSRF tokens, OAuth state/PKCE cookies |
+| `AUTH_ALLOW_INSECURE_DEV_SECRET` | No (local dev only)              | `"true"` permits the built-in insecure dev secret — only honored when `ENVIRONMENT` is a dev value |
+| `CORS_ALLOWED_ORIGINS`           | No                                | Comma-separated extra origins allowed for credentialed CORS (same-origin + `AUTH_URL` always allowed) |
+| `AUTH_URL` / `NEXTAUTH_URL`      | No                                | Frontend origin used for redirects + OAuth `redirect_uri` (defaults to `http://127.0.0.1:3003`) |
 | `AUTH_COOKIE_NAME`               | No                                | Overrides the session cookie name (default `ottabase.session-token`) |
 | `AUTH_DISABLE_CREDENTIALS`       | No                                | `"true"`/`"1"` disables `POST /api/auth/callback/credentials`   |
 | `AUTH_REQUIRE_EMAIL_VERIFIED`    | No                                | `"true"`/`"1"` rejects credentials sign-in for unverified users |
@@ -355,9 +386,12 @@ Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `Regist
 | `EMAIL_SERVER` / `EMAIL_FROM`   | For SMTP magic links               |                                                                 |
 | `DEV_EMAIL_TRAP_ENABLED`        | For local dev email capture (needs `OBCF_KV`) |                                                  |
 
-`AUTH_SECRET` is required whenever `ENVIRONMENT` is set to anything other than `development`,
-`dev`, or `test` — `handleAuthRequest` throws otherwise. Outside production it falls back to an
-insecure default and logs a warning.
+`AUTH_SECRET` resolution **fails closed**: it is required unless **both** `ENVIRONMENT` is an
+explicit dev value (`development`/`dev`/`test`/`local`) **and** `AUTH_ALLOW_INSECURE_DEV_SECRET=true`
+are set, in which case a built-in insecure default is used with a warning. An unset or unknown
+`ENVIRONMENT` is treated as production, so a real deploy that forgets `AUTH_SECRET` throws instead of
+silently signing every token with a publicly-known constant. (Deploy with the production wrangler
+environment, e.g. `wrangler deploy --env production`, so dev vars never reach production.)
 
 ## Architecture
 

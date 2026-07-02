@@ -95,6 +95,58 @@ describe('handleAuthRequest', () => {
         expect(location).toContain('/login');
         expect(location).toContain('error=OAuthSignin');
     });
+
+    // --- CSRF + Origin backstop -------------------------------------------------------
+    async function getCsrf(env: AuthEnv) {
+        const res = await handleAuthRequest(request('/api/auth/csrf'), env);
+        const token = (await res.json()).csrfToken as string;
+        const setCookie = res.headers.get('Set-Cookie') || '';
+        const cookie = setCookie.split(';')[0]; // "ottabase.csrf-token=token.sig"
+        return { token, cookie };
+    }
+
+    it('accepts a state-changing POST with a valid CSRF token + same-origin Origin', async () => {
+        const env = createEnv();
+        const { token, cookie } = await getCsrf(env);
+        // /signout is CSRF-protected but touches no DB, so a valid token yields success.
+        const res = await handleAuthRequest(
+            request('/api/auth/signout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: 'https://app.example.com' },
+                body: JSON.stringify({ csrfToken: token }),
+            }),
+            env,
+        );
+        expect(res.status).toBe(200);
+    });
+
+    it('rejects a state-changing POST whose Origin is not allowlisted, even with a valid CSRF token', async () => {
+        const env = createEnv();
+        const { token, cookie } = await getCsrf(env);
+        const res = await handleAuthRequest(
+            request('/api/auth/signout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: 'https://evil.example.com' },
+                body: JSON.stringify({ csrfToken: token }),
+            }),
+            env,
+        );
+        expect(res.status).toBe(403);
+    });
+
+    it('rejects a state-changing POST with a mismatched CSRF token', async () => {
+        const env = createEnv();
+        const { cookie } = await getCsrf(env);
+        const res = await handleAuthRequest(
+            request('/api/auth/signout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: 'https://app.example.com' },
+                body: JSON.stringify({ csrfToken: 'not-the-real-token' }),
+            }),
+            env,
+        );
+        expect(res.status).toBe(403);
+    });
 });
 
 describe('createAuthConfig', () => {

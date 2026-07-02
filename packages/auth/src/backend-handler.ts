@@ -89,7 +89,10 @@ function ensureOrmConnection(env: AuthEnv): void {
 }
 
 function resolveFrontendUrl(env: AuthEnv): string {
-    return env.AUTH_URL || env.NEXTAUTH_URL || 'http://127.0.0.1:3003';
+    // Strip trailing slashes so `${resolveFrontendUrl(env)}${path}` and the OAuth
+    // redirect_uri never produce a double slash (which would fail an exact redirect-uri
+    // match at the provider and break OAuth).
+    return (env.AUTH_URL || env.NEXTAUTH_URL || 'http://127.0.0.1:3003').replace(/\/+$/, '');
 }
 
 /** Only relative, single-leading-slash paths are accepted; anything else falls back, blocking open redirects. */

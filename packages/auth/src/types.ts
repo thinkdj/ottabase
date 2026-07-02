@@ -42,6 +42,10 @@ export interface SessionTokenPayload extends Record<string, unknown> {
     createdAt?: number | null;
     /** Mirrors the KV profile-version counter at the time the session was issued/refreshed. */
     profileVersion?: number;
+    /** Session creation time in epoch MILLISECONDS. `iat` is only second-granular; `cms` is
+     *  used for the bulk-revocation comparison so a session reissued in the same second as a
+     *  revoke-all is not wrongly invalidated when its KV snapshot has not yet propagated. */
+    cms?: number;
     iat?: number;
     exp?: number;
 }

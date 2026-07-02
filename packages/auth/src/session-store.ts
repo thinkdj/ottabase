@@ -100,7 +100,7 @@ export function resolveSessionMaxAge(env: AuthEnv, options?: CreateAuthConfigOpt
 export function resolveAuthSecret(env: AuthEnv): string {
     if (env.AUTH_SECRET) {
         if (env.AUTH_SECRET.length < 16) {
-            throw new Error('AUTH_SECRET is too short; use at least 32 random characters (e.g. `openssl rand -base64 32`)');
+            throw new Error('AUTH_SECRET is too short; use at least 16 characters (32+ recommended, e.g. `openssl rand -base64 32`)');
         }
         return env.AUTH_SECRET;
     }
@@ -200,9 +200,17 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
         const user = await User.find(userId);
         if (user) {
             if (organizationId) {
+                // Fetch role records once and derive both role names and permissions from them.
+                // (user.getPermissions() would re-run the same role queries internally, doubling
+                // the D1 round trips on this hot-ish path.)
                 const roleRecords = await user.roles({ organizationId });
                 roles = roleRecords.map((role: { get: (key: string) => unknown }) => String(role.get('name')));
-                permissions = await user.getPermissions({ organizationId });
+                const permissionSet = new Set<string>();
+                for (const role of roleRecords) {
+                    const rolePerms = (role as { getPermissions?: () => string[] }).getPermissions?.() ?? [];
+                    for (const perm of rolePerms) permissionSet.add(perm);
+                }
+                permissions = [...permissionSet];
             }
             const createdAtRaw = user.get('createdAt');
             if (createdAtRaw) {
@@ -295,6 +303,7 @@ export async function createSessionForUser(
         organizationId: context.organizationId,
         createdAt: context.createdAt,
         profileVersion,
+        cms: createdMs,
     };
 
     const token = await signJwt(payload, secret, { expiresInSeconds: maxAgeSeconds });
@@ -436,10 +445,11 @@ function buildUser(payload: SessionTokenPayload, snapshot: RegistrySnapshot | nu
 /**
  * Resolve the current session from a request's cookies.
  *
- * Hot path: JWT signature + expiry check, then a single parallel batch of KV reads
- * (bulk-revocation marker, per-session tombstone, registry snapshot). No database
- * read unless a profile-version bump flags the snapshot stale, or a freshly-issued
- * session's registry record has not yet propagated (self-healed within the grace window).
+ * Hot path: JWT signature + expiry check, then a single parallel batch of 4 KV reads
+ * (bulk-revocation marker, per-session sign-out tombstone, registry snapshot, and the
+ * profile-version counter). No database read unless a profile-version bump flags the
+ * snapshot stale, or a freshly-issued session's registry record has not yet propagated
+ * (self-healed from D1 within the grace window).
  */
 export async function getSession(request: Request, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<Session | null> {
     const cookies = parseCookies(request.headers.get('Cookie'));
@@ -461,7 +471,11 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
         return null;
     }
 
+    // Prefer the ms-granular `cms` claim; fall back to the second-granular iat only for
+    // legacy tokens that predate it. Using a floored second here would wrongly reject a
+    // session reissued in the same second as a revoke-all (see revokeAllUserSessions).
     const iatMs = (Number(payload.iat) || 0) * 1000;
+    const createdMsClaim = Number(payload.cms) || iatMs;
 
     // One parallel batch for the whole hot path: bulk-revocation marker, per-session
     // sign-out tombstone, registry snapshot, and the profile-version counter. All keys
@@ -492,7 +506,7 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
     // Bulk revocation ("revoked since <ms>"): reject any session created before it.
     if (revokedSinceRaw) {
         const revokedAtMs = Number(revokedSinceRaw);
-        const createdMs = snapshot?.c || iatMs;
+        const createdMs = snapshot?.c || createdMsClaim;
         if (Number.isFinite(revokedAtMs) && createdMs > 0 && createdMs < revokedAtMs) return null;
     }
 
@@ -509,7 +523,7 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
         if (env.OBCF_D1) {
             const context = await loadUserContext(payload.sub, env);
             snapshot = {
-                c: iatMs || Date.now(),
+                c: createdMsClaim || Date.now(),
                 v: currentVersion,
                 organizationId: context.organizationId,
                 roles: context.roles,

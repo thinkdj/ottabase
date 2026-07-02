@@ -278,10 +278,12 @@ convention) the app's login route. There is no broader Auth.js-style config obje
     - Plug-and-play Cloudflare Workers integration (`handleAuthRequest`)
     - Auto-configuration from env vars
     - Customizable authorization + sign-in/sign-out hooks
-    - Signed HS256 session JWTs in an HttpOnly/Secure/SameSite=Lax cookie, paired with a per-session KV registry
-      record so sign-out revokes only that session; a separate bulk "revoked since" KV key backs password
-      change/reset, invalidating every session for a user
-    - Double-submit CSRF cookie for all state-changing endpoints
+    - Signed HS256 session JWTs (identity claims only; roles/permissions live in a per-session KV
+      registry snapshot, not the cookie) in an HttpOnly/Secure/SameSite=Lax cookie. Revocation is a
+      deny-list: sign-out writes a per-jti tombstone (honored even within the KV propagation grace
+      window), and a bulk "revoked since &lt;ms&gt;" KV key backs password change/reset, invalidating
+      every earlier session for a user
+    - Double-submit CSRF cookie + Origin allowlist for all state-changing endpoints
 
 2. **Client API** (`@ottabase/auth/client`)
     - Framework-agnostic (works with any frontend)
