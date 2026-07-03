@@ -29,6 +29,13 @@
     // TanStack Router creates a single worker entry point
     "main": "cloudflare-worker.ts",
 
+    // Minify the worker bundle.
+    // Safe: models resolve via `static entity` strings, never constructor.name.
+    "minify": true,
+    // Upload source maps so Workers Logs/traces symbolicate stack traces against
+    // original sources (minified positions are useless otherwise).
+    "upload_source_maps": true,
+
     // Observability - logging configuration
     "observability": {
         "enabled": false, // legacy key; use logs.enabled instead;
