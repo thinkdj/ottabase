@@ -94,13 +94,8 @@ export default defineConfig(({ command }) => ({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    mantine: [
-                        '@mantine/core',
-                        '@mantine/hooks',
-                        '@mantine/modals',
-                        '@mantine/notifications',
-                        '@mantine/carousel',
-                    ],
+                    // A manualChunks entry here would get modulepreload-ed into index.html on every page
+                    // So keep only the most important libraries in a separate chunk for caching and performance
                     tanstack: ['@tanstack/react-query', '@tanstack/react-query-devtools', '@tanstack/react-router'],
                     ottaeditor: ['@ottabase/ottaeditor'],
                 },
