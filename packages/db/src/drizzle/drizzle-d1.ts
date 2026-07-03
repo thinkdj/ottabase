@@ -92,7 +92,23 @@ export class D1Driver extends BaseDbDriver {
 }
 
 /**
- * Create a D1 driver instance
+ * Per-isolate cache of the default D1 driver, keyed by the D1 binding object.
+ *
+ * Cloudflare bindings are stable object references within an isolate, and a `D1Driver`
+ * holds no per-request mutable state (just the Drizzle query builder bound to the D1
+ * binding). Worker handlers call `createD1Driver(env.OBCF_D1)` once per request — often
+ * several times across the request lifecycle — so without this cache every request rebuilds
+ * a Drizzle instance for a binding that never changes. The WeakMap lets a reclaimed binding
+ * be garbage-collected with its driver.
+ */
+const defaultDriverCache = new WeakMap<D1Database, D1Driver>();
+
+/**
+ * Create a D1 driver instance.
+ *
+ * Config-less calls (the overwhelmingly common case in request handlers) reuse a single
+ * cached driver per binding within the isolate; a call that passes a custom config always
+ * gets a fresh, uncached driver so bespoke logging/schema options are never shared.
  *
  * @example
  * ```typescript
@@ -109,7 +125,17 @@ export class D1Driver extends BaseDbDriver {
  * ```
  */
 export function createD1Driver(d1: D1Database, config: D1DriverConfig = {}): D1Driver {
-    return new D1Driver(d1, config);
+    // A custom config must not be served from (or pollute) the shared default cache.
+    if (config && Object.keys(config).length > 0) {
+        return new D1Driver(d1, config);
+    }
+
+    const cached = defaultDriverCache.get(d1);
+    if (cached) return cached;
+
+    const driver = new D1Driver(d1);
+    defaultDriverCache.set(d1, driver);
+    return driver;
 }
 
 /**
