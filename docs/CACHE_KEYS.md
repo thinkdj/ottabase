@@ -209,6 +209,32 @@ await kv.put(userKey('auth', userId, 'revoked'), String(revokedAt), {
 The auth package also exposes an `onSignOut` hook so apps can extend signout behavior (e.g., clearing RBAC cache)
 without overriding the core event.
 
+### 5. Security-Context Membership Cache (otta-web)
+
+`getSecurityContext` caches the two membership lookups it makes on every authenticated request (org memberships and
+group memberships) behind a 5-minute KV read-through cache (matching the RBAC cache precedent):
+
+```typescript
+// Keys (built with userKey('auth', ...)):
+// - auth:usr:{userId}:member-orgs                     → string[] of accessible org IDs
+// - auth:usr:{userId}:member-groups:{orgId | none}    → string[] of accessible group IDs (per validated org)
+```
+
+The TTL is only the **fallback** bound — every in-app mutation path invalidates eagerly via
+`invalidateMembershipCache(kv, userId)` (exported from `worker/lib/auth-utils.ts`):
+
+- sign-in invite activation (org + group invites)
+- admin member invite / role-status update / removal (`/api/admin/organizations/:id/members`; note that
+  `organization_members` is **blocked** from generic OttaORM CRUD, so the admin routes are the only path)
+- organization creation (the creator's pre-creation list is cached earlier in the same request)
+- generic CRUD mutations of `user_groups` / `user_group_members` (acting user + target member)
+
+Any cache-layer failure falls back to the direct D1 query — a KV outage never weakens membership resolution.
+
+**Propagation bound:** for mutations made outside these paths (custom code, direct D1 edits), the 300s TTL bounds
+staleness; KV eventual consistency adds up to ~60s cross-colo. Call `invalidateMembershipCache` from any custom route
+that mutates memberships to get next-request propagation.
+
 ## Builder API
 
 For more complex scenarios, use the `CacheKeyBuilder` class:

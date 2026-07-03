@@ -320,6 +320,20 @@ const canEdit = await user.hasPermission('posts:edit', {
 await cache.invalidateOrganization(org.id);
 ```
 
+### Membership Cache (Security Context)
+
+The otta-web template also caches the **security-context membership lookups** (org + group memberships resolved by
+`getSecurityContext` on every authenticated request) behind a 5-minute KV read-through cache
+(`auth:usr:{userId}:member-orgs`, `auth:usr:{userId}:member-groups:{orgId|none}`) — same TTL as the RBAC cache.
+
+- **Invalidation is eager** on every in-app membership mutation: sign-in invite activation, admin member
+  invite/update/remove, organization creation, and generic CRUD on `user_groups`/`user_group_members` — via
+  `invalidateMembershipCache(kv, userId)` in `worker/lib/auth-utils.ts`. Call it from any custom route that mutates
+  memberships. (`organization_members` is blocked from generic CRUD entirely — the admin routes are the only path.)
+- **Fail-safe:** a KV failure falls back to the direct D1 query — caching can never weaken membership enforcement.
+- **Propagation bound:** only for mutations made outside the instrumented paths (custom code, direct D1 edits): the 300s
+  TTL plus KV eventual consistency (~6 minutes worst case cross-colo).
+
 ---
 
 ## 🔒 Security Features

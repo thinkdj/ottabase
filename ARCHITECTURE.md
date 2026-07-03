@@ -222,6 +222,11 @@ Every request passes through two gates before reaching application logic:
 2. **Bootstrap gate** — `resolvePlatformState(env)` determines if the platform is `READY`:
     - `/__bootstrap__/*` paths are always handled (init, seed, create-owner, finalize).
     - All other requests are intercepted with a "not ready" response until bootstrap completes.
+    - **READY fast path:** once READY, the result is memoized per isolate (60s soft TTL) and re-verified with a single
+      KV read — steady-state requests pay zero bookkeeping I/O instead of a KV read + D1 probe each. State writers drop
+      the memo on any transition away from READY; other isolates converge via KV within ~TTL + KV propagation (≈2
+      minutes worst case after a re-init). Trade-off: a dead D1 no longer triggers a preemptive maintenance page —
+      failures surface in the actual queries.
 
 ### CORS
 
