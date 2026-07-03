@@ -3,10 +3,11 @@
 // ============================================================
 //
 // Resolution order:
-//   1. ENV check   → OTTABASE_LOCKED=true → halt immediately
-//   2. KV check    → fast-path if cached state exists
-//   3. DB probe    → source of truth, create meta table if needed
-//   4. Reconcile   → KV=READY but DB dead? panic. DB=READY but KV stale? repopulate.
+//   1. ENV check    → OTTABASE_LOCKED=true → halt immediately
+//   2. Isolate memo → READY within TTL → return (zero I/O)
+//   3. KV check     → READY → return (one KV read, no D1 probe)
+//   4. DB probe     → source of truth, create meta table if needed
+//   5. Reconcile    → DB=READY but KV stale? repopulate KV + arm memo.
 // ============================================================
 
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -53,6 +54,12 @@ async function readKVState(env: CloudflareEnv): Promise<PlatformState | null> {
  * Write platform state to KV cache
  */
 export async function writeKVState(env: CloudflareEnv, state: PlatformState): Promise<void> {
+    // Leaving READY (re-init/rollback) must drop this isolate's READY memo
+    // immediately — concurrent non-bootstrap requests would otherwise keep
+    // resolving READY against a mid-wipe/mid-migration database.
+    if (state !== 'READY') {
+        invalidatePlatformStateCache();
+    }
     if (!env.OBCF_KV) return;
     try {
         await env.OBCF_KV.put(KV_PLATFORM_STATE_KEY, state);
@@ -129,6 +136,10 @@ async function readDBState(env: CloudflareEnv): Promise<{ state: PlatformState |
  * Write platform state to D1 (source of truth)
  */
 export async function writeDBState(env: CloudflareEnv, state: PlatformState): Promise<void> {
+    // Mirror writeKVState: any transition away from READY drops the isolate memo.
+    if (state !== 'READY') {
+        invalidatePlatformStateCache();
+    }
     if (!env.OBCF_D1) return;
 
     // Ensure meta table exists
@@ -156,6 +167,30 @@ export async function ensureMetaTable(env: CloudflareEnv): Promise<void> {
             updated_at INTEGER NOT NULL
         )`,
     ).run();
+}
+
+// ─── READY fast path ─────────────────────────────────────────
+// Once the platform reaches READY it stays READY except during an explicit
+// bootstrap re-init, so normal requests must not pay a KV read + D1 probe for
+// bookkeeping. Two tiers:
+//   1. Isolate memo (zero I/O) — READY result is remembered for a short window.
+//   2. KV fast path (one KV read) — KV=READY skips the D1 probe entirely and
+//      re-arms the memo. This is the "KV accelerates" behaviour documented above.
+// Invalidation: writeKVState/writeDBState drop the memo whenever they write a
+// non-READY state (the only mutation points), so the isolate performing a
+// re-init observes it at the moment of transition; the worker entry also drops
+// the memo around every /__bootstrap__ request. Other isolates re-verify via
+// KV: worst case ~READY_MEMO_TTL_MS + KV eventual-consistency propagation
+// (~2 minutes total) of stale READY traffic after a re-init begins — a re-init
+// on a live deployment should expect that drain window.
+// Trade-off: with the fast path, a dead D1 no longer flips READY requests into
+// panic/maintenance mode preemptively — failures surface in the actual queries.
+const READY_MEMO_TTL_MS = 60_000;
+let readyMemoVerifiedAt = 0;
+
+/** Drop the isolate READY memo (called on every /__bootstrap__ request). */
+export function invalidatePlatformStateCache(): void {
+    readyMemoVerifiedAt = 0;
 }
 
 /**
@@ -208,29 +243,43 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 3. Read KV cache (used for panic checks)
+    // 3a. READY fast path — isolate memo (zero I/O)
+    // -------------------------------------------------------
+    const now = Date.now();
+    if (readyMemoVerifiedAt > 0 && now - readyMemoVerifiedAt < READY_MEMO_TTL_MS) {
+        return {
+            state: 'READY',
+            source: 'memo',
+            panic: false,
+            reason: 'Platform READY (isolate memo)',
+            bindings,
+        };
+    }
+
+    // -------------------------------------------------------
+    // 3b. Read KV cache — READY fast path (skips D1 probe)
     // -------------------------------------------------------
     const kvState = await readKVState(env);
+    if (kvState === 'READY') {
+        readyMemoVerifiedAt = now;
+        return {
+            state: 'READY',
+            source: 'kv',
+            panic: false,
+            reason: 'Platform READY (KV fast path)',
+            bindings,
+        };
+    }
 
     // -------------------------------------------------------
     // 4. DB probe — source of truth
+    // (Reaching here implies KV did NOT say READY — the fast path returned above.)
     // -------------------------------------------------------
     let dbResult: { state: PlatformState | null; tableExists: boolean };
     try {
         dbResult = await readDBState(env);
     } catch {
-        // DB probe failed entirely
-        if (kvState === 'READY') {
-            // KV says READY but DB is unreachable → panic + maintenance
-            return {
-                state: 'READY',
-                source: 'kv',
-                panic: true,
-                reason: 'KV reports READY but D1 database probe failed — maintenance mode',
-                bindings,
-            };
-        }
-        // DB down and KV doesn't say READY → treat as uninitialized
+        // DB probe failed and KV doesn't say READY → treat as uninitialized
         return {
             state: 'UNINITIALIZED',
             source: 'probe',
@@ -269,14 +318,11 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     // DB has a definitive state
     const dbState = dbResult.state;
 
-    // DB=READY, KV missing or stale → repopulate KV, continue
-    if (dbState === 'READY' && kvState !== 'READY') {
+    // DB=READY but KV didn't say so (missing/stale) → repopulate KV so the
+    // fast path works for subsequent requests, and arm the isolate memo.
+    if (dbState === 'READY') {
         await writeKVState(env, 'READY');
-    }
-
-    // DB=BOOTSTRAPPING, KV says READY → DB wins, reset KV
-    if (dbState === 'BOOTSTRAPPING' && kvState === 'READY') {
-        await writeKVState(env, 'BOOTSTRAPPING');
+        readyMemoVerifiedAt = now;
     }
 
     return {

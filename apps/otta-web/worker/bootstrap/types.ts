@@ -11,10 +11,11 @@
 //   READY         - Platform fully operational
 //
 // Resolution rules:
-//   KV=READY, DB probe fails  → panic + maintenance mode
-//   DB=READY, KV missing      → repopulate KV → continue
 //   ENV=LOCKED                 → override everything → halt
-//   DB always wins (source of truth)
+//   Isolate memo / KV=READY    → fast path, D1 probe skipped
+//   DB=READY, KV missing       → repopulate KV → continue
+//   DB wins whenever it is probed (source of truth); bootstrap
+//   routes drop the memo so re-inits resolve fresh.
 // ============================================================
 
 export type PlatformState = 'UNINITIALIZED' | 'BOOTSTRAPPING' | 'READY';
@@ -23,8 +24,14 @@ export interface PlatformStateResult {
     /** The resolved platform state */
     state: PlatformState;
     /** Where the state was resolved from */
-    source: 'env' | 'db' | 'kv' | 'probe';
-    /** Whether we're in a degraded/panic state */
+    source: 'env' | 'db' | 'kv' | 'probe' | 'memo';
+    /**
+     * Whether we're in a degraded/panic state.
+     * Currently always false: the KV=READY + dead-D1 panic probe was removed
+     * with the READY fast path (D1 failures now surface in the actual queries).
+     * The field and its maintenance-page consumers are retained for a future
+     * explicit health probe.
+     */
     panic: boolean;
     /** Human-readable reason for the current state */
     reason: string;

@@ -2,7 +2,12 @@ import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from './cloudflare-env';
 import { queueHandler } from './ottabase/queue';
-import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from './worker/bootstrap';
+import {
+    handleBootstrapRoute,
+    interceptIfNotReady,
+    invalidatePlatformStateCache,
+    resolvePlatformState,
+} from './worker/bootstrap';
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
@@ -47,17 +52,27 @@ export default {
             // -------------------------------------------------------
             // Bootstrap gate – resolve platform state before anything
             // -------------------------------------------------------
-            const platformState = await resolvePlatformState(env);
 
-            // Handle /__bootstrap__/* routes
+            // /__bootstrap__/* routes always drop the isolate READY memo and
+            // resolve fresh. The finally-invalidate matters: the pre-handler
+            // resolve re-arms the memo (KV may still say READY), and the route
+            // may then mutate platform state — never leave that memo armed
+            // across the transition. (State writers also invalidate directly.)
             if (normalizedPathname.startsWith('/__bootstrap__')) {
-                return await handleBootstrapRoute({
-                    request,
-                    env,
-                    url,
-                    platformState,
-                });
+                invalidatePlatformStateCache();
+                try {
+                    return await handleBootstrapRoute({
+                        request,
+                        env,
+                        url,
+                        platformState: await resolvePlatformState(env),
+                    });
+                } finally {
+                    invalidatePlatformStateCache();
+                }
             }
+
+            const platformState = await resolvePlatformState(env);
 
             // Block non-bootstrap requests if platform is not READY
             const intercepted = interceptIfNotReady(request, url, platformState);

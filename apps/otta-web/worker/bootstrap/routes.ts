@@ -180,7 +180,9 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     // Platform is READY and not in panic → let request through
     if (platformState.state === 'READY' && !platformState.panic) return null;
 
-    // Panic mode (KV=READY but DB dead)
+    // Panic mode — NOTE: currently unreachable. The resolver's dead-D1 panic
+    // probe was removed with the READY fast path (see PlatformStateResult.panic
+    // in types.ts); this branch is retained for a future explicit health probe.
     if (platformState.panic) {
         return new Response(renderMaintenancePage(platformState), {
             status: 503,
