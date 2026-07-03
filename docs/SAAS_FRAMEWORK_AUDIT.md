@@ -75,6 +75,19 @@ Drizzle instance each time for a binding that never changes within an isolate. N
 binding; config-bearing calls still get a fresh driver. Removes redundant per-request allocation everywhere at once
 (`packages/db/src/drizzle/drizzle-d1.ts`).
 
+#### C. Indexed the brand-engine config tables (HTML-render hot path)
+
+Brand/layout/menu resolution runs on **every HTML request that misses the brand KV cache**, looking up an app's brand
+kit, layout templates, route mappings, menu-slot assignments and menus by `app_id` — all unindexed. Added app-scoped
+indexes (`brand_kits(appId,isDefault)`, `layout_templates(appId)`, `layout_route_mappings(appId,priority)`,
+`menu_slot_assignments(appId,slotName)`, `menus(appId,slug)`), backfilled on init.
+
+#### D. Memoized the per-model Zod validation schema
+
+`create`/`update` validate on every write via `getZodSchema()`, which rebuilt the schema from field metadata each call
+despite `fields`/`writable` being static. Now cached per class + mode in a `WeakMap`
+(`packages/ottaorm/src/base/AbstractBaseModel.ts`).
+
 ### 2.2 High-value recommendations (not yet implemented)
 
 1. **🔧 Collapse the read-before-write in secure CRUD.** `secureCrud` runs a full `GET` verify query before **every**
@@ -118,6 +131,22 @@ binding; config-bearing calls still get a fresh driver. Removes redundant per-re
    `sessions(userId)` / unique `session_token` indexes make this a keyed lookup; consider a short KV/isolate cache of
    resolved sessions keyed by token hash for read-heavy bursts.
 
+9. **🔧 Frontend fetch waterfalls & refetch storms (confirmed high-value, quick).**
+    - No route preloading — every navigation is a serial _chunk-fetch → data-fetch_ waterfall. Set
+      `defaultPreload: 'intent'` on the router (`apps/otta-web/src/router.tsx:599`) so the chunk warms on hover.
+    - Global TanStack Query defaults refetch on every window-focus/mount/reconnect with only 30s `staleTime`
+      (`packages/ottaorm/src/client/QueryProvider.tsx:25`) — raise `staleTime` and set `refetchOnWindowFocus: false`.
+    - Render-blocking Google Fonts (4 families, many weights) from a third-party CDN in `index.html` — self-host the 1–2
+      weights needed for first paint and `rel=preload` them.
+
+10. **🔧 Realtime fan-out is O(connections).** `RealtimeActor` scans every connected client per channel publish
+    (`packages/cf-realtime/src/server/RealtimeActor.ts:351`). Maintain a `Map<channel, Set<clientId>>` so fan-out is
+    O(subscribers). Bites once a Durable Object holds many connections.
+
+11. **🔧 Systemic index safety-net.** Have the runtime generator auto-emit a tenant index for any table with
+    `organization_id`/`app_id`/`user_id` that lacks a covering declared index (`migrations/runtime-generator.ts:474`),
+    or lint at init — so app/custom models can't silently ship unindexed (the exact class of bug fixed manually above).
+
 ### 2.3 Notes
 
 - The D1 driver's `execute()` uses `this.db.execute(query)`; batches are raw-SQL-string only
@@ -146,13 +175,13 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 
 ### 3.2 Multi-tenancy & teams
 
-| Gap                                               | Sev    | Effort | Notes                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Per-org custom roles/permissions**              | must   | L      | ⚠️ RLS declares `roles`/`permissions` as `TenantScoped` (filter `organizationId`) but **those tables have no `organizationId` column** — roles are globally scoped. Real B2B SaaS needs org-defined roles. Latent misconfig: routing roles through secure CRUD would fail closed. |
-| Team invite UX end-to-end (email → accept → seat) | should | M      | Primitives exist (`OrganizationMember.activatePendingInvites`); needs a polished flow + emails.                                                                                                                                                                                   |
-| SSO / SAML / SCIM (enterprise)                    | should | XL     | Absent; gating factor for enterprise deals.                                                                                                                                                                                                                                       |
-| Org ownership transfer                            | should | S      | Last-owner guardrails exist for removal; no transfer.                                                                                                                                                                                                                             |
-| Custom domain / subdomain-per-tenant routing      | should | L      | `organizationId` is derived from subdomain, but no domain-provisioning story.                                                                                                                                                                                                     |
+| Gap                                          | Sev    | Effort | Notes                                                                                                                                                                                                                                                                             |
+| -------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Per-org custom roles/permissions**         | must   | L      | ⚠️ RLS declares `roles`/`permissions` as `TenantScoped` (filter `organizationId`) but **those tables have no `organizationId` column** — roles are globally scoped. Real B2B SaaS needs org-defined roles. Latent misconfig: routing roles through secure CRUD would fail closed. |
+| **Team invite by email (accept → seat)**     | must   | M      | ⚠️ Broken today: the admin invite route hard-requires an existing `userId` and 404s otherwise (§4-5), so you can't invite someone without an account — despite `invitedEmail` + `activatePendingInvites` existing. Wire the tokenized email flow.                                 |
+| SSO / SAML / SCIM (enterprise)               | should | XL     | Absent; gating factor for enterprise deals.                                                                                                                                                                                                                                       |
+| Org ownership transfer                       | should | S      | Last-owner guardrails exist for removal; no transfer.                                                                                                                                                                                                                             |
+| Custom domain / subdomain-per-tenant routing | should | L      | `organizationId` is derived from subdomain, but no domain-provisioning story.                                                                                                                                                                                                     |
 
 ### 3.3 Public API, webhooks & integrations
 
@@ -188,13 +217,14 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 
 ### 3.6 DevEx & scaffolding (the solo-founder multiplier)
 
-| Gap                                                          | Sev    | Effort | Notes                                                                                                                                    |
-| ------------------------------------------------------------ | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Code generators** (`otta new model/route/page/crud/admin`) | must   | M      | CLI scaffolds apps only. The whole value prop is speed — generators for model+schema+hooks+forms+admin CRUD would be the killer feature. |
-| Auto-admin CRUD from model metadata                          | should | L      | `@ottabase/forms` auto-generates forms; extend to full admin resource pages (list/detail/edit) from the model registry.                  |
-| Env-var validation + typed config at boot                    | should | S      | Fail fast on missing/invalid env with a schema.                                                                                          |
-| Upgrade/merge-from-upstream tooling                          | should | M      | "You own the code" fork model needs a documented, tooled update path.                                                                    |
-| One-command provision + deploy                               | should | M      | `cf:setup` exists; smooth it into a single guided deploy.                                                                                |
+| Gap                                                        | Sev    | Effort | Notes                                                                                                                                                                                                           |
+| ---------------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Code generators** (`otta g model/route/page/crud/admin`) | must   | M      | CLI scaffolds apps only. A partial `db-generate` exists in `@ottabase/scripts` but is **not built or wired** into the CLI. The value prop is speed — finish generators for model+schema+hooks+forms+admin CRUD. |
+| **Registry-driven admin (CrudHub)**                        | must   | L      | `getAllModelsMetadata()` exists but no generic admin renders from it — every admin page (users, RBAC, blog, orgs) is bespoke, so the metadata is dead plumbing.                                                 |
+| Auto-admin CRUD from model metadata                        | should | L      | `@ottabase/forms` auto-generates forms; extend to full admin resource pages (list/detail/edit) from the model registry.                                                                                         |
+| Env-var validation + typed config at boot                  | should | S      | Fail fast on missing/invalid env with a schema.                                                                                                                                                                 |
+| Upgrade/merge-from-upstream tooling                        | should | M      | "You own the code" fork model needs a documented, tooled update path.                                                                                                                                           |
+| One-command provision + deploy                             | should | M      | `cf:setup` exists; smooth it into a single guided deploy.                                                                                                                                                       |
 
 ### 3.7 Observability & ops
 
@@ -229,11 +259,11 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 
 ### 3.10 AI & automation
 
-| Gap                                      | Sev    | Effort | Notes                                                                                         |
-| ---------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------- |
-| RAG / embeddings (Vectorize) + retrieval | should | L      | `@ottabase/cf-ai` covers chat/gateway; no vector store / RAG.                                 |
-| Agent/tool-use scaffold                  | nice   | L      | Building block for AI-native SaaS.                                                            |
-| Scheduled + event-driven jobs UX         | should | M      | Queue + cron exist; add a jobs dashboard + retry/DLQ UX (DLQ admin exists — surface it well). |
+| Gap                                      | Sev    | Effort | Notes                                                                                                                                                                     |
+| ---------------------------------------- | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RAG / embeddings (Vectorize) + retrieval | should | L      | `@ottabase/cf-ai` covers chat/gateway; no vector store / RAG.                                                                                                             |
+| Agent/tool-use scaffold                  | nice   | L      | Building block for AI-native SaaS.                                                                                                                                        |
+| Scheduled + event-driven jobs UX         | should | M      | Queue is wired; **cron is not — the worker has no `scheduled()` handler (§4-4)**. Wire it, then add a jobs dashboard + retry/DLQ UX (DLQ admin exists — surface it well). |
 
 ---
 
@@ -247,6 +277,27 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 2. **Passkey table without a passkey feature** (`authenticators` exists, no WebAuthn flow) — §3.1.
 3. **Advertised eager-loading DSL is inert** (`connect`/`with` unused) — §2.2-3. Either implement or remove from the
    docs/model surface to avoid a false capability.
+4. **Cron/scheduled jobs are not wired.** The worker exports `fetch` and `queue` but **no `scheduled()` handler**
+   (`cloudflare-worker.ts:40-137`), and there are no cron triggers in the Wrangler config. So `@ottabase/cron`'s DB
+   scheduler (and anything meant to run on a timer — cleanup, drip emails, scheduled publish, backups) can be defined
+   but never fires on a schedule. Wiring `scheduled()` unblocks a whole tier of features.
+5. **Invite-by-email is dead plumbing.** `handleAdminOrganizationInviteMember` hard-requires an existing `userId` and
+   404s if the user doesn't exist (`admin-organization-members.ts:101-127`), even though the schema has `invitedEmail`
+   and `OrganizationMember.activatePendingInvites(userId, email)` exists. A founder literally cannot invite a teammate
+   or customer who doesn't already have an account — the single most important team feature is non-functional.
+6. **Org creation can half-commit.** Creating an organization inserts the org and then, in a separate statement, the
+   owner `OrganizationMember` (`ottaorm-crud.ts:215-239`). `BaseModel.batch` is raw-SQL-string only, so there is no real
+   transaction — if the membership insert fails, the org exists with no owner. Needs an atomic multi-model write.
+7. **`AUTH_SECRET` has an insecure fallback on the bootstrap path.** `bootstrap/routes.ts:545` uses
+   `env.AUTH_SECRET || 'dev-secret-change-in-production'`, so a deploy missing the secret can sign with a public
+   constant instead of failing. (The main auth handler does throw in production — the inconsistency is the risk.)
+8. **CORS reflects an arbitrary `Origin` with credentials.** `buildCorsHeaders` echoes the request `Origin` (default
+   `*`) and sets `Access-Control-Allow-Credentials: true` (`router.ts:145-154`) — any origin can make credentialed
+   cross-site requests. Replace with an allowlist.
+9. **`BaseModel.delete` returns `true` unconditionally** without `RETURNING`/`changes` (`base/BaseModel.ts:685`), so it
+   cannot report not-found. Masked today by the pre-verify read; any atomic-write rewrite (§2.2-1) must switch to
+   `RETURNING` to detect 0 rows affected.
+10. **Plaintext OAuth tokens.** Access/refresh tokens are stored unencrypted in `accounts`; add field-level encryption.
 
 ---
 
@@ -255,24 +306,46 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 **First 5 a solo founder will hit (do these next):**
 
 1. Index backfill ✅ (shipped) — re-run `/api/ottaorm/init` in prod to apply.
-2. Code generators (`otta new model/crud/admin`) — the speed promise, §3.6.
-3. MFA/passkey + account deletion & data export — §3.1/§3.4 (trust + compliance to sell).
-4. Per-org roles (fix the schema/RLS mismatch) — §3.2/§4.
-5. Public API keys + outbound webhooks — §3.3 (turns a product into a platform).
+2. **Code/CRUD/admin generators** — the speed promise. Note a partial `db-generate` exists in `@ottabase/scripts` but is
+   **not built or wired into the CLI**, and `getAllModelsMetadata()` exists with **no generic admin (CrudHub)** that
+   renders from it. Finish the loop: `otta g model|crud|admin` + a registry-driven admin — §3.6.
+3. **Wire the async runtime** — add the `scheduled()` handler (and Wrangler cron triggers) so `@ottabase/cron`, backups,
+   drip emails and cleanup actually run; the queue is wired but the timer half is not — §4-4.
+4. MFA/passkey + account deletion & data export + the security-headers/CORS-allowlist/rate-limit bundle — trust,
+   compliance, and every security review — §3.1/§3.4/§4-7/§4-8.
+5. Fix the two broken team primitives: **invite-by-email** (§4-5) and **per-org roles** (§3.2/§4-1).
 
 **Top 10 highest-leverage overall:**
 
-1. Model→CRUD→admin generators (§3.6)
-2. Public API + API keys + webhooks (§3.3)
-3. Per-org RBAC + team invite UX (§3.2)
-4. MFA/passkeys, account deletion, GDPR export (§3.1/§3.4)
-5. Migration versioning + backups/restore (§3.5)
-6. Collapse read-before-write + real eager-loading (§2.2)
-7. Feature flags (§3.7)
-8. SSR/SEO for content routes + single design system (§3.8)
-9. Error tracking + status/uptime (§3.7)
-10. Email templates/broadcast + waitlist + changelog (§3.9)
+1. Model→CRUD→admin generators + registry-driven admin (§3.6)
+2. Public API + scoped API keys + outbound webhooks + typed SDK (§3.3)
+3. Wire `scheduled()`/async runtime so cron/queue/notifications actually fire (§4-4)
+4. MFA/passkeys, account deletion, GDPR export, field-level token encryption (§3.1/§3.4/§4-10)
+5. Security hardening bundle: CSP/HSTS headers, CORS allowlist, rate-limit all public routes (§4-7/§4-8)
+6. Per-org RBAC + working team invite lifecycle (§3.2/§4-1/§4-5)
+7. ORM correctness+scale bundle: real transactions, JOIN eager-loading, cursor pagination, bulk ops (§2.2/§4-6)
+8. Migration versioning + backups/restore + migrations-in-deploy (§3.5)
+9. Observability wiring: Sentry + real health probes + alerting; feature flags (§3.7)
+10. SSR/SEO for content + single design system + frontend waterfall fixes (§2.2-9/§3.8)
 
 ---
 
-_Performance items marked ✅ are implemented and tested on branch `claude/saas-framework-audit-rct5hc`._
+## 6. Cross-check — multi-agent verification pass
+
+The findings above were cross-checked by an automated audit (74 sub-agents: 9 subsystem perf/architecture readers, 10
+SaaS-domain gap analysts, a completeness critic, and an adversarial verification pass over every performance claim).
+
+**Verification outcome:** 54 raw performance findings → **43 confirmed, 8 plausible, 3 rejected**. Notably, two of the
+three _rejected_ findings were rejected **specifically because the fixes shipped on this branch already resolved them**
+— the verifier found the tenant/scope columns already indexed and `createD1Driver` already `WeakMap`-memoized. In other
+words, the independent pass re-derived §2.1 A/B and confirmed they close the issue.
+
+Everything the audit surfaced that materially sharpened the analysis has been folded into the sections above (the
+frontend waterfalls in §2.2-9, realtime fan-out §2.2-10, the systemic index safety-net §2.2-11, and the
+correctness/security items §4-4…§4-10). No confirmed finding contradicted this report's conclusions.
+
+---
+
+_Performance items marked ✅ are implemented and tested on branch `claude/saas-framework-audit-rct5hc` (4 optimizations
+across the data, edge-render and ORM layers; `@ottabase/db` + `@ottabase/ottaorm` type-check clean, 211 package tests
+green including 11 new index regression tests)._
