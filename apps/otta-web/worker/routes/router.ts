@@ -1,5 +1,20 @@
+// ============================================================
+// API router — built on @ottabase/ottarouter
+// ============================================================
+//
+// Routes are order-free: precedence lives in the pattern (static > :param > *,
+// exact method > ALL), so registrations below are grouped by feature, not by
+// match priority. Conflicting registrations throw at module load.
+//
+// A handler returns a Response, or null to decline and keep matching. When no
+// route claims a request, handleApiRequest() consults the user-zone
+// handleCustomRoutes (ottabase/config.routes.ts) and finally resolves null so
+// the worker can fall through to shortlinks and static assets.
+// ============================================================
+
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { Router, withHeaders, type Ctx } from '@ottabase/ottarouter';
+import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
@@ -113,6 +128,7 @@ import {
     handleShortlinksList,
 } from './shortlinks';
 
+/** The context every route handler receives (unchanged across the ottarouter migration). */
 export interface ApiRouteContext {
     request: Request;
     env: CloudflareEnv;
@@ -123,589 +139,316 @@ export interface ApiRouteContext {
     corsHeaders: Record<string, string>;
 }
 
-type MethodHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
+type WorkerCtx = Ctx<CloudflareEnv>;
+type ApiHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
 
-export async function resolveApiRoute(context: ApiRouteContext): Promise<Response | null> {
-    if (context.route.startsWith('/api/') && context.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: context.corsHeaders });
-    }
-
-    const handler = METHOD_HANDLERS[context.method];
-    if (handler) {
-        const response = await handler(context);
-        if (response) {
-            return response;
-        }
-    }
-
-    const methodAgnosticResponse = await handleMethodAgnosticRoutes(context);
-    if (methodAgnosticResponse) {
-        return methodAgnosticResponse;
-    }
-
-    // Custom / premium package routes (from ottabase/config.routes.ts)
-    const customResponse = await handleCustomRoutes(context);
-    if (customResponse) {
-        return customResponse;
-    }
-
-    return null;
+function buildCorsHeaders(request: Request): Record<string, string> {
+    const origin = request.headers.get('Origin') || '*';
+    return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        Vary: 'Origin',
+    };
 }
 
-const METHOD_HANDLERS: Record<string, MethodHandler> = {
-    GET: handleGetRoutes,
-    POST: handlePostRoutes,
-    PATCH: handlePatchRoutes,
-    DELETE: handleDeleteRoutes,
-    PUT: handlePutRoutes,
-};
-
-async function handleGetRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, env } = context;
-    const packages = getOttabaseConfig(env).packages;
-
-    // Brand API (core — always enabled)
-    if (route.startsWith('/api/brand')) {
-        const res = await handleBrandApi(context);
-        if (res) return res;
-    }
-
-    if (route === '/api/health') {
-        return jsonResponse({
-            ok: true,
-            name: 'otta-web',
-            timestamp: Date.now(),
-        });
-    }
-
-    if (route === '/api/system/kill-switches') {
-        return jsonResponse({
-            ...getKillSwitchStatus(context.env),
-        });
-    }
-
-    if (route === '/api/auth/config') {
-        return handleAuthConfig(context);
-    }
-
-    if (route === '/api/auth/verify-email') {
-        return handleVerifyEmail(context);
-    }
-
-    if (route === '/api/users/me') {
-        return handleUserProfile(context);
-    }
-
-    if (route === '/api/email/providers') {
-        return handleEmailProviders(context);
-    }
-
-    if (route === '/api/admin/cron') {
-        return handleAdminCronList(context);
-    }
-
-    // Ottablog package
-    if (packages.ottablog) {
-        if (route.startsWith('/api/blog/studio/') && route === '/api/blog/studio/state') {
-            return handleBlogStudioState(context);
-        }
-        if (route === '/api/blog/rss') {
-            return handleBlogRssFeed(context);
-        }
-        if (route === '/api/blog/sitemap.xml') {
-            return handleBlogSitemap(context);
-        }
-        if (route === '/api/blog/posts') {
-            return handleBlogPostsList(context);
-        }
-        const blogRelatedMatch = route.match(/^\/api\/blog\/posts\/([^/]+)\/related$/);
-        if (blogRelatedMatch) {
-            const postId = decodeURIComponent(blogRelatedMatch[1]);
-            return handleBlogRelatedPosts(context, postId);
-        }
-        const blogBySlugMatch = route.match(/^\/api\/blog\/posts\/by-slug\/([^/]+)$/);
-        if (blogBySlugMatch) {
-            const slug = decodeURIComponent(blogBySlugMatch[1]);
-            return handleBlogPostBySlug(context, slug);
-        }
-        // Archive endpoints: tag/category/series by slug
-        const tagBySlugMatch = route.match(/^\/api\/blog\/tags\/by-slug\/([^/]+)$/);
-        if (tagBySlugMatch) {
-            const slug = decodeURIComponent(tagBySlugMatch[1]);
-            return handleBlogTagBySlug(context, slug);
-        }
-        const categoryBySlugMatch = route.match(/^\/api\/blog\/categories\/by-slug\/([^/]+)$/);
-        if (categoryBySlugMatch) {
-            const slug = decodeURIComponent(categoryBySlugMatch[1]);
-            return handleBlogCategoryBySlug(context, slug);
-        }
-        const seriesBySlugMatch = route.match(/^\/api\/blog\/series\/by-slug\/([^/]+)$/);
-        if (seriesBySlugMatch) {
-            const slug = decodeURIComponent(seriesBySlugMatch[1]);
-            return handleBlogSeriesBySlug(context, slug);
-        }
-    }
-
-    // Shortlinks package
-    if (packages.shortlinks) {
-        if (route === '/api/shortlinks') {
-            return handleShortlinksList(context);
-        }
-        if (route === '/api/shortlinks/analytics') {
-            return handleShortlinksAnalytics(context);
-        }
-        if (route === '/shortlinks/go') {
-            return handleShortlinkExplicitGo(context);
-        }
-    }
-
-    // Referrals package
-    if (packages.referrals) {
-        if (route === '/api/referrals/stats') {
-            return handleReferralStats(context);
-        }
-        if (route === '/api/referrals/user') {
-            return handleReferralUser(context);
-        }
-        if (route === '/api/referrals/tracking') {
-            return handleReferralTrackingList(context);
-        }
-        if (route === '/api/referrals/analytics') {
-            return handleReferralsAnalytics(context);
-        }
-    }
-
-    if (route === '/api/analytics/core') {
-        return handleCoreAnalytics(context);
-    }
-
-    if (route === '/api/audit/logs') {
-        return handleAuditLogs(context);
-    }
-
-    if (route === '/api/cloudflare/realtime/stats') {
-        return handleRealtimeStats(context);
-    }
-
-    if (route === '/api/ottaorm/models-metadata') {
-        return handleModelsMetadata();
-    }
-
-    if (route === '/api/ottaorm/init') {
-        return handleOttaormInit(context);
-    }
-
-    if (route === '/api/admin/queues') {
-        return handleAdminQueuesOverview(context);
-    }
-
-    if (route === '/api/admin/queues/processed') {
-        return handleAdminQueuesProcessed(context);
-    }
-
-    if (route === '/api/admin/queues/failed') {
-        return handleAdminQueuesFailed(context);
-    }
-
-    if (route === '/api/admin/queues/pending') {
-        return handleAdminQueuesPending(context);
-    }
-
-    if (route === '/api/admin/queues/dlq') {
-        return handleAdminQueuesDLQList(context);
-    }
-
-    if (route === '/api/cloudflare/kv') {
-        return handleCloudflareKV(context);
-    }
-
-    if (route === '/api/cloudflare/r2') {
-        return handleCloudflareR2(context);
-    }
-
-    if (route === '/api/cloudflare/ai/providers') {
-        return handleAIProviders(context);
-    }
-
-    if (route === '/api/cloudflare/ai/status') {
-        return handleAIStatus(context);
-    }
-
-    if (route === '/api/admin/users') {
-        return handleAdminUsers(context);
-    }
-
-    if (route === '/api/admin/users/search') {
-        return handleAdminUserSearch(context);
-    }
-
-    const adminOrganizationMembersListMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members$/);
-    if (adminOrganizationMembersListMatch) {
-        return handleAdminOrganizationMembersList(context, adminOrganizationMembersListMatch[1]);
-    }
-
-    const adminUserMatch = route.match(/^\/api\/admin\/users\/([^/]+)$/);
-    if (adminUserMatch) {
-        return handleAdminUserById(context, adminUserMatch[1]);
-    }
-
-    if (route === '/api/admin/roles') {
-        return handleAdminRolesList(context);
-    }
-
-    if (route === '/api/admin/db/tables') {
-        return handleAdminDbTables(context);
-    }
-
-    if (route === '/api/admin/dev-mail') {
-        return handleAdminDevMailList(context);
-    }
-
-    const devMailGetMatch = route.match(/^\/api\/admin\/dev-mail\/([^/]+)$/);
-    if (devMailGetMatch) {
-        let devMailId: string;
-        try {
-            devMailId = decodeURIComponent(devMailGetMatch[1]);
-        } catch {
-            return errorResponse('Invalid message id', 400, { code: 'BAD_REQUEST' });
-        }
-        return handleAdminDevMailGet(context, devMailId);
-    }
-
-    const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);
-    if (tableMatch) {
-        return handleAdminDbTableData({ ...context, tableName: tableMatch[1] });
-    }
-
-    return null;
+export function makeApiRouteContext(
+    request: Request,
+    env: CloudflareEnv,
+    url: URL = new URL(request.url),
+): ApiRouteContext {
+    const corsHeaders = buildCorsHeaders(request);
+    const route = url.pathname !== '/' && url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+    return {
+        request,
+        env,
+        url,
+        route,
+        method: request.method,
+        corsHeaders,
+        withAuthCors: (response) => withHeaders(response, corsHeaders),
+    };
 }
 
-async function handlePostRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, env } = context;
-    const packages = getOttabaseConfig(env).packages;
+const ctxOf = (c: WorkerCtx): ApiRouteContext => makeApiRouteContext(c.req, c.env, c.url);
 
-    if (route.startsWith('/api/brand')) {
-        const res = await handleBrandApi(context);
-        if (res) return res;
+/** Adapt a legacy ApiRouteContext handler to an ottarouter handler. */
+const h =
+    (handler: ApiHandler) =>
+    (c: WorkerCtx): Promise<Response | null> | Response | null =>
+        handler(ctxOf(c));
+
+const packages = (c: WorkerCtx) => getOttabaseConfig(c.env).packages;
+
+const TABLE_NAME = /^[a-zA-Z0-9_]+$/;
+
+export const apiRouter = new Router<CloudflareEnv>();
+
+// -------------------------------------------------------
+// CORS preflight — middleware, not a route, so it wins over
+// every /api/* route (including the ALL /api/auth/* catch-all)
+// -------------------------------------------------------
+apiRouter.use('/api', (c, next) => {
+    if (c.method === 'OPTIONS' && c.path.startsWith('/api/')) {
+        return new Response(null, { status: 204, headers: buildCorsHeaders(c.req) });
     }
+    return next();
+});
 
-    if (route === '/api/auth/verify-email/resend') {
-        return handleVerifyEmailResend(context);
+// -------------------------------------------------------
+// Core / system
+// -------------------------------------------------------
+apiRouter.get('/api/health', () =>
+    jsonResponse({
+        ok: true,
+        name: 'otta-web',
+        timestamp: Date.now(),
+    }),
+);
+apiRouter.get('/api/system/kill-switches', (c) => jsonResponse({ ...getKillSwitchStatus(c.env) }));
+
+// Brand API (core — always enabled). May return null to decline and keep matching.
+apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand', h(handleBrandApi));
+apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand/*', h(handleBrandApi));
+
+// -------------------------------------------------------
+// Auth — explicit routes win over the Auth.js catch-all by
+// specificity (static > *), for every method
+// -------------------------------------------------------
+apiRouter.get('/api/auth/config', h(handleAuthConfig));
+apiRouter.get('/api/auth/verify-email', h(handleVerifyEmail));
+apiRouter.post('/api/auth/register', h(handleAuthRegister));
+apiRouter.post('/api/auth/verify-email/resend', h(handleVerifyEmailResend));
+apiRouter.post('/api/auth/password/reset/request', h(handlePasswordResetRequest));
+apiRouter.post('/api/auth/password/reset/confirm', h(handlePasswordResetConfirm));
+apiRouter.post('/api/auth/password/change', h(handlePasswordChange));
+apiRouter.all('/api/auth/*', h(handleAuthJsRequest));
+apiRouter.on(['GET', 'PATCH'], '/api/users/me', h(handleUserProfile));
+
+// -------------------------------------------------------
+// Email
+// -------------------------------------------------------
+apiRouter.get('/api/email/providers', h(handleEmailProviders));
+apiRouter.post('/api/email/test', h(handleEmailTest));
+
+// -------------------------------------------------------
+// Analytics & audit
+// -------------------------------------------------------
+apiRouter.get('/api/analytics/core', h(handleCoreAnalytics));
+apiRouter.post('/api/analytics/track', (c) =>
+    handleAnalyticsTrack({
+        request: c.req,
+        dataset: c.env.OBCF_ANALYTICS_CORE,
+        defaultAppId: getOttabaseConfig(c.env).appId,
+    }),
+);
+apiRouter.get('/api/audit/logs', h(handleAuditLogs));
+
+// -------------------------------------------------------
+// Admin: users, roles, owner, organizations
+// -------------------------------------------------------
+apiRouter.get('/api/admin/users', h(handleAdminUsers));
+apiRouter.get('/api/admin/users/search', h(handleAdminUserSearch));
+apiRouter.get('/api/admin/users/:userId', (c) => handleAdminUserById(ctxOf(c), c.params.userId));
+apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
+apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
+apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
+apiRouter.delete('/api/admin/roles/:roleId', (c) => handleAdminRoleDelete(ctxOf(c), c.params.roleId));
+apiRouter.post('/api/admin/owner/promote', h(handleAdminPromoteOwner));
+apiRouter.get('/api/admin/organizations/:organizationId/members', (c) =>
+    handleAdminOrganizationMembersList(ctxOf(c), c.params.organizationId),
+);
+apiRouter.post('/api/admin/organizations/:organizationId/members/invite', (c) =>
+    handleAdminOrganizationInviteMember(ctxOf(c), c.params.organizationId),
+);
+apiRouter.patch('/api/admin/organizations/:organizationId/members/:memberId', (c) =>
+    handleAdminOrganizationUpdateMember(ctxOf(c), c.params.organizationId, c.params.memberId),
+);
+apiRouter.delete('/api/admin/organizations/:organizationId/members/:memberId', (c) =>
+    handleAdminOrganizationRemoveMember(ctxOf(c), c.params.organizationId, c.params.memberId),
+);
+
+// -------------------------------------------------------
+// Admin: cron — the catch-all 404s on unknown tasks instead of
+// declining, so nothing under /api/admin/cron/* ever falls through
+// -------------------------------------------------------
+apiRouter.get('/api/admin/cron', h(handleAdminCronList));
+apiRouter.post('/api/admin/cron', h(handleAdminCronCreate));
+apiRouter.all('/api/admin/cron/*', async (c) => {
+    const rest = c.params['*'];
+    const action = rest.endsWith('/toggle') ? 'toggle' : rest.endsWith('/run') ? 'run' : null;
+    const cronResult = await handleCronTask(ctxOf(c), rest, action);
+    return (
+        cronResult ??
+        errorResponse('Not found', 404, {
+            code: 'NOT_FOUND',
+        })
+    );
+});
+
+// -------------------------------------------------------
+// Admin: queues & DLQ
+// -------------------------------------------------------
+apiRouter.get('/api/admin/queues', h(handleAdminQueuesOverview));
+apiRouter.get('/api/admin/queues/processed', h(handleAdminQueuesProcessed));
+apiRouter.get('/api/admin/queues/failed', h(handleAdminQueuesFailed));
+apiRouter.get('/api/admin/queues/pending', h(handleAdminQueuesPending));
+apiRouter.post('/api/admin/queues/reset-stats', h(handleAdminQueuesResetStats));
+apiRouter.get('/api/admin/queues/dlq', h(handleAdminQueuesDLQList));
+apiRouter.delete('/api/admin/queues/dlq', h(handleAdminQueuesDLQPurge));
+apiRouter.post('/api/admin/queues/dlq/retry-all', h(handleAdminQueuesDLQRetryAll));
+apiRouter.post('/api/admin/queues/dlq/:jobId/retry', (c) => handleAdminQueuesDLQRetryJob(ctxOf(c), c.params.jobId));
+apiRouter.all('/api/admin/queues/dlq/:jobId', (c) => handleAdminQueuesDLQJob(ctxOf(c), c.params.jobId));
+
+// -------------------------------------------------------
+// Admin: DB browser (table names are charset-restricted; anything
+// else declines so the request falls through, as before).
+//
+// Registered as `*` wildcards rather than `:tableName` so the charset
+// test runs on the RAW segment: `*` captures are never auto-decoded,
+// so a percent-encoded table name (valid or malformed) simply fails
+// the charset test and falls through, exactly like the legacy regex
+// that matched against the raw pathname.
+// -------------------------------------------------------
+apiRouter.get('/api/admin/db/tables', h(handleAdminDbTables));
+apiRouter.get('/api/admin/db/tables/*', (c) => {
+    const tableName = c.params['*'];
+    return TABLE_NAME.test(tableName) ? handleAdminDbTableData({ ...ctxOf(c), tableName }) : null;
+});
+apiRouter.delete('/api/admin/db/tables/*', (c) => {
+    const tail = c.params['*'];
+    const slashIndex = tail.indexOf('/');
+    if (slashIndex === -1) {
+        return TABLE_NAME.test(tail) ? handleAdminDbTableDelete({ ...ctxOf(c), tableName: tail }) : null;
     }
+    const tableName = tail.slice(0, slashIndex);
+    const rowId = tail.slice(slashIndex + 1);
+    return TABLE_NAME.test(tableName)
+        ? handleAdminDbRowDelete({ ...ctxOf(c), tableName }, rowId, c.url.searchParams.get('pk') || 'id')
+        : null;
+});
 
-    if (route === '/api/auth/password/reset/request') {
-        return handlePasswordResetRequest(context);
+// -------------------------------------------------------
+// Admin: dev mail
+// -------------------------------------------------------
+apiRouter.get('/api/admin/dev-mail', h(handleAdminDevMailList));
+apiRouter.delete('/api/admin/dev-mail', h(handleAdminDevMailClear));
+apiRouter.get('/api/admin/dev-mail/:messageId', (c) => handleAdminDevMailGet(ctxOf(c), c.params.messageId));
+apiRouter.delete('/api/admin/dev-mail/:messageId', (c) => handleAdminDevMailDelete(ctxOf(c), c.params.messageId));
+
+// -------------------------------------------------------
+// Cloudflare platform demos & services
+// -------------------------------------------------------
+apiRouter.all('/api/demo', h(handleDemo));
+apiRouter.all('/api/demo/error', () => handleDemoError());
+apiRouter.all('/api/cloudflare/queues', h(handleCloudflareQueue));
+apiRouter.post('/api/cloudflare/d1/init', h(handleD1Init));
+apiRouter.all('/api/cloudflare/d1/todos', h(handleD1Todos));
+apiRouter.on(['PATCH', 'DELETE'], '/api/cloudflare/d1/todos/*', (c) =>
+    handleD1TodoById(ctxOf(c), c.params['*'], c.method as 'PATCH' | 'DELETE'),
+);
+apiRouter.all('/api/cloudflare/kv', h(handleCloudflareKV));
+apiRouter.all('/api/cloudflare/r2', h(handleCloudflareR2));
+apiRouter.post('/api/cloudflare/images', h(handleCloudflareImages));
+apiRouter.post('/api/cloudflare/rate-limiting', h(handleRateLimiting));
+apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
+apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
+apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));
+apiRouter.get('/api/cloudflare/ai/providers', h(handleAIProviders));
+apiRouter.get('/api/cloudflare/ai/status', h(handleAIStatus));
+apiRouter.post('/api/cloudflare/ai/chat', h(handleAIChat));
+apiRouter.post('/api/cloudflare/ai/gateway/chat', h(handleAIGatewayChat));
+apiRouter.post('/api/cloudflare/ai/universal/chat', h(handleAIUniversalChat));
+apiRouter.post('/api/upload', h(handleUpload));
+apiRouter.all('/api/upload/file/*', h(handleUploadFile));
+
+// -------------------------------------------------------
+// OttaORM — generic CRUD catch-all with two excluded exacts;
+// excluded tails decline so unmatched methods fall through
+// -------------------------------------------------------
+apiRouter.get('/api/ottaorm/models-metadata', () => handleModelsMetadata());
+apiRouter.on(['GET', 'POST'], '/api/ottaorm/init', h(handleOttaormInit));
+apiRouter.all('/api/ottaorm/*', (c) =>
+    c.params['*'] === 'init' || c.params['*'] === 'models-metadata' ? null : handleOttaormCrud(ctxOf(c)),
+);
+
+// -------------------------------------------------------
+// Ottablog package (request-time gate)
+// -------------------------------------------------------
+const blogRouter = new Router<CloudflareEnv>();
+blogRouter.get('/studio/state', h(handleBlogStudioState));
+blogRouter.get('/rss', h(handleBlogRssFeed));
+blogRouter.get('/sitemap.xml', h(handleBlogSitemap));
+blogRouter.get('/posts', h(handleBlogPostsList));
+blogRouter.get('/posts/:postId/related', (c) => handleBlogRelatedPosts(ctxOf(c), c.params.postId));
+blogRouter.get('/posts/by-slug/:slug', (c) => handleBlogPostBySlug(ctxOf(c), c.params.slug));
+blogRouter.get('/tags/by-slug/:slug', (c) => handleBlogTagBySlug(ctxOf(c), c.params.slug));
+blogRouter.get('/categories/by-slug/:slug', (c) => handleBlogCategoryBySlug(ctxOf(c), c.params.slug));
+blogRouter.get('/series/by-slug/:slug', (c) => handleBlogSeriesBySlug(ctxOf(c), c.params.slug));
+blogRouter.post('/studio/theme/activate', h(handleBlogStudioActivateTheme));
+blogRouter.post('/studio/plugin/enable', h(handleBlogStudioPluginEnable));
+blogRouter.post('/studio/plugin/config', h(handleBlogStudioPluginConfig));
+blogRouter.post('/posts/unlock', h(handleBlogPostUnlock));
+blogRouter.post('/publish-scheduled', h(handleBlogPublishScheduled));
+blogRouter.post('/kitchensink', h(handleBlogKitchensink));
+apiRouter.mount('/api/blog', blogRouter, { when: (c) => packages(c).ottablog });
+
+// -------------------------------------------------------
+// Shortlinks package (request-time gate) — mounted at '/'
+// because the group spans /api/shortlinks/* and /shortlinks/go
+// -------------------------------------------------------
+const shortlinksRouter = new Router<CloudflareEnv>();
+shortlinksRouter.get('/api/shortlinks', h(handleShortlinksList));
+shortlinksRouter.get('/api/shortlinks/analytics', h(handleShortlinksAnalytics));
+shortlinksRouter.post('/api/shortlinks', h(handleShortlinksCreate));
+shortlinksRouter.patch('/api/shortlinks/*', (c) => handleShortlinkById(ctxOf(c), c.params['*'], 'PATCH'));
+shortlinksRouter.delete('/api/shortlinks/*', (c) => handleShortlinkById(ctxOf(c), c.params['*'], 'DELETE'));
+shortlinksRouter.get('/shortlinks/go', h(handleShortlinkExplicitGo));
+apiRouter.mount('/', shortlinksRouter, { when: (c) => packages(c).shortlinks });
+
+// -------------------------------------------------------
+// Referrals package (request-time gate)
+// -------------------------------------------------------
+const referralsRouter = new Router<CloudflareEnv>();
+referralsRouter.get('/stats', h(handleReferralStats));
+referralsRouter.get('/user', h(handleReferralUser));
+referralsRouter.get('/tracking', h(handleReferralTrackingList));
+referralsRouter.get('/analytics', h(handleReferralsAnalytics));
+referralsRouter.post('/track', h(handleReferralTrack));
+referralsRouter.put('/username', h(handleReferralUsernameUpdate));
+apiRouter.mount('/api/referrals', referralsRouter, { when: (c) => packages(c).referrals });
+
+// -------------------------------------------------------
+// Error policy — mirrors the worker's top-level mapping, plus
+// uniform 400s for malformed percent-encoding in :params
+// -------------------------------------------------------
+apiRouter.onError((err, c) => {
+    if (err instanceof URIError) {
+        return errorResponse('Invalid identifier', 400, { code: 'BAD_REQUEST' });
     }
-
-    if (route === '/api/auth/password/reset/confirm') {
-        return handlePasswordResetConfirm(context);
+    console.error('Worker unhandled error:', err);
+    if (err instanceof ServiceError) {
+        return errorResponse(err.message, err.status, err.toApiResponse());
     }
+    return errorResponse(err instanceof Error ? err.message : 'An unexpected error occurred', 500, {
+        code: 'INTERNAL_SERVER_ERROR',
+    });
+});
 
-    if (route === '/api/auth/password/change') {
-        return handlePasswordChange(context);
+/**
+ * Resolve an API request: built-in routes first, then the user-zone custom
+ * routes (ottabase/config.routes.ts). Resolves null when nothing claimed the
+ * request, so the worker can fall through to shortlinks and static assets.
+ */
+export async function handleApiRequest(
+    request: Request,
+    env: CloudflareEnv,
+    ctx?: ExecutionContext,
+): Promise<Response | null> {
+    const response = await apiRouter.handle(request, env, ctx);
+    if (response) {
+        return response;
     }
-
-    if (route === '/api/email/test') {
-        return handleEmailTest(context);
-    }
-
-    if (route === '/api/admin/cron') {
-        return handleAdminCronCreate(context);
-    }
-
-    if (route === '/api/admin/owner/promote') {
-        return handleAdminPromoteOwner(context);
-    }
-
-    const adminOrganizationInviteMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/invite$/);
-    if (adminOrganizationInviteMatch) {
-        return handleAdminOrganizationInviteMember(context, adminOrganizationInviteMatch[1]);
-    }
-
-    if (packages.ottablog) {
-        if (route === '/api/blog/studio/theme/activate') {
-            return handleBlogStudioActivateTheme(context);
-        }
-        if (route === '/api/blog/studio/plugin/enable') {
-            return handleBlogStudioPluginEnable(context);
-        }
-        if (route === '/api/blog/studio/plugin/config') {
-            return handleBlogStudioPluginConfig(context);
-        }
-        if (route === '/api/blog/posts/unlock') {
-            return handleBlogPostUnlock(context);
-        }
-        if (route === '/api/blog/publish-scheduled') {
-            return handleBlogPublishScheduled(context);
-        }
-        if (route === '/api/blog/kitchensink') {
-            return handleBlogKitchensink(context);
-        }
-    }
-
-    if (packages.shortlinks && route === '/api/shortlinks') {
-        return handleShortlinksCreate(context);
-    }
-
-    if (packages.referrals && route === '/api/referrals/track') {
-        return handleReferralTrack(context);
-    }
-
-    if (route === '/api/analytics/track') {
-        return handleAnalyticsTrack({
-            request: context.request,
-            dataset: context.env.OBCF_ANALYTICS_CORE,
-            defaultAppId: getOttabaseConfig(context.env).appId,
-        });
-    }
-
-    if (route === '/api/auth/register') {
-        return handleAuthRegister(context);
-    }
-
-    if (route === '/api/cloudflare/d1/init') {
-        return handleD1Init(context);
-    }
-
-    if (route === '/api/cloudflare/rate-limiting') {
-        return handleRateLimiting(context);
-    }
-
-    if (route === '/api/cloudflare/realtime/broadcast') {
-        return handleRealtimeBroadcast(context);
-    }
-
-    if (route === '/api/admin/queues/reset-stats') {
-        return handleAdminQueuesResetStats(context);
-    }
-
-    if (route === '/api/admin/queues/dlq/retry-all') {
-        return handleAdminQueuesDLQRetryAll(context);
-    }
-
-    if (route === '/api/cloudflare/images') {
-        return handleCloudflareImages(context);
-    }
-
-    if (route === '/api/cloudflare/ai/chat') {
-        return handleAIChat(context);
-    }
-
-    if (route === '/api/cloudflare/ai/gateway/chat') {
-        return handleAIGatewayChat(context);
-    }
-
-    if (route === '/api/cloudflare/ai/universal/chat') {
-        return handleAIUniversalChat(context);
-    }
-
-    if (route === '/api/upload') {
-        return handleUpload(context);
-    }
-
-    if (route === '/api/admin/roles') {
-        return handleAdminRoleCreate(context);
-    }
-
-    if (route === '/api/ottaorm/init') {
-        return handleOttaormInit(context);
-    }
-
-    const dlqRetryMatch = context.url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)\/retry$/);
-    if (dlqRetryMatch) {
-        return handleAdminQueuesDLQRetryJob(context, dlqRetryMatch[1]);
-    }
-
-    return null;
-}
-
-async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, env } = context;
-    const packages = getOttabaseConfig(env).packages;
-
-    const adminOrganizationUpdateMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/([^/]+)$/);
-    if (adminOrganizationUpdateMatch) {
-        return handleAdminOrganizationUpdateMember(
-            context,
-            adminOrganizationUpdateMatch[1],
-            decodeURIComponent(adminOrganizationUpdateMatch[2]),
-        );
-    }
-
-    if (route === '/api/users/me') {
-        return handleUserProfile(context);
-    }
-
-    if (packages.shortlinks) {
-        const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
-        if (shortlinkMatch) {
-            return handleShortlinkById(context, shortlinkMatch[1], 'PATCH');
-        }
-    }
-
-    const d1TodoMatch = route.match(/^\/api\/cloudflare\/d1\/todos\/(.+)$/);
-    if (d1TodoMatch) {
-        return handleD1TodoById(context, d1TodoMatch[1], 'PATCH');
-    }
-
-    const adminRolePatchMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
-    if (adminRolePatchMatch) {
-        return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
-    }
-
-    return null;
-}
-
-async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, url, env } = context;
-    const packages = getOttabaseConfig(env).packages;
-
-    if (route.startsWith('/api/brand')) {
-        const res = await handleBrandApi(context);
-        if (res) return res;
-    }
-
-    if (packages.shortlinks) {
-        const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
-        if (shortlinkMatch) {
-            return handleShortlinkById(context, shortlinkMatch[1], 'DELETE');
-        }
-    }
-
-    if (route === '/api/admin/queues/dlq') {
-        return handleAdminQueuesDLQPurge(context);
-    }
-
-    if (route === '/api/admin/dev-mail') {
-        return handleAdminDevMailClear(context);
-    }
-
-    const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);
-    if (tableMatch) {
-        return handleAdminDbTableDelete({ ...context, tableName: tableMatch[1] });
-    }
-
-    const devMailDeleteMatch = route.match(/^\/api\/admin\/dev-mail\/([^/]+)$/);
-    if (devMailDeleteMatch) {
-        let devMailId: string;
-        try {
-            devMailId = decodeURIComponent(devMailDeleteMatch[1]);
-        } catch {
-            return errorResponse('Invalid message id', 400, { code: 'BAD_REQUEST' });
-        }
-        return handleAdminDevMailDelete(context, devMailId);
-    }
-
-    const rowMatch = url.pathname.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)\/(.+)$/);
-    if (rowMatch) {
-        return handleAdminDbRowDelete(
-            { ...context, tableName: rowMatch[1] },
-            rowMatch[2],
-            url.searchParams.get('pk') || 'id',
-        );
-    }
-
-    const d1TodoMatch = route.match(/^\/api\/cloudflare\/d1\/todos\/(.+)$/);
-    if (d1TodoMatch) {
-        return handleD1TodoById(context, d1TodoMatch[1], 'DELETE');
-    }
-
-    const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
-    if (adminRoleDeleteMatch) {
-        return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
-    }
-
-    const adminOrganizationDeleteMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/([^/]+)$/);
-    if (adminOrganizationDeleteMatch) {
-        return handleAdminOrganizationRemoveMember(
-            context,
-            adminOrganizationDeleteMatch[1],
-            decodeURIComponent(adminOrganizationDeleteMatch[2]),
-        );
-    }
-
-    return null;
-}
-
-async function handlePutRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, env } = context;
-    const packages = getOttabaseConfig(env).packages;
-
-    if (route.startsWith('/api/brand')) {
-        const res = await handleBrandApi(context);
-        if (res) return res;
-    }
-
-    if (packages.referrals && route === '/api/referrals/username') {
-        return handleReferralUsernameUpdate(context);
-    }
-
-    return null;
-}
-
-async function handleMethodAgnosticRoutes(context: ApiRouteContext): Promise<Response | null> {
-    const { route, url } = context;
-
-    if (route === '/api/demo') {
-        return handleDemo(context);
-    }
-
-    if (route === '/api/demo/error') {
-        return handleDemoError();
-    }
-
-    if (route === '/api/cloudflare/queues') {
-        return handleCloudflareQueue(context);
-    }
-
-    if (route === '/api/cloudflare/d1/todos') {
-        return handleD1Todos(context);
-    }
-
-    if (route === '/api/cloudflare/kv') {
-        return handleCloudflareKV(context);
-    }
-
-    if (route === '/api/cloudflare/r2') {
-        return handleCloudflareR2(context);
-    }
-
-    if (route === '/api/cloudflare/realtime/ws') {
-        return handleRealtimeWebsocket(context);
-    }
-
-    if (route.startsWith('/api/upload/file/')) {
-        return handleUploadFile(context);
-    }
-
-    const dlqMatch = url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)$/);
-    if (dlqMatch) {
-        return handleAdminQueuesDLQJob(context, dlqMatch[1]);
-    }
-
-    const cronMatch = route.match(/^\/api\/admin\/cron\/(.+)$/);
-    if (cronMatch) {
-        const action = cronMatch[1].endsWith('/toggle') ? 'toggle' : cronMatch[1].endsWith('/run') ? 'run' : null;
-        const cronResult = await handleCronTask(context, cronMatch[1], action);
-        return (
-            cronResult ??
-            errorResponse('Not found', 404, {
-                code: 'NOT_FOUND',
-            })
-        );
-    }
-
-    if (
-        route.startsWith('/api/ottaorm/') &&
-        route !== '/api/ottaorm/init' &&
-        route !== '/api/ottaorm/models-metadata'
-    ) {
-        return handleOttaormCrud(context);
-    }
-
-    if (route.startsWith('/api/auth/')) {
-        return handleAuthJsRequest(context);
-    }
-
-    return null;
+    return handleCustomRoutes(makeApiRouteContext(request, env));
 }

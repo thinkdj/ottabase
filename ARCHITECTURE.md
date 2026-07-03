@@ -84,6 +84,7 @@ flowchart TD
     subgraph L0 [Layer 0 — Leaf]
         db
         cfRealtime["cf-realtime"]
+        ottarouter
         uiShadcn["ui-shadcn"]
         state
         utils
@@ -121,7 +122,7 @@ Primary app: `apps/otta-web`
 flowchart LR
     Browser["Browser SPA<br/>TanStack Router + React"] -->|HTTP| Worker["Cloudflare Worker<br/>cloudflare-worker.ts"]
 
-    Worker --> Router["API Router<br/>worker/routes/router.ts"]
+    Worker --> Router["API Router (@ottabase/ottarouter)<br/>worker/routes/router.ts"]
     Worker --> Assets["OBCF_ASSETS<br/>static assets"]
     Worker --> ShortlinkFallback[Shortlink fallback resolver]
 
@@ -187,7 +188,7 @@ sequenceDiagram
         W-->>U: Not-ready response
     else Ready
         W->>W: initDbConnection + register models + initRLS
-        W->>R: resolveApiRoute()
+        W->>R: handleApiRequest()
 
         alt API route matched
             R->>M: Model operation
@@ -240,7 +241,7 @@ sequenceDiagram
     participant D as D1
 
     C->>W: API request with session cookie
-    W->>W: resolveApiRoute()
+    W->>W: handleApiRequest()
     W->>A: getSession(request, env)
     A->>D: Lookup session + user
     D-->>A: Session data
@@ -453,7 +454,7 @@ flowchart LR
 ## Key File Map
 
 - Worker entrypoint: `apps/otta-web/cloudflare-worker.ts`
-- API router: `apps/otta-web/worker/routes/router.ts`
+- API router: `apps/otta-web/worker/routes/router.ts` (declarative registrations on `@ottabase/ottarouter`)
 - DB init and model registration: `apps/otta-web/worker/lib/db-utils.ts`
 - App config: `apps/otta-web/ottabase/ottabase.config.ts`
 - Schema collector: `apps/otta-web/ottabase/db/schemas-helper.ts`

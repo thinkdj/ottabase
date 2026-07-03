@@ -9,11 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
-- Reserved for upcoming post-1.0.0 features.
+- `@ottabase/ottarouter` package: zero-dependency Cloudflare Workers router with order-free precedence (static >
+  `:param` > `*`, exact method > `ALL`), prefix-scoped onion middleware, gated sub-router mounts, and null-based
+  fall-through for composing with custom routes, shortlinks, and static assets.
 
 ### Changed (Unreleased)
 
-- Reserved for upcoming post-1.0.0 improvements.
+- otta-web worker routing migrated from the hand-rolled `resolveApiRoute` if/regex chain to declarative
+  `@ottabase/ottarouter` registrations (`worker/routes/router.ts`); route handlers, endpoint paths, and the
+  `ottabase/config.routes.ts` custom-route contract are unchanged.
 
 ### Fixed (Unreleased)
 

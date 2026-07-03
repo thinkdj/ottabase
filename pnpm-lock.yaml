@@ -567,6 +567,9 @@ importers:
       '@ottabase/ottarenderer':
         specifier: workspace:*
         version: link:../../packages/ottarenderer
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../../packages/ottarouter
       '@ottabase/ottaselect':
         specifier: workspace:*
         version: link:../../packages/ottaselect
@@ -1679,6 +1682,24 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/ottarouter:
+    devDependencies:
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/ottaselect:
     dependencies:
