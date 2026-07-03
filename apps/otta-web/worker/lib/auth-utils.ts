@@ -1,5 +1,6 @@
 import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
-import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
+import { userKey } from '@ottabase/cf';
+import { invalidateCache, invalidateCacheByPrefix, withCache } from '@ottabase/cf/kv-cache';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
 import { Account, OrganizationMember, UserGroup, UserGroupMember, VerificationToken } from '@ottabase/ottaorm/models';
@@ -85,12 +86,73 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
                 OrganizationMember.activatePendingInvites(userId, email),
                 UserGroupMember.activatePendingInvites(userId, email),
             ]);
+            // Invites may have just granted memberships — drop this user's cached
+            // security-context lookups so the new org/groups are visible immediately
+            // instead of after MEMBERSHIP_CACHE_TTL_SECONDS.
+            await invalidateMembershipCache(env.OBCF_KV, userId);
         } catch (error) {
             console.warn('Failed to activate pending invites on sign-in:', error);
         }
     };
 
     return options;
+}
+
+/**
+ * TTL (seconds) for cached membership lookups powering the security context.
+ *
+ * 300s matches the RBAC permission cache precedent. The TTL is only the
+ * FALLBACK bound (custom code that mutates memberships without calling
+ * invalidateMembershipCache): every in-app mutation path invalidates eagerly —
+ * sign-in invite activation, admin member invite/update/remove, org creation,
+ * and generic CRUD on membership models (see ottaorm-crud.ts). Raising this
+ * further buys little (an active user refreshes once per TTL anyway) while
+ * widening the blast radius of any missed invalidation.
+ */
+const MEMBERSHIP_CACHE_TTL_SECONDS = 300;
+
+/**
+ * Read-through cached membership lookup (KV in front of D1).
+ *
+ * Any cache-layer failure falls back to the direct D1 query — a KV outage must
+ * never weaken membership resolution. (An `undefined` membership list is treated
+ * as "membership unknown" by the RLS engine and skips enforcement, so failing
+ * open here would be a security downgrade; only a D1 failure may produce it.)
+ */
+async function cachedMembershipLookup(
+    kv: CloudflareEnv['OBCF_KV'] | undefined,
+    key: string,
+    fetcher: () => Promise<string[]>,
+): Promise<string[]> {
+    if (!kv) return fetcher();
+    try {
+        return await withCache(kv, key, MEMBERSHIP_CACHE_TTL_SECONDS, fetcher);
+    } catch {
+        return fetcher();
+    }
+}
+
+/**
+ * Drop a user's cached membership lookups (member-orgs + all member-groups keys).
+ *
+ * Call after ANY membership mutation (grant, role/status change, removal) so the
+ * change takes effect on the next request instead of after MEMBERSHIP_CACHE_TTL_SECONDS.
+ * Best-effort: failures are swallowed — the TTL still bounds staleness, and KV's
+ * eventual consistency means cross-colo propagation can take up to ~60s regardless.
+ */
+export async function invalidateMembershipCache(
+    kv: CloudflareEnv['OBCF_KV'] | undefined,
+    userId: string | undefined | null,
+): Promise<void> {
+    if (!kv || !userId) return;
+    try {
+        await Promise.all([
+            invalidateCache(kv, userKey('auth', userId, 'member-orgs')),
+            invalidateCacheByPrefix(kv, userKey('auth', userId, 'member-groups')),
+        ]);
+    } catch {
+        // Best-effort — TTL bounds staleness if KV invalidation fails.
+    }
 }
 
 export async function getSecurityContext(
@@ -144,7 +206,11 @@ export async function getSecurityContext(
     let memberOrganizationIds: string[] | undefined;
     if (userId) {
         try {
-            memberOrganizationIds = await OrganizationMember.organizationIdsForUser(userId);
+            memberOrganizationIds = await cachedMembershipLookup(
+                env?.OBCF_KV,
+                userKey('auth', userId, 'member-orgs'),
+                () => OrganizationMember.organizationIdsForUser(userId),
+            );
         } catch {
             // If tables don't exist yet (e.g. before migrations), leave undefined so membership
             // is treated as unknown (no-op) rather than "no orgs" (deny everything).
@@ -169,10 +235,16 @@ export async function getSecurityContext(
     // Group IDs the user can access (active memberships + groups they created). Powers the
     // membership-scoped RLS for user_groups / user_group_members, resolved against the final
     // organizationId so it is scoped to the active org.
+    // Cache key includes the VALIDATED organizationId (it may have been nulled by the
+    // membership check above) — do not parallelize this with the org lookup.
     let memberGroupIds: string[] | undefined;
     if (userId) {
         try {
-            memberGroupIds = await UserGroup.groupIdsForUser(userId, organizationId ?? undefined);
+            memberGroupIds = await cachedMembershipLookup(
+                env?.OBCF_KV,
+                userKey('auth', userId, 'member-groups', organizationId ?? 'none'),
+                () => UserGroup.groupIdsForUser(userId, organizationId ?? undefined),
+            );
         } catch {
             // Tables may not exist yet (before migrations) — leave undefined (RLS treats as unknown).
         }

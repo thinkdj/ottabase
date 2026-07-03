@@ -19,6 +19,7 @@ vi.mock('@ottabase/ottaorm', () => ({
 vi.mock('../../lib/auth-utils', () => ({
     getAuthOptions: vi.fn(() => ({})),
     getSecurityContext: vi.fn(() => ({ organizationId: 'org-1', appId: 'otta-web' })),
+    invalidateMembershipCache: vi.fn(),
 }));
 
 vi.mock('@ottabase/ottablog', () => ({
@@ -32,6 +33,7 @@ vi.mock('@ottabase/comments', () => ({
 vi.mock('@ottabase/ottaorm/models', () => ({
     OrganizationMember: { create: vi.fn() },
     User: { whereIn: vi.fn() },
+    UserGroupMember: { find: vi.fn() },
 }));
 
 function createContext() {
@@ -110,5 +112,53 @@ describe('handleOttaormCrud (posts concurrency)', () => {
         expect(response.status).toBe(403);
         expect(body.code).toBe('CRUD_DISABLED');
         expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
+    it('invalidates membership caches for the acting user and target on group-member POST', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { getSecurityContext, invalidateMembershipCache } = await import('../../lib/auth-utils');
+
+        (getSecurityContext as any).mockResolvedValueOnce({
+            userId: 'user-9',
+            organizationId: 'org-1',
+            appId: 'otta-web',
+        });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'user_group_members',
+            method: 'POST',
+            body: { userId: 'user-2', groupId: 'group-1' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'ugm-1' }, status: 201 });
+
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(201);
+
+        const invalidatedFor = (invalidateMembershipCache as any).mock.calls.map((c: any[]) => c[1]);
+        expect(invalidatedFor).toContain('user-2'); // target member
+        expect(invalidatedFor).toContain('user-9'); // acting user (created-groups set)
+    });
+
+    it('resolves the affected user from the row before an id-based group-member DELETE', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { invalidateMembershipCache } = await import('../../lib/auth-utils');
+        const { UserGroupMember } = await import('@ottabase/ottaorm/models');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'user_group_members',
+            method: 'DELETE',
+            id: 'ugm-7',
+        });
+        (UserGroupMember.find as any).mockResolvedValue({
+            get: (key: string) => (key === 'userId' ? 'user-5' : null),
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { deleted: true }, status: 200 });
+
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(200);
+
+        // The row's owner is captured BEFORE the delete removes it.
+        expect(UserGroupMember.find as any).toHaveBeenCalledWith('ugm-7');
+        const invalidatedFor = (invalidateMembershipCache as any).mock.calls.map((c: any[]) => c[1]);
+        expect(invalidatedFor).toContain('user-5');
     });
 });

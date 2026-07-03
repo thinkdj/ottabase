@@ -3,6 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
+import { invalidateMembershipCache } from '../lib/auth-utils';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
@@ -144,6 +145,9 @@ export async function handleAdminOrganizationInviteMember(
             invitedAt: Date.now(),
         } as any);
 
+        // Membership granted — drop the user's cached security-context lookups.
+        await invalidateMembershipCache(context.env.OBCF_KV, userId);
+
         return jsonResponse({ data: member.toJson() }, 201);
     } catch (err) {
         return errorResponse('Failed to invite member', 500, {
@@ -221,6 +225,10 @@ export async function handleAdminOrganizationUpdateMember(
             await OrganizationMember.updateStatus(userId, organizationId, body.status);
         }
 
+        // Role/status changed (incl. suspension) — revocation must not wait out the
+        // membership-cache TTL.
+        await invalidateMembershipCache(context.env.OBCF_KV, userId);
+
         const updated = await OrganizationMember.first({ userId, organizationId });
         return jsonResponse({ data: updated?.toJson() ?? existingMember.toJson() });
     } catch (err) {
@@ -266,6 +274,10 @@ export async function handleAdminOrganizationRemoveMember(
                 code: 'ORG_MEMBER_REMOVE_FAILED',
             });
         }
+
+        // Membership revoked — drop the cached lookups so access ends now, not at TTL expiry.
+        await invalidateMembershipCache(context.env.OBCF_KV, userId);
+
         return jsonResponse({ data: { userId, organizationId, removed: true } });
     } catch (err) {
         return errorResponse('Failed to remove member', 500, {

@@ -3,11 +3,11 @@ import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
-import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
+import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -183,6 +183,12 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
     }
 
+    // Group-membership mutations flow through this generic endpoint (org membership
+    // is blocked above in favour of the admin routes, which invalidate directly).
+    // Resolve whose membership caches are affected BEFORE executing — a DELETE
+    // target row is gone afterwards.
+    const affectedMembershipUserIds = await resolveAffectedMembershipUsers(crudRequest, securityContext);
+
     const result = await executeSecureCrudRequest(crudRequest, securityContext);
 
     if (!result.success) {
@@ -202,6 +208,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    if (affectedMembershipUserIds.length > 0) {
+        await Promise.all(affectedMembershipUserIds.map((uid) => invalidateMembershipCache(env.OBCF_KV, uid)));
+    }
+
     if (crudRequest.model === 'organizations' && crudRequest.method === 'POST') {
         const userId = session?.user?.id;
         const data = result.data as any;
@@ -216,6 +226,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                     invitedBy: userId,
                     joinedAt: Date.now(),
                 } as any);
+                // getSecurityContext cached this user's PRE-creation membership list
+                // earlier in this very request — drop it, or the creator can't use
+                // their new org until the cache TTL expires.
+                await invalidateMembershipCache(env.OBCF_KV, userId);
             } catch (err) {
                 return errorResponse('Failed to create organization membership', 500, {
                     code: 'ORG_MEMBER_CREATE_FAILED',
@@ -249,4 +263,54 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     return jsonResponse(result.data, result.status);
+}
+
+/**
+ * Group-membership models whose generic-CRUD mutations must invalidate the
+ * security-context membership cache. (organization_members is blocked from
+ * this endpoint; the admin member routes invalidate directly.)
+ */
+const GROUP_MEMBERSHIP_MODELS = new Set(['user_groups', 'user_group_members']);
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Resolve which users' membership caches a CRUD mutation affects.
+ *
+ * - user_group_members: the target user (from the body, or read from the row
+ *   before an id-based update/delete removes it).
+ * - user_groups: the acting user — their created-groups set feeds
+ *   groupIdsForUser. Other members of a mutated/deleted group converge via the
+ *   cache TTL (their cached group id points at a gone/renamed group — benign).
+ *
+ * Best-effort: failures return what was resolved so far; the TTL bounds staleness.
+ */
+async function resolveAffectedMembershipUsers(
+    crudRequest: { model: string; method: string; id?: string | number; body?: unknown },
+    securityContext: { userId?: string | null },
+): Promise<string[]> {
+    if (!GROUP_MEMBERSHIP_MODELS.has(crudRequest.model) || !MUTATING_METHODS.has(crudRequest.method)) {
+        return [];
+    }
+
+    const affected = new Set<string>();
+    if (securityContext.userId) {
+        affected.add(String(securityContext.userId));
+    }
+
+    if (crudRequest.model === 'user_group_members') {
+        const bodyUserId = (crudRequest.body as { userId?: unknown } | undefined)?.userId;
+        if (typeof bodyUserId === 'string' && bodyUserId) {
+            affected.add(bodyUserId);
+        } else if (crudRequest.id !== undefined && crudRequest.id !== null) {
+            try {
+                const record = await UserGroupMember.find(String(crudRequest.id));
+                const uid = record?.get('userId');
+                if (uid) affected.add(String(uid));
+            } catch {
+                // Row unreadable — TTL bounds the residual staleness.
+            }
+        }
+    }
+
+    return [...affected];
 }
