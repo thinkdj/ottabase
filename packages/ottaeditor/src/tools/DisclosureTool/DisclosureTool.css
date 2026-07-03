@@ -106,6 +106,19 @@
     left: 16px;
 }
 
+.cdx-disclosure__toggle:hover .cdx-disclosure__toggle-slider {
+    background: hsl(var(--accent));
+}
+
+.cdx-disclosure__toggle:hover .cdx-disclosure__toggle-slider--on {
+    background: hsl(var(--primary) / 0.85);
+}
+
+.cdx-disclosure__toggle input:focus-visible + .cdx-disclosure__toggle-slider {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
 .cdx-disclosure__radio-group {
     display: flex;
     gap: 8px;

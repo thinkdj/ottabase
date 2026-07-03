@@ -72,6 +72,14 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    transition:
+        background 150ms,
+        transform 150ms;
+}
+
+.cdx-review__image-remove:hover {
+    background: hsl(var(--destructive) / 0.85);
+    transform: scale(1.05);
 }
 
 .cdx-review__link-row {
@@ -99,17 +107,23 @@
     cursor: pointer;
     font-size: 18px;
     color: hsl(var(--muted-foreground) / 0.3);
-    transition: color 0.15s ease;
+    transition:
+        color 0.15s,
+        transform 0.1s;
     user-select: none;
     line-height: 1;
 }
 
+.cdx-review__star:hover {
+    transform: scale(1.2);
+}
+
 .cdx-review__star--filled {
-    color: hsl(var(--warning, 43 96% 56%));
+    color: hsl(var(--warning));
 }
 
 .cdx-review__star--half {
-    color: hsl(var(--warning, 43 96% 56%));
+    color: hsl(var(--warning));
     opacity: 0.5;
 }
 
@@ -144,7 +158,7 @@
 }
 
 .cdx-review__proscons-header--pro {
-    color: hsl(var(--success, 142 71% 45%));
+    color: hsl(var(--success));
 }
 
 .cdx-review__proscons-header--con {
@@ -167,9 +181,12 @@
     color: hsl(var(--muted-foreground));
     cursor: pointer;
     font-size: 14px;
-    padding: 2px;
+    padding: 4px;
     line-height: 1;
-    border-radius: 2px;
+    border-radius: 4px;
+    transition:
+        color 150ms,
+        background 150ms;
 }
 
 .cdx-review__proscons-remove:hover {
@@ -178,19 +195,20 @@
 
 .cdx-review__proscons-add {
     background: none;
-    border: 1px dashed hsl(var(--border));
-    color: hsl(var(--muted-foreground));
+    border: 1px dashed hsl(var(--primary) / 0.5);
+    color: hsl(var(--primary));
     cursor: pointer;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 6px;
     transition: all 0.2s ease;
 }
 
 .cdx-review__proscons-add:hover {
     border-color: hsl(var(--primary));
     color: hsl(var(--primary));
-    background: hsl(var(--primary) / 0.05);
+    background: hsl(var(--primary) / 0.08);
 }
 
 @media (max-width: 480px) {

@@ -13,18 +13,18 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     border-bottom: 1px solid hsl(var(--border));
 }
 
 .cdx-references__style-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
-.cdx-references__style-label {
-    margin-bottom: 0 !important;
+.cdx-references__style-group .ob-label {
+    margin-bottom: 0;
 }
 
 /* ── List ──────────────────────────────────────────────────────────────────*/
@@ -41,8 +41,9 @@
     font-size: 13px;
     text-align: center;
     padding: 16px;
-    border: 1px dashed hsl(var(--border));
-    border-radius: 6px;
+    border: 2px dashed hsl(var(--border));
+    border-radius: 8px;
+    background: hsl(var(--muted) / 0.3);
 }
 
 /* ── Item card ──────────────────────────────────────────────────────────── */
@@ -56,7 +57,7 @@
 .cdx-references__drag-handle {
     cursor: grab;
     color: hsl(var(--muted-foreground));
-    padding-top: 10px;
+    padding-top: 8px;
     flex-shrink: 0;
     opacity: 0.5;
     font-size: 18px;
@@ -69,12 +70,16 @@
     opacity: 1;
 }
 
+.cdx-references__drag-handle:active {
+    cursor: grabbing;
+}
+
 .cdx-references__card {
     flex: 1;
     background: hsl(var(--muted) / 0.4);
     border: 1px solid hsl(var(--border));
     border-radius: 6px;
-    padding: 10px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -106,9 +111,14 @@
 }
 
 .cdx-references__delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
     background: transparent;
     border: none;
-    padding: 4px 6px;
+    padding: 0;
     border-radius: 4px;
     cursor: pointer;
     color: hsl(var(--muted-foreground));
@@ -120,8 +130,8 @@
 }
 
 .cdx-references__delete:hover {
-    color: hsl(var(--destructive));
-    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive-foreground));
+    background: hsl(var(--destructive));
 }
 
 /* ── Fields grid ────────────────────────────────────────────────────────── */
@@ -152,7 +162,7 @@
     background: transparent;
     border: 1px dashed hsl(var(--primary) / 0.5);
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 8px 12px;
     cursor: pointer;
     width: 100%;
     justify-content: center;

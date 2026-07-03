@@ -34,7 +34,18 @@ import type {
     FuzzyDateTimePickerOptions,
 } from '../core/types';
 import { getIntlLocale, getMonthNames, getYearRange, pad2, resolveConfig } from '../core/utils';
-import { btn, clearChildren, div, el, iconCalendar, iconX, onClickOutside, onEscape, span } from '../dom/helpers';
+import {
+    btn,
+    clearChildren,
+    div,
+    el,
+    iconCalendar,
+    iconChevronDown,
+    iconX,
+    onClickOutside,
+    onEscape,
+    span,
+} from '../dom/helpers';
 
 export function createFuzzyDateTimeCompact(
     container: HTMLElement,
@@ -127,15 +138,17 @@ export function createFuzzyDateTimeCompact(
         return createFuzzyDateTime(buildDate(), resolution, approximation);
     }
 
-    /** Create a themed <select> element */
+    /** Create a themed <select>, wrapped with a chevron icon (mirrors ui-shadcn's NativeSelect) */
     function createSelect(
         className: string,
         optionItems: { value: string; label: string }[],
         currentValue: string,
         onChange: (value: string) => void,
-    ): HTMLSelectElement {
+    ): HTMLElement {
+        const wrapper = div(`ottadate-compact-select-wrapper ${className}`);
+
         const select = el('select', {
-            className: `ottadate-compact-select ${className}`,
+            className: 'ottadate-compact-select',
         }) as HTMLSelectElement;
 
         if (config.disabled) select.disabled = true;
@@ -148,7 +161,12 @@ export function createFuzzyDateTimeCompact(
         }
 
         select.addEventListener('change', () => onChange(select.value));
-        return select;
+
+        const chevron = span('ottadate-compact-select-chevron', '');
+        chevron.innerHTML = iconChevronDown();
+
+        wrapper.append(select, chevron);
+        return wrapper;
     }
 
     // --- Rendering ---

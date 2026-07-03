@@ -46,6 +46,7 @@ export class Cropper {
     private uploadBtn: HTMLButtonElement | null = null;
     private uploadBtnLabel: HTMLSpanElement | null = null;
     private hasLoadedImage = false;
+    private presetsVisible = true;
     // Crop in rotated/visible coordinates (what user sees on screen)
     private crop = { x: 0, y: 0, w: 0, h: 0 };
     private flipH = false;
@@ -79,27 +80,26 @@ export class Cropper {
             onImageLoad: options.onImageLoad,
         };
         this.zoom = this.options.zoom;
+        this.presetsVisible = Array.isArray(this.options.aspectPresets) && this.options.aspectPresets.length > 0;
         this.mount();
     }
 
     private mount() {
         this.container.innerHTML = '';
-        this.container.style.cssText =
-            'position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;';
+        this.container.classList.add('ottacropper');
 
         // Hidden file input + styled upload button + filename label
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = this.options.accept;
-        input.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);border:0;';
+        input.className = 'ottacropper-file-input';
         input.id = 'cropper-file-input';
         this.fileInput = input;
 
         const fileNameLabel = document.createElement('span');
         fileNameLabel.id = 'cropper-file-name';
+        fileNameLabel.className = 'ottacropper-filename';
         fileNameLabel.textContent = 'No file selected';
-        fileNameLabel.style.cssText =
-            'font-size:0.875rem;color:var(--muted-foreground, #888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;';
 
         input.onchange = () => {
             const file = input.files?.[0];
@@ -110,34 +110,13 @@ export class Cropper {
         const uploadBtn = document.createElement('button');
         uploadBtn.type = 'button';
         uploadBtn.title = 'Choose image';
+        uploadBtn.className = 'ottacropper-upload-btn';
         const uploadLabel = document.createElement('span');
-        uploadLabel.style.marginLeft = '6px';
         uploadLabel.textContent = 'Choose image';
         uploadBtn.innerHTML = SVG_UPLOAD;
         uploadBtn.appendChild(uploadLabel);
         this.uploadBtn = uploadBtn;
         this.uploadBtnLabel = uploadLabel;
-        uploadBtn.style.cssText = [
-            'display:inline-flex',
-            'align-items:center',
-            'gap:2px',
-            'padding:6px 14px',
-            'font-size:0.875rem',
-            'font-weight:500',
-            'line-height:1.25rem',
-            'border-radius:6px',
-            'cursor:pointer',
-            'transition:background 150ms,border-color 150ms',
-            'border:1px solid var(--border, #333)',
-            'background:var(--background, transparent)',
-            'color:var(--foreground, #fff)',
-        ].join(';');
-        uploadBtn.onmouseenter = () => {
-            uploadBtn.style.background = 'var(--accent, rgba(255,255,255,0.08))';
-        };
-        uploadBtn.onmouseleave = () => {
-            uploadBtn.style.background = 'var(--background, transparent)';
-        };
         uploadBtn.onclick = () => {
             // Reset value so selecting the same file again still triggers onChange.
             input.value = '';
@@ -146,7 +125,7 @@ export class Cropper {
 
         // Row wrapper for button + filename
         const fileRow = document.createElement('div');
-        fileRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:4px;';
+        fileRow.className = 'ottacropper-file-row';
         fileRow.appendChild(uploadBtn);
         fileRow.appendChild(fileNameLabel);
 
@@ -155,38 +134,40 @@ export class Cropper {
 
         this.wrap = document.createElement('div');
         // Transparent bg for compatibility and aesthetics (circle crop shows through; rect works fine too)
-        this.wrap.style.cssText =
-            'position:relative;overflow:hidden;background:transparent;border-radius:4px;display:none;';
+        this.wrap.className = 'ottacropper-viewport';
         this.wrap.id = 'cropper-wrap';
 
         this.canvas = document.createElement('canvas');
-        this.canvas.style.cssText = 'display:block;max-width:100%;height:auto;cursor:move;';
+        this.canvas.className = 'ottacropper-canvas';
         this.wrap.appendChild(this.canvas);
 
         this.container.appendChild(this.wrap);
 
         // Controls
         const ctrl = document.createElement('div');
-        ctrl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+        ctrl.className = 'ottacropper-toolbar';
+        ctrl.id = 'cropper-toolbar';
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'ottacropper-btn-group';
         const addBtn = (icon: string, title: string, fn: () => void) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.title = title;
+            b.className = 'ottacropper-btn';
             b.innerHTML = icon;
-            b.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:6px';
             b.onclick = fn;
-            ctrl.appendChild(b);
+            btnGroup.appendChild(b);
         };
         // Aspect presets (hidden until image loaded)
         if (this.options.aspectPresets && this.options.aspectPresets.length > 0) {
             const presetsEl = document.createElement('div');
-            presetsEl.style.cssText = 'display:flex;gap:4px';
+            presetsEl.className = 'ottacropper-presets';
             presetsEl.id = 'cropper-presets';
-            presetsEl.style.display = 'none';
             for (const { label, value } of this.options.aspectPresets) {
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.type = 'button';
+                b.className = 'ottacropper-preset';
                 b.onclick = () => this.setAspectRatio(value);
                 presetsEl.appendChild(b);
                 this.presetBtns.set(value, b);
@@ -198,6 +179,7 @@ export class Cropper {
         addBtn(SVG_FLIP_H, 'Flip horizontal', () => this.flipHorizontal());
         addBtn(SVG_FLIP_V, 'Flip vertical', () => this.flipVertical());
         addBtn(SVG_ROTATE, 'Rotate 90°', () => this.rotate());
+        ctrl.appendChild(btnGroup);
         this.container.appendChild(ctrl);
 
         this.wrap.onmousedown = (e) => this.onMouseDown(e);
@@ -228,9 +210,7 @@ export class Cropper {
             this.flipH = false;
             this.flipV = false;
             this.initCrop();
-            this.container.querySelector<HTMLElement>('#cropper-wrap')!.style.display = 'block';
-            const presetsEl = this.container.querySelector<HTMLElement>('#cropper-presets');
-            if (presetsEl) presetsEl.style.display = 'flex';
+            this.revealLoadedUi();
             this.updatePresetActive();
             this.render();
             this.options.onImageLoad?.();
@@ -269,14 +249,23 @@ export class Cropper {
             this.flipH = false;
             this.flipV = false;
             this.initCrop();
-            this.container.querySelector<HTMLElement>('#cropper-wrap')!.style.display = 'block';
-            const presetsEl = this.container.querySelector<HTMLElement>('#cropper-presets');
-            if (presetsEl) presetsEl.style.display = 'flex';
+            this.revealLoadedUi();
             this.updatePresetActive();
             this.render();
             this.options.onImageLoad?.();
         };
         this.img.src = url;
+    }
+
+    /** Reveal the viewport, toolbar, and aspect presets once the first image has loaded */
+    private revealLoadedUi() {
+        this.wrap?.classList.add('ottacropper-viewport--visible');
+        this.container.querySelector<HTMLElement>('#cropper-toolbar')?.classList.add('ottacropper-toolbar--visible');
+        if (this.presetsVisible) {
+            this.container
+                .querySelector<HTMLElement>('#cropper-presets')
+                ?.classList.add('ottacropper-presets--visible');
+        }
     }
 
     private updateUploadButtonLabel() {
@@ -431,27 +420,58 @@ export class Cropper {
         }
     }
 
+    /** Draw modern resize handles: small circular corner grips + short rounded edge bars (react-advanced-cropper style) */
     private drawResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-        const handleSize = 10;
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = 'rgba(255,255,255,0.98)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
         ctx.lineWidth = 1;
 
-        const handles = [
-            { x: x - handleSize / 2, y: y - handleSize / 2 }, // nw
-            { x: x + w - handleSize / 2, y: y - handleSize / 2 }, // ne
-            { x: x - handleSize / 2, y: y + h - handleSize / 2 }, // sw
-            { x: x + w - handleSize / 2, y: y + h - handleSize / 2 }, // se
-            { x: x + w / 2 - handleSize / 2, y: y - handleSize / 2 }, // n
-            { x: x + w - handleSize / 2, y: y + h / 2 - handleSize / 2 }, // e
-            { x: x + w / 2 - handleSize / 2, y: y + h - handleSize / 2 }, // s
-            { x: x - handleSize / 2, y: y + h / 2 - handleSize / 2 }, // w
+        // Corner handles — small circular grips
+        const cornerRadius = 4.5;
+        const corners = [
+            { x, y }, // nw
+            { x: x + w, y }, // ne
+            { x, y: y + h }, // sw
+            { x: x + w, y: y + h }, // se
         ];
-
-        for (const handle of handles) {
-            ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
-            ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+        for (const c of corners) {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, cornerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         }
+
+        // Edge handles — short rounded bars, skipped when the crop box is too small to fit them cleanly
+        const barLength = 18;
+        const barThickness = 4;
+        const cornerRoundness = barThickness / 2;
+        const drawBar = (cx: number, cy: number, horizontal: boolean) => {
+            const bw = horizontal ? barLength : barThickness;
+            const bh = horizontal ? barThickness : barLength;
+            const bx = cx - bw / 2;
+            const by = cy - bh / 2;
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(bx, by, bw, bh, cornerRoundness);
+            } else {
+                ctx.rect(bx, by, bw, bh);
+            }
+            ctx.fill();
+            ctx.stroke();
+        };
+        if (w > barLength * 1.5) {
+            drawBar(x + w / 2, y, true); // n
+            drawBar(x + w / 2, y + h, true); // s
+        }
+        if (h > barLength * 1.5) {
+            drawBar(x, y + h / 2, false); // w
+            drawBar(x + w, y + h / 2, false); // e
+        }
+        ctx.restore();
     }
 
     private getResizeHandleAtPoint(mx: number, my: number, ox: number, oy: number, ow: number, oh: number) {
@@ -808,8 +828,9 @@ export class Cropper {
 
     /** Show or hide aspect preset buttons */
     setPresetsVisible(visible: boolean) {
+        this.presetsVisible = visible;
         const el = this.container.querySelector<HTMLElement>('#cropper-presets');
-        if (el) el.style.display = visible ? 'flex' : 'none';
+        el?.classList.toggle('ottacropper-presets--visible', visible && this.hasLoadedImage);
     }
 
     /** Enable or disable smooth transitions without resetting the loaded image */
@@ -824,12 +845,10 @@ export class Cropper {
 
     private updatePresetActive() {
         const ar = this.options.aspectRatio;
-        const activeStyle = 'font-weight:600';
-        const inactiveStyle = 'font-weight:400';
         for (const [value, btn] of this.presetBtns) {
             const isActive =
                 ar === null && value === null ? true : ar !== null && value !== null && Math.abs(value - ar) < 1e-6;
-            btn.style.cssText = isActive ? activeStyle : inactiveStyle;
+            btn.classList.toggle('ottacropper-preset--active', isActive);
         }
     }
 

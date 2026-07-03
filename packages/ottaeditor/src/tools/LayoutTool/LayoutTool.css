@@ -1,10 +1,5 @@
 /* Layout Tool - custom/overrides only */
 
-.cdx-layout__wrapper {
-    border-radius: 8px;
-    border: 1px solid hsl(var(--border));
-}
-
 .cdx-layout__toolbar {
     display: flex;
     align-items: center;
@@ -47,10 +42,9 @@
 }
 
 .cdx-layout__preset-btn--active {
-    border-color: hsl(var(--primary));
-    background: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-weight: 600;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
 }
 
 .cdx-layout__preset-icon {
@@ -95,7 +89,7 @@
 }
 
 .cdx-layout__col-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: hsl(var(--muted-foreground));
     text-transform: uppercase;
@@ -103,7 +97,7 @@
 }
 
 .cdx-layout__col-width {
-    font-size: 10px;
+    font-size: 11px;
     color: hsl(var(--muted-foreground));
     opacity: 0.7;
 }

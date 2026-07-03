@@ -32,6 +32,7 @@
     --od-radius: var(--radius, 0.5rem);
     --od-cell-size: 2.25rem;
     --od-gap: 0.125rem;
+    --od-shadow-xs: var(--shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.04));
 
     /* Typography */
     --od-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
@@ -74,6 +75,7 @@
     font-family: var(--od-font);
     font-size: var(--od-font-size);
     color: var(--od-fg);
+    box-shadow: var(--od-shadow-xs);
     transition:
         border-color var(--od-transition),
         box-shadow var(--od-transition);
@@ -90,7 +92,7 @@
 
 .ottadate-trigger:focus-visible {
     border-color: var(--od-ring);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--od-ring) 20%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
 .ottadate-trigger[aria-disabled='true'] {
@@ -148,9 +150,7 @@
     background: var(--od-bg);
     border: 1px solid var(--od-border);
     border-radius: var(--od-radius);
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07));
     padding: 0.75rem;
     animation: ottadate-fade-in var(--od-transition-enter);
 }
@@ -429,7 +429,10 @@
     color: var(--od-fg);
     background: var(--od-bg);
     outline: none;
-    transition: border-color var(--od-transition);
+    box-shadow: var(--od-shadow-xs);
+    transition:
+        border-color var(--od-transition),
+        box-shadow var(--od-transition);
     -moz-appearance: textfield;
 }
 
@@ -441,6 +444,7 @@
 
 .ottadate-time-input:focus {
     border-color: var(--od-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
 .ottadate-time-separator {
@@ -853,46 +857,24 @@
     gap: 0.5rem;
 }
 
+/* Wraps every compact <select> so a themed chevron can be absolutely positioned over it
+   (native `appearance: auto` OS chevrons are what made this mode look dated). */
+.ottadate-compact-select-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
 /* Approximation select (Exact / Around / Sometime in) */
 .ottadate-compact-approx {
     flex: 1;
     min-width: 6rem;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius);
-    font-size: var(--od-font-size);
-    font-family: var(--od-font);
-    color: var(--od-fg);
-    background: var(--od-bg);
-    outline: none;
-    cursor: pointer;
-    transition: border-color var(--od-transition);
-    appearance: auto;
-}
-
-.ottadate-compact-approx:focus {
-    border-color: var(--od-ring);
 }
 
 /* Resolution select (Year / Month / Day / Hour / Minute / Second) */
 .ottadate-compact-res {
     flex: 1;
     min-width: 5rem;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius);
-    font-size: var(--od-font-size);
-    font-family: var(--od-font);
-    color: var(--od-fg);
-    background: var(--od-bg);
-    outline: none;
-    cursor: pointer;
-    transition: border-color var(--od-transition);
-    appearance: auto;
-}
-
-.ottadate-compact-res:focus {
-    border-color: var(--od-ring);
 }
 
 .ottadate-compact-desc {
@@ -909,7 +891,8 @@
 }
 
 .ottadate-compact-select {
-    padding: 0.25rem 0.375rem;
+    width: 100%;
+    padding: 0.3125rem 1.75rem 0.3125rem 0.5rem;
     border: 1px solid var(--od-border);
     border-radius: calc(var(--od-radius) * 0.5);
     font-size: var(--od-font-size);
@@ -918,12 +901,37 @@
     background: var(--od-bg);
     outline: none;
     cursor: pointer;
-    transition: border-color var(--od-transition);
-    appearance: auto;
+    box-shadow: var(--od-shadow-xs);
+    transition:
+        border-color var(--od-transition),
+        box-shadow var(--od-transition);
+    appearance: none;
 }
 
 .ottadate-compact-select:focus {
     border-color: var(--od-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
+}
+
+.ottadate-compact-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ottadate-compact-select-chevron {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    display: flex;
+    transform: translateY(-50%);
+    color: var(--od-muted-fg);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.ottadate-compact-select-chevron svg {
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 .ottadate-compact-year {
