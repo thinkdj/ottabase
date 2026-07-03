@@ -323,4 +323,23 @@ describe('withHeaders()', () => {
         expect(fromEntries.headers.get('x-form')).toBe('entries');
         expect(fromHeaders.headers.get('x-form')).toBe('headers');
     });
+
+    it('merges Vary as unique tokens instead of replacing an existing Vary', () => {
+        const res = new Response('x', { headers: { Vary: 'Accept-Encoding' } });
+        const out = withHeaders(res, { Vary: 'Origin' });
+
+        expect(out.headers.get('vary')).toBe('Accept-Encoding, Origin');
+    });
+
+    it('does not duplicate a Vary token that is already present', () => {
+        const res = new Response('x', { headers: { Vary: 'Origin, Accept-Encoding' } });
+        const out = withHeaders(res, { Vary: 'Origin' });
+
+        expect(out.headers.get('vary')).toBe('Origin, Accept-Encoding');
+    });
+
+    it('sets Vary normally when the response has none yet', () => {
+        const out = withHeaders(new Response('x'), { Vary: 'Origin' });
+        expect(out.headers.get('vary')).toBe('Origin');
+    });
 });

@@ -247,9 +247,23 @@ describe('on() method string validation', () => {
         expect(router.routes()).toEqual([{ method: 'GET', pattern: '/lower' }]);
     });
 
-    it('non-A-Z method strings throw', () => {
+    it('method strings outside the HTTP token grammar throw', () => {
+        // '@' and '/' are RFC 9110 delimiters, never legal in a method token.
         expect(() => new Router().on('B@D', '/x', tag('x'))).toThrow(/Invalid method/);
-        expect(() => new Router().on('GET!', '/x', tag('x'))).toThrow(/Invalid method/);
+        expect(() => new Router().on('GET/POST', '/x', tag('x'))).toThrow(/Invalid method/);
         expect(() => new Router().on('', '/x', tag('x'))).toThrow(/Invalid method/);
+    });
+
+    it('accepts non-alpha HTTP token characters (RFC 9110 tchar), e.g. a WebDAV-style method', async () => {
+        // '!', digits, and '-' are all legal token characters, just unusual.
+        const router = new Router();
+        router.on('M-SEARCH', '/x', tag('m-search'));
+        expect(await text(await router.handle(req('M-SEARCH', '/x'), {}))).toBe('m-search');
+    });
+
+    it('on([]) with no methods throws instead of silently registering nothing', () => {
+        const router = new Router();
+        expect(() => router.on([], '/x', tag('x'))).toThrow(/at least one method/);
+        expect(router.routes()).toEqual([]);
     });
 });

@@ -315,7 +315,7 @@ import {
     handleReferralUsernameUpdate,
     handleReferralsAnalytics,
 } from '../referrals';
-import { handleApiRequest } from '../router';
+import { apiRouter, handleApiRequest } from '../router';
 import {
     handleShortlinkById,
     handleShortlinkExplicitGo,
@@ -904,6 +904,26 @@ describe('router dispatch parity', () => {
         it('GET / returns null', async () => {
             const { response } = await dispatch('GET', '/');
             expect(response).toBeNull();
+        });
+    });
+
+    describe('ExecutionContext propagation', () => {
+        it('handleApiRequest forwards the ctx argument through to apiRouter.handle', async () => {
+            const handleSpy = vi.spyOn(apiRouter, 'handle');
+            const ctx = { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as unknown as ExecutionContext;
+            const request = new Request('http://localhost/api/health');
+            const env = {} as any;
+
+            await handleApiRequest(request, env, ctx);
+
+            expect(handleSpy).toHaveBeenCalledWith(request, env, ctx);
+            handleSpy.mockRestore();
+        });
+
+        it('handleApiRequest works without a ctx argument (optional, unlike env)', async () => {
+            const request = new Request('http://localhost/api/health');
+            const response = await handleApiRequest(request, {} as any);
+            expect(response).not.toBeNull();
         });
     });
 });

@@ -131,7 +131,9 @@ Semantics worth knowing:
 - **Static segments are literal**, dots included: `sitemap.xml` is just a segment.
 - **Decoding policy.** Matching runs on raw, un-decoded segments, so an encoded `%2F` can never forge a segment
   boundary. `:name` captures are decoded with `decodeURIComponent` after a route is selected; a malformed encoding
-  throws `URIError`, which follows the error path (see Error Handling). `*` captures are never decoded.
+  throws `URIError`, which follows the error path (see Error Handling). `*` captures are never decoded. Because decoding
+  happens after matching, a decoded `:name` value **can contain a `/`** (e.g. `/files/%2Fetc%2Fpasswd` decodes to
+  `/etc/passwd`) — never pass a `:param` into a filesystem path or another router unsanitized.
 - **Trailing slash.** Exactly one trailing `/` is stripped before matching (unless the path is `/`), so `/users/42/`
   matches `/users/:id`. All matching uses the normalized `c.path`; `c.url` keeps the original pathname.
 - **`*` needs at least one segment.** `/api/auth/*` does not match `/api/auth` — register the bare path separately if
@@ -326,7 +328,8 @@ export class Router<Env = unknown> {
     // 'ALL' matches every method and loses to an exact-method route of the same shape.
     all<P extends string>(pattern: P, handler: Handler<Env, PathParams<P>>): this;
 
-    // Any method string(s), uppercased before comparison.
+    // Any HTTP token method(s) (RFC 9110 tchar; e.g. GET, M-SEARCH), uppercased before comparison.
+    // At least one method is required; registering the same method twice in one call throws.
     on<P extends string>(method: string | readonly string[], pattern: P, handler: Handler<Env, PathParams<P>>): this;
 
     // Middleware: global, or scoped to a static segment-boundary prefix.
@@ -417,7 +420,10 @@ export type Gate<Env = unknown> = (c: Ctx<Env>) => boolean;
 /**
  * Set headers on a response, safely for Workers:
  * - 101 / WebSocket upgrade responses are returned unchanged (never rebuild an upgrade);
- * - immutable headers (cache/subrequest responses) are handled by cloning via new Response(res.body, res).
+ * - immutable headers (cache/subrequest responses) are handled by cloning via new Response(res.body, res);
+ * - repeated header names (notably Set-Cookie) keep every value instead of the last one winning;
+ * - Vary is merged as unique comma-separated tokens instead of replaced, so stamping CORS's
+ *   `Vary: Origin` never erases a Vary the response already had (e.g. Accept-Encoding).
  */
 export function withHeaders(res: Response, headers: HeadersInit): Response;
 ```

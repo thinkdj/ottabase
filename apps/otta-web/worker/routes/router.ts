@@ -441,8 +441,12 @@ apiRouter.onError((err, c) => {
  * routes (ottabase/config.routes.ts). Resolves null when nothing claimed the
  * request, so the worker can fall through to shortlinks and static assets.
  */
-export async function handleApiRequest(request: Request, env: CloudflareEnv): Promise<Response | null> {
-    const response = await apiRouter.handle(request, env);
+export async function handleApiRequest(
+    request: Request,
+    env: CloudflareEnv,
+    ctx?: ExecutionContext,
+): Promise<Response | null> {
+    const response = await apiRouter.handle(request, env, ctx);
     if (response) {
         return response;
     }

@@ -33,7 +33,7 @@ function isHtmlRequest(request: Request): boolean {
 }
 
 export default {
-    async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
+    async fetch(request: Request, env: CloudflareEnv, ctx: ExecutionContext): Promise<Response> {
         try {
             const url = new URL(request.url);
             const normalizedPathname = normalizePath(url.pathname);
@@ -74,7 +74,7 @@ export default {
             }
 
             // API routes (built-ins, then user-zone custom routes) — null falls through
-            const apiResponse = await handleApiRequest(request, env);
+            const apiResponse = await handleApiRequest(request, env, ctx);
 
             if (apiResponse) {
                 return apiResponse;

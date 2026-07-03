@@ -98,7 +98,9 @@ export class RouteConflictError extends Error {
 /**
  * Set headers on a response, safely for Workers:
  * - 101 / WebSocket upgrade responses are returned unchanged (never rebuild an upgrade);
- * - immutable headers (cache/subrequest responses) are handled by cloning via `new Response(res.body, res)`.
+ * - immutable headers (cache/subrequest responses) are handled by cloning via `new Response(res.body, res)`;
+ * - `Vary` is merged as unique comma-separated tokens instead of replaced, so stamping `Vary: Origin`
+ *   for CORS never erases a `Vary` the underlying response already had (e.g. `Accept-Encoding`).
  */
 export function withHeaders(res: Response, headers: HeadersInit): Response {
     if (res.status === 101 || (res as Response & { webSocket?: unknown }).webSocket) {
@@ -111,6 +113,13 @@ export function withHeaders(res: Response, headers: HeadersInit): Response {
         const toSet = new Headers(headers);
         const replaced = new Set<string>();
         toSet.forEach((value, key) => {
+            if (key === 'vary') {
+                const existing = (target.get('vary') ?? '').split(',').map((token) => token.trim());
+                const incoming = value.split(',').map((token) => token.trim());
+                const merged = [...new Set([...existing, ...incoming].filter(Boolean))];
+                target.set('vary', merged.join(', '));
+                return;
+            }
             if (!replaced.has(key)) {
                 target.delete(key);
                 replaced.add(key);
@@ -320,6 +329,9 @@ class OnErrorFailure {
     constructor(readonly cause: unknown) {}
 }
 
+/** RFC 9110 token characters (tchar), checked after uppercasing — accepts any valid HTTP method token. */
+const HTTP_METHOD_RE = /^[A-Z0-9!#$%&'*+\-.^_`|~]+$/;
+
 export class Router<Env = unknown> {
     private readonly routeTable: RouteEntry<Env>[] = [];
     private readonly middlewareTable: MiddlewareEntry<Env>[] = [];
@@ -341,6 +353,9 @@ export class Router<Env = unknown> {
     on<P extends string>(method: string | readonly string[], pattern: P, handler: Handler<Env, PathParams<P>>): this {
         this.assertOpen('register routes');
         const methods = typeof method === 'string' ? [method] : method;
+        if (methods.length === 0) {
+            throw new Error('on() requires at least one method.');
+        }
         const segs = parsePattern(pattern);
         const upper = methods.map((m) => m.toUpperCase());
 
@@ -350,7 +365,7 @@ export class Router<Env = unknown> {
         const shape = shapeKey(segs);
         const snapshot = new Map(this.shapes.get(shape) ?? []);
         for (const m of upper) {
-            if (!/^[A-Z]+$/.test(m)) {
+            if (!HTTP_METHOD_RE.test(m)) {
                 throw new Error(`Invalid method "${m}".`);
             }
             const existing = snapshot.get(m);
@@ -655,7 +670,7 @@ export class Router<Env = unknown> {
         handler: Handler<Env, Params>,
         pattern: string,
     ): void {
-        if (!/^[A-Z]+$/.test(method)) {
+        if (!HTTP_METHOD_RE.test(method)) {
             throw new Error(`Invalid method "${method}".`);
         }
         const shape = shapeKey(segs);
