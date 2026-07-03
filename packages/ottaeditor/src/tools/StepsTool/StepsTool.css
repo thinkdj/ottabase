@@ -43,7 +43,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: 9999px;
+    border-radius: 50%;
     border: none;
     background: hsl(var(--foreground));
     color: hsl(var(--background));
@@ -119,7 +119,7 @@
     border: 1px solid hsl(var(--border));
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition:
         background-color 0.15s ease,
@@ -177,7 +177,7 @@
     min-width: 136px;
     padding: 6px;
     border: 1px solid hsl(var(--border));
-    border-radius: 12px;
+    border-radius: 8px;
     background: hsl(var(--background));
     box-shadow:
         0 10px 15px -3px hsl(var(--foreground) / 0.08),
@@ -200,6 +200,11 @@
 }
 
 .cdx-steps__menu-item--danger {
+    color: hsl(var(--destructive));
+}
+
+.cdx-steps__menu-item--danger:hover {
+    background: hsl(var(--destructive) / 0.1);
     color: hsl(var(--destructive));
 }
 

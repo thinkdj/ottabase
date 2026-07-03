@@ -5,6 +5,7 @@ PNG/JPEG. Zero React. ~3–4 KB gzipped.
 
 ## Features
 
+- **Theme-aware** - CSS custom properties integrate with shadcn/tailwind design tokens; dark mode supported
 - **Smooth interactions** - Slick transitions inspired by react-advanced-cropper
 - **Zoom support** - Mouse wheel zoom, programmatic zoom, smooth scaling
 - **Resize handles** - Drag corner and edge handles to resize crop area
@@ -20,6 +21,8 @@ PNG/JPEG. Zero React. ~3–4 KB gzipped.
 
 ```typescript
 import { Cropper } from '@ottabase/ui-cropper';
+// Don't forget to import styles:
+// import '@ottabase/ui-cropper/styles.css';
 
 const container = document.getElementById('cropper-root');
 const cropper = new Cropper(container, {
@@ -212,6 +215,25 @@ a.download = 'cropped.jpg';
 a.click();
 URL.revokeObjectURL(url);
 ```
+
+## Theming
+
+CSS custom properties integrate with shadcn/tailwind theme tokens (same convention as `@ottabase/ottadate`). Raw HSL
+channels (e.g. `0 0% 100%`) are wrapped in `hsl()` internally, with sensible fallbacks for standalone use:
+
+```css
+.ottacropper {
+    --cr-bg: hsl(var(--background, 0 0% 100%));
+    --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
+    --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
+    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    --cr-radius: var(--radius, 0.5rem);
+    --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+```
+
+Override any of these on `.ottacropper` (or the container element) to restyle without touching the JS. Dark mode is
+applied automatically via `.dark`/`[class*='dark']` ancestors or `prefers-color-scheme: dark`.
 
 ## Technical Details
 

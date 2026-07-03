@@ -125,3 +125,182 @@
     cursor: pointer;
     margin: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Focus ring — every custom interactive control inside a plugin
+   --------------------------------------------------------------------------- */
+.ob-plugin button:focus-visible,
+.ob-plugin [role='button']:focus-visible,
+.ob-plugin [tabindex]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Compact input/select modifiers (small inline fields, e.g. code-block options)
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-input--sm,
+.ob-plugin .ob-select--sm {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+/* Inline label — sits beside a control instead of above it */
+.ob-plugin .ob-label--inline {
+    margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Toolbar — label/actions row above a repeatable item list
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+/* ---------------------------------------------------------------------------
+   Item card — a single row inside a repeatable list (FAQ / reference / etc.)
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-item-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 6px;
+    background: hsl(var(--muted) / 0.4);
+}
+
+.ob-plugin .ob-drag-handle {
+    cursor: grab;
+    opacity: 0.5;
+    transition: opacity 150ms;
+    user-select: none;
+}
+
+.ob-plugin .ob-drag-handle:hover {
+    opacity: 1;
+}
+
+.ob-plugin .ob-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ---------------------------------------------------------------------------
+   Add-item button — dashed ghost button that appends a row to a list
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-add-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px dashed hsl(var(--primary) / 0.5);
+    border-radius: 6px;
+    background: transparent;
+    color: hsl(var(--primary));
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+        background 150ms,
+        border-color 150ms;
+}
+
+.ob-plugin .ob-add-button:hover {
+    background: hsl(var(--primary) / 0.08);
+    border-color: hsl(var(--primary));
+}
+
+/* ---------------------------------------------------------------------------
+   Icon button — single-purpose icon-only action, standalone or in a row
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition:
+        background 150ms,
+        color 150ms;
+}
+
+.ob-plugin .ob-icon-button:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.ob-plugin .ob-icon-button--danger:hover {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Dropzone — empty-state "click or drop to add media" affordance
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-dropzone {
+    border: 2px dashed hsl(var(--border));
+    border-radius: 8px;
+    background: hsl(var(--muted) / 0.3);
+    transition:
+        border-color 150ms,
+        background 150ms;
+}
+
+.ob-plugin .ob-dropzone:hover {
+    border-color: hsl(var(--ring));
+    background: hsl(var(--muted) / 0.5);
+}
+
+/* ---------------------------------------------------------------------------
+   Segmented control — elevated-pill toggle group (fit / orientation / align)
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 6px;
+    background: hsl(var(--muted));
+}
+
+.ob-plugin .ob-segment-btn {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+        background 150ms,
+        color 150ms,
+        box-shadow 150ms;
+}
+
+.ob-plugin .ob-segment-btn:hover {
+    color: hsl(var(--foreground));
+}
+
+.ob-plugin .ob-segment-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}

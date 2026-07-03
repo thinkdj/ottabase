@@ -5,13 +5,16 @@
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
-    "sideEffects": false,
+    "sideEffects": [
+        "*.css"
+    ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
-        }
+        },
+        "./styles.css": "./dist/styles.css"
     },
     "files": [
         "dist",
@@ -35,7 +38,7 @@
     ],
     "license": "MIT",
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean && node scripts/copy-css.js",
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "type-check": "tsc --noEmit",

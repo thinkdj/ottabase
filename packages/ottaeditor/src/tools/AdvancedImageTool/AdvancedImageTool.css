@@ -14,7 +14,7 @@
 .advanced-image-upload-area {
     min-height: 240px;
     border: 2px dashed hsl(var(--border));
-    border-radius: 12px;
+    border-radius: 8px;
     background: hsl(var(--muted) / 0.3);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
@@ -26,7 +26,7 @@
 }
 
 .advanced-image-upload-area:hover {
-    border-color: hsl(var(--border));
+    border-color: hsl(var(--ring));
     background: hsl(var(--muted) / 0.5);
 }
 
@@ -166,7 +166,7 @@
 }
 
 .advanced-image-url-btn {
-    padding: 8px 14px;
+    padding: 8px 16px;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: none;
@@ -225,7 +225,7 @@
 }
 
 .advanced-image-retry-btn {
-    padding: 6px 12px;
+    padding: 8px 16px;
     background: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
     border: none;
@@ -243,7 +243,7 @@
 /* Image & Input Styles */
 .advanced-image-container {
     position: relative;
-    margin: 10px 0;
+    margin: 12px 0;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -336,12 +336,12 @@
     background: transparent;
     border: none;
     color: hsl(var(--foreground));
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     outline: none;
     cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
+    padding: 4px 8px;
+    border-radius: 4px;
 }
 
 .aspect-ratio-select:hover {
@@ -386,7 +386,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .advanced-image-upload-content {
-        padding: 30px 15px;
+        padding: 32px 16px;
     }
 
     .advanced-image-url-input-group {
@@ -404,12 +404,4 @@
         margin: 1rem 0;
         border-radius: 4px;
     }
-}
-
-/* Focus styles for accessibility */
-.advanced-image-browse-btn:focus,
-.advanced-image-url-btn:focus,
-.advanced-image-retry-btn:focus {
-    outline: 2px solid hsl(var(--ring));
-    outline-offset: 2px;
 }

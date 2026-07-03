@@ -1,0 +1,277 @@
+/**
+ * @ottabase/ui-cropper — Stylesheet
+ *
+ * Mirrors the theme-integration convention used by @ottabase/ottadate:
+ * CSS custom properties map to shadcn/tailwind design tokens (raw HSL channels,
+ * so we wrap them in hsl()) and fall back to sensible defaults for standalone use.
+ */
+
+.ottacropper {
+    /* Colors — inherit from theme or use defaults (same fallbacks as @ottabase/ottadate). */
+    --cr-bg: hsl(var(--background, 0 0% 100%));
+    --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
+    --cr-muted: hsl(var(--muted, 210 40% 96.1%));
+    --cr-muted-fg: hsl(var(--muted-foreground, 215.4 16.3% 46.9%));
+    --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
+    --cr-accent: hsl(var(--accent, 210 40% 96.1%));
+    --cr-accent-fg: hsl(var(--accent-foreground, 222.2 47.4% 11.2%));
+    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+
+    /* Sizing & spacing */
+    --cr-radius: var(--radius, 0.5rem);
+    --cr-btn-size: 2.25rem;
+    --cr-shadow-xs: var(--shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.04));
+
+    /* Typography */
+    --cr-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+    --cr-font-size: 0.875rem;
+    --cr-font-size-sm: 0.8125rem;
+
+    /* Transitions — use brandkit motion variables when available */
+    --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: var(--cr-font);
+    font-size: var(--cr-font-size);
+    color: var(--cr-fg);
+    box-sizing: border-box;
+}
+
+.ottacropper *,
+.ottacropper *::before,
+.ottacropper *::after {
+    box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------------
+ * File input row — upload button + filename
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.ottacropper-file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.ottacropper-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-family: var(--cr-font);
+    font-size: var(--cr-font-size-sm);
+    font-weight: 500;
+    line-height: 1.25rem;
+    border-radius: var(--cr-radius);
+    border: 1px solid var(--cr-border);
+    background: var(--cr-bg);
+    color: var(--cr-fg);
+    cursor: pointer;
+    box-shadow: var(--cr-shadow-xs);
+    transition:
+        background var(--cr-transition),
+        border-color var(--cr-transition),
+        box-shadow var(--cr-transition);
+}
+
+.ottacropper-upload-btn:hover {
+    background: var(--cr-accent);
+    color: var(--cr-accent-fg);
+    border-color: var(--cr-ring);
+}
+
+.ottacropper-upload-btn:focus-visible {
+    outline: none;
+    border-color: var(--cr-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+}
+
+.ottacropper-upload-btn svg {
+    flex-shrink: 0;
+}
+
+.ottacropper-filename {
+    font-size: var(--cr-font-size-sm);
+    color: var(--cr-muted-fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 12rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Viewport — canvas wrapper (crop stage)
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-viewport {
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+    border-radius: calc(var(--cr-radius) * 0.75);
+    box-shadow: 0 0 0 1px var(--cr-border);
+    display: none;
+}
+
+.ottacropper-viewport--visible {
+    display: block;
+}
+
+.ottacropper-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    cursor: move;
+    border-radius: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+ * Toolbar — zoom / flip / rotate icon buttons
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-toolbar {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.ottacropper-toolbar--visible {
+    display: flex;
+}
+
+.ottacropper-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.1875rem;
+    border-radius: var(--cr-radius);
+    background: var(--cr-muted);
+}
+
+.ottacropper-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cr-btn-size);
+    height: var(--cr-btn-size);
+    padding: 0;
+    border: none;
+    border-radius: calc(var(--cr-radius) * 0.6);
+    background: transparent;
+    color: var(--cr-fg);
+    cursor: pointer;
+    transition:
+        background var(--cr-transition),
+        color var(--cr-transition),
+        box-shadow var(--cr-transition);
+}
+
+.ottacropper-btn:hover {
+    background: var(--cr-bg);
+    color: var(--cr-accent-fg);
+    box-shadow: var(--cr-shadow-xs);
+}
+
+.ottacropper-btn:active {
+    transform: scale(0.94);
+}
+
+.ottacropper-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+}
+
+.ottacropper-btn svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Aspect presets — segmented control
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-presets {
+    display: none;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.1875rem;
+    border-radius: var(--cr-radius);
+    background: var(--cr-muted);
+}
+
+.ottacropper-presets--visible {
+    display: inline-flex;
+}
+
+.ottacropper-preset {
+    padding: 0.3125rem 0.75rem;
+    border: none;
+    border-radius: calc(var(--cr-radius) * 0.6);
+    background: transparent;
+    color: var(--cr-muted-fg);
+    font-family: var(--cr-font);
+    font-size: var(--cr-font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background var(--cr-transition),
+        color var(--cr-transition),
+        box-shadow var(--cr-transition);
+}
+
+.ottacropper-preset:hover {
+    color: var(--cr-fg);
+}
+
+.ottacropper-preset:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+}
+
+.ottacropper-preset--active {
+    background: var(--cr-bg);
+    color: var(--cr-fg);
+    box-shadow: var(--cr-shadow-xs);
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode support (auto-detected via prefers-color-scheme and .dark class)
+ * --------------------------------------------------------------------------- */
+
+.dark .ottacropper,
+:root[class*='dark'] .ottacropper {
+    --cr-bg: hsl(var(--background, 222.2 84% 4.9%));
+    --cr-fg: hsl(var(--foreground, 210 40% 98%));
+    --cr-muted: hsl(var(--muted, 217.2 32.6% 17.5%));
+    --cr-muted-fg: hsl(var(--muted-foreground, 215 20.2% 65.1%));
+    --cr-accent: hsl(var(--accent, 217.2 32.6% 17.5%));
+    --cr-accent-fg: hsl(var(--accent-foreground, 210 40% 98%));
+    --cr-border: hsl(var(--border, 217.2 32.6% 17.5%));
+    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+}
+
+@media (prefers-color-scheme: dark) {
+    .ottacropper:not(.ottacropper--light) {
+        --cr-bg: hsl(var(--background, 222.2 84% 4.9%));
+        --cr-fg: hsl(var(--foreground, 210 40% 98%));
+        --cr-muted: hsl(var(--muted, 217.2 32.6% 17.5%));
+        --cr-muted-fg: hsl(var(--muted-foreground, 215 20.2% 65.1%));
+        --cr-accent: hsl(var(--accent, 217.2 32.6% 17.5%));
+        --cr-accent-fg: hsl(var(--accent-foreground, 210 40% 98%));
+        --cr-border: hsl(var(--border, 217.2 32.6% 17.5%));
+        --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    }
+}

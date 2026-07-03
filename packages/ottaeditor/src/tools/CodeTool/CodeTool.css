@@ -8,7 +8,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .cdx-code__options-row {
@@ -40,7 +40,7 @@
 }
 
 .cdx-code__opt-group .cdx-code__opt-label {
-    margin-right: 2px;
+    margin-right: 4px;
 }
 
 .cdx-code__opt-desc {
@@ -49,6 +49,10 @@
 
 .cdx-code__opt-toggle {
     cursor: pointer;
+}
+
+.cdx-code__opt-toggle:hover .cdx-code__opt-label {
+    color: hsl(var(--foreground));
 }
 
 .cdx-code__opt-label {
@@ -85,6 +89,20 @@
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     cursor: pointer;
+}
+
+.cdx-code__opt-input[type='number']:hover,
+.cdx-code__opt-input[type='text']:hover,
+.cdx-code__opt-select:hover {
+    border-color: hsl(var(--ring));
+}
+
+.cdx-code__opt-input[type='number']:focus,
+.cdx-code__opt-input[type='text']:focus,
+.cdx-code__opt-select:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }
 
 .cdx-code__lang-select {

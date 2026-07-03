@@ -21,6 +21,8 @@ import {
 import { IconArrowLeft, IconCircle, IconDownload, IconRectangle } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+// Styles are imported once at the app level or here
+import '@ottabase/ui-cropper/styles.css';
 
 const ASPECT_OPTIONS: { label: string; value: number | null }[] = [
     { label: 'Freeform', value: null },

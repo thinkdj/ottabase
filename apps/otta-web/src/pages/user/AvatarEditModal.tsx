@@ -18,6 +18,8 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
+// Styles are imported once at the app level or here
+import '@ottabase/ui-cropper/styles.css';
 
 interface AvatarEditModalProps {
     open: boolean;

@@ -10,12 +10,13 @@
     align-items: center;
     justify-content: center;
     background: hsl(var(--muted) / 0.3);
-    border: 1px dotted hsl(var(--border));
+    border: 2px dashed hsl(var(--border));
     cursor: pointer;
     border-radius: 8px;
 }
 
 .cdx-media-library-placeholder:hover {
+    border-color: hsl(var(--ring));
     background: hsl(var(--muted) / 0.5);
 }
 
