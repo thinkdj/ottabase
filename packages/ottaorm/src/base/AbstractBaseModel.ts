@@ -300,11 +300,29 @@ export abstract class AbstractBaseModel {
     }
 
     /**
+     * Per-class, per-mode cache of the built Zod schema. `fields`/`writable` are static and
+     * immutable, so the schema only needs to be built once per model per mode — but create()/update()
+     * validate on every write, and buildZodSchema walks every field each call. Keyed by the concrete
+     * class (`this`) via a WeakMap so subclasses never share a cache and a class can be GC'd with it.
+     */
+    private static _zodSchemaCache = new WeakMap<object, Partial<Record<'create' | 'update', z.ZodObject<any>>>>();
+
+    /**
      * Get Zod validation schema for this model
-     * Built automatically from field metadata - no manual schema needed
+     * Built automatically from field metadata - no manual schema needed (memoized per class + mode)
      */
     static getZodSchema(mode: 'create' | 'update' = 'create'): z.ZodObject<any> {
-        return buildZodSchema(this.fields, mode, this.writable);
+        let byMode = AbstractBaseModel._zodSchemaCache.get(this);
+        if (!byMode) {
+            byMode = {};
+            AbstractBaseModel._zodSchemaCache.set(this, byMode);
+        }
+        let schema = byMode[mode];
+        if (!schema) {
+            schema = buildZodSchema(this.fields, mode, this.writable);
+            byMode[mode] = schema;
+        }
+        return schema;
     }
 
     /**
