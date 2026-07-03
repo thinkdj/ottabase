@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - VerificationToken table schema for Auth.js
 // ============================================================
 
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * VerificationToken table schema for Auth.js
@@ -19,6 +19,9 @@ export const verificationTokensTable = sqliteTable(
     },
     (table) => ({
         pk: primaryKey({ columns: [table.identifier, table.token] }),
+        // Email verification and password-reset confirmation look the token up by value alone.
+        // The composite PK leads with identifier, so a token-only lookup can't use it.
+        tokenIdx: index('verification_tokens_token_idx').on(table.token),
     }),
 );
 

@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - UserRole junction table schema
 // ============================================================
 
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { rolesTable } from './Role.schema';
 import { usersTable } from './User.schema';
 
@@ -35,6 +35,12 @@ export const userRolesTable = sqliteTable(
     (table) => ({
         // Composite key: user can have same role in different orgs/apps
         pk: primaryKey({ columns: [table.userId, table.roleId, table.organizationId] }),
+        // RBAC resolves a user's roles within an org: WHERE user_id = ? AND organization_id = ?.
+        // The composite PK leads with user_id but interleaves role_id, so it can't serve this
+        // filter efficiently — an explicit (user_id, organization_id) index does.
+        userOrgIdx: index('user_roles_user_org_idx').on(table.userId, table.organizationId),
+        // Reverse lookup: which users hold a given role (e.g. role deletion/impact checks).
+        roleIdx: index('user_roles_role_idx').on(table.roleId),
     }),
 );
 

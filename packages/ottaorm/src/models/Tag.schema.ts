@@ -2,27 +2,34 @@
 // @ottabase/ottaorm - Tag table schema
 // ============================================================
 
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * Tag table schema
  */
-export const tagsTable = sqliteTable('tags', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    name: text('name').notNull(),
-    slug: text('slug').notNull().unique(),
-    // App identifier for multi-app database sharing (nullable, opt-in)
-    appId: text('app_id'),
-    createdAt: integer('created_at')
-        .$defaultFn(() => Date.now())
-        .notNull(),
-    updatedAt: integer('updated_at')
-        .$defaultFn(() => Date.now())
-        .$onUpdateFn(() => Date.now())
-        .notNull(),
-});
+export const tagsTable = sqliteTable(
+    'tags',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        name: text('name').notNull(),
+        slug: text('slug').notNull().unique(),
+        // App identifier for multi-app database sharing (nullable, opt-in)
+        appId: text('app_id'),
+        createdAt: integer('created_at')
+            .$defaultFn(() => Date.now())
+            .notNull(),
+        updatedAt: integer('updated_at')
+            .$defaultFn(() => Date.now())
+            .$onUpdateFn(() => Date.now())
+            .notNull(),
+    },
+    (t) => ({
+        // Tags are app-scoped by RLS (filtered by appId). slug is already UNIQUE-indexed.
+        appIdx: index('tags_app_idx').on(t.appId),
+    }),
+);
 
 /**
  * Tag model type
