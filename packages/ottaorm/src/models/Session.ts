@@ -34,6 +34,10 @@ export class Session extends BaseModel {
     static packageType: PackageType = 'core';
 
     static casts = {
+        // `expires` validates as a `datetime` (coerced to a Date) but the column is a plain
+        // integer of Unix ms — without this cast, prepareForDatabase would leave a Date in place
+        // and Drizzle would fail to bind it to the INTEGER column. See VerificationToken.
+        expires: 'datetime' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
