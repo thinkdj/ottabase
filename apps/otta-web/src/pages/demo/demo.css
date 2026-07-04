@@ -1,0 +1,35 @@
+/* ---------------------------------------------------------------------------
+ * Demo-scoped minimalist refinements
+ *
+ * Scoped to `.otta-demo` (the /demo shell) so it never touches the rest of the
+ * product app. The goal is a calm, restrained surface: hairline borders, flat
+ * cards, quiet motion — depth is reserved for true overlays (popovers, menus)
+ * which portal outside this scope and keep their elevation.
+ * --------------------------------------------------------------------------- */
+
+.otta-demo {
+    /* Hairline borders. Softening the token cascades to every Tailwind `border`
+       utility inside the demo — cards, inputs, dividers, tables — so surfaces
+       read as quiet dividers instead of heavy boxes. */
+    --border: 214 24% 93%;
+    --input: 214 24% 92%;
+}
+
+.dark .otta-demo,
+:root[class*='dark'] .otta-demo {
+    --border: 216 16% 19%;
+    --input: 216 16% 21%;
+}
+
+/* Flat in-flow surfaces: cards sit flush on the page. Interactivity is signalled
+   by a border/background shift on hover, not a drop shadow. */
+.otta-demo .shadow-sm,
+.otta-demo .shadow {
+    box-shadow: none;
+}
+
+/* Code / JSON preview blocks: hairline outline instead of a hard filled slab,
+   monospaced and calm. */
+.otta-demo pre {
+    border: 1px solid hsl(var(--border));
+}

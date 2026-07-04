@@ -23,27 +23,32 @@ export function DemoIndexPage() {
                 </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {DEMO_ITEMS.map((item) => (
                     <Link
                         key={item.to}
                         to={item.to}
-                        className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                        <Card className="h-full transition-all duration-200 group-hover:border-ring group-hover:shadow-md">
-                            <CardHeader>
-                                <div className="mb-1 flex items-center justify-between">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground transition-colors group-hover:text-foreground">
+                        <Card className="h-full rounded-xl border-transparent bg-muted/40 transition-colors duration-200 group-hover:bg-muted/70">
+                            <CardHeader className="gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border transition-colors group-hover:text-foreground">
                                         <item.icon className="h-[1.125rem] w-[1.125rem]" />
                                     </span>
                                     {item.buttonVariant === 'default' ? (
-                                        <Badge variant="secondary" className="text-[0.625rem] uppercase tracking-wide">
+                                        <Badge
+                                            variant="secondary"
+                                            className="bg-background/60 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
+                                        >
                                             Featured
                                         </Badge>
                                     ) : null}
                                 </div>
-                                <CardTitle className="text-base">{item.title}</CardTitle>
-                                <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+                                <CardTitle className="text-[0.9375rem] font-semibold">{item.title}</CardTitle>
+                                <CardDescription className="line-clamp-2 leading-relaxed">
+                                    {item.description}
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
@@ -56,11 +61,12 @@ export function DemoIndexPage() {
                 ))}
             </div>
 
-            <div className="rounded-lg border bg-muted/40 p-6">
-                <h2 className="mb-2 text-lg font-semibold">About this template</h2>
-                <p className="max-w-3xl text-sm text-muted-foreground">
-                    This template uses <strong>UI Base</strong> as the foundation, with optional UI libraries layered on
-                    top. The main app providers only include UI Base, fonts, state management, and shadcn/ui.
+            <div className="rounded-xl bg-muted/40 p-6">
+                <h2 className="mb-1.5 text-sm font-semibold">About this template</h2>
+                <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                    This template uses <strong className="font-medium text-foreground">UI Base</strong> as the
+                    foundation, with optional UI libraries layered on top. The main app providers only include UI Base,
+                    fonts, state management, and shadcn/ui.
                 </p>
             </div>
         </div>
