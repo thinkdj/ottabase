@@ -287,6 +287,13 @@ apiRouter.get('/api/audit/logs', h(handleAuditLogs));
 apiRouter.get('/api/admin/users', h(handleAdminUsers));
 apiRouter.get('/api/admin/users/search', h(handleAdminUserSearch));
 apiRouter.get('/api/admin/users/:userId', (c) => handleAdminUserById(ctxOf(c), c.params.userId));
+// Roles: primary path is /api/rbac/roles (what the admin RBAC UI calls); /api/admin/roles is a
+// backward-compatible alias. Both are org-aware (system admins manage global roles; org admins
+// manage their own org's custom roles).
+apiRouter.get('/api/rbac/roles', h(handleAdminRolesList));
+apiRouter.post('/api/rbac/roles', h(handleAdminRoleCreate));
+apiRouter.patch('/api/rbac/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
+apiRouter.delete('/api/rbac/roles/:roleId', (c) => handleAdminRoleDelete(ctxOf(c), c.params.roleId));
 apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
 apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
 apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
