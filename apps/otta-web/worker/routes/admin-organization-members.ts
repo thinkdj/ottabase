@@ -8,9 +8,13 @@ import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
     userId?: string;
+    /** Invite by email — the invitee need not have an account yet. */
+    email?: string;
     role?: 'owner' | 'admin' | 'member';
     status?: 'active' | 'invited' | 'suspended';
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface UpdateMemberRequestBody {
     role?: 'owner' | 'admin' | 'member';
@@ -98,14 +102,22 @@ export async function handleAdminOrganizationInviteMember(
         return errorResponse('Invalid JSON body', 400, { code: 'BAD_REQUEST' });
     }
 
-    const userId = body.userId?.trim();
+    const userIdInput = body.userId?.trim();
+    const emailInput = body.email?.trim().toLowerCase();
     const role = body.role ?? 'member';
     const status = body.status ?? 'invited';
 
-    if (!userId) {
-        return errorResponse('User is required', 400, {
+    if (!userIdInput && !emailInput) {
+        return errorResponse('A user or email is required to invite a member', 400, {
             code: 'VALIDATION_ERROR',
-            fieldErrors: { userId: ['User is required'] },
+            fieldErrors: { email: ['Provide a user or an email address to invite'] },
+        });
+    }
+
+    if (emailInput && !EMAIL_RE.test(emailInput)) {
+        return errorResponse('Invalid email address', 400, {
+            code: 'VALIDATION_ERROR',
+            fieldErrors: { email: ['Enter a valid email address'] },
         });
     }
 
@@ -119,38 +131,80 @@ export async function handleAdminOrganizationInviteMember(
         });
     }
 
-    const user = await User.find(userId);
-    if (!user) {
-        return errorResponse('User not found', 404, {
-            code: 'USER_NOT_FOUND',
-            fieldErrors: { userId: ['User not found'] },
-        });
+    // Resolve the invitee to a user id: an explicit userId, or an existing user matching the email.
+    // If neither resolves, we fall through to a pending email invite (Path B).
+    let userId = userIdInput ?? null;
+    if (!userId && emailInput) {
+        const existingUser = await User.first({ email: emailInput });
+        if (existingUser) userId = existingUser.get('id') as string;
     }
 
-    const existingMember = await OrganizationMember.first({ userId, organizationId });
-    if (existingMember) {
-        return errorResponse('User is already a member of this organization', 409, {
+    // Path A — invite an existing user by id (membership tied to their account immediately).
+    if (userId) {
+        const user = await User.find(userId);
+        if (!user) {
+            return errorResponse('User not found', 404, {
+                code: 'USER_NOT_FOUND',
+                fieldErrors: { userId: ['User not found'] },
+            });
+        }
+
+        const existingMember = await OrganizationMember.first({ userId, organizationId });
+        if (existingMember) {
+            return errorResponse('User is already a member of this organization', 409, {
+                code: 'MEMBER_ALREADY_EXISTS',
+                fieldErrors: { userId: ['User is already a member of this organization'] },
+            });
+        }
+
+        try {
+            const member = await OrganizationMember.create({
+                userId,
+                organizationId,
+                role,
+                status,
+                invitedBy: auth.user?.id ?? null,
+                invitedAt: Date.now(),
+            } as any);
+
+            // Membership granted — drop the user's cached security-context lookups.
+            await invalidateMembershipCache(context.env.OBCF_KV, userId);
+
+            return jsonResponse({ data: member.toJson() }, 201);
+        } catch (err) {
+            return errorResponse('Failed to invite member', 500, {
+                code: 'ORG_MEMBER_INVITE_FAILED',
+                details: err instanceof Error ? err.message : 'Unknown error',
+            });
+        }
+    }
+
+    // Path B — no account yet: create a pending email invite. When the invitee signs up with this
+    // email, the auth flow's OrganizationMember.activatePendingInvites (wired in onSignIn) flips the
+    // row to active and links their new userId. This is the case the endpoint previously rejected.
+    const invitedEmail = emailInput!;
+    const existingInvite = await OrganizationMember.findExistingInvite({ organizationId, invitedEmail });
+    if (existingInvite) {
+        return errorResponse('This email has already been invited to this organization', 409, {
             code: 'MEMBER_ALREADY_EXISTS',
-            fieldErrors: { userId: ['User is already a member of this organization'] },
+            fieldErrors: { email: ['This email has already been invited'] },
         });
     }
 
     try {
-        const member = await OrganizationMember.create({
-            userId,
+        const member = await OrganizationMember.addMember({
             organizationId,
+            invitedEmail,
+            userId: null,
             role,
-            status,
+            status: 'invited',
             invitedBy: auth.user?.id ?? null,
             invitedAt: Date.now(),
         } as any);
 
-        // Membership granted — drop the user's cached security-context lookups.
-        await invalidateMembershipCache(context.env.OBCF_KV, userId);
-
-        return jsonResponse({ data: member.toJson() }, 201);
+        return jsonResponse({ data: member }, 201);
     } catch (err) {
-        return errorResponse('Failed to invite member', 500, {
+        return errorResponse('Failed to create invite', 500, {
             code: 'ORG_MEMBER_INVITE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',
         });
