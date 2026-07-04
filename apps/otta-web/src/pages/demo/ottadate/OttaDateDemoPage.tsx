@@ -19,8 +19,8 @@ import {
 } from '@ottabase/ottadate';
 import { Button } from '@ottabase/ui-shadcn/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn/card';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 // Styles are imported once at the app level or here
 import '@ottabase/ottadate/styles.css';
 
@@ -421,17 +421,10 @@ function ProgrammaticApiDemo() {
 export function OttaDateDemoPage() {
     return (
         <div className="space-y-8 max-w-4xl">
-            {/* Header */}
-            <div>
-                <Link to="/demo" className="text-sm text-muted-foreground hover:underline mb-2 inline-block">
-                    ← Back to Demo Gallery
-                </Link>
-                <h1 className="text-2xl font-bold tracking-tight">OttaDate</h1>
-                <p className="text-muted-foreground mt-1">
-                    Framework-agnostic date picker with range, datetime, and fuzzy date support. All values are UTC unix
-                    timestamps by default.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="OttaDate"
+                description="Framework-agnostic date picker with range, datetime, and fuzzy date support. All values are UTC unix timestamps by default."
+            />
 
             {/* Date Picker */}
             <DatePickerDemo />

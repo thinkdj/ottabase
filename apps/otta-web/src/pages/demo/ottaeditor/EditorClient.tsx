@@ -25,8 +25,8 @@ import {
     RadioGroup,
     RadioGroupItem,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 import CustomAlertPlugin from './CustomAlertPlugin';
 
 const sampleDataFull: OutputData = {
@@ -165,17 +165,10 @@ export function EditorClient() {
 
     return (
         <div className="space-y-8">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demo Gallery</Link>
-            </Button>
-
-            <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight">OttaEditor Demo</h1>
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <p className="text-lg text-muted-foreground">
-                        Demonstrates plugin configuration and Cloudflare integration.
-                    </p>
-
+            <DemoPageHeader
+                title="OttaEditor"
+                description="Demonstrates plugin configuration and Cloudflare integration."
+                actions={
                     <Card className="w-full md:w-auto">
                         <CardContent className="pt-6">
                             <Label className="mb-2 block text-sm font-medium">Upload Provider</Label>
@@ -198,8 +191,8 @@ export function EditorClient() {
                             </p>
                         </CardContent>
                     </Card>
-                </div>
-            </div>
+                }
+            />
 
             <DemoEditor
                 id={`editor-1-${uploadProvider}`}

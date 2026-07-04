@@ -1,41 +1,64 @@
 import { APP_META } from '@/ottabase/config';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { DEMO_ITEMS } from './demoItems';
 
 export function DemoIndexPage() {
     return (
-        <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
-            <div className="flex flex-col gap-4">
-                <Button asChild variant="ghost" className="w-fit">
-                    <Link to="/">← Back to Home</Link>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Home
+                    </Link>
                 </Button>
 
-                <h1 className="text-4xl font-bold tracking-tight">{APP_META.appName} - Demo Gallery</h1>
-                <p className="text-lg text-muted-foreground">
-                    Explore different UI component libraries and features integrated into this template.
-                </p>
+                <div className="space-y-1.5">
+                    <h1 className="text-3xl font-bold tracking-tight">{APP_META.appName} — Demo Gallery</h1>
+                    <p className="max-w-3xl text-muted-foreground">
+                        Explore the UI component libraries and features integrated into this template.
+                    </p>
+                </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {DEMO_ITEMS.map((item) => (
-                    <Card key={item.to}>
-                        <CardHeader>
-                            <CardTitle>{item.title}</CardTitle>
-                            <CardDescription>{item.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button asChild variant={item.buttonVariant ?? 'outline'} className="w-full">
-                                <Link to={item.to}>View {item.title}</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <Link
+                        key={item.to}
+                        to={item.to}
+                        className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                        <Card className="h-full transition-all duration-200 group-hover:border-ring group-hover:shadow-md">
+                            <CardHeader>
+                                <div className="mb-1 flex items-center justify-between">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground transition-colors group-hover:text-foreground">
+                                        <item.icon className="h-[1.125rem] w-[1.125rem]" />
+                                    </span>
+                                    {item.buttonVariant === 'default' ? (
+                                        <Badge variant="secondary" className="text-[0.625rem] uppercase tracking-wide">
+                                            Featured
+                                        </Badge>
+                                    ) : null}
+                                </div>
+                                <CardTitle className="text-base">{item.title}</CardTitle>
+                                <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                                    View demo
+                                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                                </span>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 ))}
             </div>
 
-            <div className="mt-2 rounded-lg border bg-muted/50 p-6">
-                <h2 className="mb-2 text-xl font-semibold">About This Template</h2>
-                <p className="text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-muted/40 p-6">
+                <h2 className="mb-2 text-lg font-semibold">About this template</h2>
+                <p className="max-w-3xl text-sm text-muted-foreground">
                     This template uses <strong>UI Base</strong> as the foundation, with optional UI libraries layered on
                     top. The main app providers only include UI Base, fonts, state management, and shadcn/ui.
                 </p>

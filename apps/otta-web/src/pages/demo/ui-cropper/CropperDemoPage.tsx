@@ -18,9 +18,9 @@ import {
     Slider,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconArrowLeft, IconCircle, IconDownload, IconRectangle } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
+import { IconCircle, IconDownload, IconRectangle } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 // Styles are imported once at the app level or here
 import '@ottabase/ui-cropper/styles.css';
 
@@ -122,19 +122,10 @@ export function CropperDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" size="sm" className="w-fit gap-2">
-                    <Link to="/demo">
-                        <IconArrowLeft className="h-4 w-4" />
-                        Back to Demo
-                    </Link>
-                </Button>
-                <h1 className="text-3xl font-bold tracking-tight">Image Cropper</h1>
-                <p className="text-muted-foreground">
-                    Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drag to move, resize
-                    handles, mouse wheel zoom. Zero React dependency. ~3–4 KB gzipped.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Image Cropper"
+                description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drag to move, resize handles, mouse wheel zoom. Zero React dependency. ~3–4 KB gzipped."
+            />
 
             <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
                 <Card>
