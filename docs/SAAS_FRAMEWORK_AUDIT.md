@@ -175,13 +175,13 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 
 ### 3.2 Multi-tenancy & teams
 
-| Gap                                          | Sev    | Effort | Notes                                                                                                                                                                                                                                                                             |
-| -------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Per-org custom roles/permissions**         | must   | L      | ⚠️ RLS declares `roles`/`permissions` as `TenantScoped` (filter `organizationId`) but **those tables have no `organizationId` column** — roles are globally scoped. Real B2B SaaS needs org-defined roles. Latent misconfig: routing roles through secure CRUD would fail closed. |
-| **Team invite by email (accept → seat)**     | must   | M      | ⚠️ Broken today: the admin invite route hard-requires an existing `userId` and 404s otherwise (§4-5), so you can't invite someone without an account — despite `invitedEmail` + `activatePendingInvites` existing. Wire the tokenized email flow.                                 |
-| SSO / SAML / SCIM (enterprise)               | should | XL     | Absent; gating factor for enterprise deals.                                                                                                                                                                                                                                       |
-| Org ownership transfer                       | should | S      | Last-owner guardrails exist for removal; no transfer.                                                                                                                                                                                                                             |
-| Custom domain / subdomain-per-tenant routing | should | L      | `organizationId` is derived from subdomain, but no domain-provisioning story.                                                                                                                                                                                                     |
+| Gap                                          | Sev    | Effort | Notes                                                                                                                                                                                                                                             |
+| -------------------------------------------- | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Per-org custom roles/permissions**         | must   | L      | ✅ FIXED (§4-1): `roles` now has a nullable `organizationId` (NULL = global/system, non-null = tenant custom) with per-org-unique names; org-aware `/api/rbac/roles` lets each org define its own roles while system roles stay shared.           |
+| **Team invite by email (accept → seat)**     | must   | M      | ⚠️ Broken today: the admin invite route hard-requires an existing `userId` and 404s otherwise (§4-5), so you can't invite someone without an account — despite `invitedEmail` + `activatePendingInvites` existing. Wire the tokenized email flow. |
+| SSO / SAML / SCIM (enterprise)               | should | XL     | Absent; gating factor for enterprise deals.                                                                                                                                                                                                       |
+| Org ownership transfer                       | should | S      | Last-owner guardrails exist for removal; no transfer.                                                                                                                                                                                             |
+| Custom domain / subdomain-per-tenant routing | should | L      | `organizationId` is derived from subdomain, but no domain-provisioning story.                                                                                                                                                                     |
 
 ### 3.3 Public API, webhooks & integrations
 
@@ -269,11 +269,14 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 
 ## 4. Correctness / latent issues found along the way ⚠️
 
-1. **`roles` / `permissions` RLS references a non-existent column.** Both are registered `TenantScoped` (filter field
-   `organizationId`), but neither table has an `organizationId` column (`rls/registry.ts:94-104` vs
-   `models/Role.schema.ts`, `Permission.schema.ts`). `assertSecurityColumns` fails closed, so any secure-CRUD access to
-   roles/permissions would 403. Today they're reached via dedicated admin routes, so it's latent — but it also means
-   **RBAC roles are not actually org-scoped** (a real multi-tenancy limitation, see §3.2).
+1. ✅ **FIXED — per-org custom roles.** `roles`/`permissions` were registered `TenantScoped` (filter `organizationId`)
+   but neither table had that column, so role definitions were effectively global and the RLS policy referenced a
+   non-existent column (latent fail-closed). Now `roles` has a nullable `organizationId` (NULL = system/global role;
+   non-null = a tenant's own custom role) with a composite unique `(organization_id, name)` so orgs can share role
+   names; the `roles` RLS policy is a read-only, org-scoped custom policy and `permissions` is a correct global
+   read-only catalog; and `/api/rbac/roles` (which the RBAC admin UI actually calls, previously unregistered → broken)
+   is wired with org-aware handlers (system admins manage global roles, org admins manage their own). Existing DBs
+   backfill `organizationId=NULL`, so current roles stay global — backward compatible.
 2. **Passkey table without a passkey feature** (`authenticators` exists, no WebAuthn flow) — §3.1.
 3. **Advertised eager-loading DSL is inert** (`connect`/`with` unused) — §2.2-3. Either implement or remove from the
    docs/model surface to avoid a false capability.
@@ -320,8 +323,9 @@ the db-generate/db-migrate CLI wiring (§4-11). What remains:
    (§4-11), but the model-driven generator + registry-driven admin (`getAllModelsMetadata()` has **no generic CrudHub**
    rendering from it) are still missing. Build `otta g model|crud|admin` + a registry-driven admin — §3.6.
 3. MFA/passkey + account deletion & data export — trust and compliance to sell — §3.1/§3.4.
-4. **Per-org custom roles** — fix the schema/RLS mismatch so roles are actually tenant-scoped — §3.2/§4-1.
-5. Public API + scoped API keys + outbound webhooks — turn the product into a platform — §3.3.
+4. Public API + scoped API keys + outbound webhooks — turn the product into a platform — §3.3.
+5. Model→CRUD→admin scaffolder + registry-driven admin (the remaining half of §3.6). _(Per-org custom roles: ✅ done,
+   §4-1.)_
 
 **Top 10 highest-leverage overall:**
 
@@ -330,7 +334,7 @@ the db-generate/db-migrate CLI wiring (§4-11). What remains:
 3. ~~Wire `scheduled()`/async runtime~~ ✅ done (§4-4) — cron now fires; add a jobs dashboard next
 4. MFA/passkeys, account deletion, GDPR export, field-level token encryption (§3.1/§3.4/§4-10)
 5. Security hardening bundle: ✅ CORS allowlist done (§4-8); still add CSP/HSTS headers + rate-limit all public routes
-6. Per-org RBAC + email invite lifecycle (✅ invite-by-email done §4-5; per-org roles still open §3.2/§4-1)
+6. ~~Per-org RBAC + email invite lifecycle~~ ✅ done (per-org custom roles §4-1; invite-by-email §4-5)
 7. ORM correctness+scale bundle: real transactions, JOIN eager-loading, cursor pagination, bulk ops (§2.2/§4-6)
 8. Migration versioning + backups/restore + migrations-in-deploy (§3.5)
 9. Observability wiring: Sentry + real health probes + alerting; feature flags (§3.7)
