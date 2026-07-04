@@ -2,9 +2,9 @@
  * Tailwind Preset Demo Page
  * Demonstrates @ottabase/ui-tailwind: shared Tailwind preset with theme CSS variables.
  */
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Moon, Paintbrush, Palette, Sun } from 'lucide-react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 /** Groups of CSS variable tokens the preset maps to Tailwind utilities. */
 const TOKEN_GROUPS = [
@@ -84,21 +84,15 @@ function TokenSwatch({ name, tw, desc }: { name: string; tw: string; desc: strin
 export function UiTailwindDemoPage() {
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Tailwind Preset"
+                description="Shared Tailwind CSS preset that maps HSL CSS variables (shadcn-style tokens) to Tailwind utilities. All colors, radii, fonts, chart tokens, and sidebar tokens are defined centrally."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-tailwind
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">Tailwind Preset Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Shared Tailwind CSS preset that maps HSL CSS variables (shadcn-style tokens) to Tailwind utilities.
-                    All colors, radii, fonts, chart tokens, and sidebar tokens are defined centrally.
-                </p>
-            </div>
+                }
+            />
 
             {/* Overview */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

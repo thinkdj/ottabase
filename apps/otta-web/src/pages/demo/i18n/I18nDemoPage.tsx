@@ -1,6 +1,7 @@
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { languageAtom } from '@/ottabase/state/appState';
+import { DemoPageHeader } from '../DemoPageHeader';
 import { languageNames, supportedLanguages, Trans, useTranslation } from '@ottabase/i18n/react';
 import {
     Badge,
@@ -25,12 +26,10 @@ export function I18nDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="space-y-2">
-                <h1 className="text-4xl font-bold">Internationalization (i18n) Demo</h1>
-                <p className="text-muted-foreground">
-                    Demonstrating i18n hybrid model: package defaults + app overrides + global state integration
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Internationalization (i18n)"
+                description="Demonstrating i18n hybrid model: package defaults + app overrides + global state integration"
+            />
 
             {/* Language Switcher Component */}
             <Card>

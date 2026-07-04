@@ -10,7 +10,6 @@ import {
     IconDatabase,
     IconFlag,
     IconLoader2,
-    IconMessageCircle,
     IconMessageReply,
     IconRefresh,
     IconShieldCheck,
@@ -26,6 +25,8 @@ import {
     type CommentUser,
 } from '@/hooks/commentHooks';
 import { useSession } from '@/lib/auth';
+
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -740,17 +741,15 @@ export function CommentsDemoPage() {
 
     return (
         <div className="flex flex-col gap-8">
-            {/* Page header */}
-            <div>
-                <div className="flex items-center gap-2 mb-1">
-                    <IconMessageCircle size={22} className="text-blue-500" />
-                    <h1 className="text-2xl font-bold text-foreground">Comments</h1>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                    Threaded comment system with reactions, moderation, and polymorphic targeting via{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/comments</code>.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Comments"
+                description={
+                    <>
+                        Threaded comment system with reactions, moderation, and polymorphic targeting via{' '}
+                        <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/comments</code>.
+                    </>
+                }
+            />
 
             {/* Mode toggle */}
             <div className="flex items-center gap-2">

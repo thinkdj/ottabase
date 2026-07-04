@@ -6,7 +6,6 @@ import {
     type RouteMapping,
 } from '@ottabase/ottalayout';
 import {
-    Button,
     Card,
     CardContent,
     CardDescription,
@@ -20,8 +19,8 @@ import {
     SelectValue,
 } from '@ottabase/ui-shadcn';
 import { IconLayout, IconRoute } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const DEMO_ROUTE_MAPPINGS: RouteMapping[] = [
     { pathPattern: '/', layoutTemplateId: 'homepage', priority: 100 },
@@ -39,17 +38,15 @@ export function LayoutDemoPage() {
     const selectedConfig = LAYOUT_PRESETS[selectedPreset]?.config ?? null;
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Layout Demo</h1>
-                <p className="text-muted-foreground">
-                    Preset and route-resolution playground for <code>@ottabase/ottalayout</code>.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Layout"
+                description={
+                    <>
+                        Preset and route-resolution playground for <code>@ottabase/ottalayout</code>.
+                    </>
+                }
+            />
 
             <div className="grid gap-4 lg:grid-cols-2">
                 <Card>

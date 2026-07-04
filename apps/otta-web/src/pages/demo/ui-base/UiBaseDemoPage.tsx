@@ -2,9 +2,9 @@
  * UI Base Demo Page
  * Demonstrates @ottabase/ui-base: CSS reset, animations, and base provider.
  */
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Layers, RotateCcw, Sparkles, Type } from 'lucide-react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 /** Tailwind animation utilities (work when Tailwind is present in the app). */
 const TAILWIND_MOTION = [
@@ -39,21 +39,15 @@ const STYLE_LAYERS = [
 export function UiBaseDemoPage() {
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="UI Base"
+                description="Framework-agnostic CSS foundation: reset, base styles, and animations. No React or Mantine dependency — pure CSS that every app imports first."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-base
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">UI Base Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Framework-agnostic CSS foundation: reset, base styles, and animations. No React or Mantine
-                    dependency — pure CSS that every app imports first.
-                </p>
-            </div>
+                }
+            />
 
             {/* Overview */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

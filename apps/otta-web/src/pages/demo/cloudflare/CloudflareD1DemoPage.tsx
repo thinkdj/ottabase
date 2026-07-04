@@ -1,8 +1,8 @@
 import { api, isApiError } from '@/lib/api';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface Todo {
     id: string;
@@ -108,15 +108,13 @@ export function CloudflareD1DemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">D1 Database Demo</h1>
-                <p className="text-muted-foreground">Full CRUD operations with Cloudflare D1 SQLite database</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="D1 Database"
+                description="Full CRUD operations with Cloudflare D1 SQLite database"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare"
+            />
 
             {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">

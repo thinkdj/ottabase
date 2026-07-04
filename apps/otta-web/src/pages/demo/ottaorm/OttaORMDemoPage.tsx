@@ -1,8 +1,8 @@
 import { useSession } from '@/lib/auth';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // ============================================================
 // App-specific model types (defined per-app)
@@ -103,18 +103,11 @@ export function OttaORMDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">OttaORM Demo</h1>
-                <p className="text-muted-foreground">
-                    Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic
-                    updates
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="OttaORM"
+                description="Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic updates"
+            />
 
             {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">

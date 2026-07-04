@@ -1,6 +1,6 @@
 import { CodeBlock } from '@ottabase/ui-code-highlight';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { DemoPageHeader } from './DemoPageHeader';
 
 export function CodeBlockDemoPage() {
     // Example code snippets
@@ -279,17 +279,11 @@ print(f"Fibonacci sequence: {result}")`,
     );
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">CodeBlock Component</h1>
-                <p className="text-muted-foreground">
-                    @ottabase/ui-code-highlight - Syntax highlighting with highlight.js
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="CodeBlock Component"
+                description="@ottabase/ui-code-highlight - Syntax highlighting with highlight.js"
+            />
 
             {/* Features Overview */}
             <Card>

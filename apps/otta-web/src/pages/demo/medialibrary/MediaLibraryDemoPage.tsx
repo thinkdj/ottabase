@@ -8,7 +8,7 @@ import {
 } from '@ottabase/medialibrary';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconPhoto, IconPlayerPlay, IconZoomIn } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const DEMO_MEDIA_ITEMS: MediaLibraryItemLike[] = [
     {
@@ -89,18 +89,16 @@ function MediaTile({ item }: { item: MediaLibraryItemLike }) {
 
 export function MediaLibraryDemoPage() {
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Media Library Demo</h1>
-                <p className="text-muted-foreground">
-                    Viewer and lightbox primitives from <code>@ottabase/medialibrary</code>, running without
-                    authenticated APIs.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Media Library"
+                description={
+                    <>
+                        Viewer and lightbox primitives from <code>@ottabase/medialibrary</code>, running without
+                        authenticated APIs.
+                    </>
+                }
+            />
 
             <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">

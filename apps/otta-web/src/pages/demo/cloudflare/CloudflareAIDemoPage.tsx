@@ -23,8 +23,8 @@ import {
     SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -190,18 +190,18 @@ export function CloudflareAIDemoPage() {
     const currentModels = PROVIDER_MODELS[selectedProvider] || [];
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Cloudflare AI Demo</h1>
-                <p className="text-muted-foreground">
-                    Multi-provider AI via Workers AI, AI Gateway, and Universal chat. Powered by{' '}
-                    <code className="text-xs">@ottabase/cf-ai</code>.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Cloudflare AI"
+                description={
+                    <>
+                        Multi-provider AI via Workers AI, AI Gateway, and Universal chat. Powered by{' '}
+                        <code className="text-xs">@ottabase/cf-ai</code>.
+                    </>
+                }
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Features"
+            />
 
             {/* ── Binding Status ──────────────────────────────────────────── */}
             {status ? (

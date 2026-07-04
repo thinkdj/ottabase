@@ -1,17 +1,15 @@
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareImagesDemoPage() {
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Images Demo</h1>
-                <p className="text-muted-foreground">Image upload, transformation, and optimization</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Images"
+                description="Image upload, transformation, and optimization"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Features"
+            />
 
             <Card>
                 <CardHeader>

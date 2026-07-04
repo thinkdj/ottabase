@@ -1,19 +1,15 @@
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareHyperdriveDemoPage() {
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Hyperdrive Demo</h1>
-                <p className="text-muted-foreground">
-                    Accelerate access to your existing databases from Cloudflare Workers
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Hyperdrive"
+                description="Accelerate access to your existing databases from Cloudflare Workers"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Features"
+            />
 
             <Card>
                 <CardHeader>

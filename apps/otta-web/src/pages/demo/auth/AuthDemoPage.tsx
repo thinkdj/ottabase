@@ -4,6 +4,7 @@ import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitl
 import { IconKey, IconLogin, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
@@ -41,18 +42,16 @@ export function AuthDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Auth Demo</h1>
-                <p className="text-muted-foreground">
-                    Session hook behavior and client storage helpers from <code>@ottabase/auth</code>. Safe for
-                    anonymous users.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Auth"
+                description={
+                    <>
+                        Session hook behavior and client storage helpers from <code>@ottabase/auth</code>. Safe for
+                        anonymous users.
+                    </>
+                }
+            />
 
             <Card>
                 <CardHeader>

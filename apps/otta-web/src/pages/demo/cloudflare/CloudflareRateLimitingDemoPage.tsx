@@ -1,7 +1,7 @@
 import { api, isApiError } from '@/lib/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Progress } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface RateLimitResult {
     success: boolean;
@@ -77,15 +77,13 @@ export function CloudflareRateLimitingDemoPage() {
     const progressValue = result ? Math.max(0, Math.min(100, (result.remaining / result.limit) * 100)) : 0;
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Rate Limiting Demo</h1>
-                <p className="text-muted-foreground">Request throttling and protection</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Rate Limiting"
+                description="Request throttling and protection"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Features"
+            />
 
             <div className="rounded-lg border bg-muted/50 p-4">
                 <p className="text-sm text-muted-foreground">

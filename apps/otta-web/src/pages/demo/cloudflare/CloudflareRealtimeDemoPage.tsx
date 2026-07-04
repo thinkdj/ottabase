@@ -2,8 +2,8 @@ import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { api, ApiError, isApiError } from '@/lib/api';
 import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface Message {
     id: string;
@@ -178,15 +178,13 @@ export function CloudflareRealtimeDemoPage() {
     }, []);
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Realtime Pub/Sub Demo</h1>
-                <p className="text-muted-foreground">WebSocket-based real-time messaging with offline support</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Realtime Pub/Sub"
+                description="WebSocket-based real-time messaging with offline support"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare"
+            />
 
             {serviceError ? (
                 <ApiErrorDisplay error={serviceError} />

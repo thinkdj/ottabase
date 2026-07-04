@@ -1,8 +1,8 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { Spotlight, useSpotlight, type SpotlightResult } from '@ottabase/spotlight';
 import { IconBolt, IconCommand, IconSearch, IconSparkles } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const DEMO_COMMANDS: SpotlightResult[] = [
     { id: 'goto-docs', label: 'Open docs', description: 'Navigate to docs section', keywords: ['docs', 'help'] },
@@ -39,18 +39,16 @@ export function SpotlightDemoPage() {
     }, [query]);
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Spotlight Demo</h1>
-                <p className="text-muted-foreground">
-                    Keyboard-first command palette demo for <code>@ottabase/spotlight</code>, fully usable while logged
-                    out.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Spotlight"
+                description={
+                    <>
+                        Keyboard-first command palette demo for <code>@ottabase/spotlight</code>, fully usable while
+                        logged out.
+                    </>
+                }
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>

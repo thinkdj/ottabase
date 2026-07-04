@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SplitPane } from '@ottabase/ui-split-pane';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function SplitPaneDemoPage() {
     const [size1, setSize1] = useState<number>(50);
@@ -10,10 +11,7 @@ export function SplitPaneDemoPage() {
     return (
         <div className="container mx-auto py-8">
             <div className="flex flex-col gap-8">
-                <div>
-                    <h1 className="text-4xl font-bold tracking-tight">SplitPane Component Demo</h1>
-                    <p className="text-muted-foreground mt-2">Minimal, clean split-pane component with no frills</p>
-                </div>
+                <DemoPageHeader title="Split Pane" description="Minimal, clean split-pane component with no frills" />
 
                 {/* Basic Vertical Split */}
                 <Card>

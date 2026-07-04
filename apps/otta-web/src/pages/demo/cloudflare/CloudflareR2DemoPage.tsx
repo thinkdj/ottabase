@@ -1,7 +1,7 @@
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface R2Object {
     key: string;
@@ -152,15 +152,13 @@ export function CloudflareR2DemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">R2 Storage Demo</h1>
-                <p className="text-muted-foreground">Object storage for file uploads and downloads</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="R2 Storage"
+                description="Object storage for file uploads and downloads"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare"
+            />
 
             {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">

@@ -9,8 +9,8 @@ import {
     Input,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface QueueMessage {
     key: string;
@@ -128,15 +128,13 @@ export function CloudflareQueuesDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Queue Demo</h1>
-                <p className="text-muted-foreground">Async job dispatching with @ottabase/queue</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Queue"
+                description="Async job dispatching with @ottabase/queue"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Features"
+            />
 
             <Card className="border-dashed">
                 <CardHeader className="pb-3">
