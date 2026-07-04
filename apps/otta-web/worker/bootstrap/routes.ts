@@ -540,9 +540,18 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         // Primary path: JWT session strategy (default)
         // Owner role gets *:* permissions; Auth.js callbacks will enrich from DB on /session, but JWT must have them for immediate use
         const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
+        // Never sign a session with a public constant in production: that JWT would be a forgeable
+        // owner (*:*) token for anyone who knows AUTH_SECRET is unset. Allow the dev fallback only
+        // in development; in production without AUTH_SECRET, skip auto-login (the owner signs in
+        // manually once the secret is set) and fall through to the DB-session path below.
+        const isDevEnv = (env as any).ENVIRONMENT === 'development' || !(env as any).ENVIRONMENT;
+        const resolvedAuthSecret = (env as any).AUTH_SECRET || (isDevEnv ? 'dev-secret-change-in-production' : null);
         try {
+            if (!resolvedAuthSecret) {
+                throw new Error('AUTH_SECRET not configured; skipping bootstrap auto-login JWT');
+            }
             const nowSeconds = Math.floor(Date.now() / 1000);
-            const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
+            const authSecret = resolvedAuthSecret;
             sessionToken = await encodeAuthJwt({
                 token: {
                     id: userId,
