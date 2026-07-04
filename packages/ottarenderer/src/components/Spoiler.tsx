@@ -107,7 +107,7 @@ const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
                 onMouseMove={handleMouseMove}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-yellow-50 dark:bg-yellow-900/20 transition-colors relative focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 dark:focus:ring-offset-background`}
+                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-warning/10 transition-colors relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background`}
                 role="button"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}

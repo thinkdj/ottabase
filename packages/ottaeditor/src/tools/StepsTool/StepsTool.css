@@ -119,13 +119,13 @@
     border: 1px solid hsl(var(--border));
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
     transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease,
-        color 0.15s ease,
-        box-shadow 0.15s ease;
+        background-color var(--duration-fast) var(--ease),
+        border-color var(--duration-fast) var(--ease),
+        color var(--duration-fast) var(--ease),
+        box-shadow var(--duration-fast) var(--ease);
     box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 }
 
@@ -177,7 +177,7 @@
     min-width: 136px;
     padding: 6px;
     border: 1px solid hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: hsl(var(--background));
     box-shadow:
         0 10px 15px -3px hsl(var(--foreground) / 0.08),
@@ -191,7 +191,7 @@
     width: 100%;
     padding: 8px 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: transparent;
     color: hsl(var(--foreground));
     cursor: pointer;

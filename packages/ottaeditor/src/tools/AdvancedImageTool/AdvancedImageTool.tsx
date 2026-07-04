@@ -383,7 +383,7 @@ export default class AdvancedImageTool {
             this.uploadArea.innerHTML = `
                 <div class="advanced-image-upload-content">
                     <div class="advanced-image-error">
-                        <p style="color: #e74c3c; margin-bottom: 10px;">${message}</p>
+                        <p style="color: hsl(var(--destructive, 0 84.2% 60.2%)); margin-bottom: 10px;">${message}</p>
                         <button type="button" class="advanced-image-retry-btn">Try Again</button>
                     </div>
                 </div>

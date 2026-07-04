@@ -33,8 +33,7 @@ const AdvancedImageRenderer: React.FC<AdvancedImageRendererProps> = ({
         'justify-center',
         'flex-col',
         'box-border',
-        'text-gray-700',
-        'dark:text-gray-100',
+        'text-foreground',
     ];
 
     // Add conditional classes
@@ -72,8 +71,8 @@ const AdvancedImageRenderer: React.FC<AdvancedImageRendererProps> = ({
                 <figcaption
                     className={
                         isEditor
-                            ? 'advanced-image-caption mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
-                            : 'mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
+                            ? 'advanced-image-caption mt-2 text-sm italic text-center text-muted-foreground'
+                            : 'mt-2 text-sm italic text-center text-muted-foreground'
                     }
                 >
                     {caption}

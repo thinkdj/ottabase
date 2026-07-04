@@ -2,7 +2,7 @@
 
 .advanced-image-tool {
     position: relative;
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 0;
     display: block;
 }
@@ -14,9 +14,9 @@
 .advanced-image-upload-area {
     min-height: 240px;
     border: 2px dashed hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: hsl(var(--muted) / 0.3);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all var(--duration-normal) var(--ease);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -57,7 +57,7 @@
     justify-content: center;
     box-shadow: 0 1px 3px 0 hsl(var(--foreground) / 0.1);
     border: 1px solid hsl(var(--border));
-    transition: transform 0.2s ease;
+    transition: transform var(--duration-normal) var(--ease);
 }
 
 .advanced-image-upload-area:hover .advanced-image-upload-icon {
@@ -101,8 +101,8 @@
     font-size: 13px;
     font-weight: 500;
     padding: 8px 16px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
+    border-radius: calc(var(--radius) - 2px);
+    transition: all var(--duration-normal) var(--ease);
     box-shadow: 0 1px 2px 0 hsl(var(--foreground) / 0.05);
 }
 
@@ -170,11 +170,11 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: none;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--duration-normal) var(--ease);
 }
 
 .advanced-image-url-btn:hover {
@@ -200,7 +200,7 @@
     border: 2px solid hsl(var(--border));
     border-top: 2px solid hsl(var(--primary));
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin var(--duration-slow) var(--ease) infinite;
 }
 
 @keyframes spin {
@@ -229,11 +229,11 @@
     background: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
     border: none;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--duration-normal) var(--ease);
 }
 
 .advanced-image-retry-btn:hover {
@@ -245,7 +245,7 @@
     position: relative;
     margin: 12px 0;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-slow) var(--ease);
 }
 
 .advanced-image-container--loaded {
@@ -254,14 +254,14 @@
 
 .advanced-image-container--with-border {
     border: 1px solid hsl(var(--border));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     overflow: hidden;
 }
 
 .advanced-image-container--with-background {
     background: hsl(var(--muted) / 0.3);
     padding: 20px;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
 }
 
 .advanced-image-container--stretched {
@@ -271,7 +271,7 @@
     transform: translateX(-50%);
     margin: 2rem 0;
     box-shadow: 0 8px 32px hsl(var(--foreground) / 0.12);
-    border-radius: 8px;
+    border-radius: var(--radius);
     overflow: hidden;
 }
 
@@ -341,7 +341,7 @@
     outline: none;
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
 }
 
 .aspect-ratio-select:hover {
@@ -402,6 +402,6 @@
     .advanced-image-container--stretched {
         width: calc(100vw - 2rem);
         margin: 1rem 0;
-        border-radius: 4px;
+        border-radius: calc(var(--radius) - 4px);
     }
 }

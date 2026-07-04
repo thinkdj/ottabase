@@ -3,8 +3,8 @@
     --mg-space-2: 8px;
     --mg-space-4: 12px;
     --mg-space-5: 16px;
-    --mg-radius-sm: 8px;
-    --mg-radius-md: 8px;
+    --mg-radius-sm: var(--radius);
+    --mg-radius-md: var(--radius);
     --mg-radius-lg: 999px;
     --mg-border: 1px solid hsl(var(--border));
     --mg-border-muted: 1px solid hsl(var(--border));
@@ -296,7 +296,7 @@
 /* Icon-style buttons (↑ ↓ ×) — no text label, square touch target */
 .cdx-media-gallery__item-button {
     border: 1px solid var(--mg-color-border);
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     background: var(--mg-color-bg);
     color: var(--mg-color-text);
     cursor: pointer;
@@ -309,8 +309,8 @@
     align-items: center;
     justify-content: center;
     transition:
-        background 150ms,
-        color 150ms;
+        background var(--duration-fast),
+        color var(--duration-fast);
 }
 
 .cdx-media-gallery__item-button:disabled {
@@ -367,7 +367,7 @@
     text-decoration: underline;
     text-underline-offset: 2px;
     opacity: 0.75;
-    transition: opacity 150ms;
+    transition: opacity var(--duration-fast);
 }
 
 .cdx-media-gallery__clear-button:hover {
@@ -393,7 +393,7 @@
     text-decoration: underline;
     text-underline-offset: 2px;
     opacity: 0.75;
-    transition: opacity 150ms;
+    transition: opacity var(--duration-fast);
 }
 
 .cdx-media-gallery__expand-collapse-button:hover {

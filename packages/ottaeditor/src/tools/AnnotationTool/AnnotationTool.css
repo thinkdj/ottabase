@@ -4,7 +4,7 @@
     border-bottom: 2px solid hsl(var(--warning));
     padding: 0 2px;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color var(--duration-fast) var(--ease);
 }
 
 .cdx-annotation:hover {
@@ -18,7 +18,7 @@
     width: 320px;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
     font-family: inherit;
 }
@@ -50,8 +50,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    transition: all 0.15s ease;
+    border-radius: calc(var(--radius) - 4px);
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-annotation-popup__close:hover {
@@ -70,7 +70,7 @@
     width: 100%;
     padding: 8px 12px;
     border: 1px solid hsl(var(--input));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     font-size: 13px;
     font-family: inherit;
     background: hsl(var(--background));
@@ -103,11 +103,11 @@
 
 .cdx-annotation-popup__btn {
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
     border: 1px solid transparent;
 }
 
@@ -148,8 +148,8 @@
     font-size: 12px;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.15s ease;
+    border-radius: calc(var(--radius) - 4px);
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-annotation-actions__edit:hover {

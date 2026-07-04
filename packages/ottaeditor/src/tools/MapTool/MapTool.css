@@ -24,7 +24,7 @@
 }
 
 .cdx-map__iframe-wrapper {
-    border-radius: 8px;
+    border-radius: var(--radius);
     overflow: hidden;
     border: 1px solid hsl(var(--border));
     position: relative;

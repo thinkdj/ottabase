@@ -61,7 +61,7 @@
     padding: 8px 12px;
     border-left: 2px solid hsl(var(--primary) / 0.4);
     background: hsl(var(--muted) / 0.3);
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 calc(var(--radius) - 4px) calc(var(--radius) - 4px) 0;
     word-break: break-word;
 }
 
@@ -80,7 +80,7 @@
     background: hsl(var(--muted));
     border: 1px solid hsl(var(--border));
     position: relative;
-    transition: background 0.2s ease;
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .cdx-disclosure__toggle-slider::after {
@@ -93,7 +93,7 @@
     position: absolute;
     top: 2px;
     left: 2px;
-    transition: left 0.2s ease;
+    transition: left var(--duration-normal) var(--ease);
     box-shadow: 0 1px 3px hsl(var(--foreground) / 0.2);
 }
 

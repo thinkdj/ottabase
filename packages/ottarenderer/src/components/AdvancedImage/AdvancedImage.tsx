@@ -158,7 +158,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         <>
             <figure className={combinedClassName}>
                 {featuredImage && (
-                    <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md">
+                    <div className="absolute top-2 right-2 z-10 bg-warning text-warning-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md">
                         ★
                     </div>
                 )}
@@ -167,7 +167,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
                         href={sanitizeUrl(linkUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 rounded-sm"
+                        className="block no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-sm"
                         aria-label={caption || altFinal}
                     >
                         {imageComponent}

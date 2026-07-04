@@ -12,7 +12,7 @@
     background: hsl(var(--muted) / 0.3);
     border: 2px dashed hsl(var(--border));
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius);
 }
 
 .cdx-media-library-placeholder:hover {
