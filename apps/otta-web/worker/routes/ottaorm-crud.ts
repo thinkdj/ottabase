@@ -3,7 +3,7 @@ import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -231,6 +231,15 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 // their new org until the cache TTL expires.
                 await invalidateMembershipCache(env.OBCF_KV, userId);
             } catch (err) {
+                // The org row was already committed by executeSecureCrudRequest above, but it now
+                // has no owner membership — an orphan no one can access. D1 has no cross-statement
+                // transaction spanning the two ORM writes, so compensate by deleting the just-created
+                // org to keep "create org + owner membership" all-or-nothing.
+                try {
+                    await Organization.delete(orgId);
+                } catch (rollbackErr) {
+                    console.error('Failed to roll back orphan organization after membership error:', rollbackErr);
+                }
                 return errorResponse('Failed to create organization membership', 500, {
                     code: 'ORG_MEMBER_CREATE_FAILED',
                     details: err instanceof Error ? err.message : 'Unknown error',
