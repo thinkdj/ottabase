@@ -142,15 +142,51 @@ export interface ApiRouteContext {
 type WorkerCtx = Ctx<CloudflareEnv>;
 type ApiHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
 
-function buildCorsHeaders(request: Request): Record<string, string> {
-    const origin = request.headers.get('Origin') || '*';
-    return {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true',
+/**
+ * Exact origins allowed to make credentialed cross-origin API requests, from the
+ * `CORS_ALLOWED_ORIGINS` env var (comma-separated, e.g.
+ * "https://app.example.com,https://admin.example.com"). Empty when unset.
+ */
+function parseAllowedOrigins(env: CloudflareEnv): string[] {
+    const raw = (env as { CORS_ALLOWED_ORIGINS?: string }).CORS_ALLOWED_ORIGINS;
+    if (!raw) return [];
+    return raw
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+}
+
+/**
+ * Whether `origin` may be echoed back together with `Allow-Credentials: true`.
+ * Reflecting an ARBITRARY origin with credentials lets any website issue credentialed
+ * cross-site requests and read the response, so we only trust:
+ *   - the request's own origin (the SPA calling its own worker — same-origin), and
+ *   - origins explicitly listed in CORS_ALLOWED_ORIGINS.
+ */
+function isTrustedOrigin(origin: string, requestUrl: string, env: CloudflareEnv): boolean {
+    try {
+        if (new URL(origin).host === new URL(requestUrl).host) return true; // same-origin
+    } catch {
+        return false; // malformed Origin header
+    }
+    return parseAllowedOrigins(env).includes(origin);
+}
+
+function buildCorsHeaders(request: Request, env: CloudflareEnv): Record<string, string> {
+    const headers: Record<string, string> = {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         Vary: 'Origin',
     };
+    // Only echo the origin + allow credentials for trusted origins. An untrusted cross-origin
+    // request gets no Access-Control-Allow-Origin (the browser blocks reading the response);
+    // same-origin requests don't need the header at all.
+    const origin = request.headers.get('Origin');
+    if (origin && isTrustedOrigin(origin, request.url, env)) {
+        headers['Access-Control-Allow-Origin'] = origin;
+        headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+    return headers;
 }
 
 export function makeApiRouteContext(
@@ -158,7 +194,7 @@ export function makeApiRouteContext(
     env: CloudflareEnv,
     url: URL = new URL(request.url),
 ): ApiRouteContext {
-    const corsHeaders = buildCorsHeaders(request);
+    const corsHeaders = buildCorsHeaders(request, env);
     const route = url.pathname !== '/' && url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
     return {
         request,
@@ -191,7 +227,7 @@ export const apiRouter = new Router<CloudflareEnv>();
 // -------------------------------------------------------
 apiRouter.use('/api', (c, next) => {
     if (c.method === 'OPTIONS' && c.path.startsWith('/api/')) {
-        return new Response(null, { status: 204, headers: buildCorsHeaders(c.req) });
+        return new Response(null, { status: 204, headers: buildCorsHeaders(c.req, c.env) });
     }
     return next();
 });
