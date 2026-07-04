@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { Layout, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEMO_ITEMS } from './demoItems';
+import './demo.css';
 
 export function DemoLayout() {
     const location = useLocation();
@@ -26,12 +27,12 @@ export function DemoLayout() {
     }, [search]);
 
     return (
-        <div className="flex min-h-[calc(100vh-3.5rem)]">
+        <div className="otta-demo flex min-h-[calc(100vh-3.5rem)]">
             {/* Sidebar */}
-            <aside className="hidden w-64 shrink-0 border-r bg-muted/10 md:block">
+            <aside className="hidden w-64 shrink-0 border-r md:block">
                 <div className="sticky top-0 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 px-3 py-6">
                     <div className="px-0.5">
-                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <h2 className="mb-3 px-2 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                             Demos
                         </h2>
                         {/* Search (local filter) */}
@@ -63,37 +64,40 @@ export function DemoLayout() {
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
-                                    'w-full justify-start gap-2',
+                                    'h-8 w-full justify-start gap-2.5 font-normal',
                                     location.pathname === '/demo' || location.pathname === '/demo/'
-                                        ? 'bg-accent text-accent-foreground'
-                                        : 'text-muted-foreground hover:text-foreground',
+                                        ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                                 )}
                             >
                                 <Link to="/demo">
-                                    <Layout className="h-4 w-4" />
+                                    <Layout className="h-4 w-4 shrink-0 opacity-80" />
                                     Overview
                                 </Link>
                             </Button>
                         )}
-                        {filteredItems.map((item, index) => (
-                            <Button
-                                key={String(index) + '-' + String(item.to)}
-                                asChild
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    'w-full justify-start gap-2',
-                                    location.pathname.startsWith(item.to)
-                                        ? 'bg-accent text-accent-foreground'
-                                        : 'text-muted-foreground hover:text-foreground',
-                                )}
-                            >
-                                <Link to={item.to}>
-                                    <item.icon className="h-4 w-4" />
-                                    {item.label}
-                                </Link>
-                            </Button>
-                        ))}
+                        {filteredItems.map((item, index) => {
+                            const active = location.pathname.startsWith(item.to);
+                            return (
+                                <Button
+                                    key={String(index) + '-' + String(item.to)}
+                                    asChild
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        'h-8 w-full justify-start gap-2.5 font-normal',
+                                        active
+                                            ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                                            : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                                    )}
+                                >
+                                    <Link to={item.to}>
+                                        <item.icon className="h-4 w-4 shrink-0 opacity-80" />
+                                        {item.label}
+                                    </Link>
+                                </Button>
+                            );
+                        })}
                         {search && filteredItems.length === 0 && (
                             <p className="px-3 py-2 text-xs text-muted-foreground">No matches</p>
                         )}
@@ -102,8 +106,8 @@ export function DemoLayout() {
             </aside>
 
             {/* Content */}
-            <main ref={contentRef} className="min-w-0 flex-1 overflow-auto bg-background/50">
-                <div className="container mx-auto max-w-7xl px-6 py-10">
+            <main ref={contentRef} className="min-w-0 flex-1 overflow-auto bg-background">
+                <div className="container mx-auto max-w-6xl px-8 py-10">
                     <div className="mb-6">
                         <Breadcrumbs />
                     </div>
