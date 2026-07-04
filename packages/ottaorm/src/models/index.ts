@@ -7,7 +7,7 @@ export { Account, accountsTable, type AccountType, type NewAccountType } from '.
 export { Tag, tagsTable, type NewTagType, type TagType } from './Tag';
 export { User, usersTable, type NewUserType, type UserType } from './User';
 
-// Auth.js models
+// Auth models
 export { Authenticator, authenticatorsTable, type AuthenticatorType, type NewAuthenticatorType } from './Authenticator';
 export { Session, sessionsTable, type NewSessionType, type SessionType } from './Session';
 export {

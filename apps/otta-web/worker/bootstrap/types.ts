@@ -64,6 +64,9 @@ export const META_TABLE = '_ottabase_meta';
 /** Meta key for platform state in _ottabase_meta */
 export const META_PLATFORM_STATE_KEY = 'platform_state';
 
+/** Meta key used to atomically claim the right to create the first owner account */
+export const META_OWNER_CLAIMED_KEY = 'owner_claimed';
+
 /** ENV var name that can lock the platform */
 export const ENV_LOCK_VAR = 'OTTABASE_LOCKED';
 

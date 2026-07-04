@@ -8,7 +8,7 @@ import { authenticatorsTable } from './Authenticator.schema';
 export { authenticatorsTable, type AuthenticatorType, type NewAuthenticatorType } from './Authenticator.schema';
 
 /**
- * Authenticator model for Auth.js WebAuthn/passkey support
+ * Authenticator model for WebAuthn/passkey support
  *
  * Stores WebAuthn credentials for passwordless authentication.
  *

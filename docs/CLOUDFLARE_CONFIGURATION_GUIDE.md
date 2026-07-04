@@ -84,12 +84,11 @@ Create `apps/otta-web/.env.local` with the following (if using .env for local au
 
 
 # ============================================================
-# AUTHENTICATION (Optional - Auth.js v5)
+# AUTHENTICATION (Optional)
 # ============================================================
 # Generate with: openssl rand -base64 32
 AUTH_SECRET=your-32-character-secret-here
-NEXTAUTH_SECRET=your-32-character-secret-here
-NEXTAUTH_URL=http://localhost:3003
+AUTH_URL=http://localhost:3003
 
 # Enable auth providers (true/false)
 AUTH_LOGIN_CREDENTIALS=true
@@ -134,7 +133,6 @@ Set these via Cloudflare Dashboard or `wrangler secret put`:
 ```bash
 # Authentication
 wrangler secret put AUTH_SECRET
-wrangler secret put NEXTAUTH_SECRET
 
 # OAuth Providers (if enabled)
 wrangler secret put AUTH_GITHUB_ID
@@ -287,7 +285,7 @@ export default {
 
 ## 🔐 Authentication Setup (Optional)
 
-The `@ottabase/auth` package provides Auth.js v5 integration with D1.
+The `@ottabase/auth` package provides a lightweight, dependency-free auth implementation with D1.
 
 ### 1. Enable Auth Feature
 
@@ -562,7 +560,7 @@ pnpm cf-typegen
 | Variable         | Required      | Purpose                                 |
 | ---------------- | ------------- | --------------------------------------- |
 | `D1_DATABASE_ID` | Yes (deploy)  | D1 database UUID (wrangler placeholder) |
-| `AUTH_SECRET`    | If using auth | Auth.js secret                          |
+| `AUTH_SECRET`    | If using auth | Session signing secret                  |
 | `CF_ACCOUNT_ID`  | Optional      | Cloudflare API access                   |
 | `CF_API_TOKEN`   | Optional      | Cloudflare API access                   |
 

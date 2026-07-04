@@ -6,7 +6,7 @@ export default defineConfig({
         environment: 'node',
         globals: true,
         coverage: {
-            provider: 'c8',
+            provider: 'v8',
             reporter: ['text', 'json', 'html', 'lcov'],
             exclude: ['node_modules/', 'dist/', '**/*.config.ts', '**/*.config.js', '**/index.ts', '**/*.d.ts'],
             all: true,

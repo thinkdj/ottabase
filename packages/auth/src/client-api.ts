@@ -2,25 +2,18 @@
 // @ottabase/auth - Frontend API Client
 // ============================================================
 //
-// Reusable client-side functions for interacting with Auth.js backend.
-// Works with any frontend framework (React, Vue, Svelte, etc.)
-//
-// Usage:
-//   import { signInWithCredentials, signInWithProvider } from "@ottabase/auth/client";
+// Framework-agnostic client for the auth backend. Talks JSON end-to-end;
+// there is no Auth.js REST convention (form-encoded bodies, manual
+// redirect handling, `X-Auth-Return-Redirect`) to replicate since both
+// sides of the wire are implemented in this package.
 //
 // ============================================================
 
-/**
- * Sign-in credentials
- */
 export interface SignInCredentials {
     email: string;
     password: string;
 }
 
-/**
- * Registration credentials
- */
 export interface RegisterCredentials {
     name?: string;
     email: string;
@@ -33,9 +26,6 @@ export interface RegisterCredentials {
     utm_content?: string;
 }
 
-/**
- * Auth session
- */
 export interface AuthSession {
     user: {
         id: string;
@@ -47,9 +37,6 @@ export interface AuthSession {
     expires: number;
 }
 
-/**
- * Auth response
- */
 export interface AuthResponse {
     success: boolean;
     error?: string;
@@ -57,9 +44,6 @@ export interface AuthResponse {
     url?: string;
 }
 
-/**
- * Registration response
- */
 export interface RegisterResponse {
     success: boolean;
     error?: string;
@@ -77,43 +61,27 @@ export interface RegisterResponse {
     verificationSent?: boolean;
 }
 
-/**
- * Email verification response
- */
 export interface EmailVerificationResponse {
     success: boolean;
     error?: string;
 }
 
-/**
- * Password reset response
- */
 export interface PasswordResetResponse {
     success: boolean;
     error?: string;
 }
 
-/**
- * Authenticated password change response
- */
 export interface ChangePasswordResponse {
     success: boolean;
     error?: string;
 }
 
-/**
- * Client configuration options
- */
 export interface AuthClientOptions {
-    /**
-     * Base URL for auth API (default: /api/auth)
-     */
+    /** Base URL for the auth API. Default: `/api/auth`. */
     baseUrl?: string;
 }
 
-const defaultOptions: AuthClientOptions = {
-    baseUrl: '/api/auth',
-};
+const defaultOptions: AuthClientOptions = { baseUrl: '/api/auth' };
 
 const SESSION_RETRY_ATTEMPTS = 3;
 const SESSION_RETRY_BASE_DELAY_MS = 250;
@@ -126,221 +94,113 @@ function waitForRetry(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const authErrorMessages: Record<string, string> = {
-    CredentialsSignin: 'Invalid email or password',
-    AccessDenied: 'Access denied',
-    OAuthSignin: 'OAuth sign in failed',
-    OAuthCallback: 'OAuth callback failed',
-    OAuthAccountNotLinked: 'Account not linked to this provider',
-    EmailSignin: 'Email sign in failed',
-    EmailCreateAccount: 'Email account creation failed',
-    CallbackRouteError: 'Authentication callback failed',
-    Default: 'Authentication failed',
-};
-
-function parseAuthError(location: string | null): string | null {
-    if (!location) return null;
+async function readJsonSafe(response: Response): Promise<any | null> {
     try {
-        const url = new URL(location, 'http://localhost');
-        const error = url.searchParams.get('error');
-        const code = url.searchParams.get('code');
-        if (error && authErrorMessages[error]) {
-            return authErrorMessages[error];
-        }
-        if (code && authErrorMessages[code]) {
-            return authErrorMessages[code];
-        }
-        return error || code;
+        return await response.json();
     } catch {
         return null;
     }
 }
 
-function parseAuthErrorFromUrl(url: string | null | undefined): string | null {
-    if (!url) return null;
-    return parseAuthError(url);
-}
-
-/**
- * Sign in with email and password
- */
-export async function signInWithCredentials(
-    credentials: SignInCredentials,
-    options?: {
-        redirect?: boolean;
-        redirectTo?: string;
-        clientOptions?: AuthClientOptions;
-    },
-): Promise<AuthResponse> {
-    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
-    const csrfToken = await getCsrfToken(options?.clientOptions);
+/** Fetch a fresh CSRF token; also sets the paired HttpOnly cookie the server checks it against. */
+export async function getCsrfToken(options?: AuthClientOptions): Promise<string | null> {
+    const baseUrl = options?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
-        const form = new URLSearchParams();
-        form.set('email', credentials.email);
-        form.set('password', credentials.password);
-        if (csrfToken) {
-            form.set('csrfToken', csrfToken);
-        }
-        form.set('redirect', String(options?.redirect ?? false));
-        form.set('callbackUrl', options?.redirectTo ?? '/dashboard');
-        form.set('json', 'true');
-
-        const response = await fetch(`${baseUrl}/callback/credentials`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Auth-Return-Redirect': '1',
-            },
-            credentials: 'include',
-            redirect: 'manual',
-            body: form.toString(),
-        });
-
-        if (response.status >= 300 && response.status < 400) {
-            const location = response.headers.get('Location');
-            const parsedError = parseAuthError(location);
-            if (parsedError) {
-                return { success: false, error: parsedError };
-            }
-        }
-
-        const data = await response.json().catch(() => null);
-
-        const redirectError = parseAuthErrorFromUrl(data?.url);
-        if (redirectError) {
-            return { success: false, error: redirectError };
-        }
-
-        if (!response.ok || data?.error) {
-            return {
-                success: false,
-                error: data?.error || 'Invalid credentials',
-            };
-        }
-
-        if (options?.redirect && data?.url && typeof window !== 'undefined') {
-            window.location.href = data.url;
-            return { success: true, url: data.url };
-        }
-
-        const session = await getSession(options?.clientOptions);
-
-        return {
-            success: true,
-            session: session || undefined,
-        };
+        const response = await fetch(`${baseUrl}/csrf`, { credentials: 'include' });
+        if (!response.ok) return null;
+        const data = await readJsonSafe(response);
+        return data?.csrfToken ?? null;
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Authentication failed',
-        };
+        console.error('Failed to get CSRF token:', error);
+        return null;
     }
 }
 
-/**
- * Sign in with an OAuth provider (Google, GitHub, Discord, etc.)
- */
-export async function signInWithProvider(
-    providerId: string,
-    options?: {
-        redirectTo?: string;
-        clientOptions?: AuthClientOptions;
-    },
+/** Sign in with email and password. */
+export async function signInWithCredentials(
+    credentials: SignInCredentials,
+    options?: { redirect?: boolean; redirectTo?: string; clientOptions?: AuthClientOptions },
 ): Promise<AuthResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
-        const params = new URLSearchParams();
-        params.set('callbackUrl', options?.redirectTo ?? '/dashboard');
+        const csrfToken = await getCsrfToken(options?.clientOptions);
 
+        const response = await fetch(`${baseUrl}/callback/credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: credentials.email, password: credentials.password, csrfToken }),
+        });
+
+        const data = await readJsonSafe(response);
+
+        if (!response.ok || !data?.success) {
+            return { success: false, error: data?.error || 'Invalid credentials' };
+        }
+
+        if (options?.redirect && typeof window !== 'undefined') {
+            window.location.href = options.redirectTo ?? '/dashboard';
+        }
+
+        return { success: true, session: data.session };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Authentication failed' };
+    }
+}
+
+/** Sign in with an OAuth provider (Google, GitHub, Discord, Azure AD, Auth0). */
+export async function signInWithProvider(
+    providerId: string,
+    options?: { redirectTo?: string; clientOptions?: AuthClientOptions },
+): Promise<AuthResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const params = new URLSearchParams({ callbackUrl: options?.redirectTo ?? '/dashboard' });
         const signInUrl = `${baseUrl}/signin/${providerId}?${params.toString()}`;
 
         if (typeof window !== 'undefined') {
             window.location.href = signInUrl;
         }
 
-        return {
-            success: true,
-            url: signInUrl,
-        };
+        return { success: true, url: signInUrl };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to initiate OAuth sign in',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to initiate OAuth sign in' };
     }
 }
 
-/**
- * Send a magic link to the specified email
- */
+/** Send a magic (passwordless) sign-in link to the given email. */
 export async function sendMagicLink(
     email: string,
-    options?: {
-        redirectTo?: string;
-        clientOptions?: AuthClientOptions;
-    },
+    options?: { redirectTo?: string; clientOptions?: AuthClientOptions },
 ): Promise<AuthResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
-    const csrfToken = await getCsrfToken(options?.clientOptions);
 
     try {
-        const form = new URLSearchParams();
-        form.set('email', email);
-        if (csrfToken) {
-            form.set('csrfToken', csrfToken);
-        }
-        form.set('callbackUrl', options?.redirectTo ?? '/dashboard');
-        form.set('json', 'true');
+        const csrfToken = await getCsrfToken(options?.clientOptions);
 
         const response = await fetch(`${baseUrl}/signin/email`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Auth-Return-Redirect': '1',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            redirect: 'manual',
-            body: form.toString(),
+            body: JSON.stringify({ email, csrfToken, callbackUrl: options?.redirectTo ?? '/dashboard' }),
         });
 
-        if (response.status >= 300 && response.status < 400) {
-            const location = response.headers.get('Location');
-            const parsedError = parseAuthError(location);
-            if (parsedError) {
-                return { success: false, error: parsedError };
-            }
+        const data = await readJsonSafe(response);
+
+        if (!response.ok || !data?.success) {
+            return { success: false, error: data?.error || 'Failed to send magic link' };
         }
 
-        const data = await response.json().catch(() => null);
-
-        const redirectError = parseAuthErrorFromUrl(data?.url);
-        if (redirectError) {
-            return { success: false, error: redirectError };
-        }
-
-        if (!response.ok || data?.error) {
-            return {
-                success: false,
-                error: data?.error || 'Failed to send magic link',
-            };
-        }
-
-        return {
-            success: true,
-        };
+        return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to send magic link',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send magic link' };
     }
 }
 
-/**
- * Register a new user with credentials
- */
+/** Register a new user with credentials (requires the host app's `/api/auth/register` endpoint). */
 export async function registerWithCredentials(
     data: RegisterCredentials,
     options?: { clientOptions?: AuthClientOptions },
@@ -350,22 +210,17 @@ export async function registerWithCredentials(
     try {
         const response = await fetch(`${baseUrl}/register`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Registration failed' }));
-            return {
-                success: false,
-                error: error.error || 'Registration failed',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Registration failed' };
         }
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = (await readJsonSafe(response)) ?? {};
         return {
             success: true,
             user: payload.user,
@@ -376,16 +231,11 @@ export async function registerWithCredentials(
             verificationSent: payload.verificationSent ?? false,
         };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Registration failed',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
     }
 }
 
-/**
- * Get the current session
- */
+/** Get the current session, retrying transient upstream failures. */
 export async function getSession(options?: AuthClientOptions): Promise<AuthSession | null> {
     const baseUrl = options?.baseUrl ?? defaultOptions.baseUrl;
 
@@ -393,9 +243,7 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
         try {
             const response = await fetch(`${baseUrl}/session`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 cache: 'no-store',
             });
@@ -405,15 +253,11 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
                     await waitForRetry(SESSION_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1));
                     continue;
                 }
-
                 return null;
             }
 
-            const session = await response.json().catch(() => null);
-
-            if (!session || !session.user) {
-                return null;
-            }
+            const session = await readJsonSafe(response);
+            if (!session || !session.user) return null;
 
             return session as AuthSession;
         } catch (error) {
@@ -421,7 +265,6 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
                 await waitForRetry(SESSION_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1));
                 continue;
             }
-
             console.error('Failed to get session:', error);
             return null;
         }
@@ -430,110 +273,46 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
     return null;
 }
 
-/**
- * Sign out the current user
- */
+/** Sign out the current session. */
 export async function signOut(options?: {
     redirectTo?: string;
     clientOptions?: AuthClientOptions;
 }): Promise<AuthResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
-    const csrfToken = await getCsrfToken(options?.clientOptions);
 
     try {
-        const params = new URLSearchParams();
-        if (options?.redirectTo) {
-            params.set('callbackUrl', options.redirectTo);
-        }
+        const csrfToken = await getCsrfToken(options?.clientOptions);
 
-        const form = new URLSearchParams();
-        if (csrfToken) {
-            form.set('csrfToken', csrfToken);
-        }
-        if (options?.redirectTo) {
-            form.set('callbackUrl', options.redirectTo);
-        }
-        form.set('json', 'true');
-
-        const response = await fetch(`${baseUrl}/signout?${params.toString()}`, {
+        const response = await fetch(`${baseUrl}/signout`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Auth-Return-Redirect': '1',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            redirect: 'manual',
-            body: form.toString(),
+            body: JSON.stringify({ csrfToken }),
         });
 
-        if (response.status >= 300 && response.status < 400) {
-            const location = response.headers.get('Location');
-            const parsedError = parseAuthError(location);
-            if (parsedError) {
-                return { success: false, error: parsedError };
-            }
-        }
-
-        const data = await response.json().catch(() => null);
-
-        const redirectError = parseAuthErrorFromUrl(data?.url);
-        if (redirectError) {
-            return { success: false, error: redirectError };
-        }
+        const data = await readJsonSafe(response);
 
         if (!response.ok || data?.error) {
-            return {
-                success: false,
-                error: data?.error || 'Failed to sign out',
-            };
+            return { success: false, error: data?.error || 'Failed to sign out' };
         }
 
-        return {
-            success: true,
-        };
+        if (options?.redirectTo && typeof window !== 'undefined') {
+            window.location.href = options.redirectTo;
+        }
+
+        return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to sign out',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to sign out' };
     }
 }
 
-/**
- * Check if user is authenticated
- */
+/** Check if the current visitor has an authenticated session. */
 export async function isAuthenticated(options?: AuthClientOptions): Promise<boolean> {
     const session = await getSession(options);
     return session !== null;
 }
 
-/**
- * Get CSRF token for forms
- */
-export async function getCsrfToken(options?: AuthClientOptions): Promise<string | null> {
-    const baseUrl = options?.baseUrl ?? defaultOptions.baseUrl;
-
-    try {
-        const response = await fetch(`${baseUrl}/csrf`, {
-            credentials: 'include',
-        });
-        if (!response.ok) return null;
-
-        try {
-            const data = await response.json();
-            return data.csrfToken || null;
-        } catch {
-            return null;
-        }
-    } catch (error) {
-        console.error('Failed to get CSRF token:', error);
-        return null;
-    }
-}
-
-/**
- * Request an email verification (resend)
- */
+/** Request a verification email be (re)sent. */
 export async function requestEmailVerification(
     email: string,
     options?: { clientOptions?: AuthClientOptions },
@@ -543,33 +322,23 @@ export async function requestEmailVerification(
     try {
         const response = await fetch(`${baseUrl}/verify-email/resend`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ email }),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Failed to send verification email' }));
-            return {
-                success: false,
-                error: error.error || 'Failed to send verification email',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Failed to send verification email' };
         }
 
         return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to send verification email',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send verification email' };
     }
 }
 
-/**
- * Verify email with token (used by verification page)
- */
+/** Verify an email using the token from a verification link. */
 export async function verifyEmail(
     token: string,
     email: string,
@@ -585,25 +354,17 @@ export async function verifyEmail(
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Email verification failed' }));
-            return {
-                success: false,
-                error: error.error || 'Email verification failed',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Email verification failed' };
         }
 
         return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Email verification failed',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Email verification failed' };
     }
 }
 
-/**
- * Request a password reset email
- */
+/** Request a password reset email. */
 export async function requestPasswordReset(
     email: string,
     options?: { clientOptions?: AuthClientOptions },
@@ -613,33 +374,23 @@ export async function requestPasswordReset(
     try {
         const response = await fetch(`${baseUrl}/password/reset/request`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ email }),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Failed to request password reset' }));
-            return {
-                success: false,
-                error: error.error || 'Failed to request password reset',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Failed to request password reset' };
         }
 
         return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to request password reset',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to request password reset' };
     }
 }
 
-/**
- * Reset password with token
- */
+/** Reset a password using a reset-email token. */
 export async function resetPassword(
     data: { email: string; token: string; password: string },
     options?: { clientOptions?: AuthClientOptions },
@@ -649,33 +400,23 @@ export async function resetPassword(
     try {
         const response = await fetch(`${baseUrl}/password/reset/confirm`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Password reset failed' }));
-            return {
-                success: false,
-                error: error.error || 'Password reset failed',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Password reset failed' };
         }
 
         return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Password reset failed',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Password reset failed' };
     }
 }
 
-/**
- * Change password for the current authenticated user
- */
+/** Change the password for the currently authenticated user. */
 export async function changePassword(
     data: { currentPassword: string; newPassword: string },
     options?: { clientOptions?: AuthClientOptions },
@@ -685,26 +426,18 @@ export async function changePassword(
     try {
         const response = await fetch(`${baseUrl}/password/change`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Password change failed' }));
-            return {
-                success: false,
-                error: error.error || 'Password change failed',
-            };
+            const error = await readJsonSafe(response);
+            return { success: false, error: error?.error || 'Password change failed' };
         }
 
         return { success: true };
     } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Password change failed',
-        };
+        return { success: false, error: error instanceof Error ? error.message : 'Password change failed' };
     }
 }

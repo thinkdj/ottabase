@@ -3,9 +3,6 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
     entry: [
         'src/index.ts',
-        'src/adapter.ts',
-        'src/adapters/drizzle-adapter.ts',
-        'src/config.ts',
         'src/providers.ts',
         'src/session.ts',
         'src/components/index.ts',
@@ -33,6 +30,5 @@ export default defineConfig({
         'react-dom',
         'jotai',
         'jotai/utils',
-        '@auth/core',
     ],
 });

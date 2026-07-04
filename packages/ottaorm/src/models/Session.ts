@@ -8,7 +8,7 @@ import { sessionsTable } from './Session.schema';
 export { sessionsTable, type NewSessionType, type SessionType } from './Session.schema';
 
 /**
- * Session model for Auth.js authentication sessions
+ * Session model for optional database-backed authentication sessions
  *
  * Represents active authentication sessions with token-based tracking.
  *

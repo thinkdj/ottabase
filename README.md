@@ -122,7 +122,7 @@ ottabase/
 │   ├── cf/               # Cloudflare bindings (D1, KV, R2, Queues, Cache Keys)
 │   ├── cf-realtime/      # WebSocket pub/sub (Durable Objects)
 │   ├── queue/            # Job queue (dispatch, handlers, priority)
-│   ├── auth/             # Auth.js v5 with D1
+│   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
 │   ├── analytics/        # Cloudflare Analytics Engine (WAE)
@@ -316,21 +316,21 @@ createTodo.mutate({ title: 'New Todo' });
 
 ### Database, Auth & Infrastructure
 
-| Package                | Purpose                                                                |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `@ottabase/ottaorm`    | Fat models, CRUD, relationships, RLS, auto-migrations                  |
-| `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts  |
-| `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                   |
-| `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache   |
-| `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)      |
-| `@ottabase/auth`       | Auth.js v5 with D1 adapter, OAuth, Credentials, Magic Link             |
-| `@ottabase/rbac`       | Role-based access control with per-org KV caching                      |
-| `@ottabase/audit`      | Audit logging with change tracking and RBAC context                    |
-| `@ottabase/logger`     | Structured logging (Console, HTTP, Sentry, Memory, Buffer transports)  |
-| `@ottabase/analytics`  | Cloudflare Analytics Engine (WAE) - write events, query, funnel, top-K |
-| `@ottabase/config`     | App config, env vars, storage key utilities                            |
-| `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)   |
-| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`, `db:*`    |
+| Package                | Purpose                                                                  |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `@ottabase/ottaorm`    | Fat models, CRUD, relationships, RLS, auto-migrations                    |
+| `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts    |
+| `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                     |
+| `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache     |
+| `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)        |
+| `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link |
+| `@ottabase/rbac`       | Role-based access control with per-org KV caching                        |
+| `@ottabase/audit`      | Audit logging with change tracking and RBAC context                      |
+| `@ottabase/logger`     | Structured logging (Console, HTTP, Sentry, Memory, Buffer transports)    |
+| `@ottabase/analytics`  | Cloudflare Analytics Engine (WAE) - write events, query, funnel, top-K   |
+| `@ottabase/config`     | App config, env vars, storage key utilities                              |
+| `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)     |
+| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`, `db:*`      |
 
 ### Brand, Layout & Content
 

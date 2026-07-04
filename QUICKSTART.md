@@ -254,7 +254,7 @@ additional users and organizations from the Admin panel.
 
 You're now inside a fully functional multi-tenant SaaS app with:
 
-- User authentication (Auth.js)
+- User authentication (custom, signed sessions)
 - Organizations (multi-tenancy)
 - Role-based access control (RBAC)
 - Audit logging
@@ -314,7 +314,7 @@ set.
     - `otta-landing/` — Marketing site (Next.js)
 - **`packages/`** — 47 shared packages
     - `@ottabase/ottaorm` — Fat model ORM (core)
-    - `@ottabase/auth` — Auth.js integration
+    - `@ottabase/auth` — Lightweight custom auth
     - `@ottabase/rbac` — Role-based access control
     - `@ottabase/ui-shadcn` — UI component library
     - (and 43 more...)

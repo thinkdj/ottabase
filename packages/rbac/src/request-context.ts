@@ -4,7 +4,7 @@ import type { RBACCache } from './cache';
 import { createRBACContext } from './utils';
 
 export interface RequestContext {
-    sessionUser: { id: string; email?: string; name?: string } | null;
+    sessionUser: { id: string; email?: string | null; name?: string | null } | null;
     user: any | null;
     organizationId: string | null;
     appId: string;

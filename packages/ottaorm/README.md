@@ -651,7 +651,7 @@ export const todosTable = sqliteTable('todos', {
 
 ## Auth Integration
 
-OttaORM core migrations include Auth.js tables used by `@ottabase/auth`:
+OttaORM core migrations include the auth tables used by `@ottabase/auth`:
 
 - `users`
 - `accounts`
@@ -772,7 +772,7 @@ console.log(fields.title.uiConfig.label); // "Title"
 The package includes these core models (in `@ottabase/ottaorm`):
 
 - **User** - Users with name, email, image
-- **Account** - OAuth provider accounts (NextAuth)
+- **Account** - OAuth provider accounts
 - **Tag** - Tags with name and slug
 - **Session** - User sessions
 - **VerificationToken** - Email verification tokens

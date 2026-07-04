@@ -1,9 +1,10 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
-import { Role } from '@ottabase/ottaorm/models';
+import { Role, UserRole } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { bumpProfileVersion } from '../lib/auth-utils';
 import type { ApiRouteContext } from './router';
 
 /** Invalidate all RBAC cache entries when system roles change */
@@ -13,6 +14,22 @@ async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void
         await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
     } catch {
         // Cache invalidation failure is non-fatal
+    }
+}
+
+/**
+ * Refresh the live sessions of everyone holding a role after its permission set changes (or the
+ * role is deleted), so the new permissions take effect immediately instead of persisting in each
+ * holder's session snapshot until their JWT expires. Role edits are rare admin actions, so
+ * enumerating holders and bumping each is acceptable. Best-effort.
+ */
+async function refreshRoleHolderSessions(context: ApiRouteContext, roleId: string): Promise<void> {
+    try {
+        const userRoles = await UserRole.where({ roleId });
+        const userIds = [...new Set(userRoles.map((ur) => String(ur.get('userId'))).filter(Boolean))];
+        await Promise.allSettled(userIds.map((userId) => bumpProfileVersion(context.env, userId)));
+    } catch (error) {
+        console.warn('Failed to refresh sessions of role holders:', error);
     }
 }
 
@@ -60,6 +77,10 @@ export async function handleAdminRoleUpdate(context: ApiRouteContext, roleId: st
     }
     await role.save();
     await invalidateRBACCache(context.env);
+    // A changed permission set only reaches live sessions on a snapshot refresh.
+    if (body.permissions !== undefined) {
+        await refreshRoleHolderSessions(context, roleId);
+    }
     return jsonResponse({ data: role.toJson() });
 }
 
@@ -72,6 +93,8 @@ export async function handleAdminRoleDelete(context: ApiRouteContext, roleId: st
     const role = await Role.find(roleId);
     if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
     if (role.get('isSystem')) return errorResponse('Cannot delete system roles', 403, { code: 'FORBIDDEN' });
+    // Enumerate holders BEFORE deleting (the user_roles rows may be gone afterwards).
+    await refreshRoleHolderSessions(context, roleId);
     await role.delete();
     await invalidateRBACCache(context.env);
     return jsonResponse({ success: true });

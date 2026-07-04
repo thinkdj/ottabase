@@ -62,7 +62,7 @@ import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './
 import { handleAuditLogs } from './audit';
 import {
     handleAuthConfig,
-    handleAuthJsRequest,
+    handleAuthApiRequest,
     handleAuthRegister,
     handlePasswordChange,
     handlePasswordResetConfirm,
@@ -142,15 +142,40 @@ export interface ApiRouteContext {
 type WorkerCtx = Ctx<CloudflareEnv>;
 type ApiHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
 
-function buildCorsHeaders(request: Request): Record<string, string> {
-    const origin = request.headers.get('Origin') || '*';
-    return {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        Vary: 'Origin',
-    };
+function buildCorsHeaders(request: Request, env: CloudflareEnv): Record<string, string> {
+    // Never reflect an arbitrary Origin together with credentials. Doing so lets any site
+    // issue credentialed cross-origin reads (e.g. GET /api/auth/csrf, which would leak the
+    // CSRF token, or GET /api/auth/session, which would leak session data). Only echo the
+    // Origin when it is same-origin, matches the configured AUTH_URL, or is in the
+    // CORS_ALLOWED_ORIGINS allowlist; otherwise omit Access-Control-Allow-Origin so the
+    // browser blocks the cross-origin read.
+    const cfg = env as { AUTH_URL?: string; CORS_ALLOWED_ORIGINS?: string };
+    const requestOrigin = request.headers.get('Origin');
+    const allowedOrigins = new Set<string>();
+    try {
+        allowedOrigins.add(new URL(request.url).origin);
+    } catch {
+        /* ignore */
+    }
+    for (const candidate of [cfg.AUTH_URL, ...String(cfg.CORS_ALLOWED_ORIGINS || '').split(',')]) {
+        const trimmed = (candidate || '').trim();
+        if (!trimmed) continue;
+        try {
+            allowedOrigins.add(new URL(trimmed).origin);
+        } catch {
+            /* ignore malformed configured origin */
+        }
+    }
+    const corsOrigin = requestOrigin && allowedOrigins.has(requestOrigin) ? requestOrigin : null;
+    return corsOrigin
+        ? {
+              'Access-Control-Allow-Origin': corsOrigin,
+              'Access-Control-Allow-Credentials': 'true',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+              Vary: 'Origin',
+          }
+        : { Vary: 'Origin' };
 }
 
 export function makeApiRouteContext(
@@ -158,7 +183,7 @@ export function makeApiRouteContext(
     env: CloudflareEnv,
     url: URL = new URL(request.url),
 ): ApiRouteContext {
-    const corsHeaders = buildCorsHeaders(request);
+    const corsHeaders = buildCorsHeaders(request, env);
     const route = url.pathname !== '/' && url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
     return {
         request,
@@ -191,7 +216,7 @@ export const apiRouter = new Router<CloudflareEnv>();
 // -------------------------------------------------------
 apiRouter.use('/api', (c, next) => {
     if (c.method === 'OPTIONS' && c.path.startsWith('/api/')) {
-        return new Response(null, { status: 204, headers: buildCorsHeaders(c.req) });
+        return new Response(null, { status: 204, headers: buildCorsHeaders(c.req, c.env) });
     }
     return next();
 });
@@ -213,7 +238,7 @@ apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand', h(handleBrandApi));
 apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand/*', h(handleBrandApi));
 
 // -------------------------------------------------------
-// Auth — explicit routes win over the Auth.js catch-all by
+// Auth — explicit routes win over the /api/auth/* catch-all by
 // specificity (static > *), for every method
 // -------------------------------------------------------
 apiRouter.get('/api/auth/config', h(handleAuthConfig));
@@ -223,7 +248,7 @@ apiRouter.post('/api/auth/verify-email/resend', h(handleVerifyEmailResend));
 apiRouter.post('/api/auth/password/reset/request', h(handlePasswordResetRequest));
 apiRouter.post('/api/auth/password/reset/confirm', h(handlePasswordResetConfirm));
 apiRouter.post('/api/auth/password/change', h(handlePasswordChange));
-apiRouter.all('/api/auth/*', h(handleAuthJsRequest));
+apiRouter.all('/api/auth/*', h(handleAuthApiRequest));
 apiRouter.on(['GET', 'PATCH'], '/api/users/me', h(handleUserProfile));
 
 // -------------------------------------------------------

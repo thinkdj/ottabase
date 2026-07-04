@@ -11,8 +11,7 @@
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
-import { encode as encodeAuthJwt } from '@auth/core/jwt';
-import { hashPassword } from '@ottabase/auth/backend';
+import { bootstrapFirstUser, createSessionCookieForUser, hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     autoInit,
@@ -29,6 +28,7 @@ import { appMigrations } from '../../ottabase/migrations';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
+import { META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
 import type { PlatformStateResult } from './types';
 
 interface BootstrapContext {
@@ -89,9 +89,12 @@ function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     const { env, request, url } = context;
     const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
 
-    // If no secret is configured, allow in non-production
+    // If no secret is configured, only allow in an EXPLICIT dev environment. An unset or
+    // unknown ENVIRONMENT is treated as production and denied, so a real deploy cannot run
+    // the owner-creation wizard unauthenticated just because ENVIRONMENT wasn't set.
     if (!expectedSecret) {
-        return (env as any).ENVIRONMENT !== 'production';
+        const environment = String((env as any).ENVIRONMENT || '').toLowerCase();
+        return ['development', 'dev', 'test', 'local'].includes(environment);
     }
 
     const headerSecret = request.headers.get('X-Bootstrap-Secret');
@@ -474,16 +477,40 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
     }
 
+    // Tracks the owner row once created, so any failure after that point can roll it back.
+    let createdUserId: string | null = null;
     try {
         ensureOrmConnection(env);
+        await ensureMetaTable(env);
 
         await Role.ensureDefaultRoles();
         await enforceDefaultRolePermissions(env);
 
-        // Check if users already exist
+        // Atomically claim the right to create the owner account. Unlike a
+        // SELECT COUNT(*) check, this INSERT is guarded by the `key` PRIMARY
+        // KEY on _ottabase_meta, so if two requests race, only one of them
+        // can win the insert — the other fails immediately and never
+        // proceeds to create a user, closing the TOCTOU window.
+        try {
+            await env.OBCF_D1.prepare(`INSERT INTO ${META_TABLE} (key, value, updated_at) VALUES (?, ?, ?)`)
+                .bind(META_OWNER_CLAIMED_KEY, '1', Date.now())
+                .run();
+        } catch {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    code: 'OWNER_EXISTS',
+                },
+                409,
+            );
+        }
+
+        // Belt-and-braces: if an owner somehow already exists (e.g. a user
+        // was provisioned out-of-band while the claim was held), don't
+        // silently create a second one.
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
-
         if (userCount > 0) {
             return jsonResp(
                 {
@@ -505,6 +532,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         });
 
         const userId = newUser.get('id') as string;
+        createdUserId = userId;
 
         // Create personal organization
         let organizationId: string | null = null;
@@ -522,6 +550,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             organizationId = provisioned.organizationId;
             assignedRole = provisioned.assignedRole;
         } catch (error) {
+            // Provisioning failed after the user row was created. Roll back the orphan user AND
+            // release the claim — otherwise the userCount / OWNER_EXISTS guards above permanently
+            // block a legitimate retry.
+            await rollbackOwnerCreation(env, createdUserId);
             return jsonResp(
                 {
                     success: false,
@@ -532,57 +564,27 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             );
         }
 
-        // Auto-login: create auth cookie so the user is immediately authenticated
-        const cookieName = (env as any).AUTH_COOKIE_NAME || 'authjs.session-token';
-        const maxAgeSeconds = 30 * 24 * 60 * 60;
-        let sessionToken: string | null = null;
+        // Claim the SYSTEM-scope owner grant for this account. provisionDefaultOrganizationForUser
+        // only assigns the owner role at the personal-organization scope; without this the
+        // system-scope owner slot stays unclaimed, so the first person to sign in afterwards
+        // would seize global ownership via bootstrapFirstUser. This is idempotent.
+        await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
-        // Primary path: JWT session strategy (default)
-        // Owner role gets *:* permissions; Auth.js callbacks will enrich from DB on /session, but JWT must have them for immediate use
+        // Auto-login: create the session cookie so the browser is immediately authenticated.
         const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
-        try {
-            const nowSeconds = Math.floor(Date.now() / 1000);
-            const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
-            sessionToken = await encodeAuthJwt({
-                token: {
-                    id: userId,
-                    sub: userId,
-                    email,
-                    name: name || null,
-                    emailVerified: Date.now(),
-                    organizationId: organizationId || undefined,
-                    roles: assignedRole ? [assignedRole] : undefined,
-                    permissions: ownerPermissions,
-                    jti: crypto.randomUUID(),
-                    iat: nowSeconds,
-                    exp: nowSeconds + maxAgeSeconds,
-                },
-                secret: authSecret,
-                maxAge: maxAgeSeconds,
-                salt: cookieName,
-            });
-        } catch (error) {
-            console.warn('JWT cookie generation failed during bootstrap auto-login:', error);
-            sessionToken = null;
-        }
-
-        // Fallback for database-session strategy deployments
-        if (!sessionToken) {
-            try {
-                sessionToken = crypto.randomUUID();
-                const expiresMs = Date.now() + maxAgeSeconds * 1000;
-                const nowMs = Date.now();
-                await env.OBCF_D1.prepare(
-                    `INSERT INTO sessions (id, session_token, user_id, expires, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?)`,
-                )
-                    .bind(crypto.randomUUID(), sessionToken, userId, expiresMs, nowMs, nowMs)
-                    .run();
-            } catch {
-                // Session creation is non-fatal; user can log in manually
-                sessionToken = null;
-            }
-        }
+        const { cookie, session } = await createSessionCookieForUser(
+            {
+                id: userId,
+                email,
+                name: name || null,
+                emailVerified: Date.now(),
+                organizationId,
+                roles: assignedRole ? [assignedRole] : [],
+                permissions: ownerPermissions,
+            },
+            env as any,
+            request,
+        );
 
         const responseData = {
             success: true,
@@ -593,32 +595,55 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 role: assignedRole || 'owner',
             },
             organizationId,
-            sessionToken: sessionToken ? true : false,
-            sessionExpires: Date.now() + maxAgeSeconds * 1000,
+            sessionToken: true,
+            sessionExpires: session.expiresAt,
             timestamp: Date.now(),
         };
 
-        // Set session cookie so the browser is immediately authenticated
-        if (sessionToken) {
-            const reqUrl = new URL(request.url);
-            const secure = reqUrl.protocol === 'https:';
-            const cookie = `${cookieName}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`;
-            return new Response(JSON.stringify(responseData), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Set-Cookie': cookie,
-                },
-            });
-        }
-
-        return jsonResp(responseData);
+        return new Response(JSON.stringify(responseData), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Set-Cookie': cookie,
+            },
+        });
     } catch (error: any) {
+        // Roll back any partially-created owner (orphan user row + held claim) so the
+        // OWNER_EXISTS / userCount guards don't permanently block a legitimate retry.
+        await rollbackOwnerCreation(env, createdUserId);
+
         if (error.message?.toLowerCase().includes('unique')) {
             return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
         }
         return jsonResp({ success: false, error: error.message, code: 'CREATE_OWNER_FAILED' }, 500);
     }
+}
+
+/** Best-effort release of the owner-creation claim (used when owner creation fails before a user row is committed). */
+async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
+    if (!env.OBCF_D1) return;
+    try {
+        await env.OBCF_D1.prepare(`DELETE FROM ${META_TABLE} WHERE key = ?`).bind(META_OWNER_CLAIMED_KEY).run();
+    } catch {
+        /* best-effort; a stuck claim only requires re-running init to clear _ottabase_meta */
+    }
+}
+
+/**
+ * Best-effort rollback of a failed owner-creation attempt: delete the just-created owner row (if
+ * any) and release the claim. Both must be undone together — a leftover user trips the
+ * `userCount > 0` guard and a held claim trips OWNER_EXISTS, either of which would otherwise
+ * permanently brick a legitimate retry of first-time setup.
+ */
+async function rollbackOwnerCreation(env: CloudflareEnv, userId: string | null): Promise<void> {
+    if (userId) {
+        try {
+            await User.delete(userId);
+        } catch {
+            /* best-effort — a leftover row can still be cleared by re-running init */
+        }
+    }
+    await releaseOwnerClaim(env);
 }
 
 /**

@@ -46,6 +46,21 @@ export function LoginPage() {
             }) as ReturnType<typeof getLoginConfig> & { authSecretConfigured: boolean },
     );
     const passwordChanged = new URLSearchParams(window.location.search).get('passwordChanged') === '1';
+    const emailVerified = new URLSearchParams(window.location.search).get('verified') === '1';
+
+    // Surface OAuth / magic-link failures that redirect back as ?error=CODE.
+    useEffect(() => {
+        const code = new URLSearchParams(window.location.search).get('error');
+        if (!code) return;
+        const messages: Record<string, string> = {
+            OAuthAccountNotLinked:
+                'An account already exists for this email. Sign in with your original method, then link this provider from your profile.',
+            OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
+            OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
+            Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
+        };
+        setError(messages[code] ?? 'Sign-in failed. Please try again.');
+    }, []);
 
     useEffect(() => {
         let mounted = true;
@@ -230,6 +245,14 @@ export function LoginPage() {
                     </Card>
                 )}
 
+                {emailVerified && (
+                    <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
+                        <CardContent className="p-6 text-sm text-green-700 dark:text-green-400">
+                            Email verified successfully. Please sign in.
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Configuration Warnings */}
                 {warnings.length > 0 && (
                     <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
@@ -294,7 +317,9 @@ export function LoginPage() {
                             <CheckCircle2 className="h-4 w-4" />
                             Production-Ready Auth
                         </CardTitle>
-                        <CardDescription className="text-xs">Powered by Auth.js with Cloudflare D1</CardDescription>
+                        <CardDescription className="text-xs">
+                            Powered by Ottabase Auth with Cloudflare D1
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="text-xs space-y-2">
                         <p>

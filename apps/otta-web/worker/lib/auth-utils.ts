@@ -1,4 +1,4 @@
-import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
+import { CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
 import { userKey } from '@ottabase/cf';
 import { invalidateCache, invalidateCacheByPrefix, withCache } from '@ottabase/cf/kv-cache';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
@@ -23,6 +23,9 @@ export async function createVerificationToken(
     }
 
     const token = createSecureToken(32);
+    // Store only the hash: the plaintext token lives solely in the emailed link, so a
+    // database read leak cannot be replayed to verify an email or reset a password.
+    const tokenHash = await hashToken(token);
     const expiresAt = Date.now() + ttlSeconds * 1000;
 
     try {
@@ -33,7 +36,7 @@ export async function createVerificationToken(
 
     await VerificationToken.create({
         identifier,
-        token,
+        token: tokenHash,
         expires: expiresAt,
     });
 
@@ -63,11 +66,6 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const disableCredentials = env.AUTH_DISABLE_CREDENTIALS === 'true' || env.AUTH_DISABLE_CREDENTIALS === '1';
     if (disableCredentials) {
         options.disableCredentials = true;
-    }
-
-    const verbose = env.AUTH_VERBOSE === 'true' || env.AUTH_VERBOSE === '1';
-    if (verbose) {
-        options.verbose = true;
     }
 
     // Clear RBAC cache when user signs out so stale permissions aren't served
@@ -152,6 +150,26 @@ export async function invalidateMembershipCache(
         ]);
     } catch {
         // Best-effort — TTL bounds staleness if KV invalidation fails.
+    }
+}
+
+/**
+ * Bump a user's session profile-version counter so their NEXT getSession re-reads the KV session
+ * snapshot from D1 (see refreshSnapshotIfStale in @ottabase/auth). Call after ANY server mutation
+ * of a session-reflected field (name/image/emailVerified/org/roles/permissions/membership) so live
+ * sessions reflect the change instead of serving the stale snapshot until the cookie JWT expires.
+ *
+ * Best-effort: a KV failure only delays the refresh to the next natural bump. The version key's TTL
+ * mirrors the session max-age so it always outlives the sessions it gates.
+ */
+export async function bumpProfileVersion(env: CloudflareEnv, userId: string | undefined | null): Promise<void> {
+    if (!env.OBCF_KV || !userId) return;
+    try {
+        await env.OBCF_KV.put(userKey('auth', userId, 'profile', 'version'), String(Date.now()), {
+            expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
+        });
+    } catch (error) {
+        console.warn('Failed to bump profile version:', error);
     }
 }
 

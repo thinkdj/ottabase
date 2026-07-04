@@ -125,7 +125,7 @@ export function UserProfilePage() {
         }
     }, [user?.name, user?.email, (user as { timezone?: string })?.timezone]);
 
-    // Fetch full profile (including timezone) - Auth.js session may not include DB-only fields
+    // Fetch full profile (including timezone) - the session may not include DB-only fields
     useEffect(() => {
         if (!user?.id) return;
         let cancelled = false;
@@ -267,6 +267,12 @@ export function UserProfilePage() {
             }
             if (refreshSession) {
                 await refreshSession();
+                // refreshSession replaces the whole session from the server, which does NOT carry
+                // the client-only timezone (it isn't part of the session snapshot). Re-apply the
+                // just-saved value so it isn't reverted to the browser default (phantom "unsaved").
+                if (safeUpdates.timezone) {
+                    updateUser({ timezone: safeUpdates.timezone } as Partial<typeof user>);
+                }
             }
             setHasChanges(false);
             toast.success('Profile updated', 'Your profile has been updated successfully');

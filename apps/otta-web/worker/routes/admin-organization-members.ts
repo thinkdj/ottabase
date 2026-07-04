@@ -3,7 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
-import { invalidateMembershipCache } from '../lib/auth-utils';
+import { bumpProfileVersion, invalidateMembershipCache } from '../lib/auth-utils';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
@@ -147,6 +147,9 @@ export async function handleAdminOrganizationInviteMember(
 
         // Membership granted — drop the user's cached security-context lookups.
         await invalidateMembershipCache(context.env.OBCF_KV, userId);
+        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+        // refresh their live session so it isn't served the stale snapshot until the JWT expires.
+        await bumpProfileVersion(context.env, userId);
 
         return jsonResponse({ data: member.toJson() }, 201);
     } catch (err) {
@@ -228,6 +231,9 @@ export async function handleAdminOrganizationUpdateMember(
         // Role/status changed (incl. suspension) — revocation must not wait out the
         // membership-cache TTL.
         await invalidateMembershipCache(context.env.OBCF_KV, userId);
+        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+        // refresh their live session so it isn't served the stale snapshot until the JWT expires.
+        await bumpProfileVersion(context.env, userId);
 
         const updated = await OrganizationMember.first({ userId, organizationId });
         return jsonResponse({ data: updated?.toJson() ?? existingMember.toJson() });
@@ -277,6 +283,9 @@ export async function handleAdminOrganizationRemoveMember(
 
         // Membership revoked — drop the cached lookups so access ends now, not at TTL expiry.
         await invalidateMembershipCache(context.env.OBCF_KV, userId);
+        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+        // refresh their live session so it isn't served the stale snapshot until the JWT expires.
+        await bumpProfileVersion(context.env, userId);
 
         return jsonResponse({ data: { userId, organizationId, removed: true } });
     } catch (err) {

@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/ottaorm - Session table schema for Auth.js
+// @ottabase/ottaorm - Session table schema for optional database-backed sessions
 // ============================================================
 
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * Session table schema for Auth.js
+ * Session table schema for optional database-backed sessions
  */
 export const sessionsTable = sqliteTable('sessions', {
     id: text('id')

@@ -2,7 +2,7 @@
  * Server-side Referral Attribution Helper
  *
  * This helper should be called during user creation to handle referral attribution.
- * Typically used in Auth.js callbacks or custom registration endpoints.
+ * Typically used in sign-in callbacks or custom registration endpoints.
  */
 
 import { User } from '@ottabase/ottaorm/models';

@@ -83,10 +83,10 @@ export function DashboardPage() {
                                 <Badge variant="secondary">{user.id}</Badge>
                             </div>
 
-                            {user.role && (
+                            {user.roles && user.roles.length > 0 && (
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-muted-foreground">Role</span>
-                                    <Badge>{user.role}</Badge>
+                                    <span className="text-sm text-muted-foreground">Roles</span>
+                                    <Badge>{user.roles.join(', ')}</Badge>
                                 </div>
                             )}
 
@@ -129,7 +129,7 @@ export function DashboardPage() {
 
                         <div className="pt-4 border-t">
                             <p className="text-xs text-muted-foreground">
-                                <strong>Note:</strong> Session data comes from Auth.js and is stored in secure cookies.
+                                <strong>Note:</strong> Session data is signed and stored in secure, HttpOnly cookies.
                             </p>
                         </div>
                     </CardContent>

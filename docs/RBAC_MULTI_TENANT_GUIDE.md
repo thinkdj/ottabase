@@ -747,13 +747,13 @@ updateRoleMutation.mutate(
 
 ## 🔐 Authentication Integration (@ottabase/auth)
 
-The RBAC system seamlessly integrates with the `@ottabase/auth` module (Auth.js-based authentication) to automatically
-enforce security policies based on the authenticated user's session.
+The RBAC system seamlessly integrates with the `@ottabase/auth` module (a lightweight, dependency-free custom auth
+implementation) to automatically enforce security policies based on the authenticated user's session.
 
 ### How It Works
 
-1. **User Authentication** - User signs in via Auth.js providers (OAuth, Magic Link, Credentials)
-2. **Session Creation** - Auth.js creates a session with user data
+1. **User Authentication** - User signs in via OAuth, Magic Link, or Credentials
+2. **Session Creation** - A signed session (JWT + KV registry record) is created with user data
 3. **Security Context Extraction** - Worker extracts userId, organizationId, roles, permissions from session
 4. **RLS Enforcement** - All CRUD operations automatically filtered by security context
 5. **Automatic Isolation** - Cross-tenant data access is impossible by design
@@ -822,14 +822,19 @@ if (url.pathname.startsWith('/api/ottaorm/')) {
 
 ### Auth Routes
 
-All Auth.js routes are handled automatically:
+Every `/api/auth/*` sub-route the package owns is handled automatically:
 
 ```typescript
-// Handles: /api/auth/signin, /api/auth/signout, /api/auth/session, /api/auth/callback/*
+// Handles: /api/auth/csrf, /api/auth/session, /api/auth/callback/credentials,
+// /api/auth/signin/:provider, /api/auth/callback/:provider, /api/auth/signin/email,
+// /api/auth/callback/email, /api/auth/signout
 if (url.pathname.startsWith('/api/auth/')) {
     return handleAuthRequest(request, env);
 }
 ```
+
+Routes the app implements itself (registration, email verification, password reset/change) stay outside this package --
+see `packages/auth/README.md` for the full route table.
 
 ### Organization ID Sources
 
@@ -917,34 +922,14 @@ export async function api<T = any>(url: string, options: RequestInit = {}): Prom
 
 ### Session Customization
 
-To include organization ID in the JWT/session, customize the Auth.js callbacks:
+Organization ID, roles, and permissions are embedded in the session automatically -- `@ottabase/auth` resolves the
+user's active organization membership and RBAC roles/permissions once, at session-creation time, and stores them in the
+signed session JWT (see `session.user.organizationId/roles/permissions`). No callback wiring is required.
 
-```typescript
-// apps/otta-web/src/lib/auth-backend.ts
-import { createAuthConfig } from '@ottabase/auth/backend';
-
-export function createAuthConfig(env: AuthEnv) {
-    return {
-        ...createAuthConfig(env),
-        callbacks: {
-            async jwt({ token, user }) {
-                // Add organizationId to JWT on sign-in
-                if (user) {
-                    token.organizationId = await getUserOrganizationId(user.id);
-                }
-                return token;
-            },
-            async session({ session, token }) {
-                // Add organizationId to session object
-                if (token.organizationId) {
-                    session.user.organizationId = token.organizationId;
-                }
-                return session;
-            },
-        },
-    };
-}
-```
+Note this embedded snapshot only drives optimistic client-side UI gating (e.g. `ProtectedRoute`). Real authorization
+decisions are re-derived live on every request by `getRequestContext()` above, which loads the user's current
+roles/permissions from the database -- so a role change takes effect immediately server-side even though the client's
+cached session copy only refreshes on next sign-in.
 
 ### Benefits of Auth + RLS Integration
 

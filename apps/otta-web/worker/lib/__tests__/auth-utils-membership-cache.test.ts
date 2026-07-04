@@ -30,7 +30,7 @@ vi.mock('../../../ottabase/config.loader', () => ({
 }));
 vi.mock('../email-provider', () => ({ resolveAppMailer: vi.fn() }));
 
-import { getSecurityContext, invalidateMembershipCache } from '../auth-utils';
+import { bumpProfileVersion, getSecurityContext, invalidateMembershipCache } from '../auth-utils';
 
 /** Minimal KV fake backed by a Map, with list() for prefix invalidation. */
 function makeKv() {
@@ -140,5 +140,33 @@ describe('invalidateMembershipCache', () => {
     it('is a no-op without KV or userId', async () => {
         await expect(invalidateMembershipCache(undefined, 'user-1')).resolves.toBeUndefined();
         await expect(invalidateMembershipCache(makeKv() as any, undefined)).resolves.toBeUndefined();
+    });
+});
+
+describe('bumpProfileVersion', () => {
+    it('writes the profile-version key with a fresh timestamp and the session-max-age TTL', async () => {
+        const kv = makeKv();
+        const env = { OBCF_KV: kv, AUTH_SESSION_MAX_AGE: '3600' } as any;
+
+        await bumpProfileVersion(env, 'user-1');
+
+        const key = 'auth:usr:user-1:profile:version';
+        expect(kv.store.has(key)).toBe(true);
+        expect(Number(kv.store.get(key))).toBeGreaterThan(0);
+        // TTL mirrors AUTH_SESSION_MAX_AGE so the version key always outlives the sessions it gates.
+        expect(kv.put).toHaveBeenCalledWith(key, expect.any(String), { expirationTtl: 3600 });
+    });
+
+    it('defaults the TTL to 30 days when AUTH_SESSION_MAX_AGE is unset', async () => {
+        const kv = makeKv();
+        await bumpProfileVersion({ OBCF_KV: kv } as any, 'user-1');
+        expect(kv.put).toHaveBeenCalledWith('auth:usr:user-1:profile:version', expect.any(String), {
+            expirationTtl: 30 * 24 * 60 * 60,
+        });
+    });
+
+    it('is a no-op without KV or userId', async () => {
+        await expect(bumpProfileVersion({ OBCF_KV: undefined } as any, 'user-1')).resolves.toBeUndefined();
+        await expect(bumpProfileVersion({ OBCF_KV: makeKv() } as any, undefined)).resolves.toBeUndefined();
     });
 });

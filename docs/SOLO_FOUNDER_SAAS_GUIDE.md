@@ -693,7 +693,7 @@ DATABASE_URL=file:./prod.db
 # Cloudflare KV (for RBAC cache)
 KV_NAMESPACE_ID=your-kv-namespace
 
-# Auth (Auth.js)
+# Auth
 AUTH_SECRET=your-secret-key
 AUTH_URL=https://yourapp.com
 
@@ -762,7 +762,7 @@ export async function middleware(request: Request) {
 
 - [ ] Run migrations on production database
 - [ ] Setup Cloudflare KV for RBAC caching
-- [ ] Configure Auth.js with production secrets
+- [ ] Configure auth with production secrets
 - [ ] Setup subdomain routing (\*.yourapp.com)
 - [ ] Configure CORS for API
 - [ ] Enable audit log archival (optional)

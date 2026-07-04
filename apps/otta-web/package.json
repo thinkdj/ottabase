@@ -9,7 +9,7 @@
         "dev:full": "pnpm build && pnpm dev:worker",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev",
-        "deploy": "pnpm build && wrangler deploy",
+        "deploy": "pnpm build && wrangler deploy --env production",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage",
@@ -20,7 +20,6 @@
         "localflare": "localflare"
     },
     "dependencies": {
-        "@auth/core": "catalog:",
         "@hookform/resolvers": "catalog:",
         "@mantine/carousel": "catalog:",
         "@mantine/core": "catalog:",

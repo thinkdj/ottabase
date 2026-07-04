@@ -3,7 +3,6 @@ packages:
     - packages/*
 
 catalog:
-    "@auth/core": ^0.34.0
     "@babel/core": ^7.28.6
     "@babel/preset-env": ^7.28.6
     "@babel/preset-react": ^7.28.5

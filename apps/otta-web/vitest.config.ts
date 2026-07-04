@@ -10,7 +10,7 @@ export default defineConfig({
         globals: true,
         setupFiles: ['./vitest.setup.ts'],
         coverage: {
-            provider: 'c8',
+            provider: 'v8',
             reporter: ['text', 'json', 'html', 'lcov'],
             exclude: [
                 'node_modules/',

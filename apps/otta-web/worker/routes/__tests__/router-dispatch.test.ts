@@ -84,7 +84,7 @@ vi.mock('../audit', () => ({
 
 vi.mock('../auth', () => ({
     handleAuthConfig: handlerMock('handleAuthConfig'),
-    handleAuthJsRequest: handlerMock('handleAuthJsRequest'),
+    handleAuthApiRequest: handlerMock('handleAuthApiRequest'),
     handleAuthRegister: handlerMock('handleAuthRegister'),
     handlePasswordChange: handlerMock('handlePasswordChange'),
     handlePasswordResetConfirm: handlerMock('handlePasswordResetConfirm'),
@@ -257,7 +257,7 @@ import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from '..
 import { handleAuditLogs } from '../audit';
 import {
     handleAuthConfig,
-    handleAuthJsRequest,
+    handleAuthApiRequest,
     handleAuthRegister,
     handlePasswordChange,
     handlePasswordResetConfirm,
@@ -383,7 +383,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleAdminUsers,
     handleAuditLogs,
     handleAuthConfig,
-    handleAuthJsRequest,
+    handleAuthApiRequest,
     handleAuthRegister,
     handlePasswordChange,
     handlePasswordResetConfirm,
@@ -606,30 +606,30 @@ describe('router dispatch parity', () => {
     });
 
     describe('auth', () => {
-        it('GET /api/auth/config dispatches to handleAuthConfig, not the Auth.js catch-all', async () => {
+        it('GET /api/auth/config dispatches to handleAuthConfig, not the auth catch-all', async () => {
             const { response } = await dispatch('GET', '/api/auth/config');
             expect(handleAuthConfig).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }));
-            expect(handleAuthJsRequest).not.toHaveBeenCalled();
+            expect(handleAuthApiRequest).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleAuthConfig');
         });
 
-        it('POST /api/auth/config falls through to the Auth.js catch-all', async () => {
+        it('POST /api/auth/config falls through to the auth catch-all', async () => {
             const { response } = await dispatch('POST', '/api/auth/config');
-            expect(handleAuthJsRequest).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(handleAuthApiRequest).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
             expect(handleAuthConfig).not.toHaveBeenCalled();
-            expect(await response!.text()).toBe('handleAuthJsRequest');
+            expect(await response!.text()).toBe('handleAuthApiRequest');
         });
 
-        it('GET /api/auth/callback/google dispatches to the Auth.js catch-all', async () => {
+        it('GET /api/auth/callback/google dispatches to the auth catch-all', async () => {
             const { response } = await dispatch('GET', '/api/auth/callback/google');
-            expect(handleAuthJsRequest).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }));
-            expect(await response!.text()).toBe('handleAuthJsRequest');
+            expect(handleAuthApiRequest).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }));
+            expect(await response!.text()).toBe('handleAuthApiRequest');
         });
 
         it('GET /api/auth (bare, no trailing segment) matches nothing', async () => {
             const { response } = await dispatch('GET', '/api/auth');
             expect(response).toBeNull();
-            expect(handleAuthJsRequest).not.toHaveBeenCalled();
+            expect(handleAuthApiRequest).not.toHaveBeenCalled();
             expect(handleAuthConfig).not.toHaveBeenCalled();
         });
     });

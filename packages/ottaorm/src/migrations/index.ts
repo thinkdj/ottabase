@@ -249,7 +249,6 @@ export const coreMigrations: Migration[] = [
           token_type TEXT,
           scope TEXT,
           id_token TEXT,
-          session_state TEXT,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           UNIQUE(provider, provider_account_id)

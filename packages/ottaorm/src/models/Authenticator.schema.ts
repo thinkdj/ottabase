@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/ottaorm - Authenticator table schema for Auth.js WebAuthn
+// @ottabase/ottaorm - Authenticator table schema for WebAuthn
 // ============================================================
 
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * Authenticator table schema for Auth.js WebAuthn/passkey support
+ * Authenticator table schema for WebAuthn/passkey support
  */
 export const authenticatorsTable = sqliteTable('authenticators', {
     id: text('id')
