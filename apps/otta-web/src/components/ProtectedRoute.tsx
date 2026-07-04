@@ -36,10 +36,31 @@ export function ProtectedRoute({
     fallback,
 }: ProtectedRouteProps) {
     const navigate = useNavigate();
-    const { isAuthenticated, isLoading, user } = useSession({ skipAutoSync: true });
+    const { isAuthenticated, isLoading, user, refreshSession } = useSession({ skipAutoSync: true });
     const hasRedirected = useRef(false);
     // Check storage on mount to prevent hydration flash
     const [initialCheck] = useState(hasValidStoredSession);
+
+    // Authorization must be decided against FRESH session data, not the persisted localStorage
+    // snapshot: roles/permissions can be stale in the atom (issued before an owner role was granted,
+    // carried over from a prior login, or updated in another tab) while /api/auth/session is correct.
+    // Without this an owner with `*:*` on the server can be wrongly denied. Pull the current session
+    // once for role/permission-gated routes and hold the decision until it resolves.
+    const gatesAuthz = (requiredPermissions?.length ?? 0) > 0 || (requiredRoles?.length ?? 0) > 0;
+    const [authzResolved, setAuthzResolved] = useState(!gatesAuthz);
+    const authzStarted = useRef(false);
+
+    useEffect(() => {
+        if (!gatesAuthz || authzStarted.current) return;
+        authzStarted.current = true;
+        let active = true;
+        Promise.resolve(refreshSession()).finally(() => {
+            if (active) setAuthzResolved(true);
+        });
+        return () => {
+            active = false;
+        };
+    }, [gatesAuthz, refreshSession]);
 
     useEffect(() => {
         if (hasRedirected.current || isLoading) return;
@@ -78,7 +99,22 @@ export function ProtectedRoute({
         requiredPermissions.length === 0 ||
         requiredPermissions.every((perm) => user?.permissions?.includes('*:*') || user?.permissions?.includes(perm));
 
-    if (!hasRequiredRoles || !hasRequiredPermissions) {
+    const authorized = hasRequiredRoles && hasRequiredPermissions;
+
+    // Don't flash "denied" while the fresh authz fetch is still in flight — the stored session
+    // may simply be stale. Wait for the refresh, then decide.
+    if (gatesAuthz && !authzResolved && !authorized) {
+        return (
+            <div className="flex min-h-[50vh] items-center justify-center">
+                <div className="text-center space-y-4">
+                    <Spinner className="h-8 w-8 mx-auto" />
+                    <p className="text-sm text-muted-foreground">Checking permissions...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!authorized) {
         if (fallback) return <>{fallback}</>;
         return (
             <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
