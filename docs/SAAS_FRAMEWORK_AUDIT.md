@@ -277,52 +277,60 @@ Severity: **must-have** (a real SaaS is broken/unsellable without it) · **shoul
 2. **Passkey table without a passkey feature** (`authenticators` exists, no WebAuthn flow) — §3.1.
 3. **Advertised eager-loading DSL is inert** (`connect`/`with` unused) — §2.2-3. Either implement or remove from the
    docs/model surface to avoid a false capability.
-4. **Cron/scheduled jobs are not wired.** The worker exports `fetch` and `queue` but **no `scheduled()` handler**
-   (`cloudflare-worker.ts:40-137`), and there are no cron triggers in the Wrangler config. So `@ottabase/cron`'s DB
-   scheduler (and anything meant to run on a timer — cleanup, drip emails, scheduled publish, backups) can be defined
-   but never fires on a schedule. Wiring `scheduled()` unblocks a whole tier of features.
-5. **Invite-by-email is dead plumbing.** `handleAdminOrganizationInviteMember` hard-requires an existing `userId` and
-   404s if the user doesn't exist (`admin-organization-members.ts:101-127`), even though the schema has `invitedEmail`
-   and `OrganizationMember.activatePendingInvites(userId, email)` exists. A founder literally cannot invite a teammate
-   or customer who doesn't already have an account — the single most important team feature is non-functional.
-6. **Org creation can half-commit.** Creating an organization inserts the org and then, in a separate statement, the
-   owner `OrganizationMember` (`ottaorm-crud.ts:215-239`). `BaseModel.batch` is raw-SQL-string only, so there is no real
-   transaction — if the membership insert fails, the org exists with no owner. Needs an atomic multi-model write.
-7. **`AUTH_SECRET` has an insecure fallback on the bootstrap path.** `bootstrap/routes.ts:545` uses
-   `env.AUTH_SECRET || 'dev-secret-change-in-production'`, so a deploy missing the secret can sign with a public
-   constant instead of failing. (The main auth handler does throw in production — the inconsistency is the risk.)
-8. **CORS reflects an arbitrary `Origin` with credentials.** `buildCorsHeaders` echoes the request `Origin` (default
-   `*`) and sets `Access-Control-Allow-Credentials: true` (`router.ts:145-154`) — any origin can make credentialed
-   cross-site requests. Replace with an allowlist.
+4. ✅ **FIXED — Cron/scheduled jobs now run.** The worker exported only `fetch` + `queue`. Added a `scheduled()` handler
+   (`cloudflare-worker.ts`), an app scheduler with built-in cleanup handlers (`ottabase/cron/index.ts`), and a
+   per-minute Wrangler cron trigger, so `@ottabase/cron`'s DB scheduler processes due `scheduled_tasks` rows. Timer jobs
+   (cleanup, scheduled publish, digests) now fire; add handlers in `ottabase/cron` and schedule them via
+   `/api/admin/cron`.
+5. ✅ **FIXED — Invite-by-email works.** `handleAdminOrganizationInviteMember` now accepts an `email` (not just an
+   existing `userId`): matches an existing user if there is one, else creates a pending `invited` row keyed by email
+   that `activatePendingInvites` flips to active when the invitee signs up. (Delivering an invite email is the remaining
+   nice-to-have; membership activates automatically on sign-up today.)
+6. ✅ **FIXED — Org creation is atomic.** Creating an org now rolls back (deletes) the just-created org if the owner
+   `OrganizationMember` insert fails (`ottaorm-crud.ts`), so the pair is all-or-nothing. (A true typed multi-model
+   transaction API — §2.3 — remains a broader improvement; D1 has no interactive transactions.)
+7. ✅ **FIXED — `AUTH_SECRET` no longer falls back to a public constant in production.** The bootstrap auto-login now
+   only uses the dev fallback in development; in production without `AUTH_SECRET` it skips the JWT (no forgeable owner
+   token) and falls through to the DB-session path (`bootstrap/routes.ts`).
+8. ✅ **FIXED — CORS is allowlisted.** `buildCorsHeaders` now echoes the origin with credentials only for same-origin
+   requests or origins in the new `CORS_ALLOWED_ORIGINS` env var; arbitrary origins get no `Access-Control-Allow-Origin`
+   (`router.ts`).
 9. **`BaseModel.delete` returns `true` unconditionally** without `RETURNING`/`changes` (`base/BaseModel.ts:685`), so it
    cannot report not-found. Masked today by the pre-verify read; any atomic-write rewrite (§2.2-1) must switch to
-   `RETURNING` to detect 0 rows affected.
+   `RETURNING` to detect 0 rows affected. _(Still open.)_
 10. **Plaintext OAuth tokens.** Access/refresh tokens are stored unencrypted in `accounts`; add field-level encryption.
+    _(Still open.)_
+11. ✅ **FIXED — db-generate/db-migrate CLIs are built and wired.** Their bin wrappers referenced `dist/cli/*.js` files
+    the build never emitted, and none were in the `bin` map. Added the four db CLI entrypoints to the tsup build, the
+    `bin` map, and package scripts (`@ottabase/scripts`). _(These are the Prisma-path schema generator + SQL migration
+    CLIs; the model→CRUD→admin scaffolder in §3.6 is still a separate, larger build.)_
 
 ---
 
 ## 5. Prioritized roadmap
 
+A batch of the audit's correctness/security bugs has now been fixed on this branch: CORS allowlist (§4-8), `AUTH_SECRET`
+prod fail-closed (§4-7), atomic org creation (§4-6), invite-by-email (§4-5), the `scheduled()`/cron wiring (§4-4), and
+the db-generate/db-migrate CLI wiring (§4-11). What remains:
+
 **First 5 a solo founder will hit (do these next):**
 
 1. Index backfill ✅ (shipped) — re-run `/api/ottaorm/init` in prod to apply.
-2. **Code/CRUD/admin generators** — the speed promise. Note a partial `db-generate` exists in `@ottabase/scripts` but is
-   **not built or wired into the CLI**, and `getAllModelsMetadata()` exists with **no generic admin (CrudHub)** that
-   renders from it. Finish the loop: `otta g model|crud|admin` + a registry-driven admin — §3.6.
-3. **Wire the async runtime** — add the `scheduled()` handler (and Wrangler cron triggers) so `@ottabase/cron`, backups,
-   drip emails and cleanup actually run; the queue is wired but the timer half is not — §4-4.
-4. MFA/passkey + account deletion & data export + the security-headers/CORS-allowlist/rate-limit bundle — trust,
-   compliance, and every security review — §3.1/§3.4/§4-7/§4-8.
-5. Fix the two broken team primitives: **invite-by-email** (§4-5) and **per-org roles** (§3.2/§4-1).
+2. **Model→CRUD→admin scaffolder** — the speed promise. The Prisma-path `db-generate` and migration CLIs are now wired
+   (§4-11), but the model-driven generator + registry-driven admin (`getAllModelsMetadata()` has **no generic CrudHub**
+   rendering from it) are still missing. Build `otta g model|crud|admin` + a registry-driven admin — §3.6.
+3. MFA/passkey + account deletion & data export — trust and compliance to sell — §3.1/§3.4.
+4. **Per-org custom roles** — fix the schema/RLS mismatch so roles are actually tenant-scoped — §3.2/§4-1.
+5. Public API + scoped API keys + outbound webhooks — turn the product into a platform — §3.3.
 
 **Top 10 highest-leverage overall:**
 
 1. Model→CRUD→admin generators + registry-driven admin (§3.6)
 2. Public API + scoped API keys + outbound webhooks + typed SDK (§3.3)
-3. Wire `scheduled()`/async runtime so cron/queue/notifications actually fire (§4-4)
+3. ~~Wire `scheduled()`/async runtime~~ ✅ done (§4-4) — cron now fires; add a jobs dashboard next
 4. MFA/passkeys, account deletion, GDPR export, field-level token encryption (§3.1/§3.4/§4-10)
-5. Security hardening bundle: CSP/HSTS headers, CORS allowlist, rate-limit all public routes (§4-7/§4-8)
-6. Per-org RBAC + working team invite lifecycle (§3.2/§4-1/§4-5)
+5. Security hardening bundle: ✅ CORS allowlist done (§4-8); still add CSP/HSTS headers + rate-limit all public routes
+6. Per-org RBAC + email invite lifecycle (✅ invite-by-email done §4-5; per-org roles still open §3.2/§4-1)
 7. ORM correctness+scale bundle: real transactions, JOIN eager-loading, cursor pagination, bulk ops (§2.2/§4-6)
 8. Migration versioning + backups/restore + migrations-in-deploy (§3.5)
 9. Observability wiring: Sentry + real health probes + alerting; feature flags (§3.7)
