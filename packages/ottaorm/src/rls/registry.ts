@@ -9,6 +9,13 @@ import type { ModelRLSConfig } from './types';
 import { RLSPolicies } from './types';
 
 /**
+ * Sentinel active-org value that denotes the system/global scope. Mirrors
+ * `SYSTEM_ORGANIZATION_ID` in `@ottabase/rbac` — duplicated here because the ORM layer must not
+ * depend on the higher-level rbac package. A role in this scope is stored with `organizationId = NULL`.
+ */
+const RLS_SYSTEM_ORG = 'system';
+
+/**
  * Define RLS policies for all models
  */
 export const MODEL_POLICIES: ModelRLSConfig[] = [
@@ -91,15 +98,28 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // Roles carry an `organizationId` (NULL = system/global role, shared by all tenants; non-null =
+    // a tenant's own custom role). Generic CRUD is read-only and org-scoped — role writes go through
+    // the dedicated /api/rbac/roles (admin) routes, which merge global + org roles and enforce
+    // per-scope ownership. The active org 'system' sentinel maps to the global (NULL) scope.
     {
         model: 'roles',
-        policy: RLSPolicies.TenantScoped(true), // System roles have null orgId
+        policy: {
+            level: 'custom',
+            readOnly: true,
+            filter: (ctx) => {
+                if (!ctx.userId) return null;
+                const org = ctx.organizationId && ctx.organizationId !== RLS_SYSTEM_ORG ? ctx.organizationId : null;
+                return { organizationId: org };
+            },
+        },
         auditEnabled: true,
     },
 
+    // Permissions are a global, read-only capability catalog (no per-tenant column).
     {
         model: 'permissions',
-        policy: RLSPolicies.TenantScoped(true), // System permissions have null orgId
+        policy: RLSPolicies.PublicReadOnly(),
         auditEnabled: true,
     },
 

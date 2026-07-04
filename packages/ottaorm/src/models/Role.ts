@@ -57,6 +57,18 @@ export class Role extends BaseModel {
                 label: 'ID',
             },
         },
+        organizationId: {
+            type: 'string',
+            // Server-controlled: set from the acting admin's scope, never client-supplied.
+            editable: false,
+            uiConfig: {
+                label: 'Organization',
+                description: 'Owning organization (empty = system/global role shared by all tenants)',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
         name: {
             type: 'string',
             editable: true,
@@ -198,10 +210,11 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Find role by name
+     * Find a role by name within a scope. Defaults to the system/global scope
+     * (`organizationId IS NULL`); pass an organization id to find that tenant's custom role.
      */
-    static async findByName(name: string) {
-        return this.first({ name });
+    static async findByName(name: string, organizationId: string | null = null) {
+        return this.first({ name, organizationId });
     }
 
     /**

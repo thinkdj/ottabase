@@ -4,6 +4,7 @@ import { auditLogsTable } from '../../models/AuditLog.schema';
 import { authenticatorsTable } from '../../models/Authenticator.schema';
 import { mediaTable } from '../../models/Media.schema';
 import { organizationsTable } from '../../models/Organization.schema';
+import { rolesTable } from '../../models/Role.schema';
 import { scheduledTasksTable } from '../../models/ScheduledTask.schema';
 import { sessionsTable } from '../../models/Session.schema';
 import { tagsTable } from '../../models/Tag.schema';
@@ -67,6 +68,7 @@ describe('runtime generator — core-table secondary indexes', () => {
         { name: 'tags', table: tagsTable, expectedIndexes: ['tags_app_idx'] },
         { name: 'users', table: usersTable, expectedIndexes: ['users_referred_by_idx'] },
         { name: 'authenticators', table: authenticatorsTable, expectedIndexes: ['authenticators_user_idx'] },
+        { name: 'roles', table: rolesTable, expectedIndexes: ['roles_org_idx'] },
     ];
 
     for (const { name, table, expectedIndexes } of cases) {
@@ -86,4 +88,24 @@ describe('runtime generator — core-table secondary indexes', () => {
             expect(result.errors).toEqual([]);
         });
     }
+
+    test('roles: per-org custom roles are keyed by a composite UNIQUE (organization_id, name)', async () => {
+        const driver = new RecordingDriver();
+        const result = await autoMigrate({
+            driver: driver as any,
+            tables: { roles: rolesTable },
+            customMigrations: [],
+        } as any);
+        const sql = driver.executed.join('\n');
+
+        // organization_id column exists and the old global name-unique is gone from CREATE TABLE.
+        expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS "roles"[\s\S]*"organization_id"/i);
+        expect(sql).not.toMatch(/"name" text NOT NULL UNIQUE/i);
+        // Uniqueness is now per (organization_id, name) so two orgs can share a role name.
+        expect(sql).toContain(
+            'CREATE UNIQUE INDEX IF NOT EXISTS "roles_org_name_unique" ON "roles" ("organization_id", "name")',
+        );
+        expect(result.indexesEnsured).toContain('roles.roles_org_name_unique');
+        expect(result.errors).toEqual([]);
+    });
 });
