@@ -2,9 +2,6 @@
 // ============================================================
 // @ottabase/scripts - DB Migration Generator CLI (CommonJS wrapper)
 // ============================================================
-
-// Register ts-node for TypeScript support
-require('ts-node/register/transpile-only');
-
-// Run the CLI
-require('../src/cli/db-migrate.ts');
+// Runs the built CLI (dist/cli/db-migrate.js), emitted by `pnpm --filter
+// @ottabase/scripts build`. Keep this in sync with the tsup entry list.
+require('../dist/cli/db-migrate.js');
