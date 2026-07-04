@@ -53,6 +53,13 @@
         },
     },
 
+    // Cron triggers — invoke the worker's `scheduled()` handler, which runs the @ottabase/cron
+    // DB scheduler. It only executes `scheduled_tasks` rows that are due (managed via /api/admin/cron),
+    // so a per-minute tick is cheap. Remove this block if you have no scheduled tasks.
+    "triggers": {
+        "crons": ["* * * * *"],
+    },
+
     // TOP LEVEL BINDINGS (available in all environments unless overridden in env.*)
     // This is required for local development to define the shape of bindings and enable Wrangler features (e.g. `wrangler dev` with real D1/KV/R2/Queue emulation).
     // Preview and prod would use env.production/env.preview overrides to substitute real Cloudflare resource IDs from GitHub Secrets

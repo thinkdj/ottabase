@@ -525,6 +525,9 @@ importers:
       '@ottabase/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@ottabase/cron':
+        specifier: workspace:*
+        version: link:../../packages/cron
       '@ottabase/db':
         specifier: workspace:*
         version: link:../../packages/db

@@ -1,6 +1,7 @@
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from './cloudflare-env';
+import { runScheduled } from './ottabase/cron';
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
@@ -134,4 +135,16 @@ export default {
         }
     },
     queue: queueHandler,
+
+    // Cloudflare cron triggers (wrangler.jsonc `triggers.crons`) invoke this. Without it, the
+    // @ottabase/cron DB scheduler and any timer jobs (cleanup, scheduled publish, digests) would
+    // never fire. We register models/RLS via ensureDbConnection, then process all due tasks.
+    async scheduled(_controller: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext): Promise<void> {
+        try {
+            ensureDbConnection(env);
+            await runScheduled(env, ctx);
+        } catch (err) {
+            console.error('Scheduled handler error:', err);
+        }
+    },
 };
