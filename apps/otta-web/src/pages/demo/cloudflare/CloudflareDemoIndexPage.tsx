@@ -1,5 +1,6 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareDemoIndexPage() {
     const demos = [
@@ -57,16 +58,10 @@ export function CloudflareDemoIndexPage() {
 
     return (
         <div className="space-y-8">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demo Gallery</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Cloudflare Features</h1>
-                <p className="text-muted-foreground">
-                    Explore working examples of Cloudflare bindings with @ottabase/cf.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Cloudflare Services"
+                description="Explore working examples of Cloudflare bindings with @ottabase/cf."
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
                 {demos.map((demo) => (

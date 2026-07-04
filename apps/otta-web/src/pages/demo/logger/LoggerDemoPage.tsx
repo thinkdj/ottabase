@@ -12,8 +12,8 @@ import {
     simpleFormatter,
 } from '@ottabase/logger';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const memoryTransport = new MemoryTransport({ maxSize: 50 });
 
@@ -94,22 +94,21 @@ export function LoggerDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Logger"
+                description={
+                    <>
+                        Extensible logger with multiple transports and formatters. Logs are sent to the{' '}
+                        <strong>browser console</strong> (Console transport) and to the in-page list below (Memory
+                        transport).
+                    </>
+                }
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/logger
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">Logger Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Extensible logger with multiple transports and formatters. Logs are sent to the{' '}
-                    <strong>browser console</strong> (Console transport) and to the in-page list below (Memory
-                    transport).
-                </p>
-            </div>
+                }
+            />
 
             {/* How to use — client-side console visualization */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

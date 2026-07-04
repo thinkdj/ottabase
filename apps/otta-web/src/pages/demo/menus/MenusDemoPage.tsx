@@ -1,8 +1,8 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Switch } from '@ottabase/ui-shadcn';
 import { MenuRenderer, type MenuForRender, type MenuItemDto, type MenuRenderType } from '@ottabase/ottamenu';
 import { IconLayoutNavbar, IconMenu2 } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const DEMO_ITEMS: MenuItemDto[] = [
     { id: 'home', menuId: 'demo-menu', name: 'Home', link: '/' },
@@ -28,18 +28,16 @@ export function MenusDemoPage() {
     const menu = useMemo<MenuForRender>(() => ({ items: DEMO_ITEMS }), []);
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Menus Demo</h1>
-                <p className="text-muted-foreground">
-                    Interactive renderer playground for <code>@ottabase/ottamenu</code>. Uses mock menu data so it works
-                    without login.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Menus"
+                description={
+                    <>
+                        Interactive renderer playground for <code>@ottabase/ottamenu</code>. Uses mock menu data so it
+                        works without login.
+                    </>
+                }
+            />
 
             <Card>
                 <CardHeader>

@@ -173,11 +173,11 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { AlertCircle, ChevronDown, Mail, Menu, Search, Settings, User } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const formSchema = z.object({
     username: z.string().min(2, 'Username must be at least 2 characters'),
@@ -208,23 +208,19 @@ export function ShadcnDemoPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-2">
-                    <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                        <Link to="/demo">← Back to Demo Gallery</Link>
-                    </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Complete Component Showcase"
+                description={
+                    <>
+                        shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized by category.
+                    </>
+                }
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         shadcn/ui
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">Complete Component Showcase</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized by category.
-                </p>
-            </div>
+                }
+            />
 
             {/* Feedback & Status */}
             <section className="space-y-4">

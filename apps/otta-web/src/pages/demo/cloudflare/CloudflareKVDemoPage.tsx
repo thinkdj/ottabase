@@ -1,7 +1,7 @@
 import { api, isApiError } from '@/lib/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareKVDemoPage() {
     const [key, setKey] = useState('');
@@ -79,15 +79,13 @@ export function CloudflareKVDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">KV Storage Demo</h1>
-                <p className="text-muted-foreground">Key-value storage with optional TTL (Time To Live)</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="KV Storage"
+                description="Key-value storage with optional TTL (Time To Live)"
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare"
+            />
 
             {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">

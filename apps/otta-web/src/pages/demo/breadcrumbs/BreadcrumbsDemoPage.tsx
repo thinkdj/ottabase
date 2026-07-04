@@ -2,25 +2,20 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Slash } from 'lucide-react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function BreadcrumbsDemoPage() {
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Smart Breadcrumbs"
+                description="Automatic breadcrumb navigation that intelligently uses route metadata and generates human-readable labels from URLs. Fully integrated with TanStack Router."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         Navigation
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">Smart Breadcrumbs</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Automatic breadcrumb navigation that intelligently uses route metadata and generates human-readable
-                    labels from URLs. Fully integrated with TanStack Router.
-                </p>
-            </div>
+                }
+            />
 
             {/* Current Breadcrumbs */}
             <Card>

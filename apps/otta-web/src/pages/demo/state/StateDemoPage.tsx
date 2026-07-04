@@ -16,9 +16,9 @@ import {
     type AppUser,
 } from '@/ottabase/state/appState';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useAtom, useAtomValue } from 'jotai';
 import { useTheme as useNextTheme } from 'next-themes';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function StateDemoPage() {
     // Full state
@@ -65,22 +65,10 @@ export function StateDemoPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
-                    <Badge variant="secondary" className="uppercase">
-                        @ottabase/state
-                    </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">Global State Management</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Simple global state management for Ottabase apps using Jotai. All state changes are reactive and
-                    persist across components.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Global State Management"
+                description="Simple global state management for Ottabase apps using Jotai. All state changes are reactive and persist across components."
+            />
 
             {/* Current State Display */}
             <Card>

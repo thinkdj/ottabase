@@ -2,8 +2,8 @@ import { useBrand } from '@ottabase/brand-engine-react';
 import { pathPatternToRegex } from '@ottabase/ottalayout';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { IconPalette, IconRefresh, IconRoute } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function BrandEngineDemoPage() {
     const { config, isLoading, error, refresh } = useBrand();
@@ -16,17 +16,16 @@ export function BrandEngineDemoPage() {
     }, [config?.routeMappings, testPath]);
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Brand Engine Demo</h1>
-                <p className="text-muted-foreground">
-                    Runtime brand/layout resolution from <code>@ottabase/brand-engine-react</code>, no login required.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Brand Engine"
+                description={
+                    <>
+                        Runtime brand/layout resolution from <code>@ottabase/brand-engine-react</code>, no login
+                        required.
+                    </>
+                }
+            />
 
             <Card>
                 <CardHeader>

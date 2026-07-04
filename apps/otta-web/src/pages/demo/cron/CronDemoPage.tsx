@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitl
 import { Link } from '@tanstack/react-router';
 import { Calendar, CheckCircle, Clock, XCircle, Zap } from 'lucide-react';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CronDemoPage() {
     const [expression, setExpression] = useState('*/15 * * * *');
@@ -49,21 +50,15 @@ export function CronDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Cron"
+                description="Laravel-style cron job scheduler with two modes: static (code-defined) and DB-driven (dynamic scheduler). This demo showcases the cron expression parser and schedule utilities."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/cron
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">Cron Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Laravel-style cron job scheduler with two modes: static (code-defined) and DB-driven (dynamic
-                    scheduler). This demo showcases the cron expression parser and schedule utilities.
-                </p>
-            </div>
+                }
+            />
 
             {/* Overview card */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

@@ -6,10 +6,10 @@
 
 import type { DataTableBulkAction, DataTablePaginationState, DataTableSortingState } from '@ottabase/ui-datatable';
 import { actionsColumn, createColumns, DataTable, selectColumn, useDataTable } from '@ottabase/ui-datatable';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { CheckCircle2, Edit2, Info, Trash2, X, XCircle } from 'lucide-react';
 import { createContext, useCallback, useContext, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // ── Shared info message context ──────────────────────────────
 
@@ -150,20 +150,10 @@ export function DataTableDemoPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <Button asChild variant="ghost" className="w-fit">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">DataTable Demo</h1>
-                    <p className="mt-2 text-muted-foreground">
-                        Advanced data table built on TanStack Table v8. Supports sorting, pagination, column visibility,
-                        row selection, bulk actions, and server-side integration with OttaORM.
-                    </p>
-                </div>
-            </div>
+            <DemoPageHeader
+                title="DataTable"
+                description="Advanced data table built on TanStack Table v8. Supports sorting, pagination, column visibility, row selection, bulk actions, and server-side integration with OttaORM."
+            />
 
             {/* Demo Tabs */}
             <div className="flex gap-2 border-b border-border pb-2">

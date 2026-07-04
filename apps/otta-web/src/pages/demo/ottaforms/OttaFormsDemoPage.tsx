@@ -9,8 +9,8 @@ import { ModelCrud, createModelConfig, defineModelConfig } from '@ottabase/forms
 import { Post } from '@ottabase/ottablog';
 import { Tag, User } from '@ottabase/ottaorm/models';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // Create model configs from OttaORM models
 // Models now contain all metadata (displayName, defaultSort, etc.) as SSOT
@@ -128,20 +128,10 @@ export function OttaFormsDemoPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <Button asChild variant="ghost" className="w-fit">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">OttaForms Demo</h1>
-                    <p className="mt-2 text-muted-foreground">
-                        Auto-generated CRUD forms from OttaORM model metadata. Select a model below to see the full CRUD
-                        interface with list, detail, create, and edit views.
-                    </p>
-                </div>
-            </div>
+            <DemoPageHeader
+                title="OttaForms"
+                description="Auto-generated CRUD forms from OttaORM model metadata. Select a model below to see the full CRUD interface with list, detail, create, and edit views."
+            />
 
             {/* Model Selection or CRUD View */}
             {selectedModel ? (

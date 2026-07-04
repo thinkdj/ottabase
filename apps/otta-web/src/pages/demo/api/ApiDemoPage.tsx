@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { api, isApiError } from '@/lib/api';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface DemoResponse {
     message: string;
@@ -42,15 +42,8 @@ export function ApiDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">API Client Demo</h1>
-                <p className="text-muted-foreground">@ottabase/api fetch wrapper</p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader title="API Client" description="@ottabase/api fetch wrapper" />
 
             <Card>
                 <CardHeader>

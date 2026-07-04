@@ -2,9 +2,9 @@
  * Scripts Demo Page
  * Demonstrates @ottabase/scripts: CLI tools for Cloudflare setup, schema, migrations, and cache management.
  */
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Cloud, Database, Key, Plug, RotateCcw, Terminal, Trash2 } from 'lucide-react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 /** All CLI commands exported by @ottabase/scripts. */
 const CLI_COMMANDS = [
@@ -71,21 +71,15 @@ export function ScriptsDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Scripts"
+                description="CLI tools for Cloudflare setup, validation, cache management, and database cleanup. These are terminal commands — not runtime code."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/scripts
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">Scripts Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    CLI tools for Cloudflare setup, validation, cache management, and database cleanup. These are
-                    terminal commands — not runtime code.
-                </p>
-            </div>
+                }
+            />
 
             {/* Overview */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

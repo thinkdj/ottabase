@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import {
     convertTimezone,
     formatCompactDateTime,
@@ -25,8 +25,8 @@ import {
     toUTC,
     type Timezone,
 } from '@ottabase/utils/timezone';
-import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function TimezoneDemoPage() {
     const [selectedTimezone, setSelectedTimezone] = useState<Timezone>('UTC');
@@ -55,18 +55,11 @@ export function TimezoneDemoPage() {
     };
 
     return (
-        <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-4">
-                <Button asChild variant="ghost" className="w-fit">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-
-                <h1 className="text-4xl font-bold tracking-tight">Timezone Utilities Demo</h1>
-                <p className="text-lg text-muted-foreground">
-                    Production-ready timezone standardization for SaaS apps: store in UTC, display in the user's
-                    timezone.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Timezone Utilities"
+                description="Production-ready timezone standardization for SaaS apps: store in UTC, display in the user's timezone."
+            />
 
             <Card>
                 <CardHeader>

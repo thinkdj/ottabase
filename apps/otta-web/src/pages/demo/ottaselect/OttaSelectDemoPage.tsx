@@ -3,9 +3,9 @@
  * Demonstrates @ottabase/ottaselect component
  */
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem, type OttaSelectSize } from '@ottabase/ottaselect';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // Sample data with various formats
 const fruitsAndVegetables = [
@@ -202,38 +202,28 @@ export function OttaSelectDemoPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
-                    <Badge variant="secondary" className="uppercase">
-                        @ottabase/ottaselect
-                    </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">OttaSelect Component</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    A flexible select component with custom rendering, pagination support, and standardized output
-                    format.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-sm text-muted-foreground">Demo size:</span>
-                    {selectSizes.map((size) => (
-                        <Button
-                            key={size}
-                            type="button"
-                            size="sm"
-                            variant={demoSize === size ? 'default' : 'outline'}
-                            className="min-w-10 uppercase"
-                            onClick={() => setDemoSize(size)}
-                        >
-                            {size}
-                        </Button>
-                    ))}
-                    <span className="text-xs text-muted-foreground">Applies to all OttaSelect examples below.</span>
-                </div>
-            </div>
+            <DemoPageHeader
+                title="OttaSelect Component"
+                description="A flexible select component with custom rendering, pagination support, and standardized output format."
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Demo size:</span>
+                        {selectSizes.map((size) => (
+                            <Button
+                                key={size}
+                                type="button"
+                                size="sm"
+                                variant={demoSize === size ? 'default' : 'outline'}
+                                className="min-w-10 uppercase"
+                                onClick={() => setDemoSize(size)}
+                            >
+                                {size}
+                            </Button>
+                        ))}
+                        <span className="text-xs text-muted-foreground">Applies to all OttaSelect examples below.</span>
+                    </div>
+                }
+            />
 
             {/* Basic Usage */}
             <Card>

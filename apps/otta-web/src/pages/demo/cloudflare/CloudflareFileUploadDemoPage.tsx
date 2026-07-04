@@ -1,8 +1,8 @@
 import { FileUploader } from '@ottabase/ottaupload/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareFileUploadDemoPage() {
     const [uploadMode, setUploadMode] = useState<'dropzone' | 'button'>('dropzone');
@@ -23,20 +23,12 @@ export function CloudflareFileUploadDemoPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div>
-                <Link
-                    to="/demo/cloudflare"
-                    className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
-                >
-                    ← Back to Cloudflare Demos
-                </Link>
-                <h1 className="text-4xl font-bold mb-2">File Upload Package</h1>
-                <p className="text-muted-foreground">
-                    Demonstration of the @ottabase/ottaupload package with drag-and-drop, progress tracking, and
-                    Cloudflare R2 integration.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="File Upload Package"
+                description="Demonstration of the @ottabase/ottaupload package with drag-and-drop, progress tracking, and Cloudflare R2 integration."
+                backTo="/demo/cloudflare"
+                backLabel="Back to Cloudflare Demos"
+            />
 
             {/* Features */}
             <Card>

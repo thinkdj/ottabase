@@ -15,8 +15,8 @@ import {
     SelectValue,
 } from '@ottabase/ui-shadcn';
 import { IconActivity, IconChartBar, IconSend } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface CoreAnalyticsResponse {
     data: Array<{ dimension: string; value?: number; clicks?: number }>;
@@ -79,18 +79,16 @@ export function AnalyticsDemoPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/demo">← Back to Demos</Link>
-            </Button>
-
-            <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Analytics Demo</h1>
-                <p className="text-muted-foreground">
-                    Track and query demo for <code>@ottabase/analytics</code> through app endpoints, usable without
-                    login.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Analytics"
+                description={
+                    <>
+                        Track and query demo for <code>@ottabase/analytics</code> through app endpoints, usable without
+                        login.
+                    </>
+                }
+            />
 
             <div className="grid gap-4 lg:grid-cols-2">
                 <Card>

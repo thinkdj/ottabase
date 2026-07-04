@@ -3,10 +3,10 @@
  * Demonstrates @ottabase/config: app configuration, ottabase.config.ts, and environment resolution.
  */
 import { createAppConfig } from '@ottabase/config';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Key, Layers, Package, Settings } from 'lucide-react';
 import { useMemo } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 export function ConfigDemoPage() {
     // Create a sample config to display its resolved values
@@ -39,21 +39,20 @@ export function ConfigDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="Config"
+                description={
+                    <>
+                        Centralized configuration for Ottabase apps: app metadata, auth settings, theme colors, UI
+                        framework, and the package-gating system via <code>ottabase.config.ts</code>.
+                    </>
+                }
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/config
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">Config Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Centralized configuration for Ottabase apps: app metadata, auth settings, theme colors, UI
-                    framework, and the package-gating system via <code>ottabase.config.ts</code>.
-                </p>
-            </div>
+                }
+            />
 
             {/* Overview */}
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">

@@ -20,6 +20,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { useTheme as useNextTheme } from 'next-themes';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const stringifyTokenValue = (value: unknown): string => {
     if (typeof value === 'string') return value;
@@ -104,13 +105,10 @@ export function ThemingDemoPage() {
 
     return (
         <div className="space-y-theme-section animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Theming Configurator</h1>
-                <p className="text-muted-foreground">
-                    Theme can be set per app (or per route!) by the admin in Brand Engine. Use the control stack to tune
-                    the local preview.
-                </p>
-            </div>
+            <DemoPageHeader
+                title="Theming Configurator"
+                description="Theme can be set per app (or per route!) by the admin in Brand Engine. Use the control stack to tune the local preview."
+            />
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr] items-start">
                 <div className="space-y-4">

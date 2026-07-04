@@ -11,10 +11,10 @@ import {
     MessageBox,
 } from '@ottabase/ui-components';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { IconArrowLeft, IconMoon, IconPhoto } from '@tabler/icons-react';
 import { AlertTriangle, Blocks, Info } from 'lucide-react';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 const MESSAGE_TYPES: { type: MessageTypes; message: string }[] = [
     { type: 'info', message: 'This is an informational message.' },
@@ -35,21 +35,15 @@ export function UiComponentsDemoPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <div className="flex flex-wrap items-center gap-3">
+            <DemoPageHeader
+                title="UI Components"
+                description="Shared React components built on shadcn/ui primitives: confirmation dialogs, message boxes, logo, pagination, and utilities."
+                actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-components
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight dark:text-foreground">UI Components Demo</h1>
-                </div>
-                <p className="max-w-3xl text-muted-foreground">
-                    Shared React components built on shadcn/ui primitives: confirmation dialogs, message boxes, logo,
-                    pagination, and utilities.
-                </p>
-            </div>
+                }
+            />
 
             {/* ConfirmDialog */}
             <Card>

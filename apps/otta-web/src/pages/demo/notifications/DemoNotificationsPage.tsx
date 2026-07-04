@@ -11,9 +11,9 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Inbox, Mail, Radio } from 'lucide-react';
 import { useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 interface DemoNotification {
     id: string;
@@ -114,21 +114,11 @@ export function DemoNotificationsPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <Button asChild variant="ghost" className="mb-4">
-                        <Link to="/demo">← Back to Demos</Link>
-                    </Button>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <Bell className="h-8 w-8" />
-                        Notifications Demo
-                    </h1>
-                    <p className="text-muted-foreground mt-2">
-                        Multi-channel notification system with email, WebSocket, and system alerts
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Notifications"
+                description="Multi-channel notification system with email, WebSocket, and system alerts"
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -12,6 +12,7 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 // Sample EditorJS data with rich content
 const sampleEditorJSData = {
@@ -365,13 +366,11 @@ function greet(name) {
 
 export function RendererDemoPage() {
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">OttaRenderer Demo</h1>
-                <p className="text-muted-foreground">
-                    Comprehensive demonstration of EditorJS and HTML content rendering with advanced features.
-                </p>
-            </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <DemoPageHeader
+                title="OttaRenderer"
+                description="Comprehensive demonstration of EditorJS and HTML content rendering with advanced features."
+            />
 
             <Tabs defaultValue="editorjs" className="w-full">
                 <TabsList>

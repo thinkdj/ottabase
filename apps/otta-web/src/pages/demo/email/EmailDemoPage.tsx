@@ -21,9 +21,9 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
-import { Link } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { DemoPageHeader } from '../DemoPageHeader';
 
 registerAppEmailTemplates();
 
@@ -225,16 +225,11 @@ export function EmailDemoPage() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-3">
-                <Button asChild variant="ghost" className="w-fit">
-                    <Link to="/demo">← Back to Demo Gallery</Link>
-                </Button>
-                <h1 className="text-3xl font-semibold">Email Templates</h1>
-                <p className="text-muted-foreground">
-                    Preview how @ottabase/email renders templates with replacement data.
-                </p>
-            </div>
+        <div className="space-y-8">
+            <DemoPageHeader
+                title="Email Templates"
+                description="Preview how @ottabase/email renders templates with replacement data."
+            />
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
                 <Card>
