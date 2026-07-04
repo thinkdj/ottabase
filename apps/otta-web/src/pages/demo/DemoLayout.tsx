@@ -28,15 +28,15 @@ export function DemoLayout() {
     return (
         <div className="flex min-h-[calc(100vh-3.5rem)]">
             {/* Sidebar */}
-            <aside className="w-64 shrink-0 border-r bg-muted/10 hidden md:block">
-                <div className="flex h-full flex-col gap-2 py-6 px-3">
-                    <div className="px-0.5 mb-1.5">
-                        <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-3">
+            <aside className="hidden w-64 shrink-0 border-r bg-muted/10 md:block">
+                <div className="sticky top-0 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 px-3 py-6">
+                    <div className="px-0.5">
+                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Demos
                         </h2>
                         {/* Search (local filter) */}
                         <div className="relative">
-                            <Search className="pointer-events-none absolute h-3.5 w-3.5 left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search…"
                                 value={search}
@@ -47,7 +47,7 @@ export function DemoLayout() {
                                 <button
                                     type="button"
                                     onClick={() => setSearch('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                                     aria-label="Clear filter"
                                 >
                                     <X className="h-3.5 w-3.5" />
@@ -55,7 +55,7 @@ export function DemoLayout() {
                             )}
                         </div>
                     </div>
-                    <div className="space-y-1 overflow-y-auto">
+                    <nav className="-mr-1 space-y-1 overflow-y-auto pr-1">
                         {/* Overview link – always shown */}
                         {!search && (
                             <Button
@@ -97,13 +97,13 @@ export function DemoLayout() {
                         {search && filteredItems.length === 0 && (
                             <p className="px-3 py-2 text-xs text-muted-foreground">No matches</p>
                         )}
-                    </div>
+                    </nav>
                 </div>
             </aside>
 
             {/* Content */}
-            <main ref={contentRef} className="flex-1 overflow-auto bg-background/50">
-                <div className="container mx-auto px-6 py-12 max-w-7xl">
+            <main ref={contentRef} className="min-w-0 flex-1 overflow-auto bg-background/50">
+                <div className="container mx-auto max-w-7xl px-6 py-10">
                     <div className="mb-6">
                         <Breadcrumbs />
                     </div>
