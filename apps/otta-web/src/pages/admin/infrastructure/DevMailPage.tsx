@@ -7,6 +7,8 @@ import {
     AlertTitle,
     Badge,
     Button,
+    NativeSelect,
+    NativeSelectOption,
     ScrollArea,
     Tabs,
     TabsContent,
@@ -181,22 +183,24 @@ export function AdminDevMailPage() {
                         {/* Filter by To address */}
                         {uniqueToAddresses.length > 1 && (
                             <div className="flex items-center gap-1">
-                                <select
+                                <NativeSelect
                                     aria-label="Filter by recipient"
                                     value={toFilter}
                                     onChange={(e) => {
                                         setToFilter(e.target.value);
                                         setSelectedId(null);
                                     }}
-                                    className="flex-1 min-w-0 text-xs rounded-md border bg-background px-2 py-1 text-muted-foreground cursor-pointer hover:border-foreground/40 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                                    size="sm"
+                                    wrapperClassName="flex-1 min-w-0"
+                                    className="text-xs text-muted-foreground"
                                 >
-                                    <option value="">All recipients</option>
+                                    <NativeSelectOption value="">All recipients</NativeSelectOption>
                                     {uniqueToAddresses.map((addr) => (
-                                        <option key={addr} value={addr}>
+                                        <NativeSelectOption key={addr} value={addr}>
                                             {addr}
-                                        </option>
+                                        </NativeSelectOption>
                                     ))}
-                                </select>
+                                </NativeSelect>
                                 {/* Clear button — only shown when a filter is active */}
                                 {toFilter && (
                                     <button

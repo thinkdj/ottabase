@@ -1,12 +1,12 @@
 /* Map Tool - custom/overrides only */
 
 .cdx-map__wrapper {
-    background: hsl(var(--muted) / 0.5);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-map__row {
     display: grid;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .cdx-map__row--3 {
@@ -18,17 +18,17 @@
 }
 
 .cdx-map__preview {
-    margin-top: 8px;
-    border-top: 1px solid hsl(var(--border));
-    padding-top: 8px;
+    margin-top: 0.5rem;
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    padding-top: 0.5rem;
 }
 
 .cdx-map__iframe-wrapper {
     border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid hsl(var(--border) / 0.6);
     position: relative;
-    background: hsl(var(--muted) / 0.3);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-map__iframe-wrapper--dark {
@@ -42,10 +42,10 @@
 }
 
 .cdx-map__caption-preview {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     text-align: center;
-    padding: 8px 0;
+    padding: 0.5rem 0;
     font-style: italic;
 }
 
@@ -54,15 +54,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 24px;
+    gap: 0.5rem;
+    padding: 1.5rem;
     color: hsl(var(--muted-foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
     text-align: center;
 }
 
 .cdx-map__placeholder-icon {
-    font-size: 28px;
+    font-size: 1.75rem;
     line-height: 1;
 }
 

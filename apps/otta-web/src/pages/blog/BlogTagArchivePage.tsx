@@ -9,7 +9,7 @@ import { defaultTheme, formatDate, getActiveTheme, type BlogPostData } from '@ot
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChevronLeft, Tag } from 'lucide-react';
+import { ArrowLeft, Tag } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface BlogPostsResponse {
@@ -52,20 +52,32 @@ export function BlogTagArchivePage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
+                <span className="sr-only">Loading tag...</span>
+                <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
+                <div className="space-y-2">
+                    <div className="h-3 w-24 animate-pulse rounded-full bg-muted/40" />
+                    <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/40" />
+                </div>
+                <div className="space-y-4">
+                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                </div>
             </div>
         );
     }
 
     if (!tag) {
         return (
-            <div className="text-center py-16">
-                <h1 className="text-2xl font-bold mb-4">Tag Not Found</h1>
-                <p className="text-muted-foreground mb-6">The tag you're looking for doesn't exist.</p>
-                <Button asChild>
+            <div className="mx-auto max-w-md rounded-xl bg-muted/40 px-6 py-12 text-center">
+                <h1 className="text-lg font-semibold tracking-tight">Tag Not Found</h1>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    The tag you're looking for doesn't exist.
+                </p>
+                <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
                     <Link to="/blog">
-                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
                 </Button>
@@ -78,31 +90,41 @@ export function BlogTagArchivePage() {
             <SEOHead title={`Posts tagged "${tag.name}"`} description={`All blog posts tagged with ${tag.name}`} />
 
             {/* Back link */}
-            <Button variant="ghost" size="sm" asChild>
+            <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
                 <Link to="/blog">
-                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" />
                     Back to Blog
                 </Link>
             </Button>
 
             {/* Tag header */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                    <Tag className="h-6 w-6 text-muted-foreground" />
-                    <h1 className={theme.config?.classes?.archiveTitle || 'text-3xl font-bold'}>{tag.name}</h1>
-                </div>
-                <p className="text-muted-foreground">
+            <div className="space-y-1.5">
+                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5" />
+                    Tag
+                </p>
+                <h1 className={theme.config?.classes?.archiveTitle || 'text-3xl font-bold tracking-tight'}>
+                    {tag.name}
+                </h1>
+                <p className="pt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {posts.length} {posts.length === 1 ? 'post' : 'posts'} tagged with &quot;{tag.name}&quot;
                 </p>
             </div>
 
             {/* Posts list */}
             {posts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No posts found with this tag.</p>
+                <div className="rounded-xl bg-muted/40 py-12 text-center">
+                    <p className="text-sm text-muted-foreground">No posts found with this tag.</p>
+                </div>
             ) : (
                 <div className="space-y-4">
                     {posts.map((post) => (
-                        <Link key={post.id} to="/blog/$slug" params={{ slug: post.slug }}>
+                        <Link
+                            key={post.id}
+                            to="/blog/$slug"
+                            params={{ slug: post.slug }}
+                            className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
                             {renderCard ? (
                                 renderCard(post, {
                                     post,
@@ -112,10 +134,12 @@ export function BlogTagArchivePage() {
                                     formatDate,
                                 })
                             ) : (
-                                <article className="p-4 border rounded hover:shadow-sm transition-shadow">
-                                    <h2 className="font-semibold">{post.title}</h2>
+                                <article className="rounded-xl bg-muted/40 p-5 transition-colors duration-normal group-hover:bg-muted/70">
+                                    <h2 className="text-[0.9375rem] font-semibold">{post.title}</h2>
                                     {post.excerpt && (
-                                        <p className="text-sm text-muted-foreground mt-1">{post.excerpt}</p>
+                                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                            {post.excerpt}
+                                        </p>
                                     )}
                                 </article>
                             )}

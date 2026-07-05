@@ -118,9 +118,34 @@ describe('OttaSelect Component', () => {
 
             expect(root).toHaveAttribute('data-size', 'md');
             expect(root.className).toContain(
-                '[--otta-select-trigger-min-height:calc(var(--spacing-element,0.5rem)*5.25)]',
+                '[--otta-select-trigger-min-height:calc(1.625rem_+_var(--otta-select-space)*2)]',
             );
             expect(screen.getByRole('button', { name: 'Pick an item' })).toBeTruthy();
+        });
+
+        it('derives spacing from a damped --otta-select-space unit, never raw --spacing-element', () => {
+            const { container } = render(<ottaSelect.OttaSelect items={realItems} placeholder="Pick an item" />);
+            const root = container.firstElementChild as HTMLElement;
+
+            // Half-strength response to the brand spacing token
+            expect(root.className).toContain(
+                '[--otta-select-space:calc(0.5rem_+_(var(--spacing-element,0.5rem)_-_0.5rem)*0.5)]',
+            );
+            // Structural vars consume the damped unit only
+            expect(root.className).not.toContain('calc(var(--spacing-element');
+        });
+
+        it('keeps type scale fixed per size instead of scaling with spacing', () => {
+            const { container, rerender } = render(
+                <ottaSelect.OttaSelect items={realItems} placeholder="Pick an item" />,
+            );
+            let root = container.firstElementChild as HTMLElement;
+            expect(root.className).toContain('[--otta-select-font-size:0.875rem]');
+            expect(root.className).toContain('[--otta-select-icon-size:1rem]');
+
+            rerender(<ottaSelect.OttaSelect items={realItems} placeholder="Pick an item" size="lg" />);
+            root = container.firstElementChild as HTMLElement;
+            expect(root.className).toContain('[--otta-select-font-size:1rem]');
         });
 
         it('supports xs, sm, and lg sizing variants', () => {
@@ -131,7 +156,7 @@ describe('OttaSelect Component', () => {
 
             expect(root).toHaveAttribute('data-size', 'xs');
             expect(root.className).toContain(
-                '[--otta-select-trigger-min-height:calc(var(--spacing-element,0.5rem)*4)]',
+                '[--otta-select-trigger-min-height:calc(1.375rem_+_var(--otta-select-space)*1.25)]',
             );
 
             rerender(<ottaSelect.OttaSelect items={realItems} placeholder="Pick an item" size="sm" />);
@@ -139,7 +164,7 @@ describe('OttaSelect Component', () => {
 
             expect(root).toHaveAttribute('data-size', 'sm');
             expect(root.className).toContain(
-                '[--otta-select-trigger-min-height:calc(var(--spacing-element,0.5rem)*4.5)]',
+                '[--otta-select-trigger-min-height:calc(1.5rem_+_var(--otta-select-space)*1.5)]',
             );
 
             rerender(<ottaSelect.OttaSelect items={realItems} placeholder="Pick an item" size="lg" />);
@@ -147,7 +172,7 @@ describe('OttaSelect Component', () => {
 
             expect(root).toHaveAttribute('data-size', 'lg');
             expect(root.className).toContain(
-                '[--otta-select-trigger-min-height:calc(var(--spacing-element,0.5rem)*6)]',
+                '[--otta-select-trigger-min-height:calc(1.75rem_+_var(--otta-select-space)*2.5)]',
             );
         });
     });

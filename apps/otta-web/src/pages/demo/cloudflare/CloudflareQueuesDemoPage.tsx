@@ -7,6 +7,8 @@ import {
     CardHeader,
     CardTitle,
     Input,
+    NativeSelect,
+    NativeSelectOption,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
@@ -184,19 +186,19 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                         <form onSubmit={handleDispatchJob} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Job Type</label>
-                                <select
+                                <NativeSelect
                                     value={jobType}
                                     onChange={(e) => setJobType(e.target.value)}
                                     disabled={loading}
                                     aria-label="Job type"
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    wrapperClassName="w-full"
                                 >
                                     {JOB_TYPES.map((type) => (
-                                        <option key={type.value} value={type.value}>
+                                        <NativeSelectOption key={type.value} value={type.value}>
                                             {type.label}
-                                        </option>
+                                        </NativeSelectOption>
                                     ))}
-                                </select>
+                                </NativeSelect>
                                 <p className="text-xs text-muted-foreground">
                                     {JOB_TYPES.find((t) => t.value === jobType)?.description}
                                 </p>

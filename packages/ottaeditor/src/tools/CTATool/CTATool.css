@@ -1,73 +1,79 @@
 /* CTA Tool - custom/overrides only */
 
 .cdx-cta__wrapper {
-    background: hsl(var(--muted) / 0.5);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-cta__row {
     display: flex;
-    gap: 8px;
+    gap: 0.5rem;
     align-items: flex-end;
 }
 
+/* Alignment toggle — segment pattern */
 .cdx-cta__align-group {
     display: inline-flex;
-    gap: 4px;
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 4px);
-    padding: 4px;
-    background: hsl(var(--background));
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: none;
+    border-radius: var(--radius);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-cta__align-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     background: transparent;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
     padding: 0;
 }
 
 .cdx-cta__align-btn:hover {
-    background: hsl(var(--muted));
     color: hsl(var(--foreground));
 }
 
 .cdx-cta__align-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdx-cta__checkbox-group {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .cdx-cta__preview {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid hsl(var(--border));
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid hsl(var(--border) / 0.6);
 }
 
 .cdx-cta__preview-button {
     display: inline-block;
-    padding: 8px 16px;
+    padding: 0.5rem 1rem;
     border-radius: calc(var(--radius) - 2px);
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
-    transition: all var(--duration-normal) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease);
     cursor: pointer;
-    border: 2px solid transparent;
+    border: 1px solid transparent;
 }
 
 .cdx-cta__preview-button--primary {
@@ -77,7 +83,8 @@
 }
 
 .cdx-cta__preview-button--primary:hover {
-    opacity: 0.9;
+    background: hsl(var(--primary) / 0.9);
+    border-color: hsl(var(--primary) / 0.9);
 }
 
 .cdx-cta__preview-button--secondary {
@@ -87,27 +94,29 @@
 }
 
 .cdx-cta__preview-button--secondary:hover {
-    opacity: 0.85;
+    background: hsl(var(--secondary) / 0.8);
+    border-color: hsl(var(--secondary) / 0.8);
 }
 
+/* Outline/ghost previews mirror the renderer's CTA recipes (CTA.tsx) */
 .cdx-cta__preview-button--outline {
     background: transparent;
     color: hsl(var(--primary));
-    border-color: hsl(var(--primary));
+    border-color: hsl(var(--border));
 }
 
 .cdx-cta__preview-button--outline:hover {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background: hsl(var(--muted) / 0.4);
+    border-color: hsl(var(--border));
 }
 
 .cdx-cta__preview-button--ghost {
     background: transparent;
     color: hsl(var(--foreground));
-    border-color: hsl(var(--border));
+    border-color: transparent;
 }
 
 .cdx-cta__preview-button--ghost:hover {
-    background: hsl(var(--muted));
-    border-color: hsl(var(--muted));
+    background: hsl(var(--muted) / 0.7);
+    border-color: transparent;
 }

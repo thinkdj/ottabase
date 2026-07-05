@@ -5,7 +5,6 @@
  */
 import { DEFAULT_REACTIONS } from '@ottabase/comments';
 import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui-shadcn';
-import { Alert, AlertDescription } from '@ottabase/ui-shadcn/alert';
 import {
     IconDatabase,
     IconFlag,
@@ -146,14 +145,6 @@ function formatDate(ts: number) {
     return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-const AVATAR_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
-
-function avatarColor(seed: string | null | undefined) {
-    if (!seed) return AVATAR_COLORS[0];
-    const idx = seed.charCodeAt(seed.length - 1) % AVATAR_COLORS.length;
-    return AVATAR_COLORS[idx];
-}
-
 function statusBadge(status: string) {
     if (status === 'active') return null;
     const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -162,7 +153,7 @@ function statusBadge(status: string) {
         deleted: 'destructive',
     };
     return (
-        <Badge variant={variantMap[status] ?? 'outline'} className="ml-2 text-[10px]">
+        <Badge variant={variantMap[status] ?? 'outline'} className="ml-2 text-[0.625rem]">
             {status}
         </Badge>
     );
@@ -183,7 +174,7 @@ function UserAvatar({ user, userId }: { user?: CommentUser | null; userId?: stri
                 src={user.image}
                 alt={displayName}
                 title={title}
-                className="h-7 w-7 shrink-0 rounded-full object-cover"
+                className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border"
             />
         );
     }
@@ -191,7 +182,7 @@ function UserAvatar({ user, userId }: { user?: CommentUser | null; userId?: stri
     return (
         <div
             title={title}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(user?.id ?? userId)}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground ring-1 ring-border"
         >
             {initials}
         </div>
@@ -246,24 +237,29 @@ function CommentNode({
     const displayName = user?.name ?? comment.userId ?? 'Anonymous';
 
     return (
-        <div className={depth > 0 ? 'ml-8 border-l-2 border-border pl-4' : ''}>
-            <div className="py-3">
+        // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
+        <div className={depth > 0 ? 'ml-1 border-l border-border/60 pl-4 pt-4' : ''}>
+            <div className="py-4">
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1">
                     <UserAvatar user={fetchUser ? comment._user : undefined} userId={comment.userId} />
-                    <span className="text-sm font-semibold text-foreground">{displayName}</span>
+                    <span className="text-sm font-medium text-foreground">{displayName}</span>
                     {statusBadge(comment.status)}
-                    <span className="text-xs text-muted-foreground ml-auto">{formatRelative(comment.createdAt)}</span>
+                    <span className="ml-auto text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        {formatRelative(comment.createdAt)}
+                    </span>
                 </div>
 
                 {/* Body */}
-                <p className={`text-sm ml-9 ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground'}`}>
+                <p
+                    className={`text-sm leading-relaxed ml-10 ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground'}`}
+                >
                     {comment.body}
                 </p>
 
                 {/* Actions */}
                 {!isDeleted && (
-                    <div className="ml-9 mt-2 flex flex-wrap items-center gap-1">
+                    <div className="ml-10 mt-2 flex flex-wrap items-center gap-1">
                         {REACTIONS.map((emoji) => {
                             const users = reactions[emoji] ?? [];
                             const active = currentUserId ? users.includes(currentUserId) : false;
@@ -271,10 +267,10 @@ function CommentNode({
                                 <button
                                     key={emoji}
                                     onClick={() => onReact(comment.id, emoji)}
-                                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 transition-colors duration-normal ${
                                         active
-                                            ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/30 dark:text-blue-300'
-                                            : 'border-border bg-background text-muted-foreground hover:border-blue-300 hover:text-foreground'
+                                            ? 'bg-primary text-primary-foreground ring-transparent'
+                                            : 'bg-background text-muted-foreground ring-border hover:text-foreground'
                                     }`}
                                 >
                                     {emoji}
@@ -286,7 +282,7 @@ function CommentNode({
                         {depth < 3 && (
                             <button
                                 onClick={() => onReply(comment.id)}
-                                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                className="ml-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
                             >
                                 <IconMessageReply size={13} />
                                 Reply
@@ -296,7 +292,7 @@ function CommentNode({
                         {comment.status === 'active' && (
                             <button
                                 onClick={() => onModerate(comment.id, 'flag')}
-                                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-yellow-600 transition-colors"
+                                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                 title="Flag comment"
                                 aria-label="Flag comment"
                             >
@@ -306,7 +302,7 @@ function CommentNode({
                         {comment.status === 'flagged' && (
                             <button
                                 onClick={() => onModerate(comment.id, 'hide')}
-                                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gray-600 transition-colors"
+                                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                 title="Hide comment"
                                 aria-label="Hide comment"
                             >
@@ -316,7 +312,7 @@ function CommentNode({
                         )}
                         <button
                             onClick={() => onModerate(comment.id, 'delete')}
-                            className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                            className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-normal hover:text-destructive"
                             title="Soft-delete comment"
                             aria-label="Soft-delete comment"
                         >
@@ -327,12 +323,12 @@ function CommentNode({
 
                 {/* Inline reply form */}
                 {replyingTo === comment.id && (
-                    <div className="ml-9 mt-3 flex flex-col gap-2">
+                    <div className="ml-10 mt-3 flex flex-col gap-2 rounded-xl bg-muted/40 p-3">
                         <Textarea
                             placeholder={`Reply to ${displayName}…`}
                             value={replyText}
                             onChange={(e) => onReplyTextChange(e.target.value)}
-                            className="min-h-[60px] text-sm"
+                            className="min-h-20 bg-background text-sm"
                         />
                         <div className="flex gap-2">
                             <Button size="sm" onClick={onSubmitReply} disabled={!replyText.trim() || isSubmittingReply}>
@@ -369,7 +365,7 @@ function CommentNode({
             {!showAllReplies && hiddenCount > 0 && (
                 <button
                     onClick={() => setShowAllReplies(true)}
-                    className="ml-8 py-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    className="ml-5 py-1 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
                 >
                     Show {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}…
                 </button>
@@ -488,7 +484,7 @@ function CommentThread({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Comment Thread</h2>
+                <h2 className="text-[0.9375rem] font-semibold text-foreground">Comment Thread</h2>
                 {onRefetch && (
                     <Button size="sm" variant="ghost" onClick={onRefetch} disabled={isLoading}>
                         <IconRefresh size={14} className={isLoading ? 'animate-spin' : ''} />
@@ -496,28 +492,26 @@ function CommentThread({
                 )}
             </div>
 
-            {/* Mutation error banner */}
+            {/* Mutation error banner — quiet tinted notice, matches the query-error treatment */}
             {mutationError && (
-                <Alert variant="destructive">
-                    <AlertDescription className="flex items-center justify-between">
-                        <span>{mutationError}</span>
-                        <Button variant="ghost" size="sm" onClick={onDismissError}>
-                            Dismiss
-                        </Button>
-                    </AlertDescription>
-                </Alert>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <span>{mutationError}</span>
+                    <Button variant="ghost" size="sm" onClick={onDismissError}>
+                        Dismiss
+                    </Button>
+                </div>
             )}
 
             {/* Mock target entity card */}
-            <Card className="border-dashed">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardContent className="py-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
                         Target: {DEMO_TARGET_TYPE} / {DEMO_TARGET_ID}
                     </p>
-                    <h3 className="font-semibold text-foreground">
+                    <h3 className="text-[0.9375rem] font-semibold text-foreground">
                         Understanding Polymorphic Relationships in OttaORM
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm leading-relaxed text-muted-foreground mt-1">
                         A deep dive into attaching behaviour to any entity type without changing the core schema…
                     </p>
                 </CardContent>
@@ -525,18 +519,18 @@ function CommentThread({
 
             {/* Query error */}
             {error && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                     {error.message ?? 'Failed to load comments'}
                 </div>
             )}
 
             {/* New comment form */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4">
                 <Textarea
                     placeholder="Write a comment…"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    className="min-h-[80px] text-sm"
+                    className="min-h-24 bg-background text-sm"
                 />
                 <div className="flex justify-end">
                     <Button size="sm" onClick={handleSubmitNew} disabled={!newComment.trim() || isPending}>
@@ -551,7 +545,7 @@ function CommentThread({
                 <div className="flex flex-col gap-3">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="flex gap-3 p-4">
-                            <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+                            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
                             <div className="flex-1 space-y-2">
                                 <Skeleton className="h-4 w-24" />
                                 <Skeleton className="h-4 w-full" />
@@ -560,9 +554,9 @@ function CommentThread({
                     ))}
                 </div>
             ) : (
-                <div className="divide-y divide-border rounded-lg border bg-card">
+                <div className="flex flex-col">
                     {visibleRoots.map((c) => (
-                        <div key={c.id} className="px-4">
+                        <div key={c.id}>
                             <CommentNode
                                 comment={c}
                                 allComments={comments}
@@ -581,7 +575,7 @@ function CommentThread({
                     ))}
 
                     {comments.length === 0 && !isLoading && (
-                        <p className="p-6 text-center text-sm text-muted-foreground">
+                        <p className="rounded-xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
                             No comments yet. Be the first to comment!
                         </p>
                     )}
@@ -589,7 +583,7 @@ function CommentThread({
                     {moreRoots > 0 && (
                         <button
                             onClick={() => setVisibleRootCount((n) => n + ROOT_PAGE_SIZE)}
-                            className="w-full p-3 text-center text-sm text-blue-600 hover:bg-muted/50 dark:text-blue-400 transition-colors"
+                            className="w-full rounded-lg p-3 text-center text-sm font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted/40 hover:text-foreground"
                         >
                             Load more comments… ({moreRoots} remaining)
                         </button>
@@ -599,7 +593,7 @@ function CommentThread({
 
             {/* Stat bar */}
             {!isLoading && comments.length > 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {comments.filter((c) => c.status === 'active').length} active ·{' '}
                     {comments.filter((c) => c.status === 'flagged').length} flagged ·{' '}
                     {comments.filter((c) => c.status === 'deleted').length} deleted · {comments.length} total
@@ -754,12 +748,12 @@ export function CommentsDemoPage() {
             {/* Mode toggle */}
             <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Data source:</span>
-                <div className="inline-flex rounded-lg border bg-muted p-0.5">
+                <div className="inline-flex rounded-lg bg-muted/40 p-0.5">
                     <button
                         onClick={() => setMode('memory')}
-                        className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                        className={`rounded-md px-3 py-1 text-sm font-medium transition-colors duration-normal ${
                             mode === 'memory'
-                                ? 'bg-background text-foreground shadow-sm'
+                                ? 'bg-background text-foreground ring-1 ring-border'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
@@ -767,9 +761,9 @@ export function CommentsDemoPage() {
                     </button>
                     <button
                         onClick={() => setMode('database')}
-                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors duration-normal ${
                             mode === 'database'
-                                ? 'bg-background text-foreground shadow-sm'
+                                ? 'bg-background text-foreground ring-1 ring-border'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
@@ -789,10 +783,10 @@ export function CommentsDemoPage() {
 
             {/* Model API */}
             <section className="flex flex-col gap-4">
-                <h2 className="text-base font-semibold text-foreground">Model API</h2>
-                <Card>
+                <h2 className="text-[0.9375rem] font-semibold text-foreground">Model API</h2>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardContent className="p-0">
-                        <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-xs leading-relaxed text-foreground">
+                        <pre className="overflow-x-auto rounded-xl p-4 text-xs leading-relaxed text-foreground">
                             {`// Create a comment
 const comment = await Comment.create({
     body: 'Great article!',
@@ -824,7 +818,7 @@ await comment.softDelete();`}
 
             {/* Features grid */}
             <section className="flex flex-col gap-4">
-                <h2 className="text-base font-semibold text-foreground">Features</h2>
+                <h2 className="text-[0.9375rem] font-semibold text-foreground">Features</h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {[
                         {
@@ -858,7 +852,10 @@ await comment.softDelete();`}
                             desc: 'Tenant and user rules enforced at the OttaORM level automatically.',
                         },
                     ].map((f) => (
-                        <Card key={f.title} className="flex flex-col gap-2 p-4">
+                        <Card
+                            key={f.title}
+                            className="flex flex-col gap-2 rounded-xl border-transparent bg-muted/40 p-4 shadow-none"
+                        >
                             <div className="text-2xl">{f.icon}</div>
                             <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
                             <p className="text-xs text-muted-foreground">{f.desc}</p>

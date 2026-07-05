@@ -107,7 +107,7 @@ const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
                 onMouseMove={handleMouseMove}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-warning/10 transition-colors relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background`}
+                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-muted/40 hover:bg-muted/70 transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
                 role="button"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
@@ -131,7 +131,7 @@ const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
             </noscript>
             {showTooltip && !isRevealed && (
                 <div
-                    className="fixed z-50 px-2 py-1 text-xs text-popover-foreground bg-popover rounded shadow-lg pointer-events-none whitespace-nowrap"
+                    className="fixed z-50 px-2 py-1 text-xs text-popover-foreground bg-popover border border-border/60 rounded-md shadow-md pointer-events-none whitespace-nowrap"
                     style={tooltipStyle}
                     role="tooltip"
                     aria-hidden="true"

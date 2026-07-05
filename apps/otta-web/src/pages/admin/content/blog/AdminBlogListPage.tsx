@@ -31,6 +31,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
     Input,
+    NativeSelect,
+    NativeSelectOption,
     Table,
     TableBody,
     TableCell,
@@ -350,21 +352,20 @@ export function AdminBlogListPage() {
                         {/* Status Filter */}
                         <div className="flex items-center gap-2">
                             <Filter className="h-4 w-4 text-muted-foreground" />
-                            <select
+                            <NativeSelect
                                 value={statusFilter}
                                 onChange={(e) =>
                                     handleFilterChange(() => setStatusFilter(e.target.value as PostStatus | 'all'))
                                 }
-                                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 aria-label="Filter by status"
                             >
-                                <option value="all">All Status</option>
+                                <NativeSelectOption value="all">All Status</NativeSelectOption>
                                 {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                                    <option key={value} value={value}>
+                                    <NativeSelectOption key={value} value={value}>
                                         {label}
-                                    </option>
+                                    </NativeSelectOption>
                                 ))}
-                            </select>
+                            </NativeSelect>
                         </div>
                     </div>
                 </CardContent>

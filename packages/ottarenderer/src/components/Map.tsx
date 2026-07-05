@@ -149,9 +149,11 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
                 itemScope
                 itemType="https://schema.org/Map"
             >
-                <div className="relative rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground shadow-sm">
-                    <p className="font-medium text-foreground mb-1">Map preview unavailable</p>
-                    <p className="mb-3">The link could not be embedded safely. You can still open it in a new tab.</p>
+                <div className="relative rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                    <p className="mb-1 text-[0.9375rem] font-semibold text-foreground">Map preview unavailable</p>
+                    <p className="mb-3 leading-relaxed">
+                        The link could not be embedded safely. You can still open it in a new tab.
+                    </p>
                     <a
                         href={sanitizeUrl(url)}
                         target="_blank"
@@ -164,7 +166,10 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
                 </div>
 
                 {caption && (
-                    <figcaption className="mt-2 text-center text-sm text-muted-foreground italic" itemProp="name">
+                    <figcaption
+                        className="mt-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
+                        itemProp="name"
+                    >
                         {caption}
                     </figcaption>
                 )}
@@ -175,7 +180,7 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
     return (
         <figure className={`${className} my-6 cdc-content-map not-prose`} itemScope itemType="https://schema.org/Map">
             <div
-                className="relative rounded-lg overflow-hidden border border-border shadow-sm"
+                className="relative rounded-xl overflow-hidden border border-border/60"
                 style={shouldInvert ? { filter: 'invert(90%) hue-rotate(180deg)' } : undefined}
             >
                 <iframe
@@ -193,7 +198,10 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
             </div>
 
             {caption && (
-                <figcaption className="mt-2 text-center text-sm text-muted-foreground italic" itemProp="name">
+                <figcaption
+                    className="mt-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
+                    itemProp="name"
+                >
                     {caption}
                 </figcaption>
             )}

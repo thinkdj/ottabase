@@ -1,4 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    NativeSelect,
+    NativeSelectOption,
+} from '@ottabase/ui-shadcn';
 import {
     convertTimezone,
     formatCompactDateTime,
@@ -101,7 +109,7 @@ export function TimezoneDemoPage() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Change Timezone (common list)</label>
-                        <select
+                        <NativeSelect
                             value={selectedTimezone}
                             onChange={(e) => {
                                 const tz = e.target.value as Timezone;
@@ -110,14 +118,14 @@ export function TimezoneDemoPage() {
                             }}
                             aria-label="Select timezone"
                             title="Select timezone"
-                            className="w-full rounded-md border border-input bg-background px-3 py-2"
+                            wrapperClassName="w-full"
                         >
                             {timezones.map((tz) => (
-                                <option key={tz.name} value={tz.name}>
+                                <NativeSelectOption key={tz.name} value={tz.name}>
                                     {tz.label}
-                                </option>
+                                </NativeSelectOption>
                             ))}
-                        </select>
+                        </NativeSelect>
                     </div>
                 </CardContent>
             </Card>

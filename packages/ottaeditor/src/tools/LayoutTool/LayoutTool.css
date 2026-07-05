@@ -3,55 +3,58 @@
 .cdx-layout__toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: hsl(var(--muted) / 0.5);
-    border-bottom: 1px solid hsl(var(--border));
-    border-radius: var(--radius) var(--radius) 0 0;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: hsl(var(--muted) / 0.4);
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
     flex-wrap: wrap;
 }
 
 .cdx-layout__toolbar-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 0.6875rem;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-right: 8px;
+    letter-spacing: 0.025em;
+    margin-right: 0.5rem;
 }
 
+/* Preset buttons — segment pattern on the toolbar tint */
 .cdx-layout__preset-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 4px);
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-size: 11px;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
     white-space: nowrap;
 }
 
 .cdx-layout__preset-btn:hover {
-    border-color: hsl(var(--primary) / 0.5);
-    background: hsl(var(--primary) / 0.05);
-    color: hsl(var(--primary));
+    color: hsl(var(--foreground));
 }
 
 .cdx-layout__preset-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdx-layout__preset-icon {
     display: inline-flex;
     gap: 2px;
     align-items: stretch;
-    height: 12px;
+    height: 0.75rem;
 }
 
 .cdx-layout__preset-icon span {
@@ -59,7 +62,7 @@
     background: currentColor;
     border-radius: 1px;
     opacity: 0.8;
-    min-width: 4px;
+    min-width: 0.25rem;
 }
 
 .cdx-layout__columns {
@@ -72,7 +75,7 @@
     flex: 1;
     min-width: 0;
     position: relative;
-    border-right: 1px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border) / 0.6);
 }
 
 .cdx-layout__column:last-child {
@@ -83,21 +86,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
-    background: hsl(var(--muted) / 0.3);
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    padding: 0.5rem 0.75rem;
+    background: hsl(var(--muted) / 0.4);
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 .cdx-layout__col-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 0.6875rem;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.025em;
 }
 
 .cdx-layout__col-width {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: hsl(var(--muted-foreground));
     opacity: 0.7;
 }
@@ -105,22 +108,25 @@
 .cdx-layout__col-meta {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .cdx-layout__col-clear {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 1.375rem;
+    height: 1.375rem;
     border: 1px solid transparent;
     background: transparent;
     color: hsl(var(--muted-foreground));
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     padding: 0;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease);
     flex-shrink: 0;
 }
 
@@ -132,7 +138,7 @@
 
 .cdx-layout__col-editor {
     min-height: 80px;
-    padding: 8px;
+    padding: 0.5rem;
     outline: none;
     position: relative;
 }
@@ -142,21 +148,21 @@
 }
 
 .cdx-layout__col-editor .codex-editor__redactor {
-    padding-bottom: 16px !important;
+    padding-bottom: 1rem !important;
 }
 
 .cdx-layout__col-editor .ce-block {
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .cdx-layout__col-editor .codex-editor__redactor:only-child::before {
-    font-size: 13px;
+    font-size: 0.875rem;
 }
 
 .cdx-layout__col-placeholder {
-    padding: 16px 12px;
+    padding: 1rem 0.75rem;
     color: hsl(var(--muted-foreground));
-    font-size: 13px;
+    font-size: 0.875rem;
     font-style: italic;
     text-align: center;
     min-height: 60px;

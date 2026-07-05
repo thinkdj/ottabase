@@ -61,6 +61,8 @@ import {
     DropdownMenuTrigger,
     Input,
     Label,
+    NativeSelect,
+    NativeSelectOption,
     Tabs,
     TabsContent,
     TabsList,
@@ -1641,36 +1643,36 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="contentType">Content Type</Label>
-                                <select
+                                <NativeSelect
                                     id="contentType"
                                     aria-label="Content type"
                                     value={contentType}
                                     onChange={(e) => setContentType(e.target.value as ContentType)}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    wrapperClassName="w-full"
                                 >
                                     {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
-                                        <option key={value} value={value}>
+                                        <NativeSelectOption key={value} value={value}>
                                             {label}
-                                        </option>
+                                        </NativeSelectOption>
                                     ))}
-                                </select>
+                                </NativeSelect>
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="postStatus">Status</Label>
-                                <select
+                                <NativeSelect
                                     id="postStatus"
                                     aria-label="Post status"
                                     value={status}
                                     onChange={(e) => setStatus(e.target.value as PostStatus)}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    wrapperClassName="w-full"
                                 >
                                     {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                                        <option key={value} value={value}>
+                                        <NativeSelectOption key={value} value={value}>
                                             {label}
-                                        </option>
+                                        </NativeSelectOption>
                                     ))}
-                                </select>
+                                </NativeSelect>
                             </div>
 
                             <div className="space-y-2">
@@ -1944,22 +1946,22 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="maxVersionsToKeep">Keep Previous Versions</Label>
-                                <select
+                                <NativeSelect
                                     id="maxVersionsToKeep"
                                     aria-label="Keep previous versions"
                                     value={maxVersionsToKeep || ''}
                                     onChange={(e) =>
                                         setMaxVersionsToKeep(e.target.value ? parseInt(e.target.value, 10) : null)
                                     }
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    wrapperClassName="w-full"
                                 >
-                                    <option value="">Keep all versions</option>
+                                    <NativeSelectOption value="">Keep all versions</NativeSelectOption>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                        <option key={n} value={n}>
+                                        <NativeSelectOption key={n} value={n}>
                                             Keep last {n} version{n > 1 ? 's' : ''}
-                                        </option>
+                                        </NativeSelectOption>
                                     ))}
-                                </select>
+                                </NativeSelect>
                                 <p className="text-xs text-muted-foreground">
                                     Older versions will be automatically deleted on save
                                 </p>

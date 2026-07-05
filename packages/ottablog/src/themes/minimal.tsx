@@ -25,14 +25,15 @@ export const minimalTheme: Theme = {
             container: 'blog-post-minimal max-w-3xl mx-auto px-6 py-12',
             header: 'mb-12',
             hero: 'mb-12 -mx-6',
-            title: 'text-5xl md:text-6xl font-light mb-6 text-foreground tracking-tight leading-tight',
-            metadata: 'flex flex-wrap items-center gap-6 mb-8 text-xs uppercase tracking-wider text-muted-foreground',
-            excerpt: 'text-xl text-muted-foreground mb-10 leading-relaxed font-light',
+            title: 'text-4xl md:text-5xl font-light mb-6 text-foreground tracking-tight leading-tight',
+            metadata:
+                'flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
+            excerpt: 'text-lg text-muted-foreground mb-10 leading-relaxed font-light',
             content:
                 'prose prose-lg prose-slate dark:prose-invert max-w-none mb-16 prose-headings:font-light prose-headings:tracking-tight',
-            footnotes: 'border-t border-dashed pt-10 mt-16',
-            series: 'bg-transparent border-b border-dashed pb-6 mb-10',
-            footer: 'mt-16 pt-10 border-t border-dashed',
+            footnotes: 'border-t border-border/60 pt-10 mt-16',
+            series: 'border-b border-border/60 pb-6 mb-10',
+            footer: 'mt-16 pt-10 border-t border-border/60',
             card: 'blog-card-minimal',
             archiveContainer: 'max-w-3xl mx-auto px-6 py-12 space-y-10',
             archiveTitle: 'text-3xl font-light tracking-tight',
@@ -46,11 +47,11 @@ export const minimalTheme: Theme = {
                     <img
                         src={post.heroImage.url}
                         alt={post.heroImage.alt || post.title}
-                        className="w-full h-auto object-cover grayscale-[0.3]"
+                        className="w-full h-auto object-cover"
                         loading="eager"
                     />
                     {post.heroImage.caption && (
-                        <figcaption className="text-xs text-muted-foreground mt-4 text-center uppercase tracking-wider">
+                        <figcaption className="mt-4 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             {post.heroImage.caption}
                         </figcaption>
                     )}
@@ -76,7 +77,7 @@ export const minimalTheme: Theme = {
                                 <img
                                     src={post.author.image}
                                     alt={post.author.name}
-                                    className="w-6 h-6 rounded-full opacity-80"
+                                    className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
                                 />
                             )}
                             <span>{post.author.name}</span>
@@ -95,7 +96,7 @@ export const minimalTheme: Theme = {
                     )}
                     {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
                     {post.isFeatured && (
-                        <span className="px-2 py-0.5 border border-current text-xs uppercase tracking-wider">
+                        <span className="rounded-full bg-background px-2.5 py-0.5 text-muted-foreground ring-1 ring-border">
                             Featured
                         </span>
                     )}
@@ -126,7 +127,7 @@ export const minimalTheme: Theme = {
             if (!props.showFootnotes || !hasFootnotes) return null;
             return (
                 <aside className={`${minimalTheme.config?.classes?.footnotes || ''}`}>
-                    <h2 className="text-sm font-light uppercase tracking-wider mb-6 text-muted-foreground">
+                    <h2 className="mb-6 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Footnotes
                     </h2>
                     <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
@@ -143,7 +144,7 @@ export const minimalTheme: Theme = {
             const formatDate = props.formatDate || defaultFormatDate;
             return (
                 <article
-                    className={`group border-b border-dashed pb-6 mb-2 last:border-b-0 ${minimalTheme.config?.classes?.card || ''}`}
+                    className={`group border-b border-border/60 pb-6 mb-2 last:border-b-0 ${minimalTheme.config?.classes?.card || ''}`}
                 >
                     <div className="flex gap-6">
                         {post.seriesOrder != null && (
@@ -155,11 +156,11 @@ export const minimalTheme: Theme = {
                             <img
                                 src={post.heroImage.url}
                                 alt={post.heroImage.alt || post.title}
-                                className="w-20 h-20 object-cover grayscale-[0.3] shrink-0 hidden sm:block"
+                                className="w-20 h-20 object-cover rounded-lg shrink-0 hidden sm:block"
                             />
                         )}
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-lg font-light tracking-tight group-hover:text-primary transition-colors line-clamp-1">
+                            <h2 className="text-lg font-light tracking-tight text-foreground line-clamp-1">
                                 {post.title}
                                 {post.isProtected && (
                                     <span className="ml-2 text-muted-foreground text-xs" title="Protected">
@@ -168,12 +169,12 @@ export const minimalTheme: Theme = {
                                 )}
                             </h2>
                             {props.showExcerpt && post.excerpt && (
-                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2 font-light">
+                                <p className="text-sm leading-relaxed text-muted-foreground mt-1 line-clamp-2 font-light">
                                     {post.excerpt}
                                 </p>
                             )}
                             {props.showMetadata && (
-                                <div className="flex items-center gap-4 text-xs uppercase tracking-wider text-muted-foreground mt-2">
+                                <div className="flex items-center gap-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mt-2">
                                     {post.author?.name && <span>{post.author.name}</span>}
                                     {post.publishedAt && <time>{formatDate(post.publishedAt)}</time>}
                                     {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
@@ -189,11 +190,14 @@ export const minimalTheme: Theme = {
             if (!props.showSeries || !hasSeriesInfo) return null;
             return (
                 <div className={`${minimalTheme.config?.classes?.series || ''}`}>
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Series: <strong className="font-normal text-foreground">{post.seriesTitle}</strong>
+                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Series:{' '}
+                        <strong className="text-sm font-medium normal-case tracking-normal text-foreground">
+                            {post.seriesTitle}
+                        </strong>
                     </span>
                     {post.seriesOrder && post.seriesTotalParts && (
-                        <span className="text-xs text-muted-foreground ml-2">
+                        <span className="ml-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             ({post.seriesOrder} / {post.seriesTotalParts})
                         </span>
                     )}

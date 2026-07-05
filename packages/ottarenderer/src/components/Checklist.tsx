@@ -32,10 +32,13 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = '' 
                 const checkboxBgColor = item.checked ? 'bg-primary' : 'bg-background';
 
                 return (
-                    <li key={i} className="flex items-start">
+                    <li
+                        key={i}
+                        className="flex items-start rounded-lg -mx-2 px-2 py-1 transition-colors hover:bg-muted/40"
+                    >
                         <div className="relative flex items-center">
                             <div
-                                className={`mt-1 h-5 w-5 border ${checkboxBorderColor} rounded-sm ${checkboxBgColor} focus:outline-none transition align-top cursor-default mr-2 flex items-center justify-center`}
+                                className={`mt-1 h-5 w-5 border ${checkboxBorderColor} rounded-md ${checkboxBgColor} transition-colors align-top cursor-default mr-2 flex items-center justify-center`}
                             >
                                 {item.checked && <IconCheck size={14} className="text-primary-foreground" />}
                             </div>

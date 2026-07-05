@@ -1,6 +1,15 @@
 import { useSession } from '@/lib/auth';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+    NativeSelect,
+    NativeSelectOption,
+} from '@ottabase/ui-shadcn';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -218,26 +227,26 @@ export function OttaORMDemoPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <form onSubmit={handleAddPost} className="space-y-2">
-                                <select
+                                <NativeSelect
                                     value={selectedUserId}
                                     onChange={(e) => setSelectedUserId(e.target.value)}
                                     disabled={createPost.isPending || users.length === 0}
                                     aria-label="Select post author"
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    wrapperClassName="w-full"
                                 >
                                     {[
-                                        <option key="_placeholder" value="">
+                                        <NativeSelectOption key="_placeholder" value="">
                                             Select author...
-                                        </option>,
+                                        </NativeSelectOption>,
                                         ...users.map((user, index) => (
-                                            <option key={user.id || `opt-${index}`} value={user.id}>
+                                            <NativeSelectOption key={user.id || `opt-${index}`} value={user.id}>
                                                 {user.name ||
                                                     user.email ||
                                                     (user.id ? `User ${user.id.substring(0, 8)}` : 'Unknown User')}
-                                            </option>
+                                            </NativeSelectOption>
                                         )),
                                     ]}
-                                </select>
+                                </NativeSelect>
                                 <Input
                                     value={newPostTitle}
                                     onChange={(e) => setNewPostTitle(e.target.value)}

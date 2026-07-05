@@ -76,7 +76,7 @@ const Layout: RenderFn<LayoutData> = ({ data, className = '' }) => {
                                 />
                             ) : (
                                 <div
-                                    className="h-full min-h-12 rounded border border-dashed border-border"
+                                    className="h-full min-h-12 rounded-lg border border-dashed border-border/60 bg-muted/30"
                                     aria-hidden="true"
                                 />
                             )}

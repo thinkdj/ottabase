@@ -1,6 +1,6 @@
 /**
  * Common styles for all OttaEditor custom plugins.
- * Uses ob-plugin (ottabase) classes. All spacing = multiples of 4px.
+ * Uses ob-plugin (ottabase) classes. Spacing on the 0.25rem scale.
  * Individual plugin CSS files contain only custom/override styles.
  */
 
@@ -8,10 +8,10 @@
    Root wrapper - all custom plugins
    --------------------------------------------------------------------------- */
 .ob-plugin {
-    padding: 12px;
-    border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
-    margin-bottom: 16px;
+    padding: 1rem;
+    border-radius: calc(var(--radius) + 4px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    margin-bottom: 1rem;
 }
 
 /* Layout uses toolbar padding, override root padding */
@@ -31,7 +31,7 @@
 .ob-plugin .ob-form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .ob-plugin .ob-form > * {
@@ -44,38 +44,40 @@
 .ob-plugin .ob-input-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
 /* ---------------------------------------------------------------------------
-   Labels
+   Labels — micro-label scale
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-label {
-    font-size: 12px;
+    font-size: 0.6875rem;
     font-weight: 500;
-    color: hsl(var(--foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--muted-foreground));
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 0.25rem;
 }
 
 .ob-plugin .ob-section-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 0.625rem;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    letter-spacing: 0.025em;
+    margin-bottom: 0.25rem;
 }
 
 .ob-plugin .ob-hint {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 400;
     color: hsl(var(--muted-foreground));
-    margin-top: 4px;
+    margin-top: 0.25rem;
 }
 
 /* ---------------------------------------------------------------------------
-   Inputs, selects, textareas
+   Inputs, selects, textareas — h-9 (2.25rem) control rhythm
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-input,
 .ob-plugin .ob-select,
@@ -84,14 +86,19 @@
 .ob-plugin .advanced-image-input-wrapper .cdx-input {
     display: block;
     width: 100%;
-    padding: 8px 12px;
+    /* 0.4375rem + 1.25rem line + 1px borders = 2.25rem single-line height */
+    padding: 0.4375rem 0.75rem;
     border: 1px solid hsl(var(--input));
-    border-radius: calc(var(--radius) - 4px);
-    font-size: 13px;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
     font-family: inherit;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     box-sizing: border-box;
+    transition:
+        border-color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .ob-plugin .ob-textarea {
@@ -112,15 +119,15 @@
    Checkbox
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-checkbox {
-    width: 16px;
-    height: 16px;
+    width: 1rem;
+    height: 1rem;
     margin: 0;
     cursor: pointer;
     accent-color: hsl(var(--primary));
 }
 
 .ob-plugin .ob-checkbox-label {
-    font-size: 12px;
+    font-size: 0.875rem;
     color: hsl(var(--foreground));
     cursor: pointer;
     margin: 0;
@@ -141,9 +148,9 @@
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-input--sm,
 .ob-plugin .ob-select--sm {
-    padding: 4px 8px;
-    font-size: 12px;
-    border-radius: calc(var(--radius) - 4px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: calc(var(--radius) - 2px);
 }
 
 /* Inline label — sits beside a control instead of above it */
@@ -158,34 +165,35 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid hsl(var(--border));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 /* ---------------------------------------------------------------------------
    Item card — a single row inside a repeatable list (FAQ / reference / etc.)
+   Soft tint carries the separation; border stays for layout stability only.
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-item-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 2px);
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
     background: hsl(var(--muted) / 0.4);
 }
 
 .ob-plugin .ob-drag-handle {
     cursor: grab;
-    opacity: 0.5;
-    transition: opacity var(--duration-fast) var(--ease);
+    color: hsl(var(--muted-foreground));
+    transition: color var(--duration-normal) var(--ease);
     user-select: none;
 }
 
 .ob-plugin .ob-drag-handle:hover {
-    opacity: 1;
+    color: hsl(var(--foreground));
 }
 
 .ob-plugin .ob-drag-handle:active {
@@ -199,25 +207,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 0.375rem;
     width: 100%;
-    padding: 8px 12px;
-    border: 1px dashed hsl(var(--primary) / 0.5);
-    border-radius: calc(var(--radius) - 2px);
+    padding: 0.5rem 0.75rem;
+    border: 1px dashed hsl(var(--border));
+    border-radius: var(--radius);
     background: transparent;
-    color: hsl(var(--primary));
-    font-size: 13px;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     transition:
-        background var(--duration-fast) var(--ease),
-        border-color var(--duration-fast) var(--ease);
+        background var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .ob-plugin .ob-add-button:hover {
-    background: hsl(var(--primary) / 0.08);
-    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+    border-color: hsl(var(--primary) / 0.5);
+    color: hsl(var(--primary));
 }
 
 /* ---------------------------------------------------------------------------
@@ -227,72 +237,73 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     padding: 0;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     background: transparent;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
     transition:
-        background var(--duration-fast) var(--ease),
-        color var(--duration-fast) var(--ease);
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .ob-plugin .ob-icon-button:hover {
-    background: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
+    background: hsl(var(--muted) / 0.6);
+    color: hsl(var(--foreground));
 }
 
 .ob-plugin .ob-icon-button--danger:hover {
-    background: hsl(var(--destructive));
-    color: hsl(var(--destructive-foreground));
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
 }
 
 /* ---------------------------------------------------------------------------
    Dropzone — empty-state "click or drop to add media" affordance
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-dropzone {
-    border: 2px dashed hsl(var(--border));
+    border: 1px dashed hsl(var(--border));
     border-radius: var(--radius);
     background: hsl(var(--muted) / 0.3);
     transition:
-        border-color var(--duration-fast) var(--ease),
-        background var(--duration-fast) var(--ease);
+        border-color var(--duration-normal) var(--ease),
+        background var(--duration-normal) var(--ease);
 }
 
 .ob-plugin .ob-dropzone:hover {
-    border-color: hsl(var(--ring));
+    border-color: hsl(var(--primary) / 0.5);
     background: hsl(var(--muted) / 0.5);
 }
 
 /* ---------------------------------------------------------------------------
-   Segmented control — elevated-pill toggle group (fit / orientation / align)
+   Segmented control — tinted toggle group (fit / orientation / align);
+   active segment lifts out of the tint as a background chip with hairline ring
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-segment {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    padding: 2px;
-    border-radius: calc(var(--radius) - 2px);
-    background: hsl(var(--muted));
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border-radius: var(--radius);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .ob-plugin .ob-segment-btn {
-    padding: 4px 10px;
+    padding: 0.25rem 0.625rem;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     background: transparent;
     color: hsl(var(--muted-foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     transition:
-        background var(--duration-fast) var(--ease),
-        color var(--duration-fast) var(--ease),
-        box-shadow var(--duration-fast) var(--ease);
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .ob-plugin .ob-segment-btn:hover {
@@ -302,5 +313,5 @@
 .ob-plugin .ob-segment-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }

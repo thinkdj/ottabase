@@ -50,7 +50,7 @@ describe('CTA Renderer', () => {
             const link = container.querySelector('a');
             expect(link?.className).toContain('bg-transparent');
             expect(link?.className).toContain('text-foreground');
-            expect(link?.className).toContain('border-border');
+            expect(link?.className).toContain('border-transparent');
         });
     });
 

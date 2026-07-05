@@ -21,19 +21,20 @@ export const defaultTheme: Theme = {
     },
     config: {
         classes: {
-            container: 'blog-post max-w-4xl mx-auto px-4 py-8',
+            container: 'blog-post max-w-3xl mx-auto px-4 py-8',
             header: 'mb-8',
-            hero: 'mb-8 rounded-lg overflow-hidden shadow-lg',
-            title: 'text-4xl md:text-5xl font-bold mb-4 text-foreground',
-            metadata: 'flex flex-wrap items-center gap-4 mb-6 text-sm text-muted-foreground',
-            excerpt: 'text-xl text-muted-foreground mb-8 leading-relaxed',
+            hero: 'mb-8 rounded-xl overflow-hidden shadow-lg',
+            title: 'text-3xl md:text-4xl font-bold tracking-tight mb-4 text-foreground',
+            metadata:
+                'flex flex-wrap items-center gap-x-4 gap-y-2 mb-8 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
+            excerpt: 'text-lg text-muted-foreground mb-8 leading-relaxed',
             content: 'prose prose-slate dark:prose-invert max-w-none mb-12',
-            footnotes: 'border-t pt-8 mt-12',
-            series: 'bg-muted/50 border border-border rounded-lg p-4 mb-8',
-            footer: 'mt-12 pt-8 border-t',
+            footnotes: 'mt-12 rounded-xl bg-muted/40 p-5',
+            series: 'rounded-xl bg-muted/40 px-4 py-3 mb-8',
+            footer: 'mt-12 pt-8 border-t border-border/60',
             card: 'blog-card',
             archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
-            archiveTitle: 'text-3xl font-bold',
+            archiveTitle: 'text-3xl font-bold tracking-tight',
         },
     },
     renderers: {
@@ -51,7 +52,7 @@ export const defaultTheme: Theme = {
                         loading="eager"
                     />
                     {post.heroImage.caption && (
-                        <figcaption className="text-sm text-muted-foreground mt-2 text-center italic">
+                        <figcaption className="mt-3 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             {post.heroImage.caption}
                         </figcaption>
                     )}
@@ -74,10 +75,16 @@ export const defaultTheme: Theme = {
                     {post.author?.name && (
                         <div className="flex items-center gap-2">
                             {post.author?.image && (
-                                <img src={post.author.image} alt={post.author.name} className="w-6 h-6 rounded-full" />
+                                <img
+                                    src={post.author.image}
+                                    alt={post.author.name}
+                                    className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
+                                />
                             )}
                             <span
-                                className={props.onAuthorClick ? 'cursor-pointer hover:underline' : ''}
+                                className={`text-sm font-medium normal-case tracking-normal text-foreground${
+                                    props.onAuthorClick ? ' cursor-pointer hover:underline' : ''
+                                }`}
                                 onClick={() =>
                                     props.onAuthorClick && post.authorId && props.onAuthorClick(post.authorId)
                                 }
@@ -99,7 +106,7 @@ export const defaultTheme: Theme = {
                     )}
                     {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
                     {post.isFeatured && (
-                        <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded font-medium">
+                        <span className="rounded-full bg-background px-2.5 py-0.5 text-muted-foreground ring-1 ring-border">
                             Featured
                         </span>
                     )}
@@ -130,7 +137,9 @@ export const defaultTheme: Theme = {
             if (!props.showFootnotes || !hasFootnotes) return null;
             return (
                 <aside className={`${defaultTheme.config?.classes?.footnotes || ''}`}>
-                    <h2 className="text-xl font-semibold mb-4">Footnotes</h2>
+                    <h2 className="mb-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Footnotes
+                    </h2>
                     <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
                         <Blocks
                             data={{ version: '2.30.0', time: Date.now(), ...(post.footnotes as EditorJSData) }}
@@ -145,11 +154,11 @@ export const defaultTheme: Theme = {
             const formatDate = props.formatDate || defaultFormatDate;
             return (
                 <article
-                    className={`group bg-card border rounded-lg hover:shadow-md transition-shadow ${defaultTheme.config?.classes?.card || ''}`}
+                    className={`group rounded-xl border border-transparent bg-muted/40 transition-colors duration-normal hover:bg-muted/70 ${defaultTheme.config?.classes?.card || ''}`}
                 >
                     <div className="p-5 flex gap-4">
                         {post.seriesOrder != null && (
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted text-muted-foreground font-semibold text-sm shrink-0">
+                            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-background text-muted-foreground ring-1 ring-border font-semibold text-sm shrink-0">
                                 {post.seriesOrder}
                             </div>
                         )}
@@ -157,11 +166,11 @@ export const defaultTheme: Theme = {
                             <img
                                 src={post.heroImage.url}
                                 alt={post.heroImage.alt || post.title}
-                                className="w-24 h-24 object-cover rounded shrink-0 hidden sm:block"
+                                className="w-24 h-24 object-cover rounded-lg shrink-0 hidden sm:block"
                             />
                         )}
                         <div className="min-w-0 flex-1">
-                            <h2 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-1 flex items-center gap-2">
+                            <h2 className="text-[0.9375rem] font-semibold line-clamp-1 flex items-center gap-2">
                                 {post.title}
                                 {post.isProtected && (
                                     <span className="text-muted-foreground text-xs shrink-0" title="Protected">
@@ -170,10 +179,12 @@ export const defaultTheme: Theme = {
                                 )}
                             </h2>
                             {props.showExcerpt && post.excerpt && (
-                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.excerpt}</p>
+                                <p className="text-sm leading-relaxed text-muted-foreground mt-1 line-clamp-2">
+                                    {post.excerpt}
+                                </p>
                             )}
                             {props.showMetadata && (
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                                <div className="flex items-center gap-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mt-2">
                                     {post.author?.name && <span>{post.author.name}</span>}
                                     {post.publishedAt && <time>{formatDate(post.publishedAt)}</time>}
                                     {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
@@ -189,11 +200,11 @@ export const defaultTheme: Theme = {
             if (!props.showSeries || !hasSeriesInfo) return null;
             return (
                 <div className={`${defaultTheme.config?.classes?.series || ''}`}>
-                    <span className="text-sm font-medium">
-                        Part of series: <strong>{post.seriesTitle}</strong>
+                    <span className="text-sm text-muted-foreground">
+                        Part of series: <strong className="font-medium text-foreground">{post.seriesTitle}</strong>
                     </span>
                     {post.seriesOrder && post.seriesTotalParts && (
-                        <span className="text-sm text-muted-foreground ml-2">
+                        <span className="ml-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             (Part {post.seriesOrder} of {post.seriesTotalParts})
                         </span>
                     )}

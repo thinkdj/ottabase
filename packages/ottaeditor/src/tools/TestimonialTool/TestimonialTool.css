@@ -1,7 +1,7 @@
 /* Testimonial Tool - custom/overrides only (base styles come from ottaeditor-common.css) */
 
 .cdx-testimonial__wrapper {
-    background: hsl(var(--card));
+    background: hsl(var(--muted) / 0.4);
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -11,16 +11,16 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid hsl(var(--border));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 .cdx-testimonial__variant-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .cdx-testimonial__variant-group .ob-label {
@@ -32,8 +32,8 @@
 .cdx-testimonial__verified-group {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 8px;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
     cursor: pointer;
 }
 
@@ -41,8 +41,8 @@
 
 .cdx-testimonial__quote-input {
     font-style: italic;
-    font-size: 15px;
-    line-height: 1.6;
+    font-size: 0.9375rem;
+    line-height: 1.625;
 }
 
 /* ── Author row ──────────────────────────────────────────────────────────── */
@@ -50,7 +50,7 @@
 .cdx-testimonial__author-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 /* ── Media (avatar + logo) row ───────────────────────────────────────────── */
@@ -58,42 +58,40 @@
 .cdx-testimonial__media-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 /* ── Rating section ──────────────────────────────────────────────────────── */
 
 .cdx-testimonial__rating-group {
-    padding-top: 4px;
+    padding-top: 0.25rem;
 }
 
 .cdx-testimonial__stars-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .cdx-testimonial__stars {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 0.125rem;
 }
 
 .cdx-testimonial__star {
     background: transparent;
     border: none;
-    padding: 4px;
+    padding: 0.25rem;
     cursor: pointer;
     color: hsl(var(--muted-foreground));
-    border-radius: calc(var(--radius) - 4px);
-    transition:
-        color var(--duration-fast) var(--ease),
-        transform var(--duration-fast) var(--ease);
+    border-radius: calc(var(--radius) - 2px);
+    transition: color var(--duration-normal) var(--ease);
     line-height: 0;
 }
 
 .cdx-testimonial__star:hover {
-    transform: scale(1.2);
+    color: hsl(var(--warning));
 }
 
 .cdx-testimonial__star--filled {
@@ -101,9 +99,9 @@
 }
 
 .cdx-testimonial__rating-value {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
-    min-width: 40px;
+    min-width: 2.5rem;
 }
 
 /* ── Responsive collapse ─────────────────────────────────────────────────── */

@@ -119,7 +119,7 @@ function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps
 
     return (
         <div
-            className={`overflow-hidden rounded-lg border border-border bg-muted/20 ${layoutItemClass} ${hasLightbox ? 'cursor-pointer' : ''}`}
+            className={`overflow-hidden rounded-lg bg-background ring-1 ring-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layoutItemClass} ${hasLightbox ? 'cursor-pointer' : ''}`}
             role={hasLightbox ? 'button' : 'presentation'}
             tabIndex={hasLightbox ? 0 : -1}
             onClick={() => {
@@ -151,7 +151,7 @@ function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps
                 controls={false}
             />
             {item.caption && (
-                <div className="border-t border-border px-3 py-2 text-sm italic text-muted-foreground">
+                <div className="border-t border-border/60 px-3 py-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {item.caption}
                 </div>
             )}
@@ -179,8 +179,10 @@ const MediaGallery: RenderFn<MediaGalleryData> = ({ data, className = '' }) => {
     const containerClass = isMasonry ? `gap-3 ${layoutClass}` : `grid grid-cols-1 gap-3 ${layoutClass}`;
 
     return (
-        <figure className={`${className} my-6 not-prose rounded-xl border border-border bg-card p-4`}>
-            {hasTitle && <h4 className="mb-3 text-base font-semibold text-center text-foreground">{data.title}</h4>}
+        <figure className={`${className} my-6 not-prose rounded-xl bg-muted/40 p-4`}>
+            {hasTitle && (
+                <h4 className="mb-3 text-[0.9375rem] font-semibold text-center text-foreground">{data.title}</h4>
+            )}
 
             {/* Filmstrip: wrap in a positioned container so the right-edge fade stays fixed while items scroll */}
             <div className={isFilmstrip ? 'relative' : undefined}>
@@ -199,7 +201,7 @@ const MediaGallery: RenderFn<MediaGalleryData> = ({ data, className = '' }) => {
                 {isFilmstrip && (
                     <>
                         <div
-                            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card to-transparent"
+                            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent"
                             aria-hidden="true"
                         />
                     </>
@@ -207,7 +209,7 @@ const MediaGallery: RenderFn<MediaGalleryData> = ({ data, className = '' }) => {
             </div>
 
             {hasCaption && (
-                <figcaption className="mt-3 text-sm italic text-center text-muted-foreground">
+                <figcaption className="mt-3 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {data.caption}
                 </figcaption>
             )}

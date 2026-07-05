@@ -43,7 +43,7 @@ const MediaEmbed: RenderFn<MediaEmbedData> = ({ data, className = '' }) => {
     const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(mediaId || url, item as any);
 
     return (
-        <figure className={`${className} my-6 overflow-hidden rounded-xl border border-border`}>
+        <figure className={`${className} my-6 overflow-hidden rounded-xl border border-border/60`}>
             <div
                 className={`min-h-[12rem] ${hasLightbox ? 'cursor-pointer' : ''}`}
                 role={hasLightbox ? 'button' : undefined}
@@ -67,7 +67,7 @@ const MediaEmbed: RenderFn<MediaEmbedData> = ({ data, className = '' }) => {
                 <MediaPreview item={item} mode="detail" className="!border-0 !rounded-none" fit="contain" controls />
             </div>
             {caption && (
-                <figcaption className="border-t border-border px-4 py-2 text-sm italic text-center text-muted-foreground">
+                <figcaption className="border-t border-border/60 px-4 py-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {caption}
                 </figcaption>
             )}

@@ -51,7 +51,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
     // Base Tailwind classes for the figure (includes image-block container styles)
     let figureTailwindClasses = [
         'my-4',
-        'rounded',
+        'rounded-xl',
         'flex',
         'items-center',
         'justify-center',
@@ -67,10 +67,10 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
 
     // Conditional Tailwind classes based on data props
     if (withBorder) {
-        figureTailwindClasses.push('border', 'border-border', 'p-1');
+        figureTailwindClasses.push('border', 'border-border/60', 'p-1');
     }
     if (withBackground) {
-        figureTailwindClasses.push('bg-muted', 'p-2');
+        figureTailwindClasses.push('bg-muted/40', 'p-2');
     }
     if (stretched) {
         // For stretched images, we need special handling
@@ -158,7 +158,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         <>
             <figure className={combinedClassName}>
                 {featuredImage && (
-                    <div className="absolute top-2 right-2 z-10 bg-warning text-warning-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md">
+                    <div className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background text-warning ring-1 ring-border text-xs">
                         ★
                     </div>
                 )}
@@ -167,7 +167,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
                         href={sanitizeUrl(linkUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring rounded-sm"
+                        className="block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring rounded-sm"
                         aria-label={caption || altFinal}
                     >
                         {imageComponent}
@@ -176,7 +176,9 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
                     imageComponent
                 )}
                 {caption && (
-                    <figcaption className="mt-2 text-sm italic text-center text-muted-foreground">{caption}</figcaption>
+                    <figcaption className="mt-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        {caption}
+                    </figcaption>
                 )}
             </figure>
         </>

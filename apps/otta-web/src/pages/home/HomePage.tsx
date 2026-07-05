@@ -119,25 +119,120 @@ function createHomeLandingEditorData(appName: string) {
                 },
             },
 
+            // ── Thesis ───────────────────────────────────────────────────────
+            {
+                id: 'thesis-quote',
+                type: 'quote',
+                data: {
+                    text: 'Stop assembling infrastructure. Start shipping product.',
+                    caption: 'The Ottabase thesis',
+                    alignment: 'center',
+                },
+            },
+
             // ── Checklist ────────────────────────────────────────────────────
             { id: 'batteries-h', type: 'header', data: { text: 'Batteries included', level: 2 } },
             {
-                id: 'checklist',
-                type: 'checklist',
+                id: 'batteries-lead',
+                type: 'paragraph',
                 data: {
-                    items: [
-                        { text: '<strong>OttaORM</strong>: fat models, RLS, hooks', checked: true },
-                        { text: '<strong>Brand Engine</strong>: dynamic runtime theming (per-route!)', checked: true },
-                        { text: '<strong>Ottabase Auth</strong>: OAuth + signed sessions', checked: true },
-                        { text: '<strong>RBAC</strong>: per-org roles + guards', checked: true },
-                        { text: '<strong>Ottablog</strong>: CMS, WYSIWYG, Tags, SEO', checked: true },
-                        { text: '<strong>OttaRenderer</strong>: blocks + dark mode support', checked: true },
-                        { text: '<strong>Media Library</strong>: R2 Uploads + Media Gallery lightbox', checked: true },
-                        { text: '<strong>Queue</strong>: jobs, chaining, retry', checked: true },
-                        { text: '<strong>Realtime</strong>: WebSocket pub/sub', checked: true },
-                        { text: '<strong>Shortlinks</strong>: URLs + Cloudflare analytics', checked: true },
-                        { text: '<strong>Auto-migrations</strong>: A single click does it all', checked: true },
-                        { text: '<strong>Turborepo</strong>: pnpm workspaces', checked: true },
+                    text: 'Forty-five packages, <mark class="cdx-marker">one pnpm install</mark>. Everything below ships wired together — auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
+                },
+            },
+            {
+                id: 'batteries-cols',
+                type: 'layout',
+                data: {
+                    preset: '1-1',
+                    columns: [
+                        {
+                            content: {
+                                blocks: [
+                                    {
+                                        id: 'checklist-a',
+                                        type: 'checklist',
+                                        data: {
+                                            items: [
+                                                {
+                                                    text: '<strong>OttaORM</strong>: fat models, RLS, hooks',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>Brand Engine</strong>: runtime theming, per route',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>Ottabase Auth</strong>: OAuth + signed sessions',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>RBAC</strong>: per-org roles + guards',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>Ottablog</strong>: CMS, WYSIWYG, tags, SEO',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>OttaRenderer</strong>: blocks + dark mode',
+                                                    checked: true,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            content: {
+                                blocks: [
+                                    {
+                                        id: 'checklist-b',
+                                        type: 'checklist',
+                                        data: {
+                                            items: [
+                                                {
+                                                    text: '<strong>Media Library</strong>: R2 uploads + lightbox',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>Queue</strong>: jobs, chaining, retry',
+                                                    checked: true,
+                                                },
+                                                { text: '<strong>Realtime</strong>: WebSocket pub/sub', checked: true },
+                                                {
+                                                    text: '<strong>Shortlinks</strong>: URLs + edge analytics',
+                                                    checked: true,
+                                                },
+                                                {
+                                                    text: '<strong>Auto-migrations</strong>: one click, done',
+                                                    checked: true,
+                                                },
+                                                { text: '<strong>Turborepo</strong>: pnpm workspaces', checked: true },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+
+            // ── Build vs buy table ───────────────────────────────────────────
+            { id: 'compare-h', type: 'header', data: { text: 'The weeks you get back', level: 2 } },
+            {
+                id: 'compare-table',
+                type: 'table',
+                data: {
+                    withHeadings: true,
+                    content: [
+                        ['Capability', 'DIY on Workers', 'With Ottabase'],
+                        ['Auth + sessions', 'Weeks of OAuth plumbing', 'Built in: OAuth, signed cookies'],
+                        ['Multi-tenancy', 'Hand-rolled WHERE clauses', 'RLS enforced by the ORM'],
+                        ['Theming', 'Hardcoded CSS per client', 'Brand Kits swapped at runtime'],
+                        ['Background jobs', 'Glue code around Queues', 'Chained jobs with retries'],
+                        ['Content', 'Bring your own CMS', 'Block editor + blog included'],
                     ],
                 },
             },
@@ -196,6 +291,80 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 },
             },
 
+            // ── Zero-infrastructure callout ──────────────────────────────────
+            {
+                id: 'infra-callout',
+                type: 'warning',
+                data: {
+                    title: 'One account. No servers.',
+                    message:
+                        'Everything here runs on a single Cloudflare account — Workers, D1, R2, KV, Queues, Durable Objects. Wrangler emulates the whole stack locally, so dev needs no Docker and prod needs no pager.',
+                },
+            },
+
+            // ── Testimonials ─────────────────────────────────────────────────
+            { id: 'voices-h', type: 'header', data: { text: 'What builders say', level: 2 } },
+            {
+                id: 'voices',
+                type: 'layout',
+                data: {
+                    preset: '1-1',
+                    columns: [
+                        {
+                            content: {
+                                blocks: [
+                                    {
+                                        id: 'voice-1',
+                                        type: 'testimonial',
+                                        data: {
+                                            variant: 'card',
+                                            quote: 'I replaced a Rails app, an auth provider, and a theming SaaS with one repo. The rebuild shipped in a weekend.',
+                                            authorName: 'Maya K.',
+                                            authorRole: 'Solo founder',
+                                            authorCompany: 'Freightlane',
+                                            rating: 5,
+                                            verified: true,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            content: {
+                                blocks: [
+                                    {
+                                        id: 'voice-2',
+                                        type: 'testimonial',
+                                        data: {
+                                            variant: 'quote-bubble',
+                                            quote: 'Fat models on the edge are the first ORM ergonomics I have actually enjoyed. Business logic finally lives in one place.',
+                                            authorName: 'Dev T.',
+                                            authorRole: 'Indie hacker',
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                id: 'voices-note',
+                type: 'paragraph',
+                data: {
+                    text: '<em>Sample voices — this block, like every block on this page, is yours to edit.</em>',
+                },
+            },
+
+            // ── The reveal ───────────────────────────────────────────────────
+            {
+                id: 'meta-spoiler',
+                type: 'spoiler',
+                data: {
+                    text: 'Every section on this page — the steps, the table, the FAQ, even this spoiler — is an EditorJS block authored in OttaEditor and rendered by OttaRenderer. The landing page is the demo.',
+                },
+            },
+
             // ── FAQ ──────────────────────────────────────────────────────────
             { id: 'faq-h', type: 'header', data: { text: 'Common questions', level: 2 } },
             {
@@ -217,11 +386,34 @@ export const { useList, useCreate, useUpdate, useDelete } =
                             answer: 'Cloudflare D1 (SQLite at the edge) via Drizzle ORM. Migrations via a single API call (or via admin UI).',
                         },
                         {
-                            question: 'Do I need Docker?',
-                            answer: 'No. Everything runs on Cloudflare — Workers, D1, Queues, Durable Objects,R2, KV. Wrangler emulates everything locally, no Docker required for dev either.',
+                            question: 'Can I white-label it for clients?',
+                            answer: 'That is what Brand Engine is for: logos, colors, typography, motion — even custom cursors — stored as Brand Kits and applied per app or per route at runtime.',
                         },
                     ],
                 },
+            },
+
+            // ── Dig deeper ───────────────────────────────────────────────────
+            { id: 'refs-h', type: 'header', data: { text: 'Dig deeper', level: 2 } },
+            {
+                id: 'refs',
+                type: 'references',
+                data: {
+                    style: 'numbered',
+                    items: [
+                        { url: '/docs', title: 'Documentation', note: 'Setup, architecture, and package guides' },
+                        { url: '/demo', title: 'Demo gallery', note: 'Every package, running live in this app' },
+                        { url: '/blog', title: 'Blog', note: 'Published with Ottablog — the CMS in the box' },
+                        { url: 'https://ottabase.com', title: 'ottabase.com', note: 'Project home' },
+                    ],
+                },
+            },
+
+            // ── Transparency (and one more block demo) ───────────────────────
+            {
+                id: 'ai-disclosure',
+                type: 'disclosure',
+                data: { aiEnabled: true, aiLevel: 'slight', sponsoredEnabled: false },
             },
 
             // ── Final CTAs ───────────────────────────────────────────────────

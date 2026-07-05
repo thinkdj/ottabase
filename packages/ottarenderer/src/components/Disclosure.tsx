@@ -108,11 +108,11 @@ const Disclosure: RenderFn<DisclosureData> = ({ data, className = '' }) => {
     const hasSponsored = Boolean(sponsoredText);
     return (
         <aside
-            className={`${className} not-prose my-4 rounded-lg border border-border bg-muted/40 overflow-hidden cdc-content-disclosure`}
+            className={`${className} not-prose my-4 rounded-xl bg-muted/40 overflow-hidden cdc-content-disclosure`}
             aria-label="Content disclosure"
         >
             {/* Header bar */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-muted/60 border-b border-border">
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-border/60">
                 {/* Shield icon */}
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -129,16 +129,20 @@ const Disclosure: RenderFn<DisclosureData> = ({ data, className = '' }) => {
                 >
                     <path d="M12 3l8 4v4c0 5-3.5 9.74-8 11-4.5-1.26-8-6-8-11V7l8-4z" />
                 </svg>
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground select-none">
+                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground select-none">
                     {hasAI && hasSponsored ? 'Disclosures' : hasAI ? 'AI Disclosure' : 'Sponsored Disclosure'}
                 </span>
             </div>
 
             {/* Items */}
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-border/60">
                 {hasAI && (
-                    <div className="flex items-start gap-3 px-4 py-3" role="note" aria-label="AI usage disclosure">
-                        <span className="mt-0.5 flex-shrink-0 text-primary">
+                    <div
+                        className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+                        role="note"
+                        aria-label="AI usage disclosure"
+                    >
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-background text-primary ring-1 ring-border">
                             <AIIcon />
                         </span>
                         <div className="flex flex-col gap-0.5 min-w-0">
@@ -150,11 +154,11 @@ const Disclosure: RenderFn<DisclosureData> = ({ data, className = '' }) => {
 
                 {hasSponsored && (
                     <div
-                        className="flex items-start gap-3 px-4 py-3"
+                        className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
                         role="note"
                         aria-label="Sponsored content disclosure"
                     >
-                        <span className="mt-0.5 flex-shrink-0 text-warning">
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-background text-warning ring-1 ring-border">
                             <SponsoredIcon />
                         </span>
                         <div className="flex flex-col gap-0.5 min-w-0">

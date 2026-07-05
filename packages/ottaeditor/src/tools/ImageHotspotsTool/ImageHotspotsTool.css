@@ -3,29 +3,29 @@
 .cdx-image-hotspots__url-row {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 /* ── Height / Image Fit Row ──────────────────────────────────────────────── */
 
 .cdx-image-hotspots__size-row {
     display: flex;
-    gap: 12px;
+    gap: 0.75rem;
     align-items: start;
 }
 
 .cdx-image-hotspots__size-row > .ob-input-group:first-child {
-    width: 200px;
+    width: 12.5rem;
     flex-shrink: 0;
 }
 
 .cdx-image-hotspots__fit-toggle {
     display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    background: hsl(var(--muted));
-    border-radius: calc(var(--radius) - 2px);
-    height: 42px; /* ~matching with input */
+    gap: 0.125rem;
+    padding: 0.125rem;
+    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--radius);
+    height: 2.25rem; /* match h-9 control rhythm */
     box-sizing: border-box;
 }
 
@@ -33,32 +33,34 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
+    padding: 0.25rem 0.625rem;
     background: transparent;
     border: none;
     border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__fit-btn:hover {
     color: hsl(var(--foreground));
-    background: hsl(var(--background) / 0.5);
 }
 
 .cdx-image-hotspots__fit-btn--active {
     background: hsl(var(--background));
-    color: hsl(var(--primary));
-    box-shadow: var(--shadow-sm);
+    color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 /* ── Size Controls (below canvas) ────────────────────────────────────────── */
 
 .cdx-image-hotspots__size-controls {
-    margin-top: 12px;
+    margin-top: 0.75rem;
 }
 
 /* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
@@ -66,12 +68,12 @@
 .cdx-image-hotspots__position-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    width: 72px;
-    height: 72px;
-    padding: 2px;
-    background: hsl(var(--muted));
-    border-radius: calc(var(--radius) - 2px);
+    gap: 0.125rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    padding: 0.125rem;
+    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--radius);
 }
 
 .cdx-image-hotspots__position-btn {
@@ -80,42 +82,43 @@
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
     position: relative;
 }
 
 .cdx-image-hotspots__position-btn::before {
     content: '';
-    width: 6px;
-    height: 6px;
+    width: 0.375rem;
+    height: 0.375rem;
     border-radius: 50%;
     background: hsl(var(--muted-foreground) / 0.4);
-    transition: all var(--duration-fast) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__position-btn:hover::before {
     background: hsl(var(--foreground) / 0.6);
-    transform: scale(1.2);
 }
 
 .cdx-image-hotspots__position-btn--active {
     background: hsl(var(--background));
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdx-image-hotspots__position-btn--active::before {
     background: hsl(var(--primary));
-    width: 8px;
-    height: 8px;
+    width: 0.5rem;
+    height: 0.5rem;
 }
 
 /* ── Input with Gallery Button ───────────────────────────────────────────── */
 
 .cdx-image-hotspots__input-with-gallery {
     display: flex;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
 .cdx-image-hotspots__input-with-gallery .ob-input {
@@ -126,36 +129,38 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
+    width: 2.25rem;
     flex-shrink: 0;
-    background: hsl(var(--muted));
+    background: hsl(var(--background));
     border: 1px solid hsl(var(--input));
     border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__gallery-btn:hover {
-    background: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
-    border-color: hsl(var(--ring));
+    background: hsl(var(--muted) / 0.7);
+    color: hsl(var(--foreground));
 }
 
 .cdx-image-hotspots__gallery-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 1rem;
+    height: 1rem;
 }
 
 /* ── Canvas ──────────────────────────────────────────────────────────────── */
 
 .cdx-image-hotspots__canvas {
     position: relative;
-    margin-top: 12px;
-    min-height: 200px;
+    margin-top: 0.75rem;
+    min-height: 12.5rem;
     border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
-    background: hsl(var(--muted) / 0.3);
+    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--muted) / 0.4);
     cursor: crosshair;
     /* Allow tooltip to overflow */
     overflow: visible;
@@ -179,13 +184,13 @@
 
 .cdx-image-hotspots__hint {
     position: absolute;
-    bottom: 8px;
+    bottom: 0.5rem;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: hsl(var(--primary-foreground));
     background: hsl(var(--primary) / 0.8);
-    padding: 4px 12px;
+    padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     pointer-events: none;
     z-index: 5;
@@ -193,12 +198,12 @@
     white-space: nowrap;
 }
 
-/* ── Dot (hotspot marker) ────────────────────────────────────────────────── */
+/* ── Dot (hotspot marker) — primary fill + ring, floats over imagery ─────── */
 
 .cdx-image-hotspots__dot {
     position: absolute;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
@@ -207,25 +212,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: 600;
     cursor: grab;
     transform: translate(-50%, -50%);
     z-index: 10;
-    transition:
-        box-shadow var(--duration-fast) var(--ease),
-        transform var(--duration-fast) var(--ease);
+    transition: box-shadow var(--duration-normal) var(--ease);
     user-select: none;
 }
 
 .cdx-image-hotspots__dot:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
-    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
 .cdx-image-hotspots__dot--active {
-    box-shadow: 0 0 0 6px hsl(var(--primary) / 0.35);
-    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow: 0 0 0 0.375rem hsl(var(--primary) / 0.35);
     z-index: 15;
 }
 
@@ -235,23 +236,23 @@
     opacity: 0.8;
 }
 
-/* ── Tooltip (inline form on dot click) ──────────────────────────────────── */
+/* ── Tooltip (inline form on dot click) — floating UI, keeps elevation ───── */
 
 .cdx-image-hotspots__tooltip {
     position: absolute;
-    top: calc(100% + 12px);
+    top: calc(100% + 0.75rem);
     left: 50%;
     transform: translateX(-50%);
-    min-width: 240px;
+    min-width: 15rem;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
-    padding: 12px;
+    padding: 0.75rem;
     box-shadow: var(--shadow-md);
     z-index: 20;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
     cursor: default;
 }
 
@@ -279,7 +280,7 @@
 /* Tooltip opens above dot when hotspot is below 70% of canvas height */
 .cdx-image-hotspots__tooltip--above {
     top: auto;
-    bottom: calc(100% + 12px);
+    bottom: calc(100% + 0.75rem);
 }
 
 /* Arrow pointing down (tooltip above dot) */
@@ -297,34 +298,32 @@
     border-top-color: hsl(var(--background));
 }
 
-.cdx-image-hotspots__tooltip .ob-input,
-.cdx-image-hotspots__tooltip .ob-textarea {
-    font-size: 13px;
-}
-
 /* Button row inside tooltip */
 .cdx-image-hotspots__tooltip-buttons {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 /* Remove button inside tooltip */
 .cdx-image-hotspots__remove-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 0.25rem;
     background: hsl(var(--destructive) / 0.1);
     color: hsl(var(--destructive));
     border: 1px solid hsl(var(--destructive) / 0.25);
     border-radius: calc(var(--radius) - 2px);
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__remove-btn:hover {
@@ -333,24 +332,24 @@
 }
 
 .cdx-image-hotspots__remove-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 /* Save button inside tooltip */
 .cdx-image-hotspots__save-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 0.25rem;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: 1px solid hsl(var(--primary));
     border-radius: calc(var(--radius) - 2px);
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__save-btn:hover {
@@ -358,53 +357,55 @@
 }
 
 .cdx-image-hotspots__save-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 /* ── List (below canvas) ─────────────────────────────────────────────────── */
 
 .cdx-image-hotspots__list {
-    margin-top: 8px;
+    margin-top: 0.5rem;
 }
 
 .cdx-image-hotspots__list-header {
-    padding: 4px 0;
-    border-top: 1px solid hsl(var(--border));
-    margin-top: 4px;
+    padding: 0.25rem 0;
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    margin-top: 0.25rem;
 }
 
 .cdx-image-hotspots__list-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 8px;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
     border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    transition: background var(--duration-fast) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
+/* Inline list rows rest transparent, so hover one tint step (menus use /0.7) */
 .cdx-image-hotspots__list-item:hover {
-    background: hsl(var(--accent));
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-image-hotspots__list-badge {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background));
+    color: hsl(var(--muted-foreground));
+    box-shadow: 0 0 0 1px hsl(var(--border));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 0.6875rem;
+    font-weight: 600;
     flex-shrink: 0;
 }
 
 .cdx-image-hotspots__list-title {
     flex: 1;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 500;
     color: hsl(var(--foreground));
     overflow: hidden;
@@ -413,7 +414,7 @@
 }
 
 .cdx-image-hotspots__list-coords {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: hsl(var(--muted-foreground));
     font-variant-numeric: tabular-nums;
 }
@@ -426,19 +427,21 @@
     border: none;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    padding: 4px;
-    border-radius: calc(var(--radius) - 4px);
-    transition: all var(--duration-fast) var(--ease);
+    padding: 0.25rem;
+    border-radius: calc(var(--radius) - 2px);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .cdx-image-hotspots__list-remove:hover {
-    color: hsl(var(--destructive-foreground));
-    background: hsl(var(--destructive));
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.1);
 }
 
 .cdx-image-hotspots__list-remove svg {
-    width: 14px;
-    height: 14px;
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
@@ -449,6 +452,6 @@
     }
 
     .cdx-image-hotspots__tooltip {
-        min-width: 200px;
+        min-width: 12.5rem;
     }
 }

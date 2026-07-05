@@ -18,10 +18,10 @@ const alignmentClass: Record<NonNullable<CTAData['alignment']>, string> = {
 };
 
 const buttonStyleClass: Record<NonNullable<CTAData['style']>, string> = {
-    primary: 'bg-primary text-primary-foreground border-primary hover:opacity-90',
-    secondary: 'bg-secondary text-secondary-foreground border-secondary hover:opacity-90',
-    outline: 'bg-transparent text-primary border-primary hover:bg-muted/40',
-    ghost: 'bg-transparent text-foreground border-border hover:bg-muted',
+    primary: 'bg-primary text-primary-foreground border-transparent hover:bg-primary/90',
+    secondary: 'bg-secondary text-secondary-foreground border-transparent hover:bg-secondary/80',
+    outline: 'bg-transparent text-primary border-border hover:bg-muted/40',
+    ghost: 'bg-transparent text-foreground border-transparent hover:bg-muted/70',
 };
 
 const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
@@ -36,7 +36,7 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
 
     const buttonClass = useMemo(() => {
         const baseClass =
-            'inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md font-semibold text-sm no-underline border-2 transition-colors leading-tight cursor-pointer';
+            'inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg font-semibold text-sm no-underline border transition-colors duration-normal leading-tight cursor-pointer';
         return `${baseClass} ${buttonStyleClass[style] ?? buttonStyleClass.primary}`;
     }, [style]);
 

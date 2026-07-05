@@ -9,22 +9,25 @@ const Table: RenderFn<{ withHeadings?: boolean; content: string[][] }> = ({ data
     const rows = plainTextContent.slice(withHeadings ? 1 : 0);
 
     return (
-        <div className="cdc-content-table overflow-x-auto my-4 rounded-md border border-border">
-            <table className="min-w-full divide-y divide-border">
+        <div className="cdc-content-table overflow-x-auto my-4 rounded-xl border border-border/60">
+            <table className="min-w-full divide-y divide-border/60">
                 {withHeadings && (
-                    <thead className="bg-muted/50">
+                    <thead className="bg-muted/40">
                         <tr>
                             {headers.map((header: string, index: number) => (
-                                <th key={index} className="px-4 py-3 text-left text-sm font-semibold text-foreground">
+                                <th
+                                    key={index}
+                                    className="px-4 py-3 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
+                                >
                                     {header}
                                 </th>
                             ))}
                         </tr>
                     </thead>
                 )}
-                <tbody className="bg-background divide-y divide-border">
+                <tbody className="bg-background divide-y divide-border/60">
                     {rows.map((row: string[], rowIndex: number) => (
-                        <tr key={rowIndex} className="hover:bg-muted/50 transition-colors">
+                        <tr key={rowIndex} className="hover:bg-muted/40 transition-colors">
                             {row.map((cell: string, cellIndex: number) => (
                                 <td key={cellIndex} className="px-4 py-3 text-sm text-foreground">
                                     {cell}

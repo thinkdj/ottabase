@@ -190,7 +190,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             {compact ? (
                 /* ── Compact layout: stamp image left, content right, summary bottom ── */
                 <div
-                    className={`not-prose ${className} my-4 rounded-lg overflow-hidden border border-border cdc-content-review cdc-content-review--compact`}
+                    className={`not-prose ${className} my-4 rounded-xl overflow-hidden bg-muted/40 cdc-content-review cdc-content-review--compact`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -213,7 +213,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                             <div className="flex items-start gap-2">
                                 <div className="flex-1 min-w-0">
                                     <h3
-                                        className="text-sm sm:text-base font-semibold text-card-foreground leading-tight truncate m-0"
+                                        className="text-sm sm:text-[0.9375rem] font-semibold text-foreground leading-tight truncate m-0"
                                         itemProp="name"
                                     >
                                         {linkUrl ? (
@@ -262,7 +262,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
                     {/* Bottom summary bar */}
                     {summary && (
-                        <div className="px-3 py-1.5 border-t border-border bg-muted/50">
+                        <div className="px-3 py-1.5 border-t border-border/60">
                             <p className="text-xs text-muted-foreground m-0 line-clamp-1" itemProp="reviewBody">
                                 <span className="font-medium text-foreground">Verdict:</span> {summary}
                             </p>
@@ -272,7 +272,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             ) : (
                 /* ── Full layout ── */
                 <div
-                    className={`not-prose ${className} my-5 rounded-lg overflow-hidden border border-border cdc-content-review`}
+                    className={`not-prose ${className} my-5 rounded-xl overflow-hidden bg-muted/40 cdc-content-review`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -295,7 +295,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                     )}
 
                     {/* Content area */}
-                    <div className="px-5 py-4 sm:px-6 sm:py-5">
+                    <div className="p-5">
                         {/* No-image rating badge */}
                         {!image && rating > 0 && (
                             <div className="flex items-center gap-3 mb-3">
@@ -305,7 +305,10 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                         )}
 
                         {/* Title */}
-                        <h3 className="text-lg font-semibold text-foreground leading-snug mb-1 mt-0" itemProp="name">
+                        <h3
+                            className="text-[0.9375rem] font-semibold text-foreground leading-snug mb-1 mt-0"
+                            itemProp="name"
+                        >
                             {title}
                         </h3>
 
@@ -338,7 +341,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 {pros.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wide mt-0">
+                                        <h4 className="text-[0.6875rem] font-medium text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wide mt-0">
                                             Pros
                                         </h4>
                                         <ul className="list-none m-0 p-0 space-y-1">
@@ -353,7 +356,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                 )}
                                 {cons.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wide mt-0">
+                                        <h4 className="text-[0.6875rem] font-medium text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wide mt-0">
                                             Cons
                                         </h4>
                                         <ul className="list-none m-0 p-0 space-y-1">
@@ -376,10 +379,15 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                     href={sanitizeUrl(linkUrl)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/40 hover:decoration-foreground transition-colors"
+                                    className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/40 hover:decoration-foreground transition-colors"
                                 >
                                     {linkLabel}
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg
+                                        className="w-3.5 h-3.5 transition-transform duration-normal group-hover:translate-x-0.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
                                         <path
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
@@ -393,8 +401,8 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
                         {/* Verdict */}
                         {summary && (
-                            <div className="pt-3 border-t border-border">
-                                <h4 className="font-semibold text-xs mb-1 mt-0 text-muted-foreground uppercase tracking-wide">
+                            <div className="pt-3 border-t border-border/60">
+                                <h4 className="font-medium text-[0.6875rem] mb-1 mt-0 text-muted-foreground uppercase tracking-wide">
                                     Verdict
                                 </h4>
                                 <p className="text-sm text-foreground m-0 leading-relaxed">{summary}</p>
@@ -406,7 +414,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
             {/* Noscript fallback */}
             <noscript>
-                <div className="my-6 p-4 border rounded">
+                <div className="my-6 p-4 rounded-xl bg-muted/40">
                     <h3>{title}</h3>
                     {content && <p>{content}</p>}
                     {rating > 0 && (

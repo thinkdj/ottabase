@@ -10,7 +10,8 @@ applications with dynamic data sources and CrudHub integration.
 - **Single and Multi-select modes** - Choose between selecting one item or multiple items
 - **Custom Renderers** - Customize how items and selected values are displayed (flags, avatars, badges)
 - **Chip Display** - Multi-select shows chips with overflow: "Apple, Banana +2 more"
-- **Size Variants** - `xs`, `sm`, `md`, and `lg`, driven by Ottabase theme vars like `--spacing-element` and `--radius`
+- **Size Variants** - `xs`, `sm`, `md`, and `lg`; whitespace follows theme vars (`--spacing-element`, `--radius`) at
+  damped strength while type stays fixed per size
 - **Pagination Support** - Selected items persist even when not in current API response
 - **Real-time search** - Debounced search with client-side or server-side filtering
 - **CrudHub Integration** - Built-in async collection fetching support
@@ -57,8 +58,9 @@ function MyComponent() {
 
 - `xs` is useful for compact toolbars and dense filter rows.
 - `md` is the default and matches the existing control size.
-- The sizing system is driven by Ottabase theme vars such as `--spacing-element` and `--radius`, so controls scale with
-  the active brand/theme.
+- Whitespace (paddings, min-height) follows the brand's `--spacing-element` at half strength, and corner rounding
+  follows `--radius`, so controls breathe with the active theme. Font and icon sizes are fixed per variant and never
+  scale with spacing — a spacious theme widens a control's padding, not its text.
 
 ```tsx
 <OttaSelect size="xs" items={items} placeholder="Ultra compact" />

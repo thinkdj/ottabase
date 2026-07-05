@@ -17,7 +17,7 @@ import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, ChevronLeft, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface BlogPost {
@@ -171,11 +171,20 @@ export function BlogDetailPage() {
         return map;
     }, [comments]);
 
-    // Loading state
+    // Loading state — pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+            <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8" aria-busy="true">
+                <span className="sr-only">Loading post…</span>
+                <div className="h-4 w-28 animate-pulse rounded-lg bg-muted/40" />
+                <div className="h-10 w-3/4 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-4 w-48 animate-pulse rounded-lg bg-muted/40" />
+                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="space-y-3">
+                    <div className="h-4 animate-pulse rounded-lg bg-muted/40" />
+                    <div className="h-4 w-5/6 animate-pulse rounded-lg bg-muted/40" />
+                    <div className="h-4 w-2/3 animate-pulse rounded-lg bg-muted/40" />
+                </div>
             </div>
         );
     }
@@ -184,13 +193,13 @@ export function BlogDetailPage() {
     if (!post) {
         return (
             <div className="text-center py-16">
-                <h1 className="text-2xl font-bold mb-4">Post Not Found</h1>
+                <h1 className="text-2xl font-bold tracking-tight mb-4">Post Not Found</h1>
                 <p className="text-muted-foreground mb-6">
                     The post you're looking for doesn't exist or has been removed.
                 </p>
                 <Button asChild>
                     <Link to="/blog">
-                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Blog
                     </Link>
                 </Button>
@@ -322,40 +331,45 @@ export function BlogDetailPage() {
         if (items.length === 0) return null;
 
         return items.map((comment) => {
-            const indentClass = depth === 0 ? '' : depth === 1 ? 'ml-6' : depth === 2 ? 'ml-12' : 'ml-16';
+            // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
+            const indentClass = depth === 0 ? 'py-4' : 'ml-1 border-l border-border/60 pl-4 pt-4';
             const isReplying = replyingToId === comment.id;
 
             return (
-                <div key={comment.id} className={`border-t first:border-t-0 py-4 ${indentClass}`}>
+                <div key={comment.id} className={indentClass}>
                     <div className="flex gap-3">
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-8 w-8 ring-1 ring-border">
                             <AvatarImage src={comment._user?.image || undefined} />
-                            <AvatarFallback>{getInitials(comment._user?.name)}</AvatarFallback>
+                            <AvatarFallback className="text-xs font-medium">
+                                {getInitials(comment._user?.name)}
+                            </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                     {formatShortDate(comment.createdAt)}
                                 </span>
                             </div>
-                            <p className="mt-2 text-sm whitespace-pre-wrap text-foreground">{comment.body}</p>
+                            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                                {comment.body}
+                            </p>
                             {user?.id && depth < 3 && (
                                 <button
                                     type="button"
-                                    className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                                    className="mt-2 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                     onClick={() => toggleReply(comment.id)}
                                 >
                                     {isReplying ? 'Cancel reply' : 'Reply'}
                                 </button>
                             )}
                             {isReplying && (
-                                <div className="mt-3 space-y-2">
+                                <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3">
                                     <Textarea
                                         placeholder="Write a reply..."
                                         value={replyText}
                                         onChange={(e) => setReplyText(e.target.value)}
-                                        className="min-h-[80px] text-sm"
+                                        className="min-h-20 bg-background text-sm"
                                     />
                                     <div className="flex justify-end">
                                         <Button
@@ -398,9 +412,9 @@ export function BlogDetailPage() {
 
             {/* Back link + Edit (author only) */}
             <div className="mb-6 flex items-center justify-between gap-4">
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
                     <Link to="/blog">
-                        <ChevronLeft className="mr-1 h-4 w-4" />
+                        <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
                 </Button>
@@ -417,12 +431,12 @@ export function BlogDetailPage() {
             {/* Lock screen for password-protected posts */}
             {isLocked && (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                    <div className="rounded-full bg-muted p-6 mb-6 dark:bg-muted/50">
+                    <div className="rounded-full bg-muted/40 p-6 mb-6">
                         <Lock className="h-16 w-16 text-muted-foreground" aria-hidden />
                     </div>
-                    <h1 className="text-2xl font-bold mb-2">{displayPost.title}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight mb-2">{displayPost.title}</h1>
                     {displayPost.excerpt && (
-                        <p className="text-muted-foreground max-w-lg mb-6">{displayPost.excerpt}</p>
+                        <p className="text-muted-foreground leading-relaxed max-w-lg mb-6">{displayPost.excerpt}</p>
                     )}
                     {displayPost.passwordHint && (
                         <p className="text-sm text-muted-foreground mb-4">Hint: {displayPost.passwordHint}</p>
@@ -436,7 +450,7 @@ export function BlogDetailPage() {
                                 setPassword(e.target.value);
                                 setUnlockError(null);
                             }}
-                            className="bg-background dark:bg-background"
+                            className="bg-background"
                             autoComplete="current-password"
                             disabled={isUnlocking}
                         />
@@ -465,31 +479,37 @@ export function BlogDetailPage() {
                             renderSeriesNav={(post) => {
                                 if (!series || seriesPosts.length <= 1) return null;
                                 return (
-                                    <div className="mt-4 pt-4 border-t">
+                                    <div className="mt-4 pt-4 border-t border-border/60">
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             {prevPost && (
                                                 <Link
                                                     to={`/blog/${prevPost.slug}`}
-                                                    className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 >
-                                                    <ArrowLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                    <ArrowLeft className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
                                                     <div className="min-w-0">
-                                                        <div className="text-xs text-muted-foreground mb-1">
+                                                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
                                                             Previous
                                                         </div>
-                                                        <div className="font-medium truncate">{prevPost.title}</div>
+                                                        <div className="text-sm font-medium truncate">
+                                                            {prevPost.title}
+                                                        </div>
                                                     </div>
                                                 </Link>
                                             )}
                                             {nextPost && (
                                                 <Link
                                                     to={`/blog/${nextPost.slug}`}
-                                                    className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors sm:text-right sm:flex-row-reverse"
+                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
                                                 >
-                                                    <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
                                                     <div className="min-w-0">
-                                                        <div className="text-xs text-muted-foreground mb-1">Next</div>
-                                                        <div className="font-medium truncate">{nextPost.title}</div>
+                                                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
+                                                            Next
+                                                        </div>
+                                                        <div className="text-sm font-medium truncate">
+                                                            {nextPost.title}
+                                                        </div>
                                                     </div>
                                                 </Link>
                                             )}
@@ -506,7 +526,10 @@ export function BlogDetailPage() {
                             <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
                             {displayPost.tags.map((tag) => (
                                 <Link key={tag.id} to="/blog/tag/$slug" params={{ slug: tag.slug }}>
-                                    <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
+                                    <Badge
+                                        variant="outline"
+                                        className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
+                                    >
                                         {tag.name}
                                     </Badge>
                                 </Link>
@@ -520,7 +543,10 @@ export function BlogDetailPage() {
                             <FolderTree className="h-4 w-4 text-muted-foreground mt-0.5" />
                             {displayPost.categories.map((cat) => (
                                 <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
-                                    <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                                    <Badge
+                                        variant="outline"
+                                        className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
+                                    >
                                         {cat.name}
                                     </Badge>
                                 </Link>
@@ -529,35 +555,38 @@ export function BlogDetailPage() {
                     )}
 
                     {allowComments && (
-                        <section className="mt-12 border-t pt-8">
+                        <section className="mt-12 border-t border-border/60 pt-8">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold">Comments</h2>
-                                <span className="text-sm text-muted-foreground">
+                                <h2 className="text-[0.9375rem] font-semibold">Comments</h2>
+                                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                     {comments.length} comment{comments.length !== 1 ? 's' : ''}
                                 </span>
                             </div>
 
                             {commentError && (
-                                <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                                     {commentError}
                                 </div>
                             )}
 
                             {!user?.id && (
-                                <div className="mt-4 rounded-lg border p-4 text-sm text-muted-foreground">
-                                    <Link to="/login" className="underline">
+                                <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                                    <Link
+                                        to="/login"
+                                        className="underline underline-offset-4 transition-colors duration-normal hover:text-foreground"
+                                    >
                                         Sign in
                                     </Link>{' '}
                                     to join the discussion.
                                 </div>
                             )}
 
-                            <div className="mt-4 space-y-2">
+                            <div className="mt-4 space-y-2 rounded-xl bg-muted/40 p-4">
                                 <Textarea
                                     placeholder="Write a comment..."
                                     value={commentDraft}
                                     onChange={(e) => setCommentDraft(e.target.value)}
-                                    className="min-h-[100px] text-sm"
+                                    className="min-h-24 bg-background text-sm"
                                     disabled={!user?.id}
                                 />
                                 <div className="flex justify-end">
@@ -575,14 +604,14 @@ export function BlogDetailPage() {
                             </div>
 
                             {commentsError && (
-                                <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                                     {commentsError.message || 'Failed to load comments.'}
                                 </div>
                             )}
 
-                            <div className="mt-6 rounded-lg border bg-card">
+                            <div className="mt-4">
                                 {isLoadingComments ? (
-                                    <div className="space-y-4 p-4">
+                                    <div className="space-y-4 py-4">
                                         {[1, 2, 3].map((i) => (
                                             <div key={i} className="flex gap-3">
                                                 <Skeleton className="h-8 w-8 rounded-full" />
@@ -594,11 +623,11 @@ export function BlogDetailPage() {
                                         ))}
                                     </div>
                                 ) : comments.length === 0 ? (
-                                    <p className="p-6 text-center text-sm text-muted-foreground">
+                                    <p className="rounded-xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
                                         No comments yet. Be the first to comment.
                                     </p>
                                 ) : (
-                                    <div className="p-4">{renderComments(null, 0)}</div>
+                                    <div>{renderComments(null, 0)}</div>
                                 )}
                             </div>
                         </section>
@@ -608,10 +637,10 @@ export function BlogDetailPage() {
 
             {/* Series Navigation - All posts */}
             {series && seriesPosts.length > 1 && (
-                <nav className="border-t pt-8 mt-12">
-                    <h2 className="text-xl font-semibold mb-4">More in this series</h2>
+                <nav className="border-t border-border/60 pt-8 mt-12">
+                    <h2 className="text-[0.9375rem] font-semibold mb-4">More in this series</h2>
                     <details className="mt-6">
-                        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                        <summary className="cursor-pointer text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground">
                             View all {seriesPosts.length} posts in this series
                         </summary>
                         <ol className="mt-4 space-y-2 list-decimal list-inside">
@@ -620,7 +649,10 @@ export function BlogDetailPage() {
                                     {p.id === displayPost.id ? (
                                         <span>{p.title} (current)</span>
                                     ) : (
-                                        <Link to={`/blog/${p.slug}`} className="hover:text-primary transition-colors">
+                                        <Link
+                                            to={`/blog/${p.slug}`}
+                                            className="text-muted-foreground transition-colors duration-normal hover:text-foreground"
+                                        >
                                             {p.title}
                                         </Link>
                                     )}
@@ -632,10 +664,10 @@ export function BlogDetailPage() {
             )}
 
             {/* Back to blog */}
-            <div className="border-t pt-8 mt-12">
-                <Button variant="outline" asChild>
+            <div className="border-t border-border/60 pt-8 mt-12">
+                <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
                     <Link to="/blog">
-                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        <ArrowLeft className="h-4 w-4" />
                         Back to all posts
                     </Link>
                 </Button>

@@ -7,6 +7,8 @@ import {
     CardTitle,
     Checkbox,
     Label,
+    NativeSelect,
+    NativeSelectOption,
     Switch,
 } from '@ottabase/ui-shadcn';
 import { useCallback, useMemo } from 'react';
@@ -155,45 +157,45 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
                 </div>
                 <div className="space-y-2 pt-2">
                     <Label className="text-muted-foreground">Default Easing</Label>
-                    <select
+                    <NativeSelect
                         value={easing}
                         onChange={(e) => handleUpdate(mode, { easing: e.target.value })}
-                        className="w-full p-2 text-sm border rounded bg-background border-input"
+                        wrapperClassName="w-full"
                     >
                         {EASING_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value} className="text-black">
+                            <NativeSelectOption key={opt.value} value={opt.value}>
                                 {opt.label}
-                            </option>
+                            </NativeSelectOption>
                         ))}
-                    </select>
+                    </NativeSelect>
                 </div>
                 <div className="space-y-2">
                     <Label className="text-muted-foreground">Enter Easing</Label>
-                    <select
+                    <NativeSelect
                         value={easingEnter}
                         onChange={(e) => handleUpdate(mode, { easingEnter: e.target.value })}
-                        className="w-full p-2 text-sm border rounded bg-background border-input"
+                        wrapperClassName="w-full"
                     >
                         {EASING_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value} className="text-black">
+                            <NativeSelectOption key={opt.value} value={opt.value}>
                                 {opt.label}
-                            </option>
+                            </NativeSelectOption>
                         ))}
-                    </select>
+                    </NativeSelect>
                 </div>
                 <div className="space-y-2">
                     <Label className="text-muted-foreground">Exit Easing</Label>
-                    <select
+                    <NativeSelect
                         value={easingExit}
                         onChange={(e) => handleUpdate(mode, { easingExit: e.target.value })}
-                        className="w-full p-2 text-sm border rounded bg-background border-input"
+                        wrapperClassName="w-full"
                     >
                         {EASING_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value} className="text-black">
+                            <NativeSelectOption key={opt.value} value={opt.value}>
                                 {opt.label}
-                            </option>
+                            </NativeSelectOption>
                         ))}
-                    </select>
+                    </NativeSelect>
                 </div>
                 <div className="mt-4 p-4 rounded bg-muted/20 flex items-center justify-center overflow-hidden h-24">
                     <div

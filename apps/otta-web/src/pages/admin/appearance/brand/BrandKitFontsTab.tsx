@@ -2,7 +2,17 @@ import type { TokenTypography } from '@ottabase/brand-engine';
 import { getThemeOrDefault, injectFont } from '@ottabase/brand-engine';
 import { GOOGLE_FONTS, fontToTypography } from '@ottabase/brand-engine/fonts';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Switch } from '@ottabase/ui-shadcn';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Label,
+    NativeSelect,
+    NativeSelectOption,
+    Switch,
+} from '@ottabase/ui-shadcn';
 import { useCallback, useEffect, useMemo } from 'react';
 import { OverrideSection } from './OverrideSection';
 
@@ -80,72 +90,44 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
                 <div className="grid grid-cols-3 gap-4">
                     <div>
                         <Label className="text-muted-foreground text-xs">Weight</Label>
-                        <select
+                        <NativeSelect
                             value={weight}
                             onChange={(e) => onUpdate(mode, role, { fontWeight: e.target.value })}
-                            className="w-full mt-1 p-2 text-sm border rounded bg-background border-input"
+                            wrapperClassName="w-full mt-1"
                         >
-                            <option value="normal" className="text-black">
-                                Normal (400)
-                            </option>
-                            <option value="medium" className="text-black">
-                                Medium (500)
-                            </option>
-                            <option value="semibold" className="text-black">
-                                Semibold (600)
-                            </option>
-                            <option value="bold" className="text-black">
-                                Bold (700)
-                            </option>
-                            <option value="black" className="text-black">
-                                Black (900)
-                            </option>
-                        </select>
+                            <NativeSelectOption value="normal">Normal (400)</NativeSelectOption>
+                            <NativeSelectOption value="medium">Medium (500)</NativeSelectOption>
+                            <NativeSelectOption value="semibold">Semibold (600)</NativeSelectOption>
+                            <NativeSelectOption value="bold">Bold (700)</NativeSelectOption>
+                            <NativeSelectOption value="black">Black (900)</NativeSelectOption>
+                        </NativeSelect>
                     </div>
                     <div>
                         <Label className="text-muted-foreground text-xs">Line Height</Label>
-                        <select
+                        <NativeSelect
                             value={lineHeight}
                             onChange={(e) => onUpdate(mode, role, { lineHeight: e.target.value })}
-                            className="w-full mt-1 p-2 text-sm border rounded bg-background border-input"
+                            wrapperClassName="w-full mt-1"
                         >
-                            <option value="tight" className="text-black">
-                                Tight
-                            </option>
-                            <option value="normal" className="text-black">
-                                Normal
-                            </option>
-                            <option value="relaxed" className="text-black">
-                                Relaxed
-                            </option>
-                            <option value="loose" className="text-black">
-                                Loose
-                            </option>
-                        </select>
+                            <NativeSelectOption value="tight">Tight</NativeSelectOption>
+                            <NativeSelectOption value="normal">Normal</NativeSelectOption>
+                            <NativeSelectOption value="relaxed">Relaxed</NativeSelectOption>
+                            <NativeSelectOption value="loose">Loose</NativeSelectOption>
+                        </NativeSelect>
                     </div>
                     <div>
                         <Label className="text-muted-foreground text-xs">Spacing</Label>
-                        <select
+                        <NativeSelect
                             value={letterSpacing}
                             onChange={(e) => onUpdate(mode, role, { letterSpacing: e.target.value })}
-                            className="w-full mt-1 p-2 text-sm border rounded bg-background border-input"
+                            wrapperClassName="w-full mt-1"
                         >
-                            <option value="tighter" className="text-black">
-                                Tighter
-                            </option>
-                            <option value="tight" className="text-black">
-                                Tight
-                            </option>
-                            <option value="normal" className="text-black">
-                                Normal
-                            </option>
-                            <option value="wide" className="text-black">
-                                Wide
-                            </option>
-                            <option value="wider" className="text-black">
-                                Wider
-                            </option>
-                        </select>
+                            <NativeSelectOption value="tighter">Tighter</NativeSelectOption>
+                            <NativeSelectOption value="tight">Tight</NativeSelectOption>
+                            <NativeSelectOption value="normal">Normal</NativeSelectOption>
+                            <NativeSelectOption value="wide">Wide</NativeSelectOption>
+                            <NativeSelectOption value="wider">Wider</NativeSelectOption>
+                        </NativeSelect>
                     </div>
                 </div>
 

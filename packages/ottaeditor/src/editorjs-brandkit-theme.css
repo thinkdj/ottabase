@@ -4,18 +4,19 @@
 
 @import './ottaeditor-common.css';
 
-/* Plus (+) Button */
+/* Plus (+) Button — background chip with hairline ring; hover = tint deepen */
 .ce-toolbar__plus {
     background: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
+    color: hsl(var(--muted-foreground)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .ce-toolbar__plus:hover {
-    background: hsl(var(--accent)) !important;
-    color: hsl(var(--accent-foreground)) !important;
-    border-color: hsl(var(--ring)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .ce-toolbar__plus svg {
@@ -25,15 +26,16 @@
 /* Settings Button (::) */
 .ce-toolbar__settings-btn {
     background: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
+    color: hsl(var(--muted-foreground)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .ce-toolbar__settings-btn:hover {
-    background: hsl(var(--accent)) !important;
-    color: hsl(var(--accent-foreground)) !important;
-    border-color: hsl(var(--ring)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .ce-toolbar__settings-btn svg {
@@ -50,10 +52,17 @@
     z-index: 60 !important;
 }
 
-/* Popover Item Hover - Brand color with transparency */
+/* Floating menus — the only surfaces that carry a drop shadow */
+.ce-popover__container,
+.ce-inline-toolbar {
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Popover item hover — canonical menu-item tint deepen */
 .ce-popover__item:hover,
 .ce-popover-item:hover {
-    background: hsl(var(--primary) / 0.1) !important;
+    background: hsl(var(--muted) / 0.7) !important;
 }
 
 /* Selected Popover Items - Brand color with transparency */
@@ -82,13 +91,17 @@
 
 /* Selected Block - Theme-aware background */
 .ce-block--selected .ce-block__content {
-    background: hsl(var(--accent)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
 }
 
-/* Filter Input - Theme-aware styling */
+/* Filter Input - soft tint fill, hairline appears on focus */
 .cdx-search-field {
-    border: 1px solid hsl(var(--border) / 0.1) !important;
-    border-radius: calc(var(--radius) - 4px) !important;
+    background: hsl(var(--muted) / 0.4) !important;
+    border: 1px solid transparent !important;
+    border-radius: calc(var(--radius) - 2px) !important;
+    transition:
+        border-color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdx-search-field:focus-within {
@@ -135,7 +148,7 @@
 }
 
 .tc-cell--selected {
-    background: hsl(var(--accent)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
 }
 
 /* Header row */
@@ -163,7 +176,7 @@
 }
 
 .tc-toolbox__toggler:hover {
-    background: hsl(var(--accent)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
 }
 
 .tc-toolbox__toggler svg {
@@ -174,7 +187,8 @@
 .tc-popover {
     background: hsl(var(--background)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    box-shadow: var(--shadow-md) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-lg) !important;
 }
 
 .tc-popover__item {
@@ -182,7 +196,7 @@
 }
 
 .tc-popover__item:hover {
-    background: hsl(var(--accent)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
 }
 
 .tc-popover__item-icon {
@@ -211,7 +225,7 @@
 
 .tc-add-row:hover,
 .tc-add-column:hover {
-    background: hsl(var(--accent)) !important;
+    background: hsl(var(--muted) / 0.7) !important;
     color: hsl(var(--foreground)) !important;
 }
 

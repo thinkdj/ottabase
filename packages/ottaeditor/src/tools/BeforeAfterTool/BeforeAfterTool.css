@@ -4,13 +4,13 @@
 .cdx-before-after__label-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .cdx-before-after__options-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    gap: 12px;
+    gap: 0.75rem;
     align-items: end;
 }
 
@@ -18,7 +18,7 @@
 
 .cdx-before-after__input-with-gallery {
     display: flex;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
 .cdx-before-after__input-with-gallery .ob-input {
@@ -29,71 +29,75 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
+    width: 2.25rem;
     flex-shrink: 0;
-    background: hsl(var(--muted));
+    background: hsl(var(--background));
     border: 1px solid hsl(var(--input));
     border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease);
 }
 
 .cdx-before-after__gallery-btn:hover {
-    background: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
-    border-color: hsl(var(--ring));
+    background: hsl(var(--muted) / 0.7);
+    color: hsl(var(--foreground));
 }
 
 .cdx-before-after__gallery-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 1rem;
+    height: 1rem;
 }
 
-/* ── Orientation Toggle ──────────────────────────────────────────────────── */
+/* ── Orientation Toggle — segment pattern ────────────────────────────────── */
 
 .cdx-before-after__orientation-toggle {
     display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    background: hsl(var(--muted));
-    border-radius: calc(var(--radius) - 2px);
+    gap: 0.125rem;
+    padding: 0.125rem;
+    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--radius);
 }
 
 .cdx-before-after__orientation-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 32px;
+    width: 2.25rem;
+    height: 2rem;
     background: transparent;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdx-before-after__orientation-btn:hover {
     color: hsl(var(--foreground));
-    background: hsl(var(--background) / 0.5);
 }
 
 .cdx-before-after__orientation-btn--active {
     background: hsl(var(--background));
-    color: hsl(var(--primary));
-    box-shadow: var(--shadow-sm);
+    color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdx-before-after__orientation-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 .cdx-before-after__slider-input {
     width: 100%;
     accent-color: hsl(var(--primary));
-    padding: 4px 0 !important;
+    padding: 0.25rem 0 !important;
     border: none !important;
     background: transparent !important;
 }
@@ -102,22 +106,22 @@
 
 .cdx-before-after__size-row {
     display: flex;
-    gap: 12px;
+    gap: 0.75rem;
     align-items: start;
 }
 
 .cdx-before-after__size-row > .ob-input-group:first-child {
-    width: 200px;
+    width: 12.5rem;
     flex-shrink: 0;
 }
 
 .cdx-before-after__fit-toggle {
     display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    background: hsl(var(--muted));
-    border-radius: calc(var(--radius) - 2px);
-    height: 42px; /* ~matching with input */
+    gap: 0.125rem;
+    padding: 0.125rem;
+    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--radius);
+    height: 2.25rem; /* match h-9 control rhythm */
     box-sizing: border-box;
 }
 
@@ -125,32 +129,34 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
+    padding: 0.25rem 0.625rem;
     background: transparent;
     border: none;
     border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdx-before-after__fit-btn:hover {
     color: hsl(var(--foreground));
-    background: hsl(var(--background) / 0.5);
 }
 
 .cdx-before-after__fit-btn--active {
     background: hsl(var(--background));
-    color: hsl(var(--primary));
-    box-shadow: var(--shadow-sm);
+    color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 /* ── Size Controls (single row above preview) ───────────────────────────── */
 
 .cdx-before-after__size-controls {
-    margin-top: 12px;
+    margin-top: 0.75rem;
 }
 
 /* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
@@ -158,12 +164,12 @@
 .cdx-before-after__position-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    width: 72px;
-    height: 72px;
-    padding: 2px;
-    background: hsl(var(--muted));
-    border-radius: calc(var(--radius) - 2px);
+    gap: 0.125rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    padding: 0.125rem;
+    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--radius);
 }
 
 .cdx-before-after__position-btn {
@@ -172,51 +178,52 @@
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease);
+    transition:
+        background var(--duration-normal) var(--ease),
+        box-shadow var(--duration-normal) var(--ease);
     position: relative;
 }
 
 .cdx-before-after__position-btn::before {
     content: '';
-    width: 6px;
-    height: 6px;
+    width: 0.375rem;
+    height: 0.375rem;
     border-radius: 50%;
     background: hsl(var(--muted-foreground) / 0.4);
-    transition: all var(--duration-fast) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .cdx-before-after__position-btn:hover::before {
     background: hsl(var(--foreground) / 0.6);
-    transform: scale(1.2);
 }
 
 .cdx-before-after__position-btn--active {
     background: hsl(var(--background));
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdx-before-after__position-btn--active::before {
     background: hsl(var(--primary));
-    width: 8px;
-    height: 8px;
+    width: 0.5rem;
+    height: 0.5rem;
 }
 
 /* ── Preview Container ──────────────────────────────────────────────────── */
 
 .cdx-before-after__preview {
-    margin-top: 12px;
+    margin-top: 0.75rem;
 }
 
 .cdx-before-after__container {
     position: relative;
     width: 100%;
-    min-height: 200px;
+    min-height: 12.5rem;
     overflow: hidden;
     border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
-    background: hsl(var(--muted) / 0.3);
+    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--muted) / 0.4);
     cursor: ew-resize;
     user-select: none;
     touch-action: none;
@@ -266,21 +273,21 @@
     object-fit: cover;
 }
 
-/* ── Drag Handle ────────────────────────────────────────────────────────── */
+/* ── Drag Handle — floating control over imagery, keeps elevation ────────── */
 
 .cdx-before-after__handle {
     position: absolute;
     background: hsl(var(--primary));
     z-index: 10;
     cursor: grab;
-    transition: box-shadow var(--duration-fast) var(--ease);
+    transition: box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdx-before-after__handle::before {
     content: '';
     position: absolute;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
     background: hsl(var(--primary));
     border: 3px solid hsl(var(--primary-foreground));
@@ -302,7 +309,7 @@
 }
 
 .cdx-before-after__handle:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+    box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
 .cdx-before-after__handle:active {
@@ -311,39 +318,43 @@
 
 /* ── Labels ──────────────────────────────────────────────────────────────── */
 
+/* Micro-label chips on a soft scrim — matches the renderer's .cdc-before-after__label */
 .cdx-before-after__label {
     position: absolute;
-    padding: 4px 12px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary) / 0.85);
+    padding: 0.25rem 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.7);
+    box-shadow: 0 0 0 1px hsl(var(--border) / 0.6);
     pointer-events: none;
     z-index: 5;
     backdrop-filter: blur(4px);
 }
 
 .cdx-before-after__label--before {
-    top: 12px;
-    left: 12px;
+    top: 0.75rem;
+    left: 0.75rem;
 }
 
 .cdx-before-after__label--after {
-    top: 12px;
-    right: 12px;
+    top: 0.75rem;
+    right: 0.75rem;
 }
 
 /* Vertical: labels at top-left and bottom-left */
 .cdx-before-after__container--vertical .cdx-before-after__label--before {
-    top: 12px;
-    left: 12px;
+    top: 0.75rem;
+    left: 0.75rem;
 }
 
 .cdx-before-after__container--vertical .cdx-before-after__label--after {
     top: auto;
-    bottom: 12px;
-    left: 12px;
+    bottom: 0.75rem;
+    left: 0.75rem;
     right: auto;
 }
 

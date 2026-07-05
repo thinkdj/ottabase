@@ -34,7 +34,7 @@ const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
         <div className={`${className} not-prose ${alignmentClass}`}>
             <blockquote className="relative group my-16 mx-0 border-0 pl-0 pr-0">
                 {/* Floating quote mark */}
-                <div className="absolute -top-4 -left-2 text-6xl font-serif text-muted-foreground/20 leading-none select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-normal">
+                <div className="absolute -top-4 -left-2 text-muted-foreground/20 leading-none select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-normal">
                     <IconQuote className="w-10 h-10" />
                 </div>
                 {/* QUOTE*/}
@@ -47,8 +47,8 @@ const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
                 {caption && (
                     <footer className={`flex items-center ${captionAlignmentClass}`}>
                         <div className="flex items-center space-x-3">
-                            <div className="w-8 h-px bg-gradient-to-r from-transparent to-border"></div>
-                            <cite className="text-sm font-medium text-muted-foreground not-italic tracking-wider uppercase m-0">
+                            <div className="w-8 h-px bg-border/60"></div>
+                            <cite className="text-[0.6875rem] font-medium text-muted-foreground not-italic tracking-wide uppercase m-0">
                                 {caption}
                             </cite>
                         </div>
@@ -56,7 +56,7 @@ const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
                 )}
 
                 {/* Subtle background accent */}
-                <div className="absolute inset-0 bg-gradient-to-br from-muted/30 to-transparent rounded-2xl -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-slow"></div>
+                <div className="absolute inset-0 bg-muted/30 rounded-xl -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-slow"></div>
             </blockquote>
         </div>
     );

@@ -77,7 +77,7 @@
 .cdc-content-block .inline-code {
     line-height: 1.5;
     display: inline-block;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) - 2px);
     padding: 0.05rem 0.35rem;
     margin: 0 0.275rem 0 0;
 }
@@ -113,18 +113,14 @@
 
 .advanced-image-block--stretched {
     width: min(100vw, 1400px);
-    /* Max width of 1400px on wide screens */
     position: relative;
     left: 50%;
     transform: translateX(-50%);
     max-width: none;
     padding: 0;
     margin: 2rem 0;
-    /* Add some vertical spacing for the popout effect */
-    box-shadow: var(--shadow-xl);
-    /* Theme-driven elevation for the popout effect */
-    border-radius: var(--radius);
-    /* Corner rounding follows the theme radius */
+    box-shadow: var(--shadow-lg);
+    border-radius: calc(var(--radius) + 4px);
     overflow: hidden;
 }
 
@@ -132,20 +128,20 @@
     width: 100%;
     max-width: none;
     object-fit: cover;
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
     display: block;
 }
 
 .advanced-image-block--stretched figcaption {
-    padding: 1rem 2rem;
+    padding: 1rem 1.5rem;
     max-width: 800px;
     margin: 0 auto;
-    color: hsl(var(--card-foreground));
-    background: hsl(var(--card) / 0.95);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid hsl(var(--border));
-    border-radius: 0 0 var(--radius) var(--radius);
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted) / 0.4);
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    border-radius: 0 0 calc(var(--radius) + 4px) calc(var(--radius) + 4px);
 }
 
 /* Override container constraints for stretched images */
@@ -158,25 +154,26 @@
     padding: 0;
     overflow: visible;
     margin: 2rem 0;
-    box-shadow: var(--shadow-xl);
-    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    border-radius: calc(var(--radius) + 4px);
 }
 
+/* Radius matches the rounded-xl the component always puts on the figure */
 .advanced-image-block--with-border {
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 4px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: calc(var(--radius) + 4px);
     overflow: hidden;
 }
 
 .advanced-image-block--with-background {
-    background: hsl(var(--muted));
+    background: hsl(var(--muted) / 0.4);
     padding: 1rem;
-    border-radius: calc(var(--radius) - 4px);
+    border-radius: calc(var(--radius) + 4px);
 }
 
 .advanced-image-block--featured-image {
     box-shadow: var(--shadow-lg);
-    border-radius: calc(var(--radius) - 2px);
+    border-radius: calc(var(--radius) + 4px);
 }
 
 /*
@@ -196,9 +193,8 @@
     .advanced-image-block--stretched,
     .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
         width: calc(100vw - 2rem);
-        /* Small margin on mobile */
         margin: 1rem 0;
-        border-radius: calc(var(--radius) - 4px);
+        border-radius: var(--radius);
         box-shadow: var(--shadow-lg);
     }
 
@@ -208,7 +204,7 @@
     }
 
     .advanced-image-block--stretched img {
-        border-radius: calc(var(--radius) - 4px);
+        border-radius: var(--radius) var(--radius) 0 0;
     }
 }
 
@@ -248,16 +244,6 @@
     box-sizing: border-box;
 }
 
-/* Smooth transitions for the popout effect (honors theme motion + reduced motion) */
-.advanced-image-block--stretched {
-    transition: all var(--duration-slow) var(--ease);
-}
-
-.advanced-image-block--stretched:hover {
-    transform: translateX(-50%) translateY(-2px);
-    box-shadow: var(--shadow-xl);
-}
-
 /* ======================================= */
 /* CTA Button                              */
 /* ======================================= */
@@ -289,13 +275,11 @@
     cursor: pointer;
     color: hsl(var(--primary-foreground));
     background: hsl(var(--primary));
-    transition:
-        background var(--duration-normal) var(--ease),
-        opacity var(--duration-normal) var(--ease);
+    transition: background-color var(--duration-normal) var(--ease);
 }
 
 :where(.cdc-content-cta a:not([class*='bg-']):not([class*='text-'])):hover {
-    opacity: 0.9;
+    background: hsl(var(--primary) / 0.9);
 }
 
 :where(.cdc-content-cta a):focus-visible {
@@ -373,21 +357,21 @@
     width: 2rem;
     height: 2rem;
     flex-shrink: 0;
-    border-radius: 9999px;
+    border-radius: var(--radius);
     border: none;
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
+    background: hsl(var(--background));
+    color: hsl(var(--muted-foreground));
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .cdc-steps-line {
     width: 1px;
     flex: 1;
     margin-top: 0.5rem;
-    background: hsl(var(--border));
+    background: hsl(var(--border) / 0.6);
 }
 
 /* Content: title + description */
@@ -398,17 +382,18 @@
 
 .cdc-steps-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    line-height: 2;
+    /* Unit-ed line height keeps the first line centered on the 2rem badge */
+    line-height: 2rem;
     color: hsl(var(--foreground));
 }
 
 .cdc-steps-text {
     margin: 0.125rem 0 0;
     white-space: pre-line;
-    font-size: 0.9375rem;
-    line-height: 1.7;
+    font-size: 0.875rem;
+    line-height: 1.625;
     color: hsl(var(--muted-foreground));
 }
 
@@ -429,19 +414,13 @@
 .cdc-faq-flat {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    border: 1px solid hsl(var(--border));
+    gap: 0.5rem;
+}
+
+/* Individual item — soft-tint row */
+.cdc-faq-item {
     border-radius: var(--radius);
     overflow: hidden;
-}
-
-/* Individual item */
-.cdc-faq-item {
-    border-bottom: 1px solid hsl(var(--border));
-}
-
-.cdc-faq-item:last-child {
-    border-bottom: none;
 }
 
 /* Question — <summary> for accordion, <h3> for flat */
@@ -449,15 +428,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 0.75rem;
     padding: 1rem 1.25rem;
     font-size: 0.9375rem;
     font-weight: 600;
     color: hsl(var(--foreground));
     cursor: pointer;
     list-style: none;
-    background: hsl(var(--card));
-    transition: background var(--duration-fast) var(--ease);
+    background: hsl(var(--muted) / 0.4);
+    transition: background-color var(--duration-normal) var(--ease);
     user-select: none;
 }
 
@@ -470,42 +449,58 @@
 }
 
 .cdc-faq-question:hover {
-    background: hsl(var(--muted) / 0.6);
+    background: hsl(var(--muted) / 0.7);
 }
 
 .cdc-faq-question-text {
     flex: 1;
 }
 
-/* Chevron icon — rotates when open */
+/* Chevron in a small chip well — rotates when open */
 .cdc-faq-chevron {
     flex-shrink: 0;
-    color: hsl(var(--muted-foreground));
-    transition: transform var(--duration-normal) var(--ease);
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background));
+    box-shadow: 0 0 0 1px hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    transition:
+        transform var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
+}
+
+.cdc-faq-question:hover .cdc-faq-chevron {
+    color: hsl(var(--foreground));
 }
 
 details[open] > .cdc-faq-question .cdc-faq-chevron {
     transform: rotate(180deg);
 }
 
-/* Answer */
+/* Answer — plain panel under the tinted question row */
 .cdc-faq-answer {
     margin: 0;
-    padding: 0.75rem 1.25rem 1.125rem;
-    font-size: 0.9375rem;
-    line-height: 1.7;
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.625;
     color: hsl(var(--muted-foreground));
     background: hsl(var(--background));
     white-space: pre-line;
 }
 
-/* Flat variant: question is an h3, no cursor */
+/* Flat variant: question is an h3 — not interactive, so no hover deepen */
 .cdc-faq-question--flat {
     cursor: default;
     margin: 0;
     font-weight: 600;
+}
+
+.cdc-faq-question--flat:hover {
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdc-faq-item--flat {
@@ -523,8 +518,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* ── Card variant ─────────────────────────────────────────────────────────── */
 
 .cdc-testimonial-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.4);
+    border: 1px solid transparent;
     border-radius: calc(var(--radius) + 4px);
     padding: 1.5rem;
     display: flex;
@@ -546,8 +541,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 .cdc-testimonial-featured {
     background: hsl(var(--muted) / 0.4);
-    border-radius: calc(var(--radius) + 8px);
-    padding: 2rem 2.5rem;
+    border-radius: calc(var(--radius) + 4px);
+    padding: 1.5rem 2rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -580,14 +575,13 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-testimonial-quote p {
     margin: 0;
     font-size: 1rem;
-    line-height: 1.7;
+    line-height: 1.625;
     color: hsl(var(--foreground));
     font-style: italic;
 }
 
 .cdc-testimonial-quote--large p {
     font-size: 1.25rem;
-    line-height: 1.65;
 }
 
 /* Large open-quote decoration for featured */
@@ -614,8 +608,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-testimonial-avatar {
-    width: 40px;
-    height: 40px;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
@@ -634,16 +628,16 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-testimonial-sub {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
 }
 
 /* ── Company logo ─────────────────────────────────────────────────────────── */
 
 .cdc-testimonial-company-logo {
-    height: 24px;
+    height: 1.5rem;
     width: auto;
-    max-width: 120px;
+    max-width: 7.5rem;
     object-fit: contain;
     opacity: 0.7;
     filter: grayscale(1);
@@ -654,7 +648,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-testimonial-stars {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 0.125rem;
 }
 
 .cdc-testimonial-star--filled {
@@ -677,27 +671,38 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.625rem;
 }
 
 .cdc-references-item {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.625rem;
     font-size: 0.875rem;
-    line-height: 1.5;
+    line-height: 1.625;
 }
 
+/* Index marker as a micro-chip */
 .cdc-references-label {
     flex-shrink: 0;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.375rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background));
+    box-shadow: 0 0 0 1px hsl(var(--border));
+    font-size: 0.6875rem;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
-    min-width: 2rem;
 }
 
 .cdc-references--footnote .cdc-references-label {
-    font-size: 0.75rem;
-    vertical-align: super;
-    min-width: 1rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.25rem;
+    font-size: 0.625rem;
 }
 
 .cdc-references-body {
@@ -721,41 +726,33 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 .cdc-references-note {
     color: hsl(var(--muted-foreground));
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
 }
 
 .cdc-references-accessed {
     color: hsl(var(--muted-foreground));
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
 }
 
 /* ── Testimonial: quote-bubble variant ──────────────────────────────────── */
 
 .cdc-testimonial-bubble {
-    border: 1px solid hsl(var(--border));
+    border: 1px solid transparent;
     border-radius: calc(var(--radius) + 4px);
     padding: 1.25rem 1.5rem;
     position: relative;
-    background: hsl(var(--card));
+    background: hsl(var(--muted) / 0.4);
 }
 
+/* Tail matches the tinted surface; flush with the bubble edge so the
+   translucent fill never double-stacks */
 .cdc-testimonial-bubble::after {
     content: '';
     position: absolute;
-    bottom: -12px;
+    bottom: -0.75rem;
     left: 2rem;
-    border: 6px solid transparent;
-    border-top-color: hsl(var(--border));
-}
-
-.cdc-testimonial-bubble::before {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 2rem;
-    border: 6px solid transparent;
-    border-top-color: hsl(var(--card));
-    z-index: 1;
+    border: 0.375rem solid transparent;
+    border-top-color: hsl(var(--muted) / 0.4);
 }
 
 .cdc-testimonial-bubble .cdc-testimonial-author {
@@ -770,8 +767,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     gap: 1.5rem;
     align-items: start;
     padding: 1.25rem 0;
-    border-top: 1px solid hsl(var(--border));
-    border-bottom: 1px solid hsl(var(--border));
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 .cdc-testimonial-side .cdc-testimonial-side-left {
@@ -779,7 +776,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    min-width: 120px;
+    min-width: 7.5rem;
     text-align: center;
 }
 
@@ -798,14 +795,14 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-testimonial-verified {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 0.75rem;
+    gap: 0.1875rem;
+    font-size: 0.6875rem;
     font-weight: 500;
     color: hsl(var(--primary));
     background: hsl(var(--primary) / 0.1);
     border-radius: 9999px;
-    padding: 1px 6px;
-    margin-left: 4px;
+    padding: 0.125rem 0.375rem;
+    margin-left: 0.25rem;
     vertical-align: middle;
 }
 
@@ -815,18 +812,18 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     position: relative;
     background-color: hsl(var(--warning) / 0.2);
     border-bottom: 2px solid hsl(var(--warning));
-    padding: 0 2px;
+    padding: 0 0.125rem;
     cursor: help;
 }
 
 .cdc-annotation__tooltip {
     position: absolute;
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 0.5rem);
     left: 50%;
     transform: translateX(-50%);
-    min-width: 200px;
-    max-width: 300px;
-    padding: 12px;
+    min-width: 12.5rem;
+    max-width: 18.75rem;
+    padding: 0.75rem;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
@@ -834,7 +831,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     z-index: 100;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
     text-align: left;
 }
 
@@ -844,18 +841,18 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border: 6px solid transparent;
+    border: 0.375rem solid transparent;
     border-top-color: hsl(var(--border));
 }
 
 .cdc-annotation__title {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: hsl(var(--foreground));
 }
 
 .cdc-annotation__text {
-    font-size: 13px;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     line-height: 1.5;
 }
@@ -870,14 +867,14 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 .cdc-before-after__container {
     position: relative;
-    min-height: 200px;
+    min-height: 12.5rem;
     overflow: hidden;
     border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
+    border: 1px solid hsl(var(--border) / 0.6);
     cursor: ew-resize;
     user-select: none;
     touch-action: none;
-    background: hsl(var(--muted) / 0.3);
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdc-before-after__container--vertical {
@@ -925,39 +922,42 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     object-fit: cover;
 }
 
-/* Labels */
+/* Labels — micro-label chips on a soft scrim */
 .cdc-before-after__label {
     position: absolute;
-    padding: 4px 10px;
-    border-radius: calc(var(--radius) - 4px);
-    font-size: 12px;
-    font-weight: 600;
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary) / 0.85);
+    padding: 0.25rem 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.7);
+    box-shadow: 0 0 0 1px hsl(var(--border) / 0.6);
     pointer-events: none;
     z-index: 5;
     backdrop-filter: blur(4px);
 }
 
 .cdc-before-after__label--before {
-    top: 12px;
-    left: 12px;
+    top: 0.75rem;
+    left: 0.75rem;
 }
 
 .cdc-before-after__label--after {
-    top: 12px;
-    right: 12px;
+    top: 0.75rem;
+    right: 0.75rem;
 }
 
 .cdc-before-after__container--vertical .cdc-before-after__label--before {
-    top: 12px;
-    left: 12px;
+    top: 0.75rem;
+    left: 0.75rem;
 }
 
 .cdc-before-after__container--vertical .cdc-before-after__label--after {
     top: auto;
-    bottom: 12px;
-    left: 12px;
+    bottom: 0.75rem;
+    left: 0.75rem;
     right: auto;
 }
 
@@ -967,14 +967,14 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     background: hsl(var(--primary));
     z-index: 10;
     cursor: grab;
-    transition: box-shadow var(--duration-fast) var(--ease);
+    transition: box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdc-before-after__handle::before {
     content: '';
     position: absolute;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
     background: hsl(var(--primary));
     border: 3px solid hsl(var(--primary-foreground));
@@ -985,7 +985,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-before-after__handle:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+    box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
 .cdc-before-after__handle:active {
@@ -993,8 +993,11 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-before-after__caption {
-    margin-top: 8px;
-    font-size: 14px;
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
     color: hsl(var(--muted-foreground));
     text-align: center;
 }
@@ -1011,10 +1014,10 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     position: relative;
     display: inline-block;
     width: 100%;
-    min-height: 200px;
+    min-height: 12.5rem;
     border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid hsl(var(--border) / 0.6);
 }
 
 /* Cover mode: image fills container height */
@@ -1035,8 +1038,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* Hotspot dot */
 .cdc-image-hotspots__dot {
     position: absolute;
-    width: 28px;
-    height: 28px;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
     background: hsl(var(--primary));
     border: 3px solid hsl(var(--primary-foreground));
@@ -1047,19 +1050,15 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     cursor: pointer;
     transform: translate(-50%, -50%);
     z-index: 10;
-    transition:
-        box-shadow var(--duration-fast) var(--ease),
-        transform var(--duration-fast) var(--ease);
+    transition: box-shadow var(--duration-normal) var(--ease);
 }
 
 .cdc-image-hotspots__dot:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
-    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
 .cdc-image-hotspots__dot--active {
-    box-shadow: 0 0 0 6px hsl(var(--primary) / 0.35);
-    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow: 0 0 0 0.375rem hsl(var(--primary) / 0.35);
     z-index: 15;
 }
 
@@ -1069,8 +1068,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-image-hotspots__dot-number {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: 600;
     color: hsl(var(--primary-foreground));
     line-height: 1;
     user-select: none;
@@ -1079,16 +1078,16 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* Tooltip */
 .cdc-image-hotspots__tooltip {
     position: absolute;
-    top: calc(100% + 10px);
+    top: calc(100% + 0.625rem);
     left: 50%;
     transform: translateX(-50%);
-    min-width: 200px;
-    max-width: 300px;
+    min-width: 12.5rem;
+    max-width: 18.75rem;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
-    padding: 12px;
-    box-shadow: var(--shadow-lg);
+    padding: 0.75rem;
+    box-shadow: var(--shadow-md);
     z-index: 20;
     text-align: left;
 }
@@ -1100,7 +1099,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border: 6px solid transparent;
+    border: 0.375rem solid transparent;
     border-bottom-color: hsl(var(--border));
 }
 
@@ -1110,28 +1109,31 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border: 5px solid transparent;
+    border: 0.3125rem solid transparent;
     border-bottom-color: hsl(var(--background));
 }
 
 .cdc-image-hotspots__tooltip-title {
     display: block;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: hsl(var(--foreground));
-    margin-bottom: 4px;
+    margin-bottom: 0.25rem;
 }
 
 .cdc-image-hotspots__tooltip-content {
-    font-size: 13px;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     line-height: 1.5;
     margin: 0;
 }
 
 .cdc-image-hotspots__caption {
-    margin-top: 8px;
-    font-size: 14px;
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
     color: hsl(var(--muted-foreground));
     text-align: center;
 }

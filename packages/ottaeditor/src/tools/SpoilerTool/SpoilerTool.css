@@ -1,9 +1,9 @@
 /* Spoiler Tool - custom/overrides only */
 
 .cdx-spoiler__wrapper {
-    background: hsl(var(--muted));
+    background: hsl(var(--muted) / 0.4);
 }
 
 .cdx-spoiler__textarea {
-    min-height: 60px;
+    min-height: 3.75rem;
 }

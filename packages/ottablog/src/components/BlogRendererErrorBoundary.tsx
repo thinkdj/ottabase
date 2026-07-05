@@ -58,34 +58,51 @@ export class BlogRendererErrorBoundary extends Component<
                 return this.props.fallback;
             }
 
-            // Default fallback UI
+            // Default fallback UI — quiet tinted notice driven by theme tokens
             return (
                 <div
                     className="blog-renderer-error"
                     style={{
-                        padding: '2rem',
-                        border: '1px solid #ef4444',
-                        borderRadius: '0.5rem',
-                        backgroundColor: '#fef2f2',
-                        color: '#991b1b',
+                        padding: '1.5rem',
+                        border: '1px solid hsl(var(--destructive) / 0.2)',
+                        borderRadius: 'calc(var(--radius) + 4px)',
+                        backgroundColor: 'hsl(var(--destructive) / 0.08)',
+                        color: 'hsl(var(--foreground))',
                     }}
                 >
-                    <h2 style={{ marginTop: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>
+                    <h2 style={{ marginTop: 0, marginBottom: '0.375rem', fontSize: '0.9375rem', fontWeight: 600 }}>
                         Failed to Render Blog Post
                     </h2>
-                    <p style={{ marginBottom: 0 }}>
+                    <p
+                        style={{
+                            marginBottom: 0,
+                            fontSize: '0.875rem',
+                            lineHeight: 1.625,
+                            color: 'hsl(var(--muted-foreground))',
+                        }}
+                    >
                         An error occurred while rendering this blog post. Please try refreshing the page or contact
                         support if the problem persists.
                     </p>
                     {this.state.error && (
                         <details style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-                            <summary style={{ cursor: 'pointer', fontWeight: '500' }}>Error Details</summary>
+                            <summary
+                                style={{
+                                    cursor: 'pointer',
+                                    fontWeight: 500,
+                                    color: 'hsl(var(--muted-foreground))',
+                                }}
+                            >
+                                Error Details
+                            </summary>
                             <pre
                                 style={{
                                     marginTop: '0.5rem',
                                     padding: '0.75rem',
-                                    backgroundColor: 'white',
-                                    borderRadius: '0.25rem',
+                                    backgroundColor: 'hsl(var(--background))',
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: 'calc(var(--radius) - 2px)',
+                                    color: 'hsl(var(--muted-foreground))',
                                     overflow: 'auto',
                                 }}
                             >

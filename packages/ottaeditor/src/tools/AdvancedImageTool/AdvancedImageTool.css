@@ -2,7 +2,7 @@
 
 .advanced-image-tool {
     position: relative;
-    border-radius: var(--radius);
+    border-radius: calc(var(--radius) + 4px);
     padding: 0;
     display: block;
 }
@@ -12,11 +12,13 @@
 }
 
 .advanced-image-upload-area {
-    min-height: 240px;
-    border: 2px dashed hsl(var(--border));
+    min-height: 15rem;
+    border: 1px dashed hsl(var(--border));
     border-radius: var(--radius);
     background: hsl(var(--muted) / 0.3);
-    transition: all var(--duration-normal) var(--ease);
+    transition:
+        border-color var(--duration-normal) var(--ease),
+        background var(--duration-normal) var(--ease);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -26,7 +28,7 @@
 }
 
 .advanced-image-upload-area:hover {
-    border-color: hsl(var(--ring));
+    border-color: hsl(var(--primary) / 0.5);
     background: hsl(var(--muted) / 0.5);
 }
 
@@ -41,55 +43,49 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 24px;
+    padding: 2rem 1.5rem;
     height: 100%;
     text-align: center;
 }
 
 .advanced-image-upload-icon {
-    margin-bottom: 20px;
-    width: 48px;
-    height: 48px;
+    margin-bottom: 1.25rem;
+    width: 3rem;
+    height: 3rem;
     background: hsl(var(--background));
-    border-radius: 50%;
+    border-radius: var(--radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid hsl(var(--border));
-    transition: transform var(--duration-normal) var(--ease);
-}
-
-.advanced-image-upload-area:hover .advanced-image-upload-icon {
-    transform: scale(1.05);
-    border-color: hsl(var(--border));
+    box-shadow: 0 0 0 1px hsl(var(--border));
+    transition: color var(--duration-normal) var(--ease);
 }
 
 .advanced-image-upload-icon svg {
     stroke: hsl(var(--muted-foreground));
-    width: 24px;
-    height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 .advanced-image-upload-text {
-    margin-bottom: 20px;
+    margin-bottom: 1.25rem;
 }
 
 .advanced-image-main-text {
-    margin: 0 0 4px 0;
+    margin: 0 0 0.25rem 0;
     color: hsl(var(--foreground));
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
 .advanced-image-sub-text {
     margin: 0;
     color: hsl(var(--muted-foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
 }
 
 .advanced-image-browse-section {
-    margin-top: 12px;
+    margin-top: 0.75rem;
 }
 
 .advanced-image-browse-btn {
@@ -98,62 +94,59 @@
     color: hsl(var(--foreground));
     cursor: pointer;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 500;
-    padding: 8px 16px;
+    padding: 0.4375rem 1rem;
     border-radius: calc(var(--radius) - 2px);
-    transition: all var(--duration-normal) var(--ease);
-    box-shadow: var(--shadow-xs);
+    transition:
+        background var(--duration-normal) var(--ease),
+        border-color var(--duration-normal) var(--ease),
+        color var(--duration-normal) var(--ease);
 }
 
 .advanced-image-browse-btn:hover {
-    background: hsl(var(--accent));
+    background: hsl(var(--muted) / 0.7);
     border-color: hsl(var(--border));
-    color: hsl(var(--accent-foreground));
-    box-shadow: var(--shadow-sm);
+    color: hsl(var(--foreground));
 }
 
 .advanced-image-browse-btn:active {
-    background: hsl(var(--accent));
-    transform: translateY(0.5px);
+    background: hsl(var(--muted) / 0.7);
 }
 
 /* URL Input Section */
 .advanced-image-url-section {
     width: 100%;
-    max-width: 360px;
+    max-width: 22.5rem;
 }
 
 .advanced-image-url-divider {
-    position: relative;
-    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
     text-align: center;
 }
 
-.advanced-image-url-divider::before {
+.advanced-image-url-divider::before,
+.advanced-image-url-divider::after {
     content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
+    flex: 1;
     height: 1px;
-    background: hsl(var(--border));
+    background: hsl(var(--border) / 0.6);
 }
 
 .advanced-image-url-divider span {
-    background: hsl(var(--muted));
-    padding: 0 8px;
     color: hsl(var(--muted-foreground));
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 500;
-    position: relative;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.025em;
 }
 
 .advanced-image-url-input-group {
     display: flex;
-    gap: 6px;
+    gap: 0.375rem;
     align-items: center;
 }
 
@@ -166,19 +159,19 @@
 }
 
 .advanced-image-url-btn {
-    padding: 8px 16px;
+    padding: 0.4375rem 1rem;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: none;
     border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 500;
-    transition: opacity var(--duration-normal) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .advanced-image-url-btn:hover {
-    opacity: 0.9;
+    background: hsl(var(--primary) / 0.9);
 }
 
 .advanced-image-url-btn:disabled {
@@ -191,12 +184,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .advanced-image-spinner {
-    width: 24px;
-    height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
     border: 2px solid hsl(var(--border));
     border-top: 2px solid hsl(var(--primary));
     border-radius: 50%;
@@ -215,7 +208,7 @@
 
 .advanced-image-loading p {
     color: hsl(var(--muted-foreground));
-    font-size: 13px;
+    font-size: 0.875rem;
     margin: 0;
     font-weight: 500;
 }
@@ -225,25 +218,25 @@
 }
 
 .advanced-image-retry-btn {
-    padding: 8px 16px;
+    padding: 0.4375rem 1rem;
     background: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
     border: none;
     border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 500;
-    transition: opacity var(--duration-normal) var(--ease);
+    transition: background var(--duration-normal) var(--ease);
 }
 
 .advanced-image-retry-btn:hover {
-    opacity: 0.9;
+    background: hsl(var(--destructive) / 0.9);
 }
 
 /* Image & Input Styles */
 .advanced-image-container {
     position: relative;
-    margin: 12px 0;
+    margin: 0.75rem 0;
     opacity: 0;
     transition: opacity var(--duration-slow) var(--ease);
 }
@@ -253,15 +246,15 @@
 }
 
 .advanced-image-container--with-border {
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 4px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: var(--radius);
     overflow: hidden;
 }
 
 .advanced-image-container--with-background {
-    background: hsl(var(--muted) / 0.3);
-    padding: 20px;
-    border-radius: calc(var(--radius) - 4px);
+    background: hsl(var(--muted) / 0.4);
+    padding: 1.25rem;
+    border-radius: var(--radius);
 }
 
 .advanced-image-container--stretched {
@@ -270,21 +263,21 @@
     left: 50%;
     transform: translateX(-50%);
     margin: 2rem 0;
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-lg);
     border-radius: var(--radius);
     overflow: hidden;
 }
 
 /* Dropdowns */
 .advanced-image-tool-dd {
-    min-width: 110px;
-    max-width: 300px;
+    min-width: 6.875rem;
+    max-width: 18.75rem;
     width: 100%;
-    border-radius: 0;
+    border-radius: calc(var(--radius) - 2px);
 }
 
 .advanced-image-tool-dd:focus {
-    border-radius: 0;
+    border-radius: calc(var(--radius) - 2px);
     appearance: none;
 }
 
@@ -293,23 +286,24 @@
     position: relative;
 }
 
+/* Chip recipe — matches the renderer's featured star badge */
 .advanced-image-container--featured::before {
     content: '★';
     position: absolute;
-    top: 8px;
-    right: 8px;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: hsl(var(--background));
+    color: hsl(var(--warning));
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
+    font-size: 0.75rem;
+    font-weight: 500;
     z-index: 10;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 /* Aspect Ratio Styles */
@@ -336,16 +330,16 @@
     background: transparent;
     border: none;
     color: hsl(var(--foreground));
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     outline: none;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: calc(var(--radius) - 4px);
+    padding: 0.25rem 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
 }
 
 .aspect-ratio-select:hover {
-    background: hsl(var(--accent));
+    background: hsl(var(--muted) / 0.7);
 }
 
 .advanced-image {
@@ -362,36 +356,38 @@
 }
 
 .advanced-image-inputs-container {
-    padding: 16px 16px 8px;
+    padding: 1rem 1rem 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .advanced-image-input-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .advanced-image-input-wrapper label {
-    flex-basis: 80px;
+    flex-basis: 5rem;
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 0.6875rem;
     font-weight: 500;
-    color: hsl(var(--foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--muted-foreground));
     text-align: right;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .advanced-image-upload-content {
-        padding: 32px 16px;
+        padding: 2rem 1rem;
     }
 
     .advanced-image-url-input-group {
         flex-direction: column;
-        gap: 12px;
+        gap: 0.75rem;
     }
 
     .advanced-image-url-input,
@@ -402,6 +398,6 @@
     .advanced-image-container--stretched {
         width: calc(100vw - 2rem);
         margin: 1rem 0;
-        border-radius: calc(var(--radius) - 4px);
+        border-radius: var(--radius);
     }
 }
