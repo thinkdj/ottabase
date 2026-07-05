@@ -85,10 +85,10 @@
     padding: 4px;
     cursor: pointer;
     color: hsl(var(--muted-foreground));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     transition:
-        color 0.15s,
-        transform 0.1s;
+        color var(--duration-fast) var(--ease),
+        transform var(--duration-fast) var(--ease);
     line-height: 0;
 }
 

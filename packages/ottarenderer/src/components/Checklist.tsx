@@ -35,7 +35,7 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = '' 
                     <li key={i} className="flex items-start">
                         <div className="relative flex items-center">
                             <div
-                                className={`mt-1 h-5 w-5 border ${checkboxBorderColor} rounded-sm ${checkboxBgColor} focus:outline-none transition duration-200 align-top cursor-default mr-2 flex items-center justify-center`}
+                                className={`mt-1 h-5 w-5 border ${checkboxBorderColor} rounded-sm ${checkboxBgColor} focus:outline-none transition align-top cursor-default mr-2 flex items-center justify-center`}
                             >
                                 {item.checked && <IconCheck size={14} className="text-primary-foreground" />}
                             </div>

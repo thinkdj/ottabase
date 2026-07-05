@@ -20,10 +20,9 @@
 
 /* Light mode syntax highlighting (GitHub Light) */
 :root,
-[data-theme='light'],
 .light {
-    --code-bg: #ffffff;
-    --code-fg: #24292f;
+    --code-bg: hsl(var(--card, 0 0% 100%));
+    --code-fg: hsl(var(--foreground, 222.2 84% 4.9%));
     --code-comment: #6e7781;
     --code-keyword: #cf222e;
     --code-string: #0a3069;
@@ -36,10 +35,9 @@
 }
 
 /* Dark mode syntax highlighting (GitHub Dark) */
-[data-theme='dark'],
 .dark {
-    --code-bg: #0d1117;
-    --code-fg: #e6edf3;
+    --code-bg: hsl(var(--card, 222.2 84% 4.9%));
+    --code-fg: hsl(var(--foreground, 210 40% 98%));
     --code-comment: #8b949e;
     --code-keyword: #ff7b72;
     --code-string: #a5d6ff;
@@ -157,7 +155,7 @@
     padding-right: 0.5rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
-    color: hsl(var(--muted-foreground) / 0.5);
+    color: hsl(var(--muted-foreground, 215.4 16.3% 46.9%) / 0.5);
 }
 
 .code-block-with-lines .code-block-line > span:last-child {
@@ -166,18 +164,18 @@
 }
 
 .code-line-highlight {
-    color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary, 222.2 47.4% 11.2%)) !important;
 }
 
 /* Collapsible long code */
 .code-block-collapse-btn {
-    transition: opacity 0.15s;
+    transition: opacity var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 /* Copy button styling */
 .code-block-copy-btn {
     opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: opacity var(--duration-normal, 200ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .code-block-copy-btn:hover {
@@ -194,10 +192,10 @@
 }
 
 .code-block-content pre::-webkit-scrollbar-thumb {
-    background: rgba(128, 128, 128, 0.3);
-    border-radius: 4px;
+    background: hsl(var(--muted-foreground, 215.4 16.3% 46.9%) / 0.3);
+    border-radius: calc(var(--radius, 0.5rem) - 4px);
 }
 
 .code-block-content pre::-webkit-scrollbar-thumb:hover {
-    background: rgba(128, 128, 128, 0.5);
+    background: hsl(var(--muted-foreground, 215.4 16.3% 46.9%) / 0.5);
 }

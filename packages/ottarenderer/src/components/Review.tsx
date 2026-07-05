@@ -110,13 +110,15 @@ const StarRating = ({
     );
 };
 
-// Determine accent color based on rating percentage
+// Determine accent color based on rating percentage.
+// Uses semantic theme tokens (with matching foreground) so the badge tracks the
+// active brand theme in both light and dark modes.
 const getRatingColor = (rating: number, maxStars: number): string => {
     const percentage = (rating / maxStars) * 100;
-    if (percentage >= 80) return 'bg-emerald-600';
-    if (percentage >= 60) return 'bg-sky-600';
-    if (percentage >= 40) return 'bg-amber-500';
-    return 'bg-red-500';
+    if (percentage >= 80) return 'bg-success text-success-foreground';
+    if (percentage >= 60) return 'bg-info text-info-foreground';
+    if (percentage >= 40) return 'bg-warning text-warning-foreground';
+    return 'bg-destructive text-destructive-foreground';
 };
 
 // Rating badge — circular, clean
@@ -126,7 +128,7 @@ const RatingBadge = ({ rating, maxStars, size = 'lg' }: { rating: number; maxSta
     const isLarge = size === 'lg';
     return (
         <div
-            className={`inline-flex flex-col items-center justify-center ${colorClass} text-white rounded-full ${
+            className={`inline-flex flex-col items-center justify-center ${colorClass} rounded-full ${
                 isLarge ? 'w-16 h-16' : 'w-10 h-10'
             }`}
         >
@@ -342,7 +344,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                         <ul className="list-none m-0 p-0 space-y-1">
                                             {pros.map((pro, i) => (
                                                 <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                                                    <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                    <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-success" />
                                                     <span>{pro}</span>
                                                 </li>
                                             ))}
@@ -357,7 +359,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                         <ul className="list-none m-0 p-0 space-y-1">
                                             {cons.map((con, i) => (
                                                 <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                                                    <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-400" />
+                                                    <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-destructive" />
                                                     <span>{con}</span>
                                                 </li>
                                             ))}

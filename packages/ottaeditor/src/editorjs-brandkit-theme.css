@@ -9,7 +9,7 @@
     background: hsl(var(--background)) !important;
     color: hsl(var(--foreground)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .ce-toolbar__plus:hover {
@@ -27,7 +27,7 @@
     background: hsl(var(--background)) !important;
     color: hsl(var(--foreground)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .ce-toolbar__settings-btn:hover {
@@ -88,7 +88,7 @@
 /* Filter Input - Theme-aware styling */
 .cdx-search-field {
     border: 1px solid hsl(var(--border) / 0.1) !important;
-    border-radius: 4px !important;
+    border-radius: calc(var(--radius) - 4px) !important;
 }
 
 .cdx-search-field:focus-within {
@@ -104,12 +104,6 @@
     outline: none !important;
     border: none !important;
     box-shadow: none !important; /** tw adds ring via shadow  */
-}
-
-.cdx-search-field__input::placeholder {
-}
-
-.cdx-search-field__icon svg {
 }
 
 /* ─── Table Tool Dark Mode Fix ─────────────────────────────────────────────── */
@@ -180,7 +174,7 @@
 .tc-popover {
     background: hsl(var(--background)) !important;
     border: 1px solid hsl(var(--border)) !important;
-    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1) !important;
+    box-shadow: var(--shadow-md) !important;
 }
 
 .tc-popover__item {

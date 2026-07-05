@@ -11,6 +11,7 @@ import {
     DEFAULT_CURSORS,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
+    DEFAULT_SHADOWS_DARK,
     DEFAULT_SPACING,
     DEFAULT_TYPOGRAPHY,
 } from './defaults';
@@ -95,7 +96,7 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
     const radius = rawRadius ?? '0.5rem';
 
     const rawShadows = extractMode(tokens.shadow, mode, isStringMap);
-    const shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
+    const shadows = { ...(mode === 'dark' ? DEFAULT_SHADOWS_DARK : DEFAULT_SHADOWS), ...(rawShadows ?? {}) };
 
     const rawMotion = extractMode(tokens.motion, mode, isStringMap);
     const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };

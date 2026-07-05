@@ -155,6 +155,26 @@
         --chart-3: 40 82% 56%;
         --chart-4: 284 52% 58%;
         --chart-5: 18 74% 60%;
+
+        --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+        --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55);
+    }
+}
+
+/* Global reduced-motion guard: all design-system motion routes through the
+   duration tokens. !important is required because BrandEngine injects these
+   vars as inline styles on <html> at runtime (css-runtime.ts). */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duration-fast: 0.01ms !important;
+        --duration-normal: 0.01ms !important;
+        --duration-slow: 0.01ms !important;
+        --motion-duration-fast: 0.01ms !important;
+        --motion-duration-normal: 0.01ms !important;
+        --motion-duration-slow: 0.01ms !important;
     }
 }
 

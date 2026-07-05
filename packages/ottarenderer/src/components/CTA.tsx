@@ -36,7 +36,7 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
 
     const buttonClass = useMemo(() => {
         const baseClass =
-            'inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md font-semibold text-sm no-underline border-2 transition-colors duration-200 leading-tight cursor-pointer';
+            'inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md font-semibold text-sm no-underline border-2 transition-colors leading-tight cursor-pointer';
         return `${baseClass} ${buttonStyleClass[style] ?? buttonStyleClass.primary}`;
     }, [style]);
 

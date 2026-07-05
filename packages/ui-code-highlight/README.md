@@ -113,9 +113,11 @@ The component includes syntax highlighting for the following languages:
 
 The component automatically detects your application's theme using:
 
-1. `data-theme` attribute on root element
-2. `.dark` or `.light` class on root element
-3. Falls back to light mode
+1. `.dark` or `.light` class on root element
+2. Falls back to light mode
+
+The surface colors (`--code-bg`, `--code-fg`) follow the shadcn design tokens (`--card`, `--foreground`) when present,
+with standalone fallbacks baked in.
 
 ### CSS Variables
 
@@ -123,8 +125,8 @@ You can customize the syntax highlighting colors by overriding these CSS variabl
 
 ```css
 :root {
-    --code-bg: #ffffff;
-    --code-fg: #24292f;
+    --code-bg: hsl(var(--card, 0 0% 100%));
+    --code-fg: hsl(var(--foreground, 222.2 84% 4.9%));
     --code-comment: #6e7781;
     --code-keyword: #cf222e;
     --code-string: #0a3069;
@@ -137,8 +139,8 @@ You can customize the syntax highlighting colors by overriding these CSS variabl
 }
 
 .dark {
-    --code-bg: #0d1117;
-    --code-fg: #e6edf3;
+    --code-bg: hsl(var(--card, 222.2 84% 4.9%));
+    --code-fg: hsl(var(--foreground, 210 40% 98%));
     /* ... etc */
 }
 ```

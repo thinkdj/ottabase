@@ -85,13 +85,22 @@ export const DEFAULT_COLORS_DARK: TokenColors = {
     'chart-5': '18 74% 60%',
 };
 
-/** Default shadow elevation scale */
+/** Default shadow elevation scale (light surfaces) – must match shadcn.css :root */
 export const DEFAULT_SHADOWS: Required<TokenShadows> = {
     xs: '0 1px 2px 0 rgb(0 0 0 / 0.04)',
-    sm: '0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08)',
-    md: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08)',
-    lg: '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)',
-    xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+    sm: '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
+    md: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
+    lg: '0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)',
+    xl: '0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09)',
+};
+
+/** Default shadow elevation scale (dark surfaces) – must match shadcn.css .dark */
+export const DEFAULT_SHADOWS_DARK: Required<TokenShadows> = {
+    xs: '0 1px 2px 0 rgb(0 0 0 / 0.35)',
+    sm: '0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45)',
+    md: '0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45)',
+    lg: '0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5)',
+    xl: '0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55)',
 };
 
 /** Default motion / transition presets */
@@ -140,7 +149,10 @@ export const DEFAULT_BRAND_THEME: BrandTheme = {
         typography: DEFAULT_TYPOGRAPHY,
         spacing: DEFAULT_SPACING,
         radius: '0.5rem',
-        shadow: DEFAULT_SHADOWS,
+        shadow: {
+            light: DEFAULT_SHADOWS,
+            dark: DEFAULT_SHADOWS_DARK,
+        },
         motion: DEFAULT_MOTION,
     },
     layout: undefined,

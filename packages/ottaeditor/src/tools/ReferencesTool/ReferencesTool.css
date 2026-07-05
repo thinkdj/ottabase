@@ -42,7 +42,7 @@
     text-align: center;
     padding: 16px;
     border: 2px dashed hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: hsl(var(--muted) / 0.3);
 }
 
@@ -62,7 +62,7 @@
     opacity: 0.5;
     font-size: 18px;
     line-height: 1;
-    transition: opacity 0.15s;
+    transition: opacity var(--duration-fast) var(--ease);
     user-select: none;
 }
 
@@ -78,7 +78,7 @@
     flex: 1;
     background: hsl(var(--muted) / 0.4);
     border: 1px solid hsl(var(--border));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -119,14 +119,14 @@
     background: transparent;
     border: none;
     padding: 0;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     cursor: pointer;
     color: hsl(var(--muted-foreground));
     font-size: 16px;
     line-height: 1;
     transition:
-        color 0.15s,
-        background 0.15s;
+        color var(--duration-fast) var(--ease),
+        background var(--duration-fast) var(--ease);
 }
 
 .cdx-references__delete:hover {
@@ -161,15 +161,15 @@
     color: hsl(var(--primary));
     background: transparent;
     border: 1px dashed hsl(var(--primary) / 0.5);
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     padding: 8px 12px;
     cursor: pointer;
     width: 100%;
     justify-content: center;
     margin-top: 4px;
     transition:
-        background 0.15s,
-        border-color 0.15s;
+        background var(--duration-fast) var(--ease),
+        border-color var(--duration-fast) var(--ease);
 }
 
 .cdx-references__add-btn:hover {

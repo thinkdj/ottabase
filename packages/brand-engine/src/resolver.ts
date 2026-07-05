@@ -18,6 +18,7 @@ import {
     DEFAULT_CURSORS,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
+    DEFAULT_SHADOWS_DARK,
     DEFAULT_SPACING,
     DEFAULT_TYPOGRAPHY,
 } from './defaults';
@@ -184,7 +185,8 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
     const radius = rawRadius ?? '0.5rem';
 
     const rawShadows = resolveModeValue(merged.tokens?.shadow, mode, isStringMap);
-    const shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
+    const defaultShadows = mode === 'dark' ? DEFAULT_SHADOWS_DARK : DEFAULT_SHADOWS;
+    const shadows = { ...defaultShadows, ...(rawShadows ?? {}) };
 
     const rawMotion = resolveModeValue(merged.tokens?.motion, mode, isStringMap);
     const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };

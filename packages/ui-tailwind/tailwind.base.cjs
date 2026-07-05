@@ -67,9 +67,12 @@ module.exports = {
             },
 
             borderRadius: {
-                lg: 'var(--radius)',
-                md: 'calc(var(--radius) - 2px)',
+                DEFAULT: 'calc(var(--radius) - 4px)',
                 sm: 'calc(var(--radius) - 4px)',
+                md: 'calc(var(--radius) - 2px)',
+                lg: 'var(--radius)',
+                xl: 'calc(var(--radius) + 4px)',
+                '2xl': 'calc(var(--radius) + 8px)',
             },
 
             fontFamily: {
@@ -99,6 +102,7 @@ module.exports = {
                 slow: 'var(--duration-slow)',
             },
             transitionTimingFunction: {
+                DEFAULT: 'var(--ease)',
                 theme: 'var(--ease)',
                 'theme-enter': 'var(--ease-enter)',
                 'theme-exit': 'var(--ease-exit)',
@@ -115,8 +119,8 @@ module.exports = {
                 },
             },
             animation: {
-                'accordion-down': 'accordion-down 0.2s ease-out',
-                'accordion-up': 'accordion-up 0.2s ease-out',
+                'accordion-down': 'accordion-down var(--duration-normal) var(--ease)',
+                'accordion-up': 'accordion-up var(--duration-normal) var(--ease)',
             },
         },
     },

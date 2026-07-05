@@ -9,7 +9,7 @@
    --------------------------------------------------------------------------- */
 .ob-plugin {
     padding: 12px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     border: 1px solid hsl(var(--border));
     margin-bottom: 16px;
 }
@@ -86,7 +86,7 @@
     width: 100%;
     padding: 8px 12px;
     border: 1px solid hsl(var(--input));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     font-size: 13px;
     font-family: inherit;
     background: hsl(var(--background));
@@ -143,7 +143,7 @@
 .ob-plugin .ob-select--sm {
     padding: 4px 8px;
     font-size: 12px;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
 }
 
 /* Inline label — sits beside a control instead of above it */
@@ -173,14 +173,14 @@
     gap: 8px;
     padding: 12px;
     border: 1px solid hsl(var(--border));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     background: hsl(var(--muted) / 0.4);
 }
 
 .ob-plugin .ob-drag-handle {
     cursor: grab;
     opacity: 0.5;
-    transition: opacity 150ms;
+    transition: opacity var(--duration-fast) var(--ease);
     user-select: none;
 }
 
@@ -203,7 +203,7 @@
     width: 100%;
     padding: 8px 12px;
     border: 1px dashed hsl(var(--primary) / 0.5);
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     background: transparent;
     color: hsl(var(--primary));
     font-size: 13px;
@@ -211,8 +211,8 @@
     font-family: inherit;
     cursor: pointer;
     transition:
-        background 150ms,
-        border-color 150ms;
+        background var(--duration-fast) var(--ease),
+        border-color var(--duration-fast) var(--ease);
 }
 
 .ob-plugin .ob-add-button:hover {
@@ -231,13 +231,13 @@
     height: 28px;
     padding: 0;
     border: none;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     background: transparent;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
     transition:
-        background 150ms,
-        color 150ms;
+        background var(--duration-fast) var(--ease),
+        color var(--duration-fast) var(--ease);
 }
 
 .ob-plugin .ob-icon-button:hover {
@@ -255,11 +255,11 @@
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-dropzone {
     border: 2px dashed hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: hsl(var(--muted) / 0.3);
     transition:
-        border-color 150ms,
-        background 150ms;
+        border-color var(--duration-fast) var(--ease),
+        background var(--duration-fast) var(--ease);
 }
 
 .ob-plugin .ob-dropzone:hover {
@@ -275,14 +275,14 @@
     align-items: center;
     gap: 2px;
     padding: 2px;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     background: hsl(var(--muted));
 }
 
 .ob-plugin .ob-segment-btn {
     padding: 4px 10px;
     border: none;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     background: transparent;
     color: hsl(var(--muted-foreground));
     font-size: 12px;
@@ -290,9 +290,9 @@
     font-family: inherit;
     cursor: pointer;
     transition:
-        background 150ms,
-        color 150ms,
-        box-shadow 150ms;
+        background var(--duration-fast) var(--ease),
+        color var(--duration-fast) var(--ease),
+        box-shadow var(--duration-fast) var(--ease);
 }
 
 .ob-plugin .ob-segment-btn:hover {
@@ -302,5 +302,5 @@
 .ob-plugin .ob-segment-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+    box-shadow: var(--shadow-sm);
 }

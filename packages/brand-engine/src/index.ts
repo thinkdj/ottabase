@@ -42,6 +42,7 @@ export {
     DEFAULT_CURSORS,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
+    DEFAULT_SHADOWS_DARK,
     DEFAULT_SPACING,
 } from './defaults';
 

@@ -1,4 +1,35 @@
 /* ======================================= */
+/* Theme token defaults                    */
+/* ======================================= */
+
+/* Package-level defaults for consumers that don't load a theme; :where() keeps
+   specificity zero so any loaded theme (shadcn.css :root/.dark or runtime
+   themes) always wins. */
+:where(:root) {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --warning: 36 86% 50%;
+    --ring: 215 20.2% 65.1%;
+    --radius: 0.5rem;
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09);
+    --duration-fast: 100ms;
+    --duration-normal: 200ms;
+    --duration-slow: 400ms;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ======================================= */
 /* Generic */
 /* ======================================= */
 .cdc-content-block {
@@ -46,19 +77,19 @@
 .cdc-content-block .inline-code {
     line-height: 1.5;
     display: inline-block;
-    border-radius: 0.125rem;
+    border-radius: calc(var(--radius) - 4px);
     padding: 0.05rem 0.35rem;
     margin: 0 0.275rem 0 0;
 }
 
 .cdc-content-block .inline-code {
-    color: hsl(var(--destructive, 0 84% 60%));
-    background: hsl(var(--muted, 240 4.8% 95.9%));
+    color: hsl(var(--destructive));
+    background: hsl(var(--muted));
 }
 
 .cdx-marker {
-    background: hsl(var(--warning, 45 93% 47%) / 0.35);
-    color: hsl(var(--foreground, 0 0% 0%));
+    background: hsl(var(--warning) / 0.35);
+    color: hsl(var(--foreground));
 }
 
 .cdc-content-block.image-block {
@@ -90,10 +121,10 @@
     padding: 0;
     margin: 2rem 0;
     /* Add some vertical spacing for the popout effect */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    /* Subtle shadow for popout effect */
-    border-radius: 8px;
-    /* Slight rounding for modern look */
+    box-shadow: var(--shadow-xl);
+    /* Theme-driven elevation for the popout effect */
+    border-radius: var(--radius);
+    /* Corner rounding follows the theme radius */
     overflow: hidden;
 }
 
@@ -101,7 +132,7 @@
     width: 100%;
     max-width: none;
     object-fit: cover;
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     display: block;
 }
 
@@ -109,10 +140,12 @@
     padding: 1rem 2rem;
     max-width: 800px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.95);
+    color: hsl(var(--card-foreground));
+    background: hsl(var(--card) / 0.95);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    border-radius: 0 0 8px 8px;
+    border-top: 1px solid hsl(var(--border));
+    border-radius: 0 0 var(--radius) var(--radius);
 }
 
 /* Override container constraints for stretched images */
@@ -125,117 +158,37 @@
     padding: 0;
     overflow: visible;
     margin: 2rem 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border-radius: 8px;
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--radius);
 }
 
 .advanced-image-block--with-border {
-    border: 1px solid rgb(206, 212, 218);
-    border-radius: 0.125rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 4px);
     overflow: hidden;
 }
 
 .advanced-image-block--with-background {
-    background: rgb(248, 249, 250);
+    background: hsl(var(--muted));
     padding: 1rem;
-    border-radius: 0.125rem;
+    border-radius: calc(var(--radius) - 4px);
 }
 
 .advanced-image-block--featured-image {
-    box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    border-radius: 0.375rem;
+    box-shadow: var(--shadow-lg);
+    border-radius: calc(var(--radius) - 2px);
 }
 
-/* Dark mode support for advanced image */
-@media (prefers-color-scheme: dark) {
-    .advanced-image-block--with-border {
-        border-color: rgb(73, 80, 87);
-    }
+/*
+ * Dark mode is handled by the theme tokens themselves: --border, --muted,
+ * --card, --foreground and the --shadow-* scale already resolve to their dark
+ * values when the theme's `.dark` class is applied, so no per-mode overrides
+ * (media query / .dark duplication) are needed here.
+ */
 
-    .advanced-image-block--with-background {
-        background: rgb(26, 27, 30);
-    }
-
-    .advanced-image-block--featured-image {
-        box-shadow:
-            0 10px 25px -5px rgba(0, 0, 0, 0.5),
-            0 4px 6px -2px rgba(0, 0, 0, 0.3);
-    }
-
-    .advanced-image-block--stretched {
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
-
-    .advanced-image-block--stretched figcaption {
-        background: rgba(0, 0, 0, 0.85);
-        -webkit-backdrop-filter: blur(10px);
-        backdrop-filter: blur(10px);
-        color: white;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
-
-    /* Dark mode for normal advanced images */
-    .cdc-content-block.advanced-image-block {
-        color: rgb(241, 243, 245);
-    }
-
-    .cdc-content-block.advanced-image-block figcaption {
-        color: rgb(206, 212, 218);
-    }
-
-    /* Dark mode hover effects */
-    .advanced-image-block--stretched:hover {
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-    }
-}
-
-/* Explicit dark mode class support (for manual dark mode toggles) */
-.dark .advanced-image-block--with-border {
-    border-color: rgb(73, 80, 87);
-}
-
-.dark .advanced-image-block--with-background {
-    background: rgb(26, 27, 30);
-}
-
-.dark .advanced-image-block--featured-image {
-    box-shadow:
-        0 10px 25px -5px rgba(0, 0, 0, 0.5),
-        0 4px 6px -2px rgba(0, 0, 0, 0.3);
-}
-
-.dark .advanced-image-block--stretched {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.dark .advanced-image-block--stretched figcaption {
-    background: rgba(0, 0, 0, 0.85);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    color: white;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.dark .cdc-content-block.advanced-image-block {
-    color: rgb(241, 243, 245);
-}
-
-.dark .cdc-content-block.advanced-image-block figcaption {
-    color: rgb(206, 212, 218);
-}
-
-.dark .advanced-image-block--stretched:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+/* Caption on a normal (non-stretched) advanced image */
+.cdc-content-block.advanced-image-block figcaption {
+    color: hsl(var(--muted-foreground));
 }
 
 /* Responsive design for advanced image */
@@ -245,8 +198,8 @@
         width: calc(100vw - 2rem);
         /* Small margin on mobile */
         margin: 1rem 0;
-        border-radius: 4px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        border-radius: calc(var(--radius) - 4px);
+        box-shadow: var(--shadow-lg);
     }
 
     .advanced-image-block--stretched figcaption {
@@ -255,7 +208,7 @@
     }
 
     .advanced-image-block--stretched img {
-        border-radius: 4px;
+        border-radius: calc(var(--radius) - 4px);
     }
 }
 
@@ -295,339 +248,59 @@
     box-sizing: border-box;
 }
 
-/* Smooth transitions for the popout effect */
+/* Smooth transitions for the popout effect (honors theme motion + reduced motion) */
 .advanced-image-block--stretched {
-    transition: all 0.3s ease;
+    transition: all var(--duration-slow) var(--ease);
 }
 
 .advanced-image-block--stretched:hover {
     transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-@media (prefers-color-scheme: dark) {
-    .advanced-image-block--stretched:hover {
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    }
+    box-shadow: var(--shadow-xl);
 }
 
 /* ======================================= */
-/* Starry-Night Syntax Highlighting */
+/* CTA Button                              */
 /* ======================================= */
 
-/* Light mode syntax highlighting (GitHub style) */
-.cdc-content-code code .pl-c {
-    color: #6a737d;
-}
-
-/* Comment */
-.cdc-content-code code .pl-c1 {
-    color: #005cc5;
-}
-
-/* Constant */
-.cdc-content-code code .pl-e {
-    color: #6f42c1;
-}
-
-/* Entity */
-.cdc-content-code code .pl-en {
-    color: #6f42c1;
-}
-
-/* Entity name */
-.cdc-content-code code .pl-ent {
-    color: #22863a;
-}
-
-/* Entity tag */
-.cdc-content-code code .pl-k {
-    color: #d73a49;
-}
-
-/* Keyword */
-.cdc-content-code code .pl-s {
-    color: #032f62;
-}
-
-/* String */
-.cdc-content-code code .pl-pds {
-    color: #032f62;
-}
-
-/* String delimiter */
-.cdc-content-code code .pl-smi {
-    color: #24292e;
-}
-
-/* Variable */
-.cdc-content-code code .pl-v {
-    color: #e36209;
-}
-
-/* Variable */
-.cdc-content-code code .pl-kos {
-    color: #24292e;
-}
-
-/* Keyword operator */
-.cdc-content-code code .pl-mi1 {
-    color: #22863a;
-    background-color: #f0fff4;
-}
-
-/* Markup inserted */
-.cdc-content-code code .pl-md {
-    color: #b31d28;
-    background-color: #ffeef0;
-}
-
-/* Markup deleted */
-
-/* Dark mode syntax highlighting (GitHub dark style) */
-@media (prefers-color-scheme: dark) {
-    .cdc-content-code code .pl-c {
-        color: #8b949e;
-    }
-
-    .cdc-content-code code .pl-c1 {
-        color: #79c0ff;
-    }
-
-    .cdc-content-code code .pl-e {
-        color: #d2a8ff;
-    }
-
-    .cdc-content-code code .pl-en {
-        color: #d2a8ff;
-    }
-
-    .cdc-content-code code .pl-ent {
-        color: #7ee787;
-    }
-
-    .cdc-content-code code .pl-k {
-        color: #ff7b72;
-    }
-
-    .cdc-content-code code .pl-s {
-        color: #a5d6ff;
-    }
-
-    .cdc-content-code code .pl-pds {
-        color: #a5d6ff;
-    }
-
-    .cdc-content-code code .pl-smi {
-        color: #c9d1d9;
-    }
-
-    .cdc-content-code code .pl-v {
-        color: #ffa657;
-    }
-
-    .cdc-content-code code .pl-kos {
-        color: #c9d1d9;
-    }
-
-    .cdc-content-code code .pl-mi1 {
-        color: #aff5b4;
-        background-color: #033a16;
-    }
-
-    .cdc-content-code code .pl-md {
-        color: #ffdcd7;
-        background-color: #67060c;
-    }
-}
-
-/* Explicit dark mode class support */
-.dark .cdc-content-code code .pl-c {
-    color: #8b949e;
-}
-
-.dark .cdc-content-code code .pl-c1 {
-    color: #79c0ff;
-}
-
-.dark .cdc-content-code code .pl-e {
-    color: #d2a8ff;
-}
-
-.dark .cdc-content-code code .pl-en {
-    color: #d2a8ff;
-}
-
-.dark .cdc-content-code code .pl-ent {
-    color: #7ee787;
-}
-
-.dark .cdc-content-code code .pl-k {
-    color: #ff7b72;
-}
-
-.dark .cdc-content-code code .pl-s {
-    color: #a5d6ff;
-}
-
-.dark .cdc-content-code code .pl-pds {
-    color: #a5d6ff;
-}
-
-.dark .cdc-content-code code .pl-smi {
-    color: #c9d1d9;
-}
-
-.dark .cdc-content-code code .pl-v {
-    color: #ffa657;
-}
-
-.dark .cdc-content-code code .pl-kos {
-    color: #c9d1d9;
-}
-
-.dark .cdc-content-code code .pl-mi1 {
-    color: #aff5b4;
-    background-color: #033a16;
-}
-
-.dark .cdc-content-code code .pl-md {
-    color: #ffdcd7;
-    background-color: #67060c;
-}
-
-/* ======================================= */
-/* CTA Button Styles */
-/* ======================================= */
-
-.cdc-content-cta {
+/*
+ * The React <CTA> component styles itself with theme-token Tailwind
+ * utilities. The rules below are a fallback for bare markup only, kept at
+ * zero specificity via :where() so component utilities always win.
+ */
+:where(.cdc-content-cta) {
     display: block;
-    clear: both;
     margin: 1.5rem auto;
     width: 100%;
     text-align: center;
 }
 
-.cdc-content-cta a {
+:where(.cdc-content-cta a:not([class*='bg-']):not([class*='text-'])) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
+    gap: 0.375rem;
+    padding: 0.625rem 1.25rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius);
     font-weight: 600;
     font-size: 0.875rem;
+    line-height: 1.2;
     text-decoration: none;
-    transition: all 0.2s ease;
     cursor: pointer;
-    border: 2px solid transparent;
+    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary));
+    transition:
+        background var(--duration-normal) var(--ease),
+        opacity var(--duration-normal) var(--ease);
 }
 
-/* Primary style */
-.cdc-content-cta a[class*='bg-blue-600'],
-.cdc-content-cta a:not([class*='bg-transparent']):not([class*='bg-gray-600']) {
-    background-color: #2563eb;
-    color: #ffffff;
-    border-color: #2563eb;
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+:where(.cdc-content-cta a:not([class*='bg-']):not([class*='text-'])):hover {
+    opacity: 0.9;
 }
 
-.cdc-content-cta a[class*='bg-blue-600']:hover,
-.cdc-content-cta a:not([class*='bg-transparent']):not([class*='bg-gray-600']):hover {
-    background-color: #1d4ed8;
-    border-color: #1d4ed8;
-    box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Secondary style */
-.cdc-content-cta a[class*='bg-gray-600'] {
-    background-color: #4b5563;
-    color: #ffffff;
-    border-color: #4b5563;
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.cdc-content-cta a[class*='bg-gray-600']:hover {
-    background-color: #374151;
-    border-color: #374151;
-    box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Outline style */
-.cdc-content-cta a[class*='bg-transparent'][class*='border-2'] {
-    background-color: transparent;
-    color: #2563eb;
-    border-color: #2563eb;
-    border-width: 2px;
-}
-
-.cdc-content-cta a[class*='bg-transparent'][class*='border-2']:hover {
-    background-color: #2563eb;
-    color: #ffffff;
-}
-
-/* Fallback for when Tailwind classes aren't applied */
-.cdc-content-cta a:not([class*='bg-']) {
-    background-color: #2563eb;
-    color: #ffffff;
-    border-color: #2563eb;
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.cdc-content-cta a:not([class*='bg-']):hover {
-    background-color: #1d4ed8;
-    border-color: #1d4ed8;
-    box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Focus styles */
-.cdc-content-cta a:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .cdc-content-cta a[class*='bg-transparent'][class*='border-2'] {
-        color: #60a5fa;
-        border-color: #60a5fa;
-    }
-
-    .cdc-content-cta a[class*='bg-transparent'][class*='border-2']:hover {
-        background-color: #60a5fa;
-        color: #1e293b;
-    }
-
-    .cdc-content-cta a:not([class*='bg-']) {
-        background-color: #2563eb;
-        color: #ffffff;
-    }
-}
-
-.dark .cdc-content-cta a[class*='bg-transparent'][class*='border-2'] {
-    color: #60a5fa;
-    border-color: #60a5fa;
-}
-
-.dark .cdc-content-cta a[class*='bg-transparent'][class*='border-2']:hover {
-    background-color: #60a5fa;
-    color: #1e293b;
-}
-
-.dark .cdc-content-cta a:not([class*='bg-']) {
-    background-color: #2563eb;
-    color: #ffffff;
+:where(.cdc-content-cta a):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
 }
 
 /* ======================================= */
@@ -707,7 +380,7 @@
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+    box-shadow: var(--shadow-sm);
 }
 
 .cdc-steps-line {
@@ -758,7 +431,7 @@
     flex-direction: column;
     gap: 0;
     border: 1px solid hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     overflow: hidden;
 }
 
@@ -784,7 +457,7 @@
     cursor: pointer;
     list-style: none;
     background: hsl(var(--card));
-    transition: background 0.15s;
+    transition: background var(--duration-fast) var(--ease);
     user-select: none;
 }
 
@@ -808,7 +481,7 @@
 .cdc-faq-chevron {
     flex-shrink: 0;
     color: hsl(var(--muted-foreground));
-    transition: transform 0.2s ease;
+    transition: transform var(--duration-normal) var(--ease);
     display: flex;
     align-items: center;
 }
@@ -852,7 +525,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-testimonial-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    border-radius: 12px;
+    border-radius: calc(var(--radius) + 4px);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
@@ -873,7 +546,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 .cdc-testimonial-featured {
     background: hsl(var(--muted) / 0.4);
-    border-radius: 16px;
+    border-radius: calc(var(--radius) + 8px);
     padding: 2rem 2.5rem;
     display: flex;
     flex-direction: column;
@@ -985,9 +658,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 .cdc-testimonial-star--filled {
-    /* --warning follows the shadcn/ui convention: raw H S% L% values used inside hsl().
-       Fallback is a full, valid hsl() color in case the variable is not defined. */
-    color: hsl(var(--warning, 43 96% 56%));
+    color: hsl(var(--warning));
 }
 
 .cdc-testimonial-star--empty {
@@ -1062,7 +733,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 .cdc-testimonial-bubble {
     border: 1px solid hsl(var(--border));
-    border-radius: 12px;
+    border-radius: calc(var(--radius) + 4px);
     padding: 1.25rem 1.5rem;
     position: relative;
     background: hsl(var(--card));
@@ -1142,8 +813,8 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdx-annotation,
 .cdc-annotation {
     position: relative;
-    background-color: hsl(var(--warning, 45 93% 47%) / 0.2);
-    border-bottom: 2px solid hsl(var(--warning, 45 93% 47%));
+    background-color: hsl(var(--warning) / 0.2);
+    border-bottom: 2px solid hsl(var(--warning));
     padding: 0 2px;
     cursor: help;
 }
@@ -1156,10 +827,10 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     min-width: 200px;
     max-width: 300px;
     padding: 12px;
-    background: hsl(var(--background, 0 0% 100%));
-    border: 1px solid hsl(var(--border, 0 0% 89%));
-    border-radius: 8px;
-    box-shadow: 0 4px 12px hsl(var(--foreground, 0 0% 0%) / 0.1);
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
     z-index: 100;
     display: flex;
     flex-direction: column;
@@ -1174,18 +845,18 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: hsl(var(--border, 0 0% 89%));
+    border-top-color: hsl(var(--border));
 }
 
 .cdc-annotation__title {
     font-weight: 600;
     font-size: 14px;
-    color: hsl(var(--foreground, 0 0% 0%));
+    color: hsl(var(--foreground));
 }
 
 .cdc-annotation__text {
     font-size: 13px;
-    color: hsl(var(--muted-foreground, 0 0% 45%));
+    color: hsl(var(--muted-foreground));
     line-height: 1.5;
 }
 
@@ -1201,12 +872,12 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     position: relative;
     min-height: 200px;
     overflow: hidden;
-    border-radius: 8px;
-    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
     cursor: ew-resize;
     user-select: none;
     touch-action: none;
-    background: hsl(var(--muted, 240 4.8% 95.9%) / 0.3);
+    background: hsl(var(--muted) / 0.3);
 }
 
 .cdc-before-after__container--vertical {
@@ -1258,11 +929,11 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-before-after__label {
     position: absolute;
     padding: 4px 10px;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     font-size: 12px;
     font-weight: 600;
-    color: hsl(var(--primary-foreground, 0 0% 100%));
-    background: hsl(var(--primary, 221.2 83.2% 53.3%) / 0.85);
+    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary) / 0.85);
     pointer-events: none;
     z-index: 5;
     backdrop-filter: blur(4px);
@@ -1293,10 +964,10 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* Drag handle */
 .cdc-before-after__handle {
     position: absolute;
-    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    background: hsl(var(--primary));
     z-index: 10;
     cursor: grab;
-    transition: box-shadow 0.15s ease;
+    transition: box-shadow var(--duration-fast) var(--ease);
 }
 
 .cdc-before-after__handle::before {
@@ -1305,16 +976,16 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: hsl(var(--primary, 221.2 83.2% 53.3%));
-    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
-    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--primary-foreground));
+    box-shadow: var(--shadow-md);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
 
 .cdc-before-after__handle:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
 }
 
 .cdc-before-after__handle:active {
@@ -1324,7 +995,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-before-after__caption {
     margin-top: 8px;
     font-size: 14px;
-    color: hsl(var(--muted-foreground, 0 0% 45%));
+    color: hsl(var(--muted-foreground));
     text-align: center;
 }
 
@@ -1341,9 +1012,9 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     display: inline-block;
     width: 100%;
     min-height: 200px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border: 1px solid hsl(var(--border));
 }
 
 /* Cover mode: image fills container height */
@@ -1367,9 +1038,9 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: hsl(var(--primary, 221.2 83.2% 53.3%));
-    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
-    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--primary-foreground));
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1377,30 +1048,30 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transform: translate(-50%, -50%);
     z-index: 10;
     transition:
-        box-shadow 0.15s ease,
-        transform 0.15s ease;
+        box-shadow var(--duration-fast) var(--ease),
+        transform var(--duration-fast) var(--ease);
 }
 
 .cdc-image-hotspots__dot:hover {
-    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
     transform: translate(-50%, -50%) scale(1.1);
 }
 
 .cdc-image-hotspots__dot--active {
-    box-shadow: 0 0 0 6px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.35);
+    box-shadow: 0 0 0 6px hsl(var(--primary) / 0.35);
     transform: translate(-50%, -50%) scale(1.15);
     z-index: 15;
 }
 
 .cdc-image-hotspots__dot:focus-visible {
-    outline: 2px solid hsl(var(--ring, 221.2 83.2% 53.3%));
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
 }
 
 .cdc-image-hotspots__dot-number {
     font-size: 12px;
     font-weight: 700;
-    color: hsl(var(--primary-foreground, 0 0% 100%));
+    color: hsl(var(--primary-foreground));
     line-height: 1;
     user-select: none;
 }
@@ -1413,11 +1084,11 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transform: translateX(-50%);
     min-width: 200px;
     max-width: 300px;
-    background: hsl(var(--background, 0 0% 100%));
-    border: 1px solid hsl(var(--border, 0 0% 89%));
-    border-radius: 8px;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
     padding: 12px;
-    box-shadow: 0 4px 16px hsl(var(--foreground, 0 0% 0%) / 0.12);
+    box-shadow: var(--shadow-lg);
     z-index: 20;
     text-align: left;
 }
@@ -1430,7 +1101,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-bottom-color: hsl(var(--border, 0 0% 89%));
+    border-bottom-color: hsl(var(--border));
 }
 
 .cdc-image-hotspots__tooltip::after {
@@ -1440,20 +1111,20 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
-    border-bottom-color: hsl(var(--background, 0 0% 100%));
+    border-bottom-color: hsl(var(--background));
 }
 
 .cdc-image-hotspots__tooltip-title {
     display: block;
     font-weight: 600;
     font-size: 14px;
-    color: hsl(var(--foreground, 0 0% 0%));
+    color: hsl(var(--foreground));
     margin-bottom: 4px;
 }
 
 .cdc-image-hotspots__tooltip-content {
     font-size: 13px;
-    color: hsl(var(--muted-foreground, 0 0% 45%));
+    color: hsl(var(--muted-foreground));
     line-height: 1.5;
     margin: 0;
 }
@@ -1461,6 +1132,6 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-image-hotspots__caption {
     margin-top: 8px;
     font-size: 14px;
-    color: hsl(var(--muted-foreground, 0 0% 45%));
+    color: hsl(var(--muted-foreground));
     text-align: center;
 }

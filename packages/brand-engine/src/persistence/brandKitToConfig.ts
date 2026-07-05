@@ -10,6 +10,7 @@ import {
     DEFAULT_CURSORS,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
+    DEFAULT_SHADOWS_DARK,
     DEFAULT_SPACING,
     DEFAULT_TYPOGRAPHY,
 } from '../defaults';
@@ -88,7 +89,7 @@ function hasDarkSplit(val: unknown): boolean {
  * Light mode:  returns a FULL ResolvedBrandTheme (all tokens with defaults filled in).
  * Dark mode:   returns a DELTA (Partial<ResolvedBrandTheme>) containing only the tokens
  *              that have an explicit `{ light, dark }` ModeValue split in the source data.
- *              Colors are ALWAYS included in the dark delta (dark palette is always different).
+ *              Colors and shadows are ALWAYS included in the dark delta (their dark defaults differ from light).
  *              The consumer (resolveBrandConfig) deep-merges lightTheme + darkDelta at request time.
  */
 export async function brandKitToTheme(kit: BrandKit, mode: 'light'): Promise<ResolvedBrandTheme>;
@@ -143,10 +144,9 @@ export async function brandKitToTheme(
             delta.radius = resolveModeValue(tokens.radius, mode, (v) => typeof v === 'string') ?? '0.5rem';
         }
 
-        if (hasDarkSplit(tokens?.shadow)) {
-            const rawShadows = resolveModeValue(tokens.shadow, mode, isStringMap);
-            delta.shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
-        }
+        // Shadows are ALWAYS included: dark elevation defaults differ from light (like colors)
+        const rawShadows = resolveModeValue(tokens?.shadow, mode, isStringMap);
+        delta.shadows = { ...DEFAULT_SHADOWS_DARK, ...(rawShadows ?? {}) };
 
         if (hasDarkSplit(tokens?.motion)) {
             const rawMotion = resolveModeValue(tokens.motion, mode, isStringMap);

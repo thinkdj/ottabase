@@ -7,7 +7,7 @@
     padding: 8px 12px;
     background: hsl(var(--muted) / 0.5);
     border-bottom: 1px solid hsl(var(--border));
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     flex-wrap: wrap;
 }
 
@@ -26,12 +26,12 @@
     gap: 8px;
     padding: 8px 12px;
     border: 1px solid hsl(var(--border));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     font-size: 11px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
     white-space: nowrap;
 }
 
@@ -44,7 +44,7 @@
 .cdx-layout__preset-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .cdx-layout__preset-icon {
@@ -117,10 +117,10 @@
     border: 1px solid transparent;
     background: transparent;
     color: hsl(var(--muted-foreground));
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     padding: 0;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
     flex-shrink: 0;
 }
 

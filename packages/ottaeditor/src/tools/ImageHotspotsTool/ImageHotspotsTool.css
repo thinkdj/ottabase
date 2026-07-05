@@ -24,7 +24,7 @@
     gap: 2px;
     padding: 2px;
     background: hsl(var(--muted));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     height: 42px; /* ~matching with input */
     box-sizing: border-box;
 }
@@ -36,12 +36,12 @@
     padding: 8px 12px;
     background: transparent;
     border: none;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__fit-btn:hover {
@@ -52,7 +52,7 @@
 .cdx-image-hotspots__fit-btn--active {
     background: hsl(var(--background));
     color: hsl(var(--primary));
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 /* ── Size Controls (below canvas) ────────────────────────────────────────── */
@@ -71,7 +71,7 @@
     height: 72px;
     padding: 2px;
     background: hsl(var(--muted));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
 }
 
 .cdx-image-hotspots__position-btn {
@@ -80,9 +80,9 @@
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: 4px;
+    border-radius: calc(var(--radius) - 4px);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
     position: relative;
 }
 
@@ -92,7 +92,7 @@
     height: 6px;
     border-radius: 50%;
     background: hsl(var(--muted-foreground) / 0.4);
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__position-btn:hover::before {
@@ -102,7 +102,7 @@
 
 .cdx-image-hotspots__position-btn--active {
     background: hsl(var(--background));
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .cdx-image-hotspots__position-btn--active::before {
@@ -130,10 +130,10 @@
     flex-shrink: 0;
     background: hsl(var(--muted));
     border: 1px solid hsl(var(--input));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__gallery-btn:hover {
@@ -153,7 +153,7 @@
     position: relative;
     margin-top: 12px;
     min-height: 200px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     border: 1px solid hsl(var(--border));
     background: hsl(var(--muted) / 0.3);
     cursor: crosshair;
@@ -186,7 +186,7 @@
     color: hsl(var(--primary-foreground));
     background: hsl(var(--primary) / 0.8);
     padding: 4px 12px;
-    border-radius: 999px;
+    border-radius: 9999px;
     pointer-events: none;
     z-index: 5;
     backdrop-filter: blur(4px);
@@ -203,7 +203,7 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: 3px solid hsl(var(--primary-foreground));
-    box-shadow: 0 2px 8px hsl(var(--foreground) / 0.2);
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -213,8 +213,8 @@
     transform: translate(-50%, -50%);
     z-index: 10;
     transition:
-        box-shadow 0.15s ease,
-        transform 0.15s ease;
+        box-shadow var(--duration-fast) var(--ease),
+        transform var(--duration-fast) var(--ease);
     user-select: none;
 }
 
@@ -245,9 +245,9 @@
     min-width: 240px;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 12px;
-    box-shadow: 0 4px 16px hsl(var(--foreground) / 0.12);
+    box-shadow: var(--shadow-md);
     z-index: 20;
     display: flex;
     flex-direction: column;
@@ -319,12 +319,12 @@
     background: hsl(var(--destructive) / 0.1);
     color: hsl(var(--destructive));
     border: 1px solid hsl(var(--destructive) / 0.25);
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     padding: 4px 12px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__remove-btn:hover {
@@ -345,12 +345,12 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: 1px solid hsl(var(--primary));
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     padding: 4px 12px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__save-btn:hover {
@@ -379,9 +379,9 @@
     align-items: center;
     gap: 8px;
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__list-item:hover {
@@ -427,8 +427,8 @@
     color: hsl(var(--muted-foreground));
     cursor: pointer;
     padding: 4px;
-    border-radius: 4px;
-    transition: all 0.15s ease;
+    border-radius: calc(var(--radius) - 4px);
+    transition: all var(--duration-fast) var(--ease);
 }
 
 .cdx-image-hotspots__list-remove:hover {

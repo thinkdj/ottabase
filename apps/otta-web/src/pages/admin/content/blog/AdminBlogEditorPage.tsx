@@ -32,6 +32,7 @@ import {
 } from '@ottabase/ottaeditor';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { ConfirmDialog, JsonEditor, type JsonValue } from '@ottabase/ui-components';
 import {
