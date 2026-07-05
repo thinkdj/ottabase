@@ -302,60 +302,6 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 },
             },
 
-            // ── Testimonials ─────────────────────────────────────────────────
-            { id: 'voices-h', type: 'header', data: { text: 'What builders say', level: 2 } },
-            {
-                id: 'voices',
-                type: 'layout',
-                data: {
-                    preset: '1-1',
-                    columns: [
-                        {
-                            content: {
-                                blocks: [
-                                    {
-                                        id: 'voice-1',
-                                        type: 'testimonial',
-                                        data: {
-                                            variant: 'card',
-                                            quote: 'I replaced a Rails app, an auth provider, and a theming SaaS with one repo. The rebuild shipped in a weekend.',
-                                            authorName: 'Maya K.',
-                                            authorRole: 'Solo founder',
-                                            authorCompany: 'Freightlane',
-                                            rating: 5,
-                                            verified: true,
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                        {
-                            content: {
-                                blocks: [
-                                    {
-                                        id: 'voice-2',
-                                        type: 'testimonial',
-                                        data: {
-                                            variant: 'quote-bubble',
-                                            quote: 'Fat models on the edge are the first ORM ergonomics I have actually enjoyed. Business logic finally lives in one place.',
-                                            authorName: 'Dev T.',
-                                            authorRole: 'Indie hacker',
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                },
-            },
-            {
-                id: 'voices-note',
-                type: 'paragraph',
-                data: {
-                    text: '<em>Sample voices — this block, like every block on this page, is yours to edit.</em>',
-                },
-            },
-
             // ── The reveal ───────────────────────────────────────────────────
             {
                 id: 'meta-spoiler',
@@ -407,13 +353,6 @@ export const { useList, useCreate, useUpdate, useDelete } =
                         { url: 'https://ottabase.com', title: 'ottabase.com', note: 'Project home' },
                     ],
                 },
-            },
-
-            // ── Transparency (and one more block demo) ───────────────────────
-            {
-                id: 'ai-disclosure',
-                type: 'disclosure',
-                data: { aiEnabled: true, aiLevel: 'slight', sponsoredEnabled: false },
             },
 
             // ── Final CTAs ───────────────────────────────────────────────────
