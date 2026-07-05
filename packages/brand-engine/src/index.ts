@@ -90,7 +90,7 @@ export { DEFAULT_ROUTE_MAPPINGS } from './layouts';
 export { GOOGLE_FONTS, buildGoogleFontUrl, fontToTypography, type GoogleFontMeta } from './fonts';
 
 // ── Cursors ────────────────────────────────────────────────────────────────
-export { CURSOR_SVG_REGISTRY, getAvailableCursors, getCursorSvg, resolveCursor } from './cursors';
+export { CURSOR_SVG_REGISTRY, getAvailableCursors, getCursorSvg, resolveCursor, type CursorDef } from './cursors';
 
 // ── Built-in themes ────────────────────────────────────────────────────────
 export {

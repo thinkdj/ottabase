@@ -121,8 +121,8 @@
         "density": "compact"
     },
     "cursors": {
-        "default": "auto",
-        "pointer": "pointer",
+        "default": "registry:arrow-violet",
+        "pointer": "registry:hand-violet",
         "text": "text"
     }
 }

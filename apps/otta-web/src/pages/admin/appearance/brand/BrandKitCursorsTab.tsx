@@ -1,4 +1,5 @@
 import type { TokenCursors } from '@ottabase/brand-engine';
+import { CURSOR_SVG_REGISTRY, getCursorSvg, resolveCursor } from '@ottabase/brand-engine';
 import {
     Button,
     Card,
@@ -14,9 +15,12 @@ import {
     DialogTitle,
     Input,
     Label,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPointer, IconTrash } from '@tabler/icons-react';
 import { useCallback, useMemo, useState } from 'react';
 
 /** Convert raw SVG string to CSS cursor data URI */
@@ -32,7 +36,9 @@ function extractSvgFromCursor(val: string): string {
     const trimmed = val.trim();
     if (trimmed.toLowerCase().startsWith('svg:')) return trimmed.slice(4).trim();
     // Match url("data:image/svg+xml;utf8,ENCODED") or similar
-    const urlMatch = trimmed.match(/url\s*\(\s*["']?data:image\/svg\+xml(?:;utf8)?,([^"')]+)["']?\s*\)/i);
+    const urlMatch = trimmed.match(
+        /url\s*\(\s*["']?data:image\/svg\+xml(?:;(?:utf8|charset=utf-8))?,([^"')]+)["']?\s*\)/i,
+    );
     if (urlMatch) {
         try {
             return decodeURIComponent(urlMatch[1].replace(/"/g, ''));
@@ -73,6 +79,166 @@ function validateSvgSafety(svg: string): string | null {
     return null;
 }
 
+/** All cursor states that can be themed (matches globals.css bindings) */
+const CURSOR_STATES = [
+    'default',
+    'pointer',
+    'text',
+    'grab',
+    'grabbing',
+    'crosshair',
+    'not-allowed',
+    'help',
+    'wait',
+    'move',
+] as const;
+type CursorState = (typeof CURSOR_STATES)[number];
+
+/** Registry keys whose role matches a cursor state, listed first in the picker */
+const REGISTRY_ROLE_FOR_STATE: Partial<Record<CursorState, string>> = {
+    default: 'default',
+    pointer: 'pointer',
+    text: 'text',
+    crosshair: 'crosshair',
+};
+
+interface CursorPreviewInfo {
+    /** Resolved CSS cursor declaration (same resolution the runtime applies) */
+    css: string;
+    /** Raw SVG markup when the value renders an image, else null */
+    svg: string | null;
+    kind: 'registry' | 'custom' | 'native' | 'empty';
+    /** Registry key when kind === 'registry' */
+    registryKey?: string;
+}
+
+/** Resolve any stored cursor value the way the runtime does, plus preview metadata */
+function cursorPreview(value: string): CursorPreviewInfo {
+    const trimmed = (value || '').trim();
+    if (!trimmed) return { css: 'auto', svg: null, kind: 'empty' };
+    if (trimmed.startsWith('registry:')) {
+        const key = trimmed.slice(9);
+        const svg = getCursorSvg(key) ?? null;
+        return { css: resolveCursor(trimmed), svg, kind: svg ? 'registry' : 'native', registryKey: key };
+    }
+    const svg = extractSvgFromCursor(trimmed);
+    if (svg) return { css: resolveCursor(trimmed), svg, kind: 'custom' };
+    return { css: resolveCursor(trimmed), svg: null, kind: 'native' };
+}
+
+const svgThumbSrc = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+
+/** Popover gallery of all registry cursors; hover a tile to feel it */
+function RegistryPicker({
+    state,
+    value,
+    onPick,
+}: {
+    state: CursorState;
+    value: string;
+    onPick: (val: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const entries = useMemo(() => {
+        const all = Object.entries(CURSOR_SVG_REGISTRY);
+        const role = REGISTRY_ROLE_FOR_STATE[state];
+        // Role-matching cursors first (arrows for default, hands for pointer, …)
+        return role
+            ? [...all.filter(([, d]) => d.fallback === role), ...all.filter(([, d]) => d.fallback !== role)]
+            : all;
+    }, [state]);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="icon" className="shrink-0" title="Pick from registry">
+                    <IconPointer className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-2" align="end">
+                <p className="text-xs text-muted-foreground px-1 pb-2">
+                    Built-in cursors — hover a tile to try it, click to use.
+                </p>
+                <div className="grid grid-cols-4 gap-1">
+                    <button
+                        type="button"
+                        className="flex flex-col items-center gap-1 rounded-md border border-dashed border-border p-2 hover:bg-accent"
+                        onClick={() => {
+                            onPick('');
+                            setOpen(false);
+                        }}
+                    >
+                        <span className="h-8 w-8 flex items-center justify-center text-muted-foreground text-lg">
+                            —
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">native</span>
+                    </button>
+                    {entries.map(([key, def]) => {
+                        const selected = value.trim() === `registry:${key}`;
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                className={`flex flex-col items-center gap-1 rounded-md border p-2 hover:bg-accent ${
+                                    selected ? 'border-primary ring-1 ring-primary' : 'border-transparent'
+                                }`}
+                                style={{ cursor: resolveCursor(`registry:${key}`) }}
+                                onClick={() => {
+                                    onPick(`registry:${key}`);
+                                    setOpen(false);
+                                }}
+                                title={`registry:${key}`}
+                            >
+                                <img src={svgThumbSrc(def.svg)} alt={key} className="h-8 w-8" />
+                                <span className="text-[9px] text-muted-foreground truncate w-full text-center">
+                                    {key}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+/** Hoverable playground applying the kit's configured cursors, on a light or dark surface */
+function PreviewSurface({ config, dark }: { config: Partial<TokenCursors>; dark?: boolean }) {
+    const resolved = (state: CursorState) => {
+        const raw = config[state];
+        if (raw) return cursorPreview(raw).css;
+        return state === 'default' ? 'auto' : state;
+    };
+    return (
+        <div
+            className={`flex-1 rounded-lg border p-3 ${
+                dark ? 'border-neutral-700 bg-neutral-900 text-neutral-200' : 'border-border bg-white text-neutral-800'
+            }`}
+            style={{ cursor: resolved('default') }}
+        >
+            <p
+                className={`text-[10px] uppercase tracking-wide mb-2 ${dark ? 'text-neutral-400' : 'text-muted-foreground'}`}
+            >
+                {dark ? 'Dark surface' : 'Light surface'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+                {CURSOR_STATES.map((state) => (
+                    <span
+                        key={state}
+                        style={{ cursor: resolved(state) }}
+                        className={`rounded-md border px-2 py-1 text-xs select-none ${
+                            dark ? 'border-neutral-700 bg-neutral-800' : 'border-border bg-muted/40'
+                        } ${config[state] ? '' : 'opacity-50'}`}
+                        title={config[state] ? config[state] : `native ${state}`}
+                    >
+                        {state}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 interface BrandKitCursorsTabProps {
     tokensJson: string;
     onTokensChange: (tokensJson: string) => void;
@@ -92,10 +258,6 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
     const parsed = useMemo(() => {
         try {
             const p = JSON.parse(tokensJson || '{}');
-            // Cursors are stored at the root of the theme alongside tokens, wait no...
-            // the implementation plan says TokenCursors is in tokens.ts DesignTokens.
-            // Oh right, `cursors` was added to `tokens` vs root BrandTheme.
-            // Actually resolver.ts maps merged.cursors to resolved.cursors.
             return p.cursors || {};
         } catch {
             return {};
@@ -137,6 +299,21 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
         },
         [tokensJson, onTokensChange],
     );
+
+    const hasAnyCursor = useMemo(() => {
+        const flat = isSplitMode ? { ...(parsed.light || {}), ...(parsed.dark || {}) } : parsed;
+        return Object.values(flat).some(Boolean);
+    }, [parsed, isSplitMode]);
+
+    const handleClearAll = useCallback(() => {
+        try {
+            const p = JSON.parse(tokensJson || '{}');
+            delete p.cursors;
+            onTokensChange(JSON.stringify(p, null, 2));
+        } catch {
+            // Error silently on manual typed JSON failures
+        }
+    }, [tokensJson, onTokensChange]);
 
     const handleUpdate = (mode: 'light' | 'dark' | 'shared', state: string, val: string) => {
         try {
@@ -193,20 +370,6 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
         setEditModal(null);
     }, [editModal, tokensJson, onTokensChange]);
 
-    /** All cursor states that can be themed (matches globals.css bindings) */
-    const CURSOR_STATES = [
-        'default',
-        'pointer',
-        'text',
-        'grab',
-        'grabbing',
-        'crosshair',
-        'not-allowed',
-        'help',
-        'wait',
-        'move',
-    ] as const;
-
     const renderControls = (mode: 'light' | 'dark' | 'shared', config: Partial<TokenCursors>) => {
         return (
             <div className="space-y-4 p-4 rounded-lg border bg-card border-border text-card-foreground">
@@ -214,18 +377,22 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
 
                 {CURSOR_STATES.map((state) => {
                     const currentVal = config[state] || '';
-                    const svgContent = extractSvgFromCursor(currentVal);
-                    const hasSvg = !!svgContent;
-                    const isSafeSvg = hasSvg && !validateSvgSafety(svgContent);
+                    const preview = cursorPreview(currentVal);
+                    const isSafe = preview.kind !== 'custom' || !validateSvgSafety(preview.svg || '');
                     return (
                         <div key={state} className="space-y-2">
                             <Label className="capitalize text-muted-foreground">{state} Cursor</Label>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder={`Native ${state}`}
+                                    placeholder={`Native ${state} — or registry:… (pick →)`}
                                     value={currentVal}
                                     onChange={(e) => handleUpdate(mode, state, e.target.value)}
                                     className="flex-1"
+                                />
+                                <RegistryPicker
+                                    state={state}
+                                    value={currentVal}
+                                    onPick={(val) => handleUpdate(mode, state, val)}
                                 />
                                 <Button
                                     type="button"
@@ -233,22 +400,22 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                                     size="icon"
                                     className="shrink-0"
                                     onClick={() => openSvgEditModal(mode, state)}
-                                    title="Edit SVG cursor"
+                                    title="Edit custom SVG cursor"
                                 >
                                     <IconEdit className="h-4 w-4" />
                                 </Button>
                             </div>
-                            {hasSvg && (
+                            {preview.svg && (
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] text-muted-foreground">Preview:</span>
-                                    {isSafeSvg ? (
+                                    {isSafe ? (
                                         <div
                                             className="w-8 h-8 rounded border border-border/50 bg-muted/30 flex items-center justify-center overflow-hidden"
-                                            style={{ cursor: currentVal }}
+                                            style={{ cursor: preview.css }}
                                             title="Hover to see cursor"
                                         >
                                             <img
-                                                src={`data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}`}
+                                                src={svgThumbSrc(preview.svg)}
                                                 alt=""
                                                 className="max-w-full max-h-full object-contain pointer-events-none"
                                             />
@@ -258,11 +425,17 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                                             Unsafe
                                         </div>
                                     )}
+                                    {preview.kind === 'registry' && (
+                                        <span className="text-[10px] text-muted-foreground font-mono">
+                                            registry:{preview.registryKey}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                             {state === 'default' && (
                                 <p className="text-[10px] text-muted-foreground">
-                                    Accepts native CSS cursors, or use Edit to paste SVG content.
+                                    Accepts native CSS keywords, a registry cursor (pick from the gallery), or custom
+                                    SVG via Edit.
                                 </p>
                             )}
                         </div>
@@ -275,14 +448,40 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
     return (
         <>
             <Card>
-                <CardHeader>
-                    <CardTitle>Cursors</CardTitle>
-                    <CardDescription>
-                        Configure native or entirely customized mouse cursors using Data URIs. Supports defining
-                        distinct cursors for light vs dark mode backgrounds.
-                    </CardDescription>
+                <CardHeader className="flex-row items-start justify-between space-y-0 gap-4">
+                    <div className="space-y-1.5">
+                        <CardTitle>Cursors</CardTitle>
+                        <CardDescription>
+                            Configure native, built-in registry, or fully custom SVG cursors. Supports distinct cursors
+                            for light vs dark mode backgrounds.
+                        </CardDescription>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 text-destructive hover:text-destructive"
+                        onClick={handleClearAll}
+                        disabled={!hasAnyCursor}
+                        title="Reset every cursor state to native"
+                    >
+                        <IconTrash className="h-4 w-4 mr-1" />
+                        Clear all
+                    </Button>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                        <Label>Preview — hover the chips</Label>
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <PreviewSurface config={activeLight} />
+                            <PreviewSurface config={activeDark} dark />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                            Dimmed chips fall back to the native cursor. The dark surface shows how the white outline
+                            keeps cursors legible.
+                        </p>
+                    </div>
+
                     <div className="flex items-center justify-between rounded-lg border p-4 bg-accent/50">
                         <div>
                             <Label>Different for dark mode</Label>
@@ -343,7 +542,7 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                                         title="Hover to see cursor"
                                     >
                                         <img
-                                            src={`data:image/svg+xml;utf8,${encodeURIComponent(editModal.svgContent)}`}
+                                            src={svgThumbSrc(editModal.svgContent)}
                                             alt=""
                                             className="max-w-full max-h-full object-contain pointer-events-none"
                                         />

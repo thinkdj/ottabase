@@ -4,6 +4,7 @@ import type { BrandTheme, ResolvedBrandTheme, TokenColors } from '../index';
 import {
     buildCSSVarMap,
     clearThemeRegistry,
+    CURSOR_SVG_REGISTRY,
     // Types tested indirectly through functions
     deepMerge,
     DEFAULT_COLORS_DARK,
@@ -20,6 +21,7 @@ import {
     registerTheme,
     registerThemes,
     resolveAliases,
+    resolveCursor,
     resolveTheme,
 } from '../index';
 
@@ -555,6 +557,32 @@ describe('buildCSSVarMap', () => {
         const vars = buildCSSVarMap(customResolved);
         expect(vars['--cursor-default']).toBe('url(data:image/svg+xml,...), auto');
         expect(vars['--cursor-grab']).toBe('grab');
+    });
+
+    it('resolves registry cursors with a hotspot and role fallback', () => {
+        const arrow = resolveCursor('registry:arrow-classic');
+        expect(arrow).toMatch(/^url\("data:image\/svg\+xml;charset=utf-8,/);
+        expect(arrow).toMatch(/"\) 2 2, default$/);
+        expect(resolveCursor('registry:hand-classic')).toMatch(/"\) 9 2, pointer$/);
+        expect(resolveCursor('registry:crosshair')).toMatch(/"\) 12 12, crosshair$/);
+        expect(resolveCursor('registry:text-beam')).toMatch(/"\) 12 12, text$/);
+    });
+
+    it('resolves unknown registry keys to auto and passes keywords/urls through', () => {
+        expect(resolveCursor('registry:no-such-cursor')).toBe('auto');
+        expect(resolveCursor('pointer')).toBe('pointer');
+        expect(resolveCursor('url(/cursors/custom.png) 4 4, pointer')).toBe('url(/cursors/custom.png) 4 4, pointer');
+    });
+
+    it('every registry cursor defines an in-bounds hotspot and a keyword fallback', () => {
+        for (const [key, def] of Object.entries(CURSOR_SVG_REGISTRY)) {
+            expect(def.hotspot[0], key).toBeGreaterThanOrEqual(0);
+            expect(def.hotspot[0], key).toBeLessThanOrEqual(24);
+            expect(def.hotspot[1], key).toBeGreaterThanOrEqual(0);
+            expect(def.hotspot[1], key).toBeLessThanOrEqual(24);
+            expect(def.fallback, key).toMatch(/^[a-z-]+$/);
+            expect(def.svg, key).not.toMatch(/\n/);
+        }
     });
 
     it('omits spacing vars when spacing is empty', () => {
