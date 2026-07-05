@@ -248,6 +248,13 @@ export async function handleUpdateBrandKit(
         'allowDarkModeToggle',
         'customCss',
         'hideOttabaseBranding',
+        // Logo keys are written by the upload endpoint; accepted here so a
+        // client can clear one (set to null) without re-uploading.
+        'logoKey',
+        'logoDarkKey',
+        'iconKey',
+        'ogImageKey',
+        'emailLogoKey',
     ] as const;
     for (const f of fields) {
         // System default (appId=null): name is locked and cannot be edited

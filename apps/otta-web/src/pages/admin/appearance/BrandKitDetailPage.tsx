@@ -28,7 +28,7 @@ import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
 import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
 import { BrandKitCursorsTab } from './brand/BrandKitCursorsTab';
 import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
-import { BrandKitLogoTab } from './brand/BrandKitLogoTab';
+import { BrandKitLogoTab, LOGO_DRAFT_FIELDS } from './brand/BrandKitLogoTab';
 import { BrandKitMotionTab } from './brand/BrandKitMotionTab';
 import { BrandKitThemeTab, colorSwatchClass } from './brand/BrandKitThemeTab';
 
@@ -391,11 +391,16 @@ export function AdminBrandKitDetailPage() {
         [],
     );
     const handleTokensChange = useCallback((v: string) => setDraft((s) => ({ ...s, tokensJson: v })), []);
+    // Uploads persist server-side immediately; merge the new key into the draft
+    // instead of refetching — a refetch would reset the draft and discard
+    // unsaved edits in other tabs.
     const handleLogoUploaded = useCallback(
-        (_logoType: string, _key: string, _url: string) => {
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
+        (logoType: string, key: string | null) => {
+            const field = LOGO_DRAFT_FIELDS[logoType];
+            if (field) setDraft((s) => ({ ...s, [field]: key }));
+            refresh();
         },
-        [queryClient, kitId],
+        [refresh],
     );
 
     const hasColorOverrides = useMemo(() => {
@@ -557,7 +562,7 @@ export function AdminBrandKitDetailPage() {
                                     emailLogoKey: draft.emailLogoKey,
                                 }}
                                 logoBaseUrl={logoBaseUrl}
-                                onUploaded={handleLogoUploaded}
+                                onChanged={handleLogoUploaded}
                             />
                         )}
                     </TabsContent>
