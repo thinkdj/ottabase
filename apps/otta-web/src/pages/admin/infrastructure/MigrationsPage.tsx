@@ -1,6 +1,7 @@
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -31,6 +32,10 @@ interface ModelsMetadataResponse {
     }>;
     total: number;
 }
+
+const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const CATEGORY_CHIP =
+    'inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border';
 
 export function MigrationStatusPage() {
     const [initResult, setInitResult] = useState<InitResult | null>(null);
@@ -152,36 +157,44 @@ export function MigrationStatusPage() {
 
     // Build table status map
     const getTableStatus = (tableVarName: string) => {
-        if (!initResult) return { status: 'Unknown', icon: '❓', color: 'text-gray-500' };
+        if (!initResult) return { status: 'Unknown', chip: 'bg-muted text-muted-foreground' };
 
         const { actualName } = getTableInfo(tableVarName);
 
         // Check if created
         if (initResult.details.tablesCreated.includes(actualName)) {
-            return { status: 'Created', icon: '🆕', color: 'text-green-600' };
+            return { status: 'Created', chip: 'bg-success/10 text-success' };
         }
 
         // Check if existing/skipped
         if (initResult.details.tablesSkipped.includes(actualName)) {
-            return { status: 'Existing', icon: '✓', color: 'text-blue-600' };
+            return { status: 'Existing', chip: 'bg-muted text-muted-foreground' };
         }
 
-        return { status: 'Unknown', icon: '❓', color: 'text-gray-500' };
+        return { status: 'Unknown', chip: 'bg-muted text-muted-foreground' };
     };
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6 px-4 py-12">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/">← Back to Home</Link>
-            </Button>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Home
+                    </Link>
+                </Button>
 
-            <div>
-                <h1 className="mb-2 text-3xl font-semibold">Database Migration Status</h1>
-                <p className="text-muted-foreground">Running database initialization and migration checks...</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                    This ensures all schemas (core, app, and packages) are migrated properly.
-                </p>
-                <div className="mt-4 space-y-3 max-w-xl">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Database Migration Status</h1>
+                    <p className="max-w-3xl text-muted-foreground">
+                        Running database initialization and migration checks...
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        This ensures all schemas (core, app, and packages) are migrated properly.
+                    </p>
+                </div>
+
+                <div className="max-w-xl space-y-3">
                     <div className="flex items-center gap-2">
                         <Input
                             type="password"
@@ -190,8 +203,9 @@ export function MigrationStatusPage() {
                             onChange={(e) => setSecretInput(e.target.value)}
                             spellCheck={false}
                             autoComplete="off"
+                            className="h-9"
                         />
-                        <Button onClick={() => runInit(secretInput || undefined, allowDestructive)}>
+                        <Button size="sm" onClick={() => runInit(secretInput || undefined, allowDestructive)}>
                             Run Migration
                         </Button>
                     </div>
@@ -201,7 +215,7 @@ export function MigrationStatusPage() {
                             checked={allowDestructive}
                             onCheckedChange={(checked) => setAllowDestructive(checked === true)}
                         />
-                        <Label htmlFor="allow-destructive" className="text-sm cursor-pointer flex items-center gap-2">
+                        <Label htmlFor="allow-destructive" className="flex cursor-pointer items-center gap-2 text-sm">
                             <span>Allow destructive actions</span>
                             <span className="text-xs text-muted-foreground">
                                 (drops orphan columns, recreates tables if needed)
@@ -213,25 +227,26 @@ export function MigrationStatusPage() {
                         always enabled on the server, even when this checkbox is unchecked.
                     </p>
                     {allowDestructive && (
-                        <div className="rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-700 dark:text-amber-400">
-                            ⚠️ <strong>Warning:</strong> Destructive mode will remove columns that exist in the database
-                            but not in the schema. Make sure you have a backup before proceeding.
+                        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                            <strong className="font-semibold">Warning:</strong> Destructive mode will remove columns
+                            that exist in the database but not in the schema. Make sure you have a backup before
+                            proceeding.
                         </div>
                     )}
                 </div>
             </div>
 
             {initError ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <h3 className="font-semibold text-destructive">Error</h3>
-                    <p className="text-sm text-destructive">{initError.message}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <h3 className="font-semibold">Error</h3>
+                    <p>{initError.message}</p>
                 </div>
             ) : null}
 
             {initLoading && (
-                <div className="rounded-lg border bg-muted/50 p-8 text-center animate-pulse">
-                    <p>Initializing database...</p>
-                    <p className="text-sm text-muted-foreground mt-2">
+                <div className="animate-pulse rounded-xl bg-muted/40 p-8 text-center" aria-busy="true">
+                    <p className="text-sm">Initializing database...</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
                         Checking core tables, app tables, and enabled package tables...
                     </p>
                 </div>
@@ -239,29 +254,27 @@ export function MigrationStatusPage() {
 
             {initResult && (
                 <div className="grid gap-6">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 Status:{' '}
                                 {initResult.success ? (
-                                    <span className="text-green-500">Success</span>
+                                    <span className="text-success">Success</span>
                                 ) : (
-                                    <span className="text-red-500">Failed</span>
+                                    <span className="text-destructive">Failed</span>
                                 )}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="text-sm border rounded-md p-4 bg-muted/30 font-mono whitespace-pre-wrap">
+                            <div className="whitespace-pre-wrap rounded-lg bg-background p-4 font-mono text-xs ring-1 ring-border">
                                 {initResult.message}
                             </div>
 
                             {/* Success summary */}
                             {initResult.success && (
-                                <div className="border rounded-md p-4 bg-green-50 dark:bg-green-950/20">
-                                    <h3 className="font-medium text-green-700 dark:text-green-400 mb-2">
-                                        ✅ Migration Summary
-                                    </h3>
-                                    <div className="text-sm space-y-1">
+                                <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                                    <h3 className="mb-2 text-sm font-semibold text-success">Migration Summary</h3>
+                                    <div className="space-y-1 text-sm text-muted-foreground">
                                         <p>• {initResult.details.tablesDetected.length} table(s) detected in schema</p>
                                         <p>• {initResult.details.tablesCreated.length} new table(s) created</p>
                                         <p>• {initResult.details.tablesSkipped.length} table(s) already exist</p>
@@ -275,9 +288,9 @@ export function MigrationStatusPage() {
                             )}
 
                             {/* Single Table View */}
-                            <div className="border rounded-lg overflow-hidden">
-                                <div className="bg-muted/50 px-4 py-2 border-b flex items-center justify-between">
-                                    <h3 className="font-medium text-sm">
+                            <div className="overflow-hidden rounded-lg bg-background ring-1 ring-border">
+                                <div className="flex items-center justify-between border-b border-border/60 bg-muted/40 px-4 py-2.5">
+                                    <h3 className={MICRO_LABEL}>
                                         All Tables (
                                         {(() => {
                                             const filteredCount = initResult.details.tablesDetected.filter(
@@ -293,7 +306,7 @@ export function MigrationStatusPage() {
                                         )
                                     </h3>
                                     <div className="flex items-center gap-4">
-                                        <Label className="text-xs text-muted-foreground">Filter:</Label>
+                                        <Label className={MICRO_LABEL}>Filter:</Label>
                                         <div className="flex items-center gap-3">
                                             {(['App', 'Package', 'Core'] as const).map((category) => (
                                                 <div key={category} className="flex items-center gap-2">
@@ -309,7 +322,7 @@ export function MigrationStatusPage() {
                                                     />
                                                     <Label
                                                         htmlFor={`filter-${category.toLowerCase()}`}
-                                                        className="text-xs cursor-pointer"
+                                                        className="cursor-pointer text-xs"
                                                     >
                                                         {category}
                                                     </Label>
@@ -319,16 +332,16 @@ export function MigrationStatusPage() {
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted/30 border-b">
+                                    <table className="min-w-full divide-y divide-border/60 text-sm">
+                                        <thead className="bg-muted/40">
                                             <tr>
-                                                <th className="text-left px-4 py-2 font-medium">Table Name</th>
-                                                <th className="text-left px-4 py-2 font-medium">Type</th>
-                                                <th className="text-left px-4 py-2 font-medium">Package</th>
-                                                <th className="text-left px-4 py-2 font-medium">Status</th>
+                                                <th className={`px-4 py-2.5 text-left ${MICRO_LABEL}`}>Table Name</th>
+                                                <th className={`px-4 py-2.5 text-left ${MICRO_LABEL}`}>Type</th>
+                                                <th className={`px-4 py-2.5 text-left ${MICRO_LABEL}`}>Package</th>
+                                                <th className={`px-4 py-2.5 text-left ${MICRO_LABEL}`}>Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y">
+                                        <tbody className="divide-y divide-border/60">
                                             {(() => {
                                                 // Sort tables: App first, then Package, then Core, then Unknown
                                                 const categoryOrder: Record<string, number> = {
@@ -366,26 +379,16 @@ export function MigrationStatusPage() {
                                                         getTableInfo(tableVarName);
                                                     const statusInfo = getTableStatus(tableVarName);
 
-                                                    const categoryColors: Record<string, string> = {
-                                                        Core: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-                                                        App: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
-                                                        Package:
-                                                            'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-                                                        Unknown:
-                                                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-                                                    };
-
                                                     return (
-                                                        <tr key={tableVarName} className="hover:bg-muted/20">
+                                                        <tr
+                                                            key={tableVarName}
+                                                            className="transition-colors duration-normal hover:bg-muted/40"
+                                                        >
                                                             <td className="px-4 py-2 font-mono text-xs">
                                                                 {actualName}
                                                             </td>
                                                             <td className="px-4 py-2">
-                                                                <span
-                                                                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${categoryColors[category]}`}
-                                                                >
-                                                                    {category}
-                                                                </span>
+                                                                <span className={CATEGORY_CHIP}>{category}</span>
                                                             </td>
                                                             <td className="px-4 py-2">
                                                                 <code className="text-xs text-muted-foreground">
@@ -394,10 +397,9 @@ export function MigrationStatusPage() {
                                                             </td>
                                                             <td className="px-4 py-2">
                                                                 <span
-                                                                    className={`flex items-center gap-1 ${statusInfo.color}`}
+                                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusInfo.chip}`}
                                                                 >
-                                                                    <span>{statusInfo.icon}</span>
-                                                                    <span className="text-xs">{statusInfo.status}</span>
+                                                                    {statusInfo.status}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -411,14 +413,14 @@ export function MigrationStatusPage() {
 
                             {/* Columns Added Section - only show if there are columns */}
                             {initResult.details.columnsAdded.length > 0 && (
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="bg-muted/50 px-4 py-2 border-b">
-                                        <h3 className="font-medium text-sm">
-                                            ➕ Columns Added ({initResult.details.columnsAdded.length})
+                                <div className="overflow-hidden rounded-lg bg-background ring-1 ring-border">
+                                    <div className="border-b border-border/60 bg-muted/40 px-4 py-2.5">
+                                        <h3 className={MICRO_LABEL}>
+                                            Columns Added ({initResult.details.columnsAdded.length})
                                         </h3>
                                     </div>
                                     <div className="p-4">
-                                        <ul className="list-disc list-inside text-xs space-y-1">
+                                        <ul className="list-inside list-disc space-y-1 text-xs">
                                             {initResult.details.columnsAdded.map((col, i) => (
                                                 <li key={col} className="font-mono text-muted-foreground">
                                                     {col}
@@ -432,17 +434,17 @@ export function MigrationStatusPage() {
                             {/* Migrations Section - only show if there are migrations */}
                             {(initResult.details.customMigrationsRun.length > 0 ||
                                 initResult.details.customMigrationsSkipped.length > 0) && (
-                                <div className="border rounded-lg overflow-hidden">
-                                    <div className="bg-muted/50 px-4 py-2 border-b">
-                                        <h3 className="font-medium text-sm">⚡ Custom Migrations</h3>
+                                <div className="overflow-hidden rounded-lg bg-background ring-1 ring-border">
+                                    <div className="border-b border-border/60 bg-muted/40 px-4 py-2.5">
+                                        <h3 className={MICRO_LABEL}>Custom Migrations</h3>
                                     </div>
-                                    <div className="p-4 space-y-3">
+                                    <div className="space-y-3 p-4">
                                         {initResult.details.customMigrationsRun.length > 0 && (
                                             <div>
-                                                <p className="text-xs font-medium text-green-600 mb-1">
-                                                    ✓ Executed ({initResult.details.customMigrationsRun.length})
+                                                <p className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-success">
+                                                    Executed ({initResult.details.customMigrationsRun.length})
                                                 </p>
-                                                <ul className="list-disc list-inside text-xs space-y-1 ml-2">
+                                                <ul className="ml-2 list-inside list-disc space-y-1 text-xs">
                                                     {initResult.details.customMigrationsRun.map((mig, i) => (
                                                         <li key={mig} className="font-mono text-muted-foreground">
                                                             {mig}
@@ -453,11 +455,11 @@ export function MigrationStatusPage() {
                                         )}
                                         {initResult.details.customMigrationsSkipped.length > 0 && (
                                             <div>
-                                                <p className="text-xs font-medium text-blue-600 mb-1">
-                                                    ⏭️ Skipped (Already Run) (
+                                                <p className={`mb-1 ${MICRO_LABEL}`}>
+                                                    Skipped (Already Run) (
                                                     {initResult.details.customMigrationsSkipped.length})
                                                 </p>
-                                                <ul className="list-disc list-inside text-xs space-y-1 ml-2">
+                                                <ul className="ml-2 list-inside list-disc space-y-1 text-xs">
                                                     {initResult.details.customMigrationsSkipped.map((mig, i) => (
                                                         <li key={mig} className="font-mono text-muted-foreground">
                                                             {mig}
@@ -471,9 +473,9 @@ export function MigrationStatusPage() {
                             )}
 
                             {initResult.details.errors.length > 0 && (
-                                <div className="border border-destructive/30 rounded-md p-4 bg-destructive/5">
-                                    <h3 className="font-semibold text-destructive mb-2">Detailed Errors</h3>
-                                    <ul className="list-disc list-inside text-sm text-destructive space-y-1">
+                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                    <h3 className="mb-2 font-semibold">Detailed Errors</h3>
+                                    <ul className="list-inside list-disc space-y-1">
                                         {initResult.details.errors.map((err, i) => (
                                             <li key={err}>{err}</li>
                                         ))}
@@ -482,7 +484,7 @@ export function MigrationStatusPage() {
                             )}
 
                             {/* Timestamp */}
-                            <div className="text-xs text-muted-foreground text-right">
+                            <div className={`text-right ${MICRO_LABEL}`}>
                                 Last run: {new Date(initResult.timestamp).toLocaleString()}
                             </div>
                         </CardContent>

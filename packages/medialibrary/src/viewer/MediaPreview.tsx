@@ -35,12 +35,13 @@ function getShellClassName(mode: NonNullable<MediaPreviewProps['mode']>, classNa
         mode === 'thumb'
             ? 'h-full w-full overflow-hidden rounded-md bg-muted/40'
             : mode === 'detail'
-              ? 'h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30'
+              ? 'h-full w-full overflow-hidden rounded-xl bg-muted/40'
               : mode === 'immersive'
-                ? 'h-full w-full flex rounded-lg items-center justify-center overflow-hidden bg-muted/5 dark:bg-muted/10' // In immersive mode, we use a subtle background to indicate the media boundaries without a hard border
+                ? // In immersive mode, a whisper of muted tint marks the media boundary without a hard border
+                  'h-full w-full flex rounded-lg items-center justify-center overflow-hidden bg-muted/5'
                 : mode === 'lightbox'
-                  ? 'h-full w-full overflow-hidden rounded-2xl bg-black/20'
-                  : 'h-full w-full overflow-hidden rounded-xl border border-border bg-muted/20';
+                  ? 'h-full w-full overflow-hidden rounded-xl bg-muted/40'
+                  : 'h-full w-full overflow-hidden rounded-xl bg-muted/40';
 
     return [modeClassName, className].filter(Boolean).join(' ');
 }
@@ -112,7 +113,7 @@ export function MediaPreview({
         return (
             <div className={`${shellClassName} flex min-h-[12rem] items-center justify-center p-6`}>
                 <div className="w-full space-y-4">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
                         <IconFileMusic className="h-7 w-7" />
                     </div>
                     <audio src={previewUrl} controls className="w-full" preload="metadata" />
@@ -149,12 +150,14 @@ export function MediaPreview({
     return (
         <div className={`${shellClassName} flex min-h-[10rem] items-center justify-center p-4`}>
             <div className="flex flex-col items-center gap-3 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
                     <PlaceholderIcon className="h-7 w-7" />
                 </div>
                 <div className="space-y-1">
                     <p className="max-w-[18rem] truncate text-sm font-medium text-foreground">{title}</p>
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{mediaKind}</p>
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        {mediaKind}
+                    </p>
                 </div>
             </div>
         </div>

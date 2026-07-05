@@ -35,12 +35,12 @@ export function BrandKitBrandTab({
     return (
         <div className="space-y-4">
             {/* Inheritance picker */}
-            <div className="rounded-lg border border-dashed p-4 space-y-2">
+            <div className="rounded-xl bg-muted/40 p-4 space-y-2">
                 <div className="flex items-center gap-2">
                     <IconGitBranch className="h-4 w-4 text-muted-foreground" />
                     <Label className="text-sm font-medium">Inherits from</Label>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                     Optionally inherit tokens (colors, fonts, spacing) from a parent Brand Kit. This kit's own values
                     override the parent's. Great for creating variations (e.g. seasonal themes, sub-brands).
                 </p>
@@ -61,7 +61,7 @@ export function BrandKitBrandTab({
                                     <span className="flex items-center gap-2">
                                         {k.name}
                                         {k.isDefault && (
-                                            <span className="text-[10px] rounded bg-muted px-1 py-0.5 text-muted-foreground">
+                                            <span className="rounded-full bg-background px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                                                 default
                                             </span>
                                         )}
@@ -73,7 +73,7 @@ export function BrandKitBrandTab({
                     {parentBrandKitId && (
                         <button
                             type="button"
-                            className="inline-flex items-center rounded-md border border-input p-2 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            className="inline-flex items-center rounded-md p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => onChange({ parentBrandKitId: null })}
                             title="Remove parent (make standalone)"
                         >
@@ -82,9 +82,9 @@ export function BrandKitBrandTab({
                     )}
                 </div>
                 {parentKit && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400">
-                        Inheriting from <strong>{parentKit.name}</strong> &mdash; values you set here will override the
-                        parent.
+                    <p className="text-xs text-muted-foreground">
+                        Inheriting from <strong className="font-medium text-foreground">{parentKit.name}</strong>{' '}
+                        &mdash; values you set here will override the parent.
                     </p>
                 )}
             </div>

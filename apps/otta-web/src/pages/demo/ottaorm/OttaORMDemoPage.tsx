@@ -119,21 +119,19 @@ export function OttaORMDemoPage() {
             />
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             {!canUseCrud ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                        Sign in to enable OttaORM CRUD requests in this demo.
-                    </p>
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                    Sign in to enable OttaORM CRUD requests in this demo.
                 </div>
             ) : null}
 
             {canUseCrud && !dbReady && !error ? (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="mb-3 text-sm text-muted-foreground">
                         Database not initialized. Click below to set up tables.
                     </p>
@@ -152,9 +150,9 @@ export function OttaORMDemoPage() {
 
             {dbReady ? (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-base">
+                            <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Users
                                 {usersLoading && (
                                     <span className="text-xs font-normal text-muted-foreground">Loading...</span>
@@ -187,12 +185,15 @@ export function OttaORMDemoPage() {
 
                             <div className="space-y-2">
                                 {users.length === 0 ? (
-                                    <div className="rounded-lg border bg-muted/50 p-8 text-center">
+                                    <div className="rounded-lg bg-background p-8 text-center ring-1 ring-border">
                                         <p className="text-sm text-muted-foreground">No users yet. Add one above!</p>
                                     </div>
                                 ) : (
                                     users.map((user, index) => (
-                                        <div key={user.id || `user-${index}`} className="rounded-lg border p-4">
+                                        <div
+                                            key={user.id || `user-${index}`}
+                                            className="rounded-lg bg-background p-4 ring-1 ring-border"
+                                        >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
                                                     <p className="font-medium">{user.name || '(No name)'}</p>
@@ -216,9 +217,9 @@ export function OttaORMDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-base">
+                            <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Posts
                                 {postsLoading && (
                                     <span className="text-xs font-normal text-muted-foreground">Loading...</span>
@@ -264,14 +265,17 @@ export function OttaORMDemoPage() {
 
                             <div className="space-y-2">
                                 {posts.length === 0 ? (
-                                    <div className="rounded-lg border bg-muted/50 p-8 text-center">
+                                    <div className="rounded-lg bg-background p-8 text-center ring-1 ring-border">
                                         <p className="text-sm text-muted-foreground">
                                             No posts yet. Create users first, then add posts!
                                         </p>
                                     </div>
                                 ) : (
                                     posts.map((post, index) => (
-                                        <div key={post.id || `post-${index}`} className="rounded-lg border p-4">
+                                        <div
+                                            key={post.id || `post-${index}`}
+                                            className="rounded-lg bg-background p-4 ring-1 ring-border"
+                                        >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
                                                     <p className="font-medium">{post.title}</p>
@@ -298,9 +302,9 @@ export function OttaORMDemoPage() {
                 </div>
             ) : null}
 
-            <Card className="border-dashed">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">TanStack Query Benefits</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">TanStack Query Benefits</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">

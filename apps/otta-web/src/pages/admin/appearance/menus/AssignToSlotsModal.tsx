@@ -133,11 +133,18 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                 </DialogHeader>
 
                 {isLoading ? (
-                    <div className="py-8 text-center text-muted-foreground">Loading assignments...</div>
+                    <div className="space-y-2 py-4" aria-busy="true">
+                        <span className="sr-only">Loading assignments...</span>
+                        {Array.from({ length: 3 }, (_, index) => (
+                            <div key={index} className="h-10 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
                 ) : (
                     <div className="flex flex-col min-h-0 overflow-hidden">
                         <div className="flex items-center justify-between mb-3">
-                            <Label className="text-sm font-medium">Slot assignments</Label>
+                            <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Slot assignments
+                            </Label>
                             <Button size="sm" variant="outline" onClick={add} disabled={menus.length === 0}>
                                 <IconPlus className="h-4 w-4 mr-1" />
                                 Add
@@ -145,14 +152,14 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                         </div>
 
                         {menus.length === 0 ? (
-                            <p className="text-sm text-amber-600 dark:text-amber-500 py-4">
+                            <div className="rounded-lg bg-muted/40 p-3 text-sm leading-relaxed text-muted-foreground">
                                 Create at least one menu before assigning slots.
-                            </p>
+                            </div>
                         ) : items.length === 0 ? (
-                            <div className="rounded-lg border border-dashed py-8 text-center dark:border-muted">
+                            <div className="rounded-xl bg-muted/40 py-8 text-center">
                                 <p className="text-sm text-muted-foreground">No slot assignments yet.</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Click Add to assign a menu to a layout slot (e.g. sidebar-nav, header-nav).
+                                <p className="mt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Click Add to assign a menu to a layout slot (e.g. sidebar-nav, header-nav)
                                 </p>
                                 <Button size="sm" className="mt-3" onClick={add}>
                                     <IconPlus className="h-4 w-4 mr-1" />
@@ -160,23 +167,23 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                                 </Button>
                             </div>
                         ) : (
-                            <div className="overflow-y-auto border rounded-lg dark:border-muted min-h-0">
+                            <div className="min-h-0 overflow-y-auto rounded-lg border border-border/60">
                                 <table className="min-w-full text-sm">
-                                    <thead className="bg-muted/20 sticky top-0">
-                                        <tr>
-                                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                    <thead className="sticky top-0 bg-background">
+                                        <tr className="bg-muted/40">
+                                            <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Slot
                                             </th>
-                                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                            <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Menu
                                             </th>
-                                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                            <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Render type
                                             </th>
                                             <th className="px-3 py-2 w-12" />
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-muted">
+                                    <tbody className="divide-y divide-border/60">
                                         {items.map((item, idx) => (
                                             <SlotRow
                                                 key={idx}
@@ -192,7 +199,7 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                        <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-4">
                             <Button variant="outline" onClick={() => onOpenChange(false)}>
                                 Cancel
                             </Button>
@@ -221,7 +228,9 @@ function SlotRow({
     onRemove: () => void;
 }) {
     return (
-        <tr className={preselected ? 'bg-primary/5' : ''}>
+        <tr
+            className={`transition-colors duration-normal hover:bg-muted/40 ${preselected ? 'bg-background ring-1 ring-border' : ''}`}
+        >
             <td className="px-3 py-2">
                 <Select value={item.slotName} onValueChange={(v) => onUpdate({ slotName: v })}>
                     <SelectTrigger className="h-8 text-xs">
@@ -246,7 +255,10 @@ function SlotRow({
                             <SelectItem key={m.id} value={m.id}>
                                 <span className="flex items-center gap-2">
                                     {m.name}
-                                    <Badge variant="secondary" className="text-[10px] font-normal">
+                                    <Badge
+                                        variant="secondary"
+                                        className="rounded-full border-transparent bg-background text-[0.625rem] font-medium text-muted-foreground ring-1 ring-border"
+                                    >
                                         {m.slug}
                                     </Badge>
                                 </span>

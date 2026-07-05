@@ -54,11 +54,12 @@ export function ModelDetail<T extends Record<string, unknown>>({
 
     if (isLoading) {
         return (
-            <div className={clsx('animate-pulse space-y-4', className)}>
-                <div className="h-8 bg-muted rounded w-1/3" />
+            <div className={clsx('space-y-4', className)} aria-busy="true">
+                <span className="sr-only">Loading details…</span>
+                <div className="h-8 w-1/3 animate-pulse rounded-xl bg-muted/40" />
                 <div className="space-y-3">
                     {[...Array(6)].map((_, i) => (
-                        <div key={i} className="h-12 bg-muted/60 rounded" />
+                        <div key={i} className="h-12 animate-pulse rounded-xl bg-muted/40" />
                     ))}
                 </div>
             </div>
@@ -69,18 +70,23 @@ export function ModelDetail<T extends Record<string, unknown>>({
         <div className={clsx('space-y-6', className)}>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     {onBack && (
                         <button
                             onClick={onBack}
-                            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent"
+                            aria-label="Back"
+                            className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                            <ArrowLeft className="w-5 h-5" />
+                            <ArrowLeft className="h-4 w-4" />
                         </button>
                     )}
-                    <div>
-                        <h2 className="text-xl font-semibold text-foreground">{displayName} Details</h2>
-                        {recordId != null && <p className="text-sm text-muted-foreground">ID: {String(recordId)}</p>}
+                    <div className="space-y-0.5">
+                        <h2 className="text-[0.9375rem] font-semibold text-foreground">{displayName} Details</h2>
+                        {recordId != null && (
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                ID: {String(recordId)}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -91,12 +97,12 @@ export function ModelDetail<T extends Record<string, unknown>>({
                             <button
                                 onClick={onEdit}
                                 className={clsx(
-                                    'px-4 py-2 rounded-lg font-medium transition-colors',
-                                    'bg-primary hover:bg-primary/90 text-primary-foreground',
-                                    'flex items-center gap-2',
+                                    'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
+                                    'bg-primary text-primary-foreground hover:bg-primary/90',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                                 )}
                             >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="h-4 w-4" />
                                 Edit
                             </button>
                         )}
@@ -104,12 +110,12 @@ export function ModelDetail<T extends Record<string, unknown>>({
                             <button
                                 onClick={onDelete}
                                 className={clsx(
-                                    'px-4 py-2 rounded-lg font-medium transition-colors',
-                                    'bg-destructive hover:bg-destructive/90 text-destructive-foreground',
-                                    'flex items-center gap-2',
+                                    'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
+                                    'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                                 )}
                             >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-4 w-4" />
                                 Delete
                             </button>
                         )}
@@ -118,25 +124,25 @@ export function ModelDetail<T extends Record<string, unknown>>({
             </div>
 
             {/* Detail Table */}
-            <div className="overflow-hidden rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-xl border border-border/60">
                 <table className="w-full">
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-y divide-border/60">
                         {fields.map(({ key, field }) => (
-                            <tr key={key} className="bg-background">
+                            <tr key={key} className="bg-background transition-colors duration-normal hover:bg-muted/40">
                                 {/* Label */}
-                                <td className="px-4 py-3 w-1/4 bg-muted/50">
-                                    <span className="text-sm font-medium text-foreground">
+                                <td className="w-1/4 bg-muted/40 px-4 py-3 align-top">
+                                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                         {field.uiConfig?.label || capitalize(key)}
                                     </span>
                                     {field.uiConfig?.description && (
-                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                                             {field.uiConfig.description}
                                         </p>
                                     )}
                                 </td>
 
                                 {/* Value */}
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3 text-sm">
                                     <DetailValue value={data[key]} field={field} />
                                 </td>
                             </tr>
@@ -183,13 +189,13 @@ function DetailValue({ value, field }: DetailValueProps) {
                 return <span className="text-foreground">{new Date(value as string).toLocaleString()}</span>;
             case 'boolean':
                 return value ? (
-                    <span className="inline-flex items-center gap-1 text-primary">
-                        <Check className="w-4 h-4" />
+                    <span className="inline-flex items-center gap-1 text-success">
+                        <Check className="h-4 w-4" />
                         Yes
                     </span>
                 ) : (
                     <span className="inline-flex items-center gap-1 text-muted-foreground">
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                         No
                     </span>
                 );
@@ -210,16 +216,16 @@ function DetailValue({ value, field }: DetailValueProps) {
                         <img
                             src={String(value)}
                             alt=""
-                            className="w-16 h-16 rounded-lg object-cover border border-border"
+                            className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
                         />
                         <a
                             href={String(value)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                            className="flex items-center gap-1 text-sm text-primary hover:underline"
                         >
                             View full size
-                            <ExternalLink className="w-3 h-3" />
+                            <ExternalLink className="h-3 w-3" />
                         </a>
                     </div>
                 );
@@ -229,10 +235,10 @@ function DetailValue({ value, field }: DetailValueProps) {
                         href={String(value)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline flex items-center gap-1"
+                        className="flex items-center gap-1 text-primary hover:underline"
                     >
                         {String(value)}
-                        <ExternalLink className="w-3 h-3" />
+                        <ExternalLink className="h-3 w-3" />
                     </a>
                 );
         }
@@ -242,13 +248,13 @@ function DetailValue({ value, field }: DetailValueProps) {
     switch (field.type) {
         case 'boolean':
             return value ? (
-                <span className="inline-flex items-center gap-1 text-primary">
-                    <Check className="w-4 h-4" />
+                <span className="inline-flex items-center gap-1 text-success">
+                    <Check className="h-4 w-4" />
                     Yes
                 </span>
             ) : (
                 <span className="inline-flex items-center gap-1 text-muted-foreground">
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                     No
                 </span>
             );
@@ -270,7 +276,7 @@ function DetailValue({ value, field }: DetailValueProps) {
 
         case 'json':
             return (
-                <pre className="text-sm bg-muted p-3 rounded-lg overflow-x-auto max-h-48">
+                <pre className="max-h-48 overflow-x-auto rounded-lg bg-muted/40 p-3 text-sm">
                     <code className="text-foreground">{JSON.stringify(value, null, 2)}</code>
                 </pre>
             );
@@ -278,12 +284,15 @@ function DetailValue({ value, field }: DetailValueProps) {
         case 'array':
             if (Array.isArray(value)) {
                 if (value.length === 0) {
-                    return <span className="text-muted-foreground italic">Empty</span>;
+                    return <span className="italic text-muted-foreground">Empty</span>;
                 }
                 return (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                         {value.map((item, index) => (
-                            <span key={index} className="px-2 py-1 text-sm bg-muted text-foreground rounded">
+                            <span
+                                key={index}
+                                className="rounded-full bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border"
+                            >
                                 {typeof item === 'object' ? JSON.stringify(item) : String(item)}
                             </span>
                         ))}
@@ -293,7 +302,11 @@ function DetailValue({ value, field }: DetailValueProps) {
             return <span className="text-foreground">{String(value)}</span>;
 
         case 'id':
-            return <code className="text-sm bg-muted px-2 py-1 rounded text-foreground">{String(value)}</code>;
+            return (
+                <code className="rounded-md bg-muted/40 px-2 py-0.5 text-sm text-foreground ring-1 ring-border">
+                    {String(value)}
+                </code>
+            );
 
         default:
             // Check if it looks like a URL
@@ -303,10 +316,10 @@ function DetailValue({ value, field }: DetailValueProps) {
                         href={value}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline flex items-center gap-1"
+                        className="flex items-center gap-1 text-primary hover:underline"
                     >
                         {value}
-                        <ExternalLink className="w-3 h-3" />
+                        <ExternalLink className="h-3 w-3" />
                     </a>
                 );
             }
@@ -318,7 +331,7 @@ function DetailValue({ value, field }: DetailValueProps) {
                         <img
                             src={value}
                             alt=""
-                            className="w-16 h-16 rounded-lg object-cover border border-border"
+                            className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                             }}
@@ -327,10 +340,10 @@ function DetailValue({ value, field }: DetailValueProps) {
                             href={value}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                            className="flex items-center gap-1 text-sm text-primary hover:underline"
                         >
                             View image
-                            <ExternalLink className="w-3 h-3" />
+                            <ExternalLink className="h-3 w-3" />
                         </a>
                     </div>
                 );
@@ -340,7 +353,7 @@ function DetailValue({ value, field }: DetailValueProps) {
             const stringValue = String(value);
             if (stringValue.length > 200 || stringValue.includes('\n')) {
                 return (
-                    <div className="text-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg max-h-48 overflow-y-auto">
+                    <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 leading-relaxed text-foreground">
                         {stringValue}
                     </div>
                 );

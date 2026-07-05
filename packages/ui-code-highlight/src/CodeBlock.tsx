@@ -152,7 +152,7 @@ function CodeBlockInner({
     return (
         <div className={`code-block-wrapper rounded-lg overflow-hidden border ${className}`}>
             {!hideHeader && (
-                <div className="code-block-header flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+                <div className="code-block-header flex items-center justify-between px-4 py-2 border-b border-border/60 bg-muted/40">
                     <div className="flex items-center gap-2">
                         {filename && <span className="text-xs font-medium text-muted-foreground">{filename}</span>}
                         {!filename && language !== 'plaintext' && (

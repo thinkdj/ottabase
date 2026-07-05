@@ -11,9 +11,9 @@ export function CloudflareImagesDemoPage() {
                 backLabel="Back to Cloudflare Features"
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Cloud-only Service</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Cloud-only Service</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
@@ -27,7 +27,7 @@ export function CloudflareImagesDemoPage() {
                         <li>Create an API token with &quot;Cloudflare Images&quot; permissions</li>
                         <li>Add these environment variables to your worker:</li>
                     </ol>
-                    <div className="mt-2 rounded-md bg-muted p-3 font-mono text-xs">
+                    <div className="mt-2 rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                         <div>CLOUDFLARE_ACCOUNT_ID=&lt;your-account-id&gt;</div>
                         <div>CLOUDFLARE_IMAGES_TOKEN=&lt;your-api-token&gt;</div>
                     </div>

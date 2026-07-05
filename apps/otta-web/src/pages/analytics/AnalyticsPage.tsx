@@ -1,7 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import { PACKAGES_ENABLED } from '@/ottabase/config';
 import {
-    Badge,
     Button,
     Card,
     CardContent,
@@ -45,7 +44,8 @@ export interface AnalyticsResponse {
     };
 }
 
-const headingClass = 'text-xl font-semibold';
+/** Card/section title inside analytics tabs (Filters, Results) */
+const headingClass = 'text-[0.9375rem] font-semibold';
 
 /** Detect dev: Vite dev mode or viewing from localhost */
 function isDevEnvironment(): boolean {
@@ -58,9 +58,9 @@ function isDevEnvironment(): boolean {
 function AnalyticsEmptyState() {
     const isDev = isDevEnvironment();
     return (
-        <div className="flex h-32 flex-col items-center justify-center gap-2">
-            <IconChartBar className="h-12 w-12 text-muted-foreground/50" />
-            <p className="text-muted-foreground">No data yet. Data will appear once tracking is active.</p>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-background py-12 ring-1 ring-border">
+            <IconChartBar className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No data yet. Data will appear once tracking is active.</p>
             {isDev && (
                 <p className="max-w-sm text-center text-xs text-muted-foreground">
                     WAE only works on the edge (worker.dev or custom domain). Localhost clicks are not tracked.
@@ -90,15 +90,18 @@ function AnalyticsResultsCard({
     valueLabel?: string;
 }) {
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Results</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Results</CardTitle>
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="flex h-32 items-center justify-center">
-                        <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="space-y-2" aria-busy="true">
+                        <span className="sr-only">Loading analytics...</span>
+                        {Array.from({ length: 5 }, (_, i) => (
+                            <div key={i} className="h-11 animate-pulse rounded-lg bg-muted/40" />
+                        ))}
                     </div>
                 ) : data.length === 0 ? (
                     <AnalyticsEmptyState />
@@ -150,18 +153,18 @@ export function AnalyticsPage() {
     ];
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-12">
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
+        <div className="space-y-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                        <IconChartBar className="h-8 w-8 text-primary" />
-                        <h1 className={headingClass}>Analytics</h1>
+                        <IconChartBar className="h-7 w-7 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Analytics</h1>
                     </div>
                     <p className="text-muted-foreground">
                         Click data from Cloudflare Analytics Engine (WAE). Data retention: 3 months.
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                     {shortlinksEnabled && (
                         <Button variant="outline" asChild>
                             <Link to="/shortlinks">
@@ -257,8 +260,8 @@ function ShortlinkAnalyticsTab() {
     };
 
     return (
-        <>
-            <Card>
+        <div className="space-y-8">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -320,8 +323,8 @@ function ShortlinkAnalyticsTab() {
             </Card>
 
             {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             )}
 
@@ -339,7 +342,7 @@ function ShortlinkAnalyticsTab() {
                 formatDimension={formatDimension}
                 linkTo="/shortlinks"
             />
-        </>
+        </div>
     );
 }
 
@@ -392,10 +395,10 @@ function ReferralAnalyticsTab() {
     };
 
     return (
-        <>
-            <Card>
+        <div className="space-y-8">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-xl font-semibold">Filters</CardTitle>
+                    <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
                         Referral link click analytics · Binding:{' '}
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
@@ -455,8 +458,8 @@ function ReferralAnalyticsTab() {
             </Card>
 
             {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             )}
 
@@ -475,7 +478,7 @@ function ReferralAnalyticsTab() {
                 linkTo="/referrals"
                 dimensionLabel={groupBy === 'referralCode' ? 'Referral Code' : undefined}
             />
-        </>
+        </div>
     );
 }
 
@@ -528,15 +531,13 @@ function CoreAnalyticsTab() {
     };
 
     return (
-        <>
-            <Card>
+        <div className="space-y-8">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
                         Core event analytics (page_view, button_click, etc.) · Binding:{' '}
-                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono dark:bg-muted/50">
-                            OBCF_ANALYTICS_CORE
-                        </code>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">OBCF_ANALYTICS_CORE</code>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -591,8 +592,8 @@ function CoreAnalyticsTab() {
             </Card>
 
             {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             )}
 
@@ -612,7 +613,7 @@ function CoreAnalyticsTab() {
                 dimensionLabel={groupBy === 'event' ? 'Event' : undefined}
                 valueLabel="Events"
             />
-        </>
+        </div>
     );
 }
 
@@ -646,12 +647,16 @@ function AnalyticsTable({
     const showLink = groupBy === 'shortCode' || groupBy === 'referralCode';
 
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl bg-background ring-1 ring-border">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>{colLabel}</TableHead>
-                        <TableHead className="text-right">{valueLabel}</TableHead>
+                        <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {colLabel}
+                        </TableHead>
+                        <TableHead className="text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {valueLabel}
+                        </TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -663,13 +668,13 @@ function AnalyticsTable({
                                         {row.dimension}
                                     </Link>
                                 ) : (
-                                    <span>{formatDimension(row.dimension)}</span>
+                                    <span className="text-sm">{formatDimension(row.dimension)}</span>
                                 )}
                             </TableCell>
                             <TableCell className="text-right">
-                                <Badge variant="secondary" className="font-mono">
+                                <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 font-mono text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
                                     {Math.round(row.clicks ?? row.value ?? 0)}
-                                </Badge>
+                                </span>
                             </TableCell>
                         </TableRow>
                     ))}

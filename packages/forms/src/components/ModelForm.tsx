@@ -317,29 +317,30 @@ export function ModelForm<T extends Record<string, unknown>>({
         <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+                <h2 className="text-[0.9375rem] font-semibold text-foreground">{title}</h2>
                 {onCancel && (
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={loading}
-                        className="p-2 text-muted-foreground hover:text-foreground"
+                        aria-label="Close"
+                        className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground disabled:opacity-50"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="h-4 w-4" />
                     </button>
                 )}
             </div>
 
             {/* Submit Error Banner */}
             {submitError && (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>{submitError}</span>
                 </div>
             )}
 
             {/* Form Fields */}
-            <div className="space-y-4">
+            <div className="space-y-5 rounded-xl bg-muted/40 p-5">
                 {visibleFields.map(({ key, field }) => (
                     <FormField
                         key={key}
@@ -357,18 +358,18 @@ export function ModelForm<T extends Record<string, unknown>>({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <div className="flex items-center justify-end gap-3 border-t border-border/60 pt-4">
                 {onCancel && (
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={loading}
                         className={clsx(
-                            'px-4 py-2 rounded-lg font-medium transition-colors',
-                            'text-foreground',
-                            'border border-input bg-background',
-                            'hover:bg-accent hover:text-accent-foreground',
-                            'disabled:opacity-50 disabled:cursor-not-allowed',
+                            'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
+                            'bg-background text-foreground ring-1 ring-border',
+                            'hover:bg-muted/70',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            'disabled:cursor-not-allowed disabled:opacity-50',
                         )}
                     >
                         Cancel
@@ -378,21 +379,21 @@ export function ModelForm<T extends Record<string, unknown>>({
                     type="submit"
                     disabled={loading}
                     className={clsx(
-                        'px-4 py-2 rounded-lg font-medium transition-colors',
+                        'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                         'bg-primary text-primary-foreground',
                         'hover:bg-primary/90',
-                        'disabled:opacity-50 disabled:cursor-not-allowed',
-                        'flex items-center gap-2',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'disabled:cursor-not-allowed disabled:opacity-50',
                     )}
                 >
                     {loading ? (
                         <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            {mode === 'create' ? 'Creating...' : 'Saving...'}
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {mode === 'create' ? 'Creating…' : 'Saving…'}
                         </>
                     ) : (
                         <>
-                            <Save className="w-4 h-4" />
+                            <Save className="h-4 w-4" />
                             {mode === 'create' ? 'Create' : 'Save Changes'}
                         </>
                     )}

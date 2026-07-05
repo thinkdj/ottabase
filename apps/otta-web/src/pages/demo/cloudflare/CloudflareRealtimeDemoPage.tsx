@@ -189,7 +189,7 @@ export function CloudflareRealtimeDemoPage() {
             {serviceError ? (
                 <ApiErrorDisplay error={serviceError} />
             ) : (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm text-muted-foreground">
                         Durable Objects may require deployment to test (depending on your local Wrangler setup).
                     </p>
@@ -197,19 +197,19 @@ export function CloudflareRealtimeDemoPage() {
             )}
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Connection</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Connection</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div className="rounded-lg border bg-muted/50 p-3">
+                            <div className="rounded-lg bg-background p-3 ring-1 ring-border">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium">Status: {connectionState}</span>
                                     <div
@@ -234,9 +234,9 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Subscribe to Channel</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Subscribe to Channel</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <Input
@@ -263,7 +263,7 @@ export function CloudflareRealtimeDemoPage() {
                                     {subscribedChannels.map((channel) => (
                                         <div
                                             key={channel}
-                                            className="flex items-center justify-between rounded-lg bg-muted p-2"
+                                            className="flex items-center justify-between rounded-lg bg-background p-2 ring-1 ring-border"
                                         >
                                             <span className="text-sm">{channel}</span>
                                             <Button
@@ -280,9 +280,9 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Broadcast Message</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Broadcast Message</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="space-y-2">
@@ -333,9 +333,11 @@ export function CloudflareRealtimeDemoPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Messages ({messages.length})</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">
+                                Messages ({messages.length})
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="max-h-96 space-y-2 overflow-y-auto">
@@ -345,7 +347,7 @@ export function CloudflareRealtimeDemoPage() {
                                     </p>
                                 ) : (
                                     messages.map((msg) => (
-                                        <div key={msg.id} className="rounded-lg border bg-muted/50 p-3">
+                                        <div key={msg.id} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                             <div className="mb-1 flex items-center justify-between">
                                                 <span className="text-xs font-medium text-muted-foreground">
                                                     {msg.channel}
@@ -359,7 +361,7 @@ export function CloudflareRealtimeDemoPage() {
                                                 {JSON.stringify(msg.data, null, 2)}
                                             </pre>
                                             {msg.isOffline ? (
-                                                <span className="mt-1 inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                                <span className="mt-1 inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                                                     Offline Message
                                                 </span>
                                             ) : null}
@@ -376,9 +378,9 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">System Stats</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">System Stats</CardTitle>
                         </CardHeader>
                         <CardContent>
                             {serviceError ? (
@@ -409,7 +411,7 @@ export function CloudflareRealtimeDemoPage() {
                                                 {stats.channels.map((ch) => (
                                                     <div
                                                         key={ch.channel}
-                                                        className="flex justify-between rounded bg-muted px-3 py-2 text-xs"
+                                                        className="flex justify-between rounded-lg bg-background px-3 py-2 text-xs ring-1 ring-border"
                                                     >
                                                         <span>{ch.channel}</span>
                                                         <span className="text-muted-foreground">

@@ -85,18 +85,18 @@ export function DemoNotificationsPage() {
         setNotifications(notifications.map((n) => (n.id === id ? { ...n, status: 'read' as const } : n)));
     };
 
+    // Priority chips: colored fills only for genuine destructive/warning semantics;
+    // routine levels stay quiet as neutral ringed chips.
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'urgent':
-                return 'bg-red-500';
+                return 'border-transparent bg-destructive text-destructive-foreground';
             case 'high':
-                return 'bg-orange-500';
+                return 'border-transparent bg-warning text-warning-foreground';
             case 'normal':
-                return 'bg-blue-500';
             case 'low':
-                return 'bg-gray-500';
             default:
-                return 'bg-blue-500';
+                return 'border-transparent bg-background text-muted-foreground ring-1 ring-border';
         }
     };
 
@@ -122,47 +122,55 @@ export function DemoNotificationsPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Sent</p>
+                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Total Sent
+                                </p>
                                 <p className="text-2xl font-bold">{stats.total}</p>
                             </div>
                             <Bell className="h-8 w-8 text-muted-foreground" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Unread</p>
+                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Unread
+                                </p>
                                 <p className="text-2xl font-bold">{stats.unread}</p>
                             </div>
-                            <Inbox className="h-8 w-8 text-blue-500" />
+                            <Inbox className="h-8 w-8 text-muted-foreground" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Delivered</p>
+                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Delivered
+                                </p>
                                 <p className="text-2xl font-bold">{stats.sent}</p>
                             </div>
-                            <CheckCircle2 className="h-8 w-8 text-green-500" />
+                            <CheckCircle2 className="h-8 w-8 text-success" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Failed</p>
+                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Failed
+                                </p>
                                 <p className="text-2xl font-bold">{stats.failed}</p>
                             </div>
-                            <AlertCircle className="h-8 w-8 text-red-500" />
+                            <AlertCircle className="h-8 w-8 text-destructive" />
                         </div>
                     </CardContent>
                 </Card>
@@ -171,9 +179,9 @@ export function DemoNotificationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Features */}
                 <div className="md:col-span-1 space-y-6">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Features</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                             <CardDescription>Test different notification channels</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -211,19 +219,19 @@ export function DemoNotificationsPage() {
                                 <h4 className="font-medium mb-2">Priority Levels</h4>
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-red-500">Urgent</Badge>
+                                        <Badge className={getPriorityColor('urgent')}>Urgent</Badge>
                                         <span className="text-sm">Critical notifications</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-orange-500">High</Badge>
+                                        <Badge className={getPriorityColor('high')}>High</Badge>
                                         <span className="text-sm">Important updates</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-blue-500">Normal</Badge>
+                                        <Badge className={getPriorityColor('normal')}>Normal</Badge>
                                         <span className="text-sm">Standard messages</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-gray-500">Low</Badge>
+                                        <Badge className={getPriorityColor('low')}>Low</Badge>
                                         <span className="text-sm">Informational</span>
                                     </div>
                                 </div>
@@ -244,9 +252,9 @@ export function DemoNotificationsPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Integration</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Integration</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 text-sm">
@@ -264,32 +272,47 @@ export function DemoNotificationsPage() {
 
                 {/* Notification Feed */}
                 <div className="md:col-span-2">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Notification Feed</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Notification Feed</CardTitle>
                             <CardDescription>Recent notifications across all channels</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Tabs defaultValue="all">
                                 <TabsList className="grid w-full grid-cols-4">
                                     <TabsTrigger value="all">
-                                        All <Badge className="ml-2">{notifications.length}</Badge>
+                                        All{' '}
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                                        >
+                                            {notifications.length}
+                                        </Badge>
                                     </TabsTrigger>
                                     <TabsTrigger value="email">
                                         Email{' '}
-                                        <Badge className="ml-2">
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                                        >
                                             {notifications.filter((n) => n.channel === 'email').length}
                                         </Badge>
                                     </TabsTrigger>
                                     <TabsTrigger value="websocket">
                                         WebSocket{' '}
-                                        <Badge className="ml-2">
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                                        >
                                             {notifications.filter((n) => n.channel === 'websocket').length}
                                         </Badge>
                                     </TabsTrigger>
                                     <TabsTrigger value="system">
                                         System{' '}
-                                        <Badge className="ml-2">
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                                        >
                                             {notifications.filter((n) => n.channel === 'system').length}
                                         </Badge>
                                     </TabsTrigger>
@@ -297,7 +320,7 @@ export function DemoNotificationsPage() {
 
                                 <TabsContent value="all" className="space-y-4 mt-4">
                                     {notifications.length === 0 ? (
-                                        <div className="text-center py-12 text-muted-foreground">
+                                        <div className="rounded-xl bg-muted/40 py-12 text-center text-muted-foreground">
                                             <Archive className="h-12 w-12 mx-auto mb-4" />
                                             <p>No notifications yet. Try sending a test notification!</p>
                                         </div>
@@ -305,7 +328,7 @@ export function DemoNotificationsPage() {
                                         notifications.map((notification) => (
                                             <div
                                                 key={notification.id}
-                                                className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                                                className="rounded-lg bg-background p-4 ring-1 ring-border transition-colors duration-normal hover:bg-muted/40"
                                             >
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1">
@@ -358,7 +381,10 @@ export function DemoNotificationsPage() {
                                     {notifications
                                         .filter((n) => n.channel === 'email')
                                         .map((notification) => (
-                                            <div key={notification.id} className="border rounded-lg p-4">
+                                            <div
+                                                key={notification.id}
+                                                className="rounded-lg bg-background p-4 ring-1 ring-border"
+                                            >
                                                 <h4 className="font-medium mb-2">{notification.title}</h4>
                                                 <p className="text-sm text-muted-foreground">{notification.message}</p>
                                             </div>
@@ -369,7 +395,10 @@ export function DemoNotificationsPage() {
                                     {notifications
                                         .filter((n) => n.channel === 'websocket')
                                         .map((notification) => (
-                                            <div key={notification.id} className="border rounded-lg p-4">
+                                            <div
+                                                key={notification.id}
+                                                className="rounded-lg bg-background p-4 ring-1 ring-border"
+                                            >
                                                 <h4 className="font-medium mb-2">{notification.title}</h4>
                                                 <p className="text-sm text-muted-foreground">{notification.message}</p>
                                             </div>
@@ -382,7 +411,7 @@ export function DemoNotificationsPage() {
                                         .map((notification) => (
                                             <div
                                                 key={notification.id}
-                                                className="border rounded-lg p-4 border-red-200 bg-red-50/50"
+                                                className="rounded-lg border border-destructive/40 bg-destructive/10 p-4"
                                             >
                                                 <h4 className="font-medium mb-2">{notification.title}</h4>
                                                 <p className="text-sm text-muted-foreground">{notification.message}</p>
@@ -396,13 +425,13 @@ export function DemoNotificationsPage() {
             </div>
 
             {/* Code Example */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Usage Example</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                     <CardDescription>How to use @ottabase/notifications in your application</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                         <code>{`import { NotificationManager, createEmailChannel } from '@ottabase/notifications';
 
 // Setup notification manager

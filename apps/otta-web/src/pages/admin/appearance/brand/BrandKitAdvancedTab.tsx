@@ -51,7 +51,7 @@ export function BrandKitAdvancedTab({
                 </Select>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4 dark:border-muted">
+            <div className="flex items-center justify-between rounded-lg bg-muted/40 p-4">
                 <div>
                     <Label>Allow dark mode toggle</Label>
                     <p className="text-xs text-muted-foreground">Let users switch light/dark in the app.</p>
@@ -74,7 +74,7 @@ export function BrandKitAdvancedTab({
                 <p className="text-xs text-muted-foreground mb-2">Injected into the document. Use for overrides.</p>
                 <textarea
                     id="customCss"
-                    className="w-full min-h-[120px] rounded-md border bg-background px-3 py-2 font-mono text-sm dark:border-muted"
+                    className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={customCss}
                     onChange={(e) =>
                         onChange({
@@ -88,7 +88,7 @@ export function BrandKitAdvancedTab({
                 />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4 dark:border-muted">
+            <div className="flex items-center justify-between rounded-lg bg-muted/40 p-4">
                 <div>
                     <Label>Hide Ottabase branding</Label>
                     <p className="text-xs text-muted-foreground">Remove &quot;Powered by Ottabase&quot; footer.</p>
@@ -115,7 +115,7 @@ export function BrandKitAdvancedTab({
                     </p>
                     <textarea
                         id="tokensJson"
-                        className="w-full min-h-[180px] rounded-md border bg-background px-3 py-2 font-mono text-sm dark:border-muted"
+                        className="w-full min-h-[180px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         value={tokensJson ?? '{}'}
                         onChange={(e) => onTokensChange(e.target.value)}
                         spellCheck={false}

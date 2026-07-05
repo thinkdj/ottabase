@@ -9,7 +9,6 @@ import {
 } from '@ottabase/medialibrary';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
-    Badge,
     Button,
     Card,
     CardContent,
@@ -367,7 +366,7 @@ export function MediaLibraryBrowser({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-                    <p className="text-muted-foreground">{description}</p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -402,9 +401,10 @@ export function MediaLibraryBrowser({
             <div className="flex flex-wrap gap-2">
                 <Button
                     type="button"
-                    variant={activeKind === 'all' ? 'default' : 'outline'}
+                    variant={activeKind === 'all' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveKind('all')}
+                    className="rounded-full"
                 >
                     All
                 </Button>
@@ -412,10 +412,10 @@ export function MediaLibraryBrowser({
                     <Button
                         key={kind}
                         type="button"
-                        variant={activeKind === kind ? 'default' : 'outline'}
+                        variant={activeKind === kind ? 'default' : 'ghost'}
                         size="sm"
                         onClick={() => setActiveKind(kind)}
-                        className="capitalize"
+                        className="rounded-full capitalize"
                     >
                         {kind}
                     </Button>
@@ -423,12 +423,12 @@ export function MediaLibraryBrowser({
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-                <Card className="min-h-[32rem]">
+                <Card className="min-h-[32rem] rounded-xl border-transparent bg-muted/40">
                     <CardHeader>
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <CardTitle>Library</CardTitle>
-                                <CardDescription>
+                                <CardTitle className="text-[0.9375rem] font-semibold">Library</CardTitle>
+                                <CardDescription className="text-sm text-muted-foreground">
                                     {filteredItems.length} item{filteredItems.length === 1 ? '' : 's'} available
                                 </CardDescription>
                             </div>
@@ -440,40 +440,49 @@ export function MediaLibraryBrowser({
                                         value={searchValue}
                                         onChange={(event) => setSearchValue(event.target.value)}
                                         placeholder="Search files, titles, or captions..."
-                                        className={`pl-9 ${searchValue ? 'pr-8' : ''}`}
+                                        className={`h-9 bg-background pl-9 ${searchValue ? 'pr-8' : ''}`}
                                     />
                                     {searchValue && (
                                         <button
                                             type="button"
                                             aria-label="Clear search"
                                             onClick={() => setSearchValue('')}
-                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground focus:outline-none"
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground transition-colors duration-normal hover:text-foreground focus:outline-none"
                                         >
                                             <IconX className="h-4 w-4" />
                                         </button>
                                     )}
                                 </div>
                                 {mediaListQuery.isLoading && (
-                                    <Badge variant="secondary" className="font-normal">
+                                    <span className="inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                                         Refreshing
-                                    </Badge>
+                                    </span>
                                 )}
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent>
                         {mediaListQuery.isLoading && filteredItems.length === 0 ? (
-                            <div className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
-                                Loading media library...
+                            // Skeleton grid — card is muted, so pulse tiles use bg-background/60 to stay visible
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-busy="true">
+                                <span className="sr-only">Loading media library…</span>
+                                {Array.from({ length: 8 }, (_, index) => (
+                                    <div
+                                        key={index}
+                                        className="aspect-[4/3] animate-pulse rounded-xl bg-background/60"
+                                    />
+                                ))}
                             </div>
                         ) : filteredItems.length === 0 ? (
-                            <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 text-center">
-                                <div className="rounded-full bg-muted p-4">
+                            <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-xl bg-muted/40 text-center">
+                                <div className="rounded-full bg-background p-4 ring-1 ring-border">
                                     <IconPhotoPlus className="h-8 w-8 text-muted-foreground" />
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-base font-medium text-foreground">{emptyTitle}</p>
-                                    <p className="max-w-md text-sm text-muted-foreground">{emptyDescription}</p>
+                                    <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                                        {emptyDescription}
+                                    </p>
                                 </div>
                             </div>
                         ) : (
@@ -536,12 +545,10 @@ export function MediaLibraryBrowser({
                                                         onSelectItem(toMediaSelectionPayload(item), item);
                                                     }
                                                 }}
-                                                className={`relative overflow-hidden rounded-2xl border text-left transition-all ${
-                                                    isMultiSelected
-                                                        ? 'border-primary shadow-sm ring-2 ring-primary/20'
-                                                        : isSelected
-                                                          ? 'border-primary shadow-sm ring-2 ring-primary/20'
-                                                          : 'border-border hover:border-primary/40 hover:bg-muted/20'
+                                                className={`relative overflow-hidden rounded-xl bg-background text-left transition-colors duration-normal ${
+                                                    isMultiSelected || isSelected
+                                                        ? 'ring-2 ring-primary'
+                                                        : 'ring-1 ring-border hover:bg-muted/40'
                                                 }`}
                                             >
                                                 {/* Checkmark badge for multi-select */}
@@ -558,22 +565,22 @@ export function MediaLibraryBrowser({
                                                 </div>
                                                 <div className="space-y-3 p-4">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <Badge variant="secondary" className="capitalize">
+                                                        <span className="inline-flex items-center rounded-full bg-muted/40 px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                             {item.mediaKind}
-                                                        </Badge>
-                                                        <Badge variant="outline">
+                                                        </span>
+                                                        <span className="inline-flex items-center rounded-full bg-muted/40 px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                             {formatMediaFileSize(item.fileSize)}
-                                                        </Badge>
+                                                        </span>
                                                     </div>
                                                     <div>
-                                                        <p className="truncate text-sm font-semibold text-foreground">
+                                                        <p className="truncate text-sm font-medium text-foreground">
                                                             {itemTitle}
                                                         </p>
                                                         <p className="truncate text-xs text-muted-foreground">
                                                             {item.originalName}
                                                         </p>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                         {formatCreatedAt(item.createdAt)}
                                                     </p>
                                                 </div>
@@ -598,11 +605,13 @@ export function MediaLibraryBrowser({
                     </CardContent>
                 </Card>
 
-                <Card className="h-fit xl:sticky xl:top-6">
+                <Card className="h-fit rounded-xl border-transparent bg-muted/40 xl:sticky xl:top-6">
                     <CardHeader>
                         {allowMultiselect && mode === 'picker' && multiSelectedIds.length > 1 ? (
                             <>
-                                <CardTitle>{multiSelectedIds.length} files selected</CardTitle>
+                                <CardTitle className="text-[0.9375rem] font-semibold">
+                                    {multiSelectedIds.length} files selected
+                                </CardTitle>
                                 <CardDescription>
                                     Use &ldquo;Insert {multiSelectedIds.length} items&rdquo; above to add them all at
                                     once.
@@ -610,7 +619,9 @@ export function MediaLibraryBrowser({
                             </>
                         ) : (
                             <>
-                                <CardTitle>{mode === 'picker' ? 'Selected asset' : 'File details'}</CardTitle>
+                                <CardTitle className="text-[0.9375rem] font-semibold">
+                                    {mode === 'picker' ? 'Selected asset' : 'File details'}
+                                </CardTitle>
                                 <CardDescription>
                                     {selectedItem
                                         ? 'Inspect and manage the selected file.'
@@ -663,7 +674,7 @@ export function MediaLibraryBrowser({
                                     <div className="grid gap-3 text-sm">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                     Files
                                                 </p>
                                                 <p className="mt-1 font-medium text-foreground">
@@ -671,7 +682,7 @@ export function MediaLibraryBrowser({
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                     Total size
                                                 </p>
                                                 <p className="mt-1 text-foreground">
@@ -680,7 +691,7 @@ export function MediaLibraryBrowser({
                                             </div>
                                         </div>
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Breakdown
                                             </p>
                                             <p className="mt-1 text-foreground">{multiSelectionSummary.kindsSummary}</p>
@@ -700,7 +711,7 @@ export function MediaLibraryBrowser({
                             </>
                         ) : selectedItem ? (
                             <>
-                                <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
+                                <div className="overflow-hidden rounded-xl bg-background ring-1 ring-border">
                                     <div className="aspect-[4/3]">
                                         <MediaPreview item={selectedItem} mode="detail" fit="contain" />
                                     </div>
@@ -708,26 +719,26 @@ export function MediaLibraryBrowser({
 
                                 <div className="grid gap-3 text-sm">
                                     <div>
-                                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                             File name
                                         </p>
                                         <p className="mt-1 break-all text-foreground">{selectedItem.originalName}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                             Storage
                                         </p>
                                         <p className="mt-1 break-all text-foreground">{selectedItem.storageKey}</p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Type
                                             </p>
                                             <p className="mt-1 text-foreground">{selectedItem.mimeType}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Provider
                                             </p>
                                             <p className="mt-1 text-foreground">{selectedItem.provider}</p>
@@ -735,7 +746,7 @@ export function MediaLibraryBrowser({
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Size
                                             </p>
                                             <p className="mt-1 text-foreground">
@@ -743,7 +754,7 @@ export function MediaLibraryBrowser({
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Uploaded
                                             </p>
                                             <p className="mt-1 text-foreground">
@@ -863,7 +874,7 @@ export function MediaLibraryBrowser({
                                 </div>
                             </>
                         ) : (
-                            <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+                            <div className="rounded-lg border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
                                 Select a file from the library to view its preview and metadata.
                             </div>
                         )}

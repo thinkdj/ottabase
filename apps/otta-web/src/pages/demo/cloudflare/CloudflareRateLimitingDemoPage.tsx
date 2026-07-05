@@ -85,21 +85,21 @@ export function CloudflareRateLimitingDemoPage() {
                 backLabel="Back to Cloudflare Features"
             />
 
-            <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="rounded-xl bg-muted/40 p-4">
                 <p className="text-sm text-muted-foreground">
                     Local dev typically uses a KV-based simulation fallback.
                 </p>
             </div>
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Test a Key</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Test a Key</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -128,7 +128,7 @@ export function CloudflareRateLimitingDemoPage() {
                     </div>
 
                     {result ? (
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <div className="mb-3 flex items-center justify-between">
                                 <span className="text-sm font-medium">
                                     {result.success ? '✓ Request Allowed' : '✗ Rate Limit Exceeded'}

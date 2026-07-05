@@ -85,6 +85,10 @@ interface PaginatedDLQResult {
 
 type TabType = 'overview' | 'pending' | 'processed' | 'failed' | 'dlq';
 
+const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const STATUS_CHIP =
+    'inline-flex items-center gap-1.5 rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border';
+
 export function AdminQueuePage() {
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [isResetting, setIsResetting] = useState(false);
@@ -287,48 +291,56 @@ export function AdminQueuePage() {
             : '0';
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/admin">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Admin
-                </Link>
-            </Button>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Admin
+                    </Link>
+                </Button>
 
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="mb-2 text-3xl font-semibold">Queue Management</h1>
-                    <p className="text-muted-foreground">Monitor and manage background job queues</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => refetchOverview()} disabled={loadingOverview}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loadingOverview ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleResetStats} disabled={isResetting}>
-                        <RotateCcw className={`mr-2 h-4 w-4 ${isResetting ? 'animate-spin' : ''}`} />
-                        Reset Stats
-                    </Button>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Queue Management</h1>
+                        <p className="max-w-3xl text-muted-foreground">Monitor and manage background job queues</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-muted-foreground"
+                            onClick={() => refetchOverview()}
+                            disabled={loadingOverview}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loadingOverview ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-muted-foreground"
+                            onClick={handleResetStats}
+                            disabled={isResetting}
+                        >
+                            <RotateCcw className={`h-4 w-4 ${isResetting ? 'animate-spin' : ''}`} />
+                            Reset Stats
+                        </Button>
+                    </div>
                 </div>
             </div>
 
             {/* Status Banner */}
-            <Card
-                className={
-                    overview?.queueBinding === 'configured'
-                        ? 'border-green-500/30 bg-green-500/5'
-                        : 'border-yellow-500/30 bg-yellow-500/5'
-                }
-            >
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardContent className="flex items-center gap-3 py-3">
                     {overview?.queueBinding === 'configured' ? (
                         <>
-                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <CheckCircle className="h-5 w-5 text-success" />
                             <span className="text-sm">Queue binding is configured and operational</span>
                         </>
                     ) : (
                         <>
-                            <Clock className="h-5 w-5 text-yellow-500" />
+                            <Clock className="h-5 w-5 text-warning" />
                             <span className="text-sm">Queue binding not configured - jobs will not be processed</span>
                         </>
                     )}
@@ -336,51 +348,55 @@ export function AdminQueuePage() {
             </Card>
 
             {/* Stats Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <Card>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Dispatched</CardDescription>
-                        <CardTitle className="text-3xl">{stats?.totalDispatched ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Total Dispatched</CardDescription>
+                        <CardTitle className="text-2xl font-semibold">{stats?.totalDispatched ?? 0}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Jobs sent to queue</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Processed</CardDescription>
-                        <CardTitle className="text-3xl text-green-600">{stats?.totalProcessed ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Processed</CardDescription>
+                        <CardTitle className="text-2xl font-semibold text-success">
+                            {stats?.totalProcessed ?? 0}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Successfully completed</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Failed</CardDescription>
-                        <CardTitle className="text-3xl text-red-600">{stats?.totalFailed ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
+                        <CardTitle className="text-2xl font-semibold text-destructive">
+                            {stats?.totalFailed ?? 0}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Failed after retries</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Dead Letter Queue</CardDescription>
-                        <CardTitle className="text-3xl text-orange-600">{stats?.totalDLQ ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Dead Letter Queue</CardDescription>
+                        <CardTitle className="text-2xl font-semibold text-warning">{stats?.totalDLQ ?? 0}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Awaiting manual retry</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Success Rate</CardDescription>
-                        <CardTitle className="text-3xl">{successRate}%</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Success Rate</CardDescription>
+                        <CardTitle className="text-2xl font-semibold">{successRate}%</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Completion rate</p>
@@ -389,7 +405,7 @@ export function AdminQueuePage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b">
+            <div className="flex flex-wrap items-center gap-1 rounded-lg bg-muted/40 p-1">
                 {[
                     { id: 'overview' as const, label: 'Overview', icon: Activity },
                     {
@@ -415,10 +431,10 @@ export function AdminQueuePage() {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm transition-colors ${
+                        className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
                             activeTab === tab.id
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                ? 'bg-background font-medium text-foreground ring-1 ring-border'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         <tab.icon className="h-4 w-4" />
@@ -435,10 +451,10 @@ export function AdminQueuePage() {
                 {activeTab === 'overview' && (
                     <>
                         {/* Registered Handlers */}
-                        <Card>
+                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    <Layers className="h-4 w-4" />
+                                <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                    <Layers className="h-4 w-4 text-muted-foreground" />
                                     Registered Job Handlers
                                 </CardTitle>
                                 <CardDescription>Job types that can be processed</CardDescription>
@@ -448,18 +464,21 @@ export function AdminQueuePage() {
                                     {overview?.registeredHandlers.map((handler) => {
                                         const typeStats = stats?.byJobType[handler.type];
                                         return (
-                                            <div key={handler.type} className="rounded-lg border p-3">
+                                            <div
+                                                key={handler.type}
+                                                className="rounded-lg bg-background p-3 ring-1 ring-border"
+                                            >
                                                 <p className="font-mono text-sm font-medium">{handler.type}</p>
                                                 <p className="mb-2 text-xs text-muted-foreground">
                                                     {handler.description}
                                                 </p>
                                                 {typeStats && (
                                                     <div className="flex gap-3 text-xs">
-                                                        <span className="text-green-600">
+                                                        <span className="text-success">
                                                             {typeStats.processed} processed
                                                         </span>
                                                         {typeStats.failed > 0 && (
-                                                            <span className="text-red-600">
+                                                            <span className="text-destructive">
                                                                 {typeStats.failed} failed
                                                             </span>
                                                         )}
@@ -474,23 +493,25 @@ export function AdminQueuePage() {
 
                         {/* Stats by Job Type */}
                         {stats && Object.keys(stats.byJobType).length > 0 && (
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle className="text-base">Stats by Job Type</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">Stats by Job Type</CardTitle>
                                     <CardDescription>Breakdown of jobs by type</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b text-left">
-                                                    <th className="pb-2 font-medium">Job Type</th>
-                                                    <th className="pb-2 text-right font-medium">Processed</th>
-                                                    <th className="pb-2 text-right font-medium">Failed</th>
-                                                    <th className="pb-2 text-right font-medium">Success Rate</th>
+                                    <div className="overflow-x-auto rounded-lg bg-background ring-1 ring-border">
+                                        <table className="min-w-full divide-y divide-border/60 text-sm">
+                                            <thead className="bg-muted/40">
+                                                <tr className="text-left">
+                                                    <th className={`px-4 py-3 ${MICRO_LABEL}`}>Job Type</th>
+                                                    <th className={`px-4 py-3 text-right ${MICRO_LABEL}`}>Processed</th>
+                                                    <th className={`px-4 py-3 text-right ${MICRO_LABEL}`}>Failed</th>
+                                                    <th className={`px-4 py-3 text-right ${MICRO_LABEL}`}>
+                                                        Success Rate
+                                                    </th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody className="divide-y divide-border/60">
                                                 {Object.entries(stats.byJobType).map(([type, typeStats]) => {
                                                     const total = typeStats.processed + typeStats.failed;
                                                     const rate =
@@ -498,15 +519,18 @@ export function AdminQueuePage() {
                                                             ? ((typeStats.processed / total) * 100).toFixed(1)
                                                             : '0';
                                                     return (
-                                                        <tr key={type} className="border-b">
-                                                            <td className="py-2 font-mono">{type}</td>
-                                                            <td className="py-2 text-right text-green-600">
+                                                        <tr
+                                                            key={type}
+                                                            className="transition-colors duration-normal hover:bg-muted/40"
+                                                        >
+                                                            <td className="px-4 py-3 font-mono">{type}</td>
+                                                            <td className="px-4 py-3 text-right text-success">
                                                                 {typeStats.processed}
                                                             </td>
-                                                            <td className="py-2 text-right text-red-600">
+                                                            <td className="px-4 py-3 text-right text-destructive">
                                                                 {typeStats.failed}
                                                             </td>
-                                                            <td className="py-2 text-right">{rate}%</td>
+                                                            <td className="px-4 py-3 text-right">{rate}%</td>
                                                         </tr>
                                                     );
                                                 })}
@@ -518,66 +542,83 @@ export function AdminQueuePage() {
                         )}
 
                         {stats?.lastUpdated && (
-                            <p className="text-xs text-muted-foreground">
-                                Last updated: {new Date(stats.lastUpdated).toLocaleString()}
-                            </p>
+                            <p className={MICRO_LABEL}>Last updated: {new Date(stats.lastUpdated).toLocaleString()}</p>
                         )}
                     </>
                 )}
 
                 {activeTab === 'pending' && (
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Pending Jobs</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Pending Jobs</CardTitle>
                             <CardDescription>Jobs waiting to be processed</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {loadingPending ? (
-                                <p className="text-sm text-muted-foreground">Loading...</p>
+                                <div className="space-y-3" aria-busy="true">
+                                    <span className="sr-only">Loading pending jobs…</span>
+                                    <div className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                </div>
                             ) : (overview?.pendingCount ?? 0) > 0 ? (
                                 <div className="space-y-3">
-                                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-                                        <p className="text-sm text-blue-800">
+                                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                                        <p className="text-sm">
                                             <strong>{overview?.pendingCount} job(s)</strong> waiting in queue
                                         </p>
-                                        <p className="mt-1 text-xs text-blue-600">
+                                        <p className="mt-1 text-xs text-muted-foreground">
                                             Cloudflare Queues don't provide an API to inspect pending messages. Job
                                             details are only available after processing.
                                         </p>
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground">No pending jobs in queue</p>
+                                <p className="py-6 text-center text-sm text-muted-foreground">
+                                    No pending jobs in queue
+                                </p>
                             )}
                         </CardContent>
                     </Card>
                 )}
 
                 {activeTab === 'processed' && (
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Processed Jobs</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Processed Jobs</CardTitle>
                             <CardDescription>Recently completed jobs (last 24 hours)</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {loadingProcessed ? (
-                                <p className="text-sm text-muted-foreground">Loading...</p>
+                                <div className="space-y-3" aria-busy="true">
+                                    <span className="sr-only">Loading processed jobs…</span>
+                                    {Array.from({ length: 3 }, (_, index) => (
+                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                    ))}
+                                </div>
                             ) : processedData?.jobs.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No processed jobs in history</p>
+                                <p className="py-6 text-center text-sm text-muted-foreground">
+                                    No processed jobs in history
+                                </p>
                             ) : (
                                 <div className="space-y-2">
                                     {processedData?.jobs
                                         .filter((j) => j.status === 'completed')
                                         .map((job) => (
-                                            <div key={job.id} className="rounded-lg border p-3">
+                                            <div
+                                                key={job.id}
+                                                className="rounded-lg bg-background p-3 ring-1 ring-border"
+                                            >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
                                                         <div className="mb-1 flex items-center gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-green-500" />
+                                                            <CheckCircle className="h-4 w-4 text-success" />
                                                             <span className="font-mono text-sm font-medium">
                                                                 {job.type}
                                                             </span>
-                                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                                                            <span className={STATUS_CHIP}>
+                                                                <span
+                                                                    className="h-1.5 w-1.5 rounded-full bg-success"
+                                                                    aria-hidden="true"
+                                                                />
                                                                 completed
                                                             </span>
                                                         </div>
@@ -586,7 +627,7 @@ export function AdminQueuePage() {
                                                             {job.duration && ` | Duration: ${job.duration}ms`}
                                                         </p>
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground">
+                                                    <span className={MICRO_LABEL}>
                                                         {new Date(job.processedAt).toLocaleString()}
                                                     </span>
                                                 </div>
@@ -599,28 +640,37 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'failed' && (
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Failed Jobs</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Failed Jobs</CardTitle>
                             <CardDescription>Jobs that failed after all retry attempts</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {loadingFailed ? (
-                                <p className="text-sm text-muted-foreground">Loading...</p>
+                                <div className="space-y-3" aria-busy="true">
+                                    <span className="sr-only">Loading failed jobs…</span>
+                                    {Array.from({ length: 3 }, (_, index) => (
+                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                    ))}
+                                </div>
                             ) : failedData?.jobs.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No failed jobs</p>
+                                <p className="py-6 text-center text-sm text-muted-foreground">No failed jobs</p>
                             ) : (
                                 <div className="space-y-2">
                                     {failedData?.jobs.map((job) => (
-                                        <div key={job.id} className="rounded-lg border border-red-200 bg-red-50/50 p-3">
+                                        <div key={job.id} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="mb-1 flex items-center gap-2">
-                                                        <XCircle className="h-4 w-4 text-red-500" />
+                                                        <XCircle className="h-4 w-4 text-destructive" />
                                                         <span className="font-mono text-sm font-medium">
                                                             {job.type}
                                                         </span>
-                                                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                        <span className={STATUS_CHIP}>
+                                                            <span
+                                                                className="h-1.5 w-1.5 rounded-full bg-destructive"
+                                                                aria-hidden="true"
+                                                            />
                                                             failed
                                                         </span>
                                                     </div>
@@ -628,12 +678,12 @@ export function AdminQueuePage() {
                                                         ID: {job.id} | Attempts: {job.attempts}
                                                     </p>
                                                     {job.error && (
-                                                        <p className="mt-2 rounded bg-red-100 p-2 text-xs text-red-700">
+                                                        <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2 font-mono text-xs text-destructive">
                                                             Error: {job.error}
                                                         </p>
                                                     )}
                                                 </div>
-                                                <span className="text-xs text-muted-foreground">
+                                                <span className={MICRO_LABEL}>
                                                     {new Date(job.processedAt).toLocaleString()}
                                                 </span>
                                             </div>
@@ -646,11 +696,11 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'dlq' && (
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-base">Dead Letter Queue</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">Dead Letter Queue</CardTitle>
                                     <CardDescription>
                                         Jobs that failed permanently and can be retried manually
                                     </CardDescription>
@@ -662,8 +712,9 @@ export function AdminQueuePage() {
                                             size="sm"
                                             onClick={handleRetryAll}
                                             disabled={isRetryingAll}
+                                            className="gap-1.5"
                                         >
-                                            <Play className={`mr-2 h-4 w-4 ${isRetryingAll ? 'animate-pulse' : ''}`} />
+                                            <Play className={`h-4 w-4 ${isRetryingAll ? 'animate-pulse' : ''}`} />
                                             Retry All
                                         </Button>
                                         <Button
@@ -671,9 +722,9 @@ export function AdminQueuePage() {
                                             size="sm"
                                             onClick={handlePurgeDLQ}
                                             disabled={isPurgingDLQ}
-                                            className="text-red-600 hover:bg-red-50"
+                                            className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         >
-                                            <Trash2 className={`mr-2 h-4 w-4 ${isPurgingDLQ ? 'animate-pulse' : ''}`} />
+                                            <Trash2 className={`h-4 w-4 ${isPurgingDLQ ? 'animate-pulse' : ''}`} />
                                             Purge All
                                         </Button>
                                     </div>
@@ -682,73 +733,81 @@ export function AdminQueuePage() {
                         </CardHeader>
                         <CardContent>
                             {loadingDLQ ? (
-                                <p className="text-sm text-muted-foreground">Loading...</p>
-                            ) : dlqData?.jobs.length === 0 ? (
-                                <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
-                                    <p className="text-sm text-green-800">
-                                        No jobs in Dead Letter Queue - all jobs are processing successfully!
-                                    </p>
+                                <div className="space-y-3" aria-busy="true">
+                                    <span className="sr-only">Loading dead letter queue…</span>
+                                    {Array.from({ length: 3 }, (_, index) => (
+                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                    ))}
                                 </div>
+                            ) : dlqData?.jobs.length === 0 ? (
+                                <p className="py-6 text-center text-sm text-muted-foreground">
+                                    No jobs in Dead Letter Queue - all jobs are processing successfully!
+                                </p>
                             ) : (
                                 <div className="space-y-3">
-                                    <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3">
-                                        <p className="text-sm text-orange-800">
-                                            <strong>{dlqData?.jobs.length} job(s)</strong> in Dead Letter Queue. These
-                                            jobs failed after exhausting all retries and are stored for 7 days.
+                                    <div className="rounded-lg bg-background p-3 ring-1 ring-border">
+                                        <p className="text-sm text-muted-foreground">
+                                            <strong className="text-warning">{dlqData?.jobs.length} job(s)</strong> in
+                                            Dead Letter Queue. These jobs failed after exhausting all retries and are
+                                            stored for 7 days.
                                         </p>
                                     </div>
                                     <div className="space-y-2">
                                         {dlqData?.jobs.map((job) => (
                                             <div
                                                 key={job.id}
-                                                className="rounded-lg border border-orange-200 bg-orange-50/30 p-3"
+                                                className="rounded-lg bg-background p-3 ring-1 ring-border"
                                             >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
                                                         <div className="mb-1 flex items-center gap-2">
-                                                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                                            <AlertTriangle className="h-4 w-4 text-warning" />
                                                             <span className="font-mono text-sm font-medium">
                                                                 {job.type}
                                                             </span>
-                                                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
+                                                            <span className={STATUS_CHIP}>
+                                                                <span
+                                                                    className="h-1.5 w-1.5 rounded-full bg-warning"
+                                                                    aria-hidden="true"
+                                                                />
                                                                 {job.attempts} attempts
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">ID: {job.id}</p>
-                                                        <p className="mt-2 rounded bg-red-100 p-2 text-xs text-red-700">
+                                                        <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2 font-mono text-xs text-destructive">
                                                             Error: {job.error}
                                                         </p>
                                                         <details className="mt-2">
-                                                            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                                                            <summary className="cursor-pointer text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground">
                                                                 View Payload
                                                             </summary>
-                                                            <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-xs">
+                                                            <pre className="mt-1 overflow-auto rounded-lg bg-muted/40 p-2 font-mono text-xs">
                                                                 {JSON.stringify(job.payload, null, 2)}
                                                             </pre>
                                                         </details>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-2">
-                                                        <span className="text-xs text-muted-foreground">
+                                                        <span className={MICRO_LABEL}>
                                                             {new Date(job.failedAt).toLocaleString()}
                                                         </span>
                                                         <div className="flex gap-1">
                                                             <Button
-                                                                variant="outline"
+                                                                variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleRetryJob(job.id)}
                                                                 disabled={retryingJobId === job.id}
-                                                                className="h-7 px-2"
+                                                                className="h-7 px-2 text-muted-foreground hover:text-foreground"
                                                             >
                                                                 <Play
                                                                     className={`h-3 w-3 ${retryingJobId === job.id ? 'animate-pulse' : ''}`}
                                                                 />
                                                             </Button>
                                                             <Button
-                                                                variant="outline"
+                                                                variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleDeleteJob(job.id)}
                                                                 disabled={deletingJobId === job.id}
-                                                                className="h-7 px-2 text-red-600 hover:bg-red-50"
+                                                                className="h-7 px-2 text-muted-foreground hover:text-destructive"
                                                             >
                                                                 <Trash2
                                                                     className={`h-3 w-3 ${deletingJobId === job.id ? 'animate-pulse' : ''}`}

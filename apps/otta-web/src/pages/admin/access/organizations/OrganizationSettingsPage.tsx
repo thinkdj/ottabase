@@ -2,20 +2,14 @@
  * Organization Settings Page
  *
  * Manage organization profile and settings
- * GitHub-like minimal UI with dark mode support
  */
 
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useDeleteOrganization, useOrganization, useUpdateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
-    Badge,
     Button,
     Card,
     CardContent,
@@ -33,7 +27,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
-import { AlertTriangle, Building2, Loader2, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building2, Loader2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
@@ -117,8 +111,11 @@ export function OrganizationSettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="space-y-4">
-                <TableSkeleton rows={3} columns={1} />
+            <div className="max-w-3xl space-y-4" aria-busy="true">
+                <span className="sr-only">Loading organization settings…</span>
+                <div className="h-8 w-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
             </div>
         );
     }
@@ -133,23 +130,26 @@ export function OrganizationSettingsPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-3xl">
+        <div className="max-w-3xl space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold">Organization Settings</h1>
-                    <p className="text-muted-foreground mt-1">Manage your organization profile and preferences</p>
-                </div>
-                <Button variant="outline" asChild>
-                    <Link to="/admin/access/organizations">← Back</Link>
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin/access/organizations">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Organizations
+                    </Link>
                 </Button>
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organization Settings</h1>
+                    <p className="max-w-3xl text-muted-foreground">Manage your organization profile and preferences</p>
+                </div>
             </div>
 
             {/* General Settings */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
                         General
                     </CardTitle>
                     <CardDescription>Basic organization information</CardDescription>
@@ -157,12 +157,17 @@ export function OrganizationSettingsPage() {
                 <CardContent className="space-y-4">
                     {/* Organization ID */}
                     <div className="space-y-2">
-                        <Label>Organization ID</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Organization ID
+                        </Label>
                         <div className="flex items-center gap-2">
-                            <code className="text-sm bg-muted px-3 py-2 rounded flex-1">{org.id}</code>
+                            <code className="flex-1 rounded-md bg-background px-3 py-2 text-sm text-muted-foreground ring-1 ring-border">
+                                {org.id}
+                            </code>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                className="text-muted-foreground hover:text-foreground"
                                 onClick={() => {
                                     navigator.clipboard.writeText(org.id);
                                     toast.success('Copied', 'Organization ID copied to clipboard');
@@ -173,7 +178,7 @@ export function OrganizationSettingsPage() {
                         </div>
                     </div>
 
-                    <Separator />
+                    <Separator className="bg-border/60" />
 
                     {/* Organization Name */}
                     <div className="space-y-2">
@@ -231,17 +236,20 @@ export function OrganizationSettingsPage() {
                             <SelectContent>
                                 <SelectItem value="active">
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="default">Active</Badge>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                                        Active
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="trial">
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="secondary">Trial</Badge>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
+                                        Trial
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="suspended">
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="destructive">Suspended</Badge>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden="true" />
+                                        Suspended
                                     </div>
                                 </SelectItem>
                             </SelectContent>
@@ -250,24 +258,33 @@ export function OrganizationSettingsPage() {
 
                     {/* Created At */}
                     <div className="space-y-2">
-                        <Label>Created</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Created
+                        </Label>
                         <p className="text-sm text-muted-foreground">{new Date(org.createdAt).toLocaleString()}</p>
                     </div>
 
                     {/* Updated At */}
                     <div className="space-y-2">
-                        <Label>Last Updated</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Last Updated
+                        </Label>
                         <p className="text-sm text-muted-foreground">{new Date(org.updatedAt).toLocaleString()}</p>
                     </div>
 
                     {/* Owner ID */}
                     <div className="space-y-2">
-                        <Label>Owner ID</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Owner ID
+                        </Label>
                         <div className="flex items-center gap-2">
-                            <code className="text-sm bg-muted px-3 py-2 rounded flex-1">{org.ownerId}</code>
+                            <code className="flex-1 rounded-md bg-background px-3 py-2 text-sm text-muted-foreground ring-1 ring-border">
+                                {org.ownerId}
+                            </code>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                className="text-muted-foreground hover:text-foreground"
                                 onClick={() => {
                                     navigator.clipboard.writeText(org.ownerId);
                                     toast.success('Copied', 'Owner ID copied to clipboard');
@@ -280,16 +297,20 @@ export function OrganizationSettingsPage() {
 
                     {/* Settings */}
                     <div className="space-y-2">
-                        <Label>Settings</Label>
-                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Settings
+                        </Label>
+                        <pre className="overflow-x-auto rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-border">
                             {JSON.stringify(org.settings ?? {}, null, 2)}
                         </pre>
                     </div>
 
                     {/* Metadata */}
                     <div className="space-y-2">
-                        <Label>Metadata</Label>
-                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Metadata
+                        </Label>
+                        <pre className="overflow-x-auto rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-border">
                             {JSON.stringify(org.metadata ?? {}, null, 2)}
                         </pre>
                     </div>
@@ -317,23 +338,22 @@ export function OrganizationSettingsPage() {
             </Card>
 
             {/* Danger Zone */}
-            <Card className="border-destructive">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
                         Danger Zone
                     </CardTitle>
                     <CardDescription>Irreversible actions</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Delete Organization</AlertTitle>
-                        <AlertDescription>
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                        <p className="font-medium">Delete Organization</p>
+                        <p className="mt-1">
                             This will permanently delete the organization and all associated data including members,
                             roles, and audit logs. This action cannot be undone.
-                        </AlertDescription>
-                    </Alert>
+                        </p>
+                    </div>
 
                     <Button
                         variant="destructive"

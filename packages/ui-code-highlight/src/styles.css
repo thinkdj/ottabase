@@ -55,11 +55,6 @@
     color: var(--code-fg);
 }
 
-/* Space between header and code content */
-.code-block-wrapper:has(.code-block-header) .code-block-content {
-    padding-top: 0.25rem;
-}
-
 /* Syntax highlighting classes */
 .hljs {
     background: var(--code-bg) !important;

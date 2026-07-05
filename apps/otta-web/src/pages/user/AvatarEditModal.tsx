@@ -179,7 +179,7 @@ export function AvatarEditModal({
                         {/* Cropper renders its own "Choose image" button + filename label */}
                         <div
                             ref={containerRef}
-                            className="rounded-lg border bg-muted/30 p-4 dark:bg-muted/10"
+                            className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-4"
                             style={{ minHeight: 120 }}
                         />
 

@@ -23,7 +23,7 @@ export const defaultEJSRConfigs = {
         sandbox: undefined,
     },
     header: {
-        className: `${blockClass} cdc-content-header mt-2 text-foreground text-3xl/10`,
+        className: `${blockClass} cdc-content-header text-foreground`,
     },
     image: {
         className: `${blockClass} image-block cdc-content-image`,

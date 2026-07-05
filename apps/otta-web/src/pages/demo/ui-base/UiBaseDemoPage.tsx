@@ -50,16 +50,18 @@ export function UiBaseDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Layers className="h-5 w-5" />
                         Architecture
                     </CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
                         <p>
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/ui-base</code> is the
-                            lowest layer of the UI stack. It provides:
+                            <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                @ottabase/ui-base
+                            </code>{' '}
+                            is the lowest layer of the UI stack. It provides:
                         </p>
                         <ol className="list-inside list-decimal space-y-1">
                             <li>
@@ -68,7 +70,10 @@ export function UiBaseDemoPage() {
                             </li>
                             <li>
                                 <strong>Styles</strong> — CSS reset + ottabase base styles + animations, imported via{' '}
-                                <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/ui-base/styles</code>.
+                                <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                    @ottabase/ui-base/styles
+                                </code>
+                                .
                             </li>
                         </ol>
                         <p className="pt-1">
@@ -80,13 +85,13 @@ export function UiBaseDemoPage() {
             </Card>
 
             {/* Setup */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Setup</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                     <CardDescription>Import styles and wrap your app with the provider.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`// Import base styles (in your app entry point)
 import '@ottabase/ui-base/styles';
 
@@ -105,9 +110,9 @@ function App() {
             </Card>
 
             {/* Style layers */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <RotateCcw className="h-4 w-4" />
                         Included Style Layers
                     </CardTitle>
@@ -118,7 +123,7 @@ function App() {
                 <CardContent>
                     <div className="space-y-4">
                         {STYLE_LAYERS.map((layer) => (
-                            <div key={layer.name} className="rounded-lg border p-4">
+                            <div key={layer.name} className="rounded-lg bg-background p-4 ring-1 ring-border">
                                 <div className="flex items-center gap-2 mb-2">
                                     <code className="text-sm font-medium">{layer.name}</code>
                                 </div>
@@ -137,9 +142,9 @@ function App() {
             </Card>
 
             {/* Animations: package CSS + Tailwind */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Sparkles className="h-4 w-4" />
                         Animation Preview
                     </CardTitle>
@@ -154,7 +159,7 @@ function App() {
                             From @ottabase/ui-base (animations.css)
                         </h4>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-lg border p-4">
+                            <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                                 <p className="text-xs text-muted-foreground mb-3">
                                     <code>.highlight-and-fade-out-bg</code> — one-shot attention flash (re-triggers on
                                     remount)
@@ -177,7 +182,10 @@ function App() {
                         <h4 className="mb-3 text-sm font-medium text-foreground">Tailwind motion (demo app)</h4>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {TAILWIND_MOTION.map((anim) => (
-                                <div key={anim.name} className="rounded-lg border border-border p-4 text-center">
+                                <div
+                                    key={anim.name}
+                                    className="rounded-lg bg-background p-4 text-center ring-1 ring-border"
+                                >
                                     <div className="mb-3 flex h-16 items-center justify-center">
                                         <div
                                             className={`h-10 w-10 rounded-lg bg-primary ${anim.class}`}
@@ -194,9 +202,9 @@ function App() {
             </Card>
 
             {/* Typography defaults */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Type className="h-4 w-4" />
                         Typography Defaults
                     </CardTitle>
@@ -207,7 +215,7 @@ function App() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <div className="rounded-lg border p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <p className="text-4xl font-bold">Heading 1</p>
                             <p className="text-3xl font-bold mt-2">Heading 2</p>
                             <p className="text-2xl font-semibold mt-2">Heading 3</p>

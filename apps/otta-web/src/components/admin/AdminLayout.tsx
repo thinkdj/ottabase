@@ -48,6 +48,21 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
             .filter((group) => group.items.length > 0);
     }, [groups, search]);
 
+    // Longest matching href wins, so a parent (/admin/content/blog) doesn't stay
+    // highlighted when a nested sibling (/admin/content/blog/studio) is active.
+    const activeHref = useMemo(() => {
+        let best: string | null = null;
+        for (const group of groups) {
+            for (const item of group.items) {
+                if (item.href === '/admin') continue;
+                if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+                    if (!best || item.href.length > best.length) best = item.href;
+                }
+            }
+        }
+        return best;
+    }, [groups, pathname]);
+
     return (
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
             <aside className="w-full md:w-60 md:shrink-0">
@@ -97,9 +112,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
                             {group.items
                                 .filter((item) => !item.external)
                                 .map((item) => {
-                                    const isActive =
-                                        pathname === item.href ||
-                                        (item.href !== '/admin' && pathname.startsWith(`${item.href}/`));
+                                    const isActive = item.href === activeHref;
                                     return (
                                         <Link
                                             key={item.href}

@@ -31,9 +31,9 @@ export function CloudflareFileUploadDemoPage() {
             />
 
             {/* Features */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Features</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                     <CardDescription>Key capabilities of the upload package</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -51,20 +51,20 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Mode Selector */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Upload Mode</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Upload Mode</CardTitle>
                     <CardDescription>Choose between dropzone or button upload variant</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex gap-2">
+                    <div className="inline-flex rounded-lg bg-muted/40 p-0.5">
                         <button
                             type="button"
                             onClick={() => setUploadMode('dropzone')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-normal ${
                                 uploadMode === 'dropzone'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-background text-foreground ring-1 ring-border'
+                                    : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             Dropzone
@@ -72,10 +72,10 @@ export function CloudflareFileUploadDemoPage() {
                         <button
                             type="button"
                             onClick={() => setUploadMode('button')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-normal ${
                                 uploadMode === 'button'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-background text-foreground ring-1 ring-border'
+                                    : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             Button
@@ -85,9 +85,9 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Single File Upload */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Single File Upload</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Single File Upload</CardTitle>
                     <CardDescription>Upload a single file with automatic upload</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -103,9 +103,9 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Multiple File Upload */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Multiple File Upload</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Multiple File Upload</CardTitle>
                     <CardDescription>Upload up to 5 files with manual upload trigger</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -121,9 +121,9 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Image-Only Upload */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Image-Only Upload</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Image-Only Upload</CardTitle>
                     <CardDescription>Upload images only with file type validation</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -140,9 +140,9 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Custom Handler */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Custom Upload Handler</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Custom Upload Handler</CardTitle>
                     <CardDescription>Use a custom upload handler instead of automatic upload</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -154,13 +154,13 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Usage Example</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                     <CardDescription>How to use the FileUploader component in your code</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`import { FileUploader } from '@ottabase/ottaupload/client';
 
 function MyComponent() {
@@ -180,16 +180,18 @@ function MyComponent() {
             </Card>
 
             {/* Package Information */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Package Details</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Package Details</CardTitle>
                     <CardDescription>Information about the @ottabase/ottaupload package</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4 text-sm">
                         <div>
                             <h4 className="font-semibold mb-1">Package Name</h4>
-                            <code className="bg-gray-100 px-2 py-1 rounded">@ottabase/ottaupload</code>
+                            <code className="rounded bg-background px-2 py-1 ring-1 ring-border">
+                                @ottabase/ottaupload
+                            </code>
                         </div>
                         <div>
                             <h4 className="font-semibold mb-1">Key Dependencies</h4>

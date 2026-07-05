@@ -35,16 +35,16 @@ export class AdminBrandKitErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <Card className="border-red-500">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Error in Brand Kit Editor</CardTitle>
-                        <CardDescription>An unexpected error occurred while loading the editor.</CardDescription>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Error in Brand Kit Editor</CardTitle>
+                        <CardDescription className="leading-relaxed">
+                            An unexpected error occurred while loading the editor.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="rounded-md bg-red-50 p-3 dark:bg-red-950">
-                            <p className="text-sm text-red-700 dark:text-red-300 font-mono">
-                                {this.state.error?.message || 'Unknown error'}
-                            </p>
+                        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            <p className="font-mono">{this.state.error?.message || 'Unknown error'}</p>
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={this.handleReset} variant="outline">

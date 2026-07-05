@@ -249,7 +249,16 @@ function escapeHtml(text: string): string {
 }
 
 function renderInline(text: string): string {
-    let result = escapeHtml(text);
+    // Extract inline code FIRST so its literal contents (e.g. OBCF_ANALYTICS_CORE)
+    // are never touched by the emphasis/link transforms below. The placeholders use
+    // a null sentinel that survives escapeHtml and can't match any markdown token.
+    const codeSpans: string[] = [];
+    let result = text.replace(/`([^`]+)`/g, (_match, code: string) => {
+        codeSpans.push(code);
+        return ` CODE${codeSpans.length - 1} `;
+    });
+
+    result = escapeHtml(result);
     // Images (before links to avoid conflict)
     result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt: string, src: string) => {
         if (/^\s*javascript:/i.test(src)) return alt;
@@ -274,8 +283,11 @@ function renderInline(text: string): string {
     result = result.replace(/_(.+?)_/g, '<em>$1</em>');
     // Strikethrough
     result = result.replace(/~~(.+?)~~/g, '<del>$1</del>');
-    // Inline code
-    result = result.replace(/`([^`]+)`/g, '<code class="otta-docs-inline-code">$1</code>');
+    // Restore inline code (contents escaped, never emphasis-processed)
+    result = result.replace(
+        / CODE(\d+) /g,
+        (_match, n: string) => `<code class="otta-docs-inline-code">${escapeHtml(codeSpans[Number(n)] ?? '')}</code>`,
+    );
     return result;
 }
 

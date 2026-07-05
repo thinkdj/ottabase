@@ -3,19 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import { ConfirmDialog } from '@ottabase/ui-components';
-import {
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@ottabase/ui-shadcn';
-import { IconDotsVertical, IconMenu2, IconPlus, IconPuzzle } from '@tabler/icons-react';
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
+import { IconArrowRight, IconDotsVertical, IconMenu2, IconPlus, IconPuzzle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -52,18 +41,24 @@ export function AdminMenusListPage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Loading menus...</p>
+            <div className="space-y-8" aria-busy="true">
+                <span className="sr-only">Loading menus...</span>
+                <div className="h-20 animate-pulse rounded-xl bg-muted/40" />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }, (_, index) => (
+                        <div key={index} className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                    ))}
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Menus</h1>
-                    <p className="text-muted-foreground mt-1">
+        <div className="space-y-8">
+            <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Menus</h1>
+                    <p className="max-w-3xl text-muted-foreground">
                         Define navigation menus (sidebar, header, etc.). Assign to slots or use static nav links.
                     </p>
                 </div>
@@ -85,40 +80,38 @@ export function AdminMenusListPage() {
                 preselectedMenuId={slotsModalMenuId}
             />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Your Menus</CardTitle>
-                    <CardDescription>
+            <section className="space-y-4">
+                <div className="space-y-1">
+                    <h2 className="text-[0.9375rem] font-semibold">Your Menus</h2>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
                         {menus.length === 0
                             ? 'No menus yet. Create one and assign to slots to override default nav.'
                             : 'Click a menu to edit items. Use slug "sidebar" for main sidebar nav.'}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {menus.length === 0 ? (
-                        <div className="rounded-lg border border-dashed py-12 text-center">
-                            <IconMenu2 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <p className="mt-4 text-muted-foreground">No menus</p>
-                            <Button className="mt-4" onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
-                                <IconPlus className="h-4 w-4 mr-2" />
-                                Create your first menu
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {menus.map((menu) => (
-                                <MenuCard
-                                    key={menu.id}
-                                    menu={menu}
-                                    onAssignToSlots={() => openSlotsModal(menu.id)}
-                                    onDelete={() => setDeleteMenuId(menu.id)}
-                                    deleting={deleteMutation.isPending}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </p>
+                </div>
+                {menus.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <IconMenu2 className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                        <p className="mt-4 text-sm text-muted-foreground">No menus</p>
+                        <Button className="mt-4" onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
+                            <IconPlus className="h-4 w-4 mr-2" />
+                            Create your first menu
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {menus.map((menu) => (
+                            <MenuCard
+                                key={menu.id}
+                                menu={menu}
+                                onAssignToSlots={() => openSlotsModal(menu.id)}
+                                onDelete={() => setDeleteMenuId(menu.id)}
+                                deleting={deleteMutation.isPending}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
 
             <ConfirmDialog
                 open={deleteMenuId !== null}
@@ -154,20 +147,21 @@ function MenuCard({
         <Link
             to="/admin/appearance/menus/$menuId"
             params={{ menuId: menu.id }}
-            className="group flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/5 dark:border-muted"
+            className="group flex h-full flex-col rounded-xl bg-muted/40 p-4 outline-none transition-colors duration-normal hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-            <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="font-semibold truncate">{menu.name}</h3>
-                    <p className="text-sm text-muted-foreground">slug: {menu.slug}</p>
-                    <p className="text-xs text-muted-foreground">{menu.items.length} items</p>
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                    <h3 className="truncate text-[0.9375rem] font-semibold">{menu.name}</h3>
+                    <span className="inline-flex max-w-full items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
+                        <span className="truncate">{menu.slug}</span>
+                    </span>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"
+                            className="h-8 w-8 shrink-0 opacity-0 transition-colors group-hover:opacity-100 focus-visible:opacity-100"
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -199,6 +193,12 @@ function MenuCard({
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    {menu.items.length} items
+                </span>
+                <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </div>
         </Link>
     );

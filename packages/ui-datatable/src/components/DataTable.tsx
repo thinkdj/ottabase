@@ -7,7 +7,7 @@
 
 import { flexRender } from '@tanstack/react-table';
 import { clsx } from 'clsx';
-import { Inbox, Loader2 } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import type { DataTableProps } from '../types';
 import { DataTableColumnHeader } from './DataTableColumnHeader';
 import { DataTablePagination } from './DataTablePagination';
@@ -100,7 +100,7 @@ export function DataTable<TData extends Record<string, unknown>>({
             {/* Table container */}
             <div
                 className={clsx(
-                    'overflow-hidden rounded-lg border border-border',
+                    'overflow-hidden rounded-xl border border-border/60',
                     stickyHeader || maxHeight ? 'relative' : '',
                 )}
             >
@@ -119,12 +119,12 @@ export function DataTable<TData extends Record<string, unknown>>({
                         {/* Header */}
                         <thead
                             className={clsx(
-                                'bg-muted/50 [&_tr]:border-b',
+                                'bg-muted/40 [&_tr]:border-b [&_tr]:border-border/60',
                                 stickyHeader && 'sticky top-0 z-10 bg-muted/95 backdrop-blur-sm',
                             )}
                         >
                             {headerGroups.map((headerGroup) => (
-                                <tr key={headerGroup.id} className="border-b transition-colors">
+                                <tr key={headerGroup.id} className="border-b border-border/60 transition-colors">
                                     {headerGroup.headers.map((header) => {
                                         const meta = header.column.columnDef.meta as
                                             | Record<string, unknown>
@@ -136,10 +136,10 @@ export function DataTable<TData extends Record<string, unknown>>({
                                                 key={header.id}
                                                 className={clsx(
                                                     headerPadding,
-                                                    'text-muted-foreground font-medium',
+                                                    'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
                                                     align === 'center' && 'text-center',
                                                     align === 'right' && 'text-right',
-                                                    bordered && 'border-r last:border-r-0',
+                                                    bordered && 'border-r border-border/60 last:border-r-0',
                                                 )}
                                                 style={{
                                                     width: header.getSize() !== 150 ? header.getSize() : undefined,
@@ -168,17 +168,19 @@ export function DataTable<TData extends Record<string, unknown>>({
                         <tbody className="[&_tr:last-child]:border-0">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={totalColumns} className="h-32">
-                                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                                            <Loader2 className="h-6 w-6 animate-spin" />
-                                            <span className="text-sm">Loading…</span>
+                                    <td colSpan={totalColumns} className="p-4">
+                                        <div className="space-y-2.5" aria-busy="true">
+                                            <span className="sr-only">Loading…</span>
+                                            {Array.from({ length: 5 }, (_, i) => (
+                                                <div key={i} className="h-9 animate-pulse rounded-lg bg-muted/40" />
+                                            ))}
                                         </div>
                                     </td>
                                 </tr>
                             ) : rows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={totalColumns} className="h-32">
-                                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                                    <td colSpan={totalColumns} className="p-4">
+                                        <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/40 py-12 text-muted-foreground">
                                             <EmptyIcon className="h-10 w-10 opacity-40" />
                                             <span className="text-sm">{emptyMessage}</span>
                                         </div>
@@ -193,10 +195,10 @@ export function DataTable<TData extends Record<string, unknown>>({
                                             key={row.id}
                                             data-state={isSelected ? 'selected' : undefined}
                                             className={clsx(
-                                                'border-b transition-colors',
-                                                'hover:bg-muted/50',
-                                                isSelected && 'bg-muted',
-                                                striped && rowIdx % 2 === 1 && 'bg-muted/25',
+                                                'border-b border-border/60 transition-colors',
+                                                'hover:bg-muted/40',
+                                                isSelected && 'bg-background ring-1 ring-inset ring-border',
+                                                striped && !isSelected && rowIdx % 2 === 1 && 'bg-muted/20',
                                                 onRowClick && 'cursor-pointer',
                                             )}
                                             onClick={() => onRowClick?.(row.original)}
@@ -216,7 +218,7 @@ export function DataTable<TData extends Record<string, unknown>>({
                                                             'align-middle',
                                                             align === 'center' && 'text-center',
                                                             align === 'right' && 'text-right',
-                                                            bordered && 'border-r last:border-r-0',
+                                                            bordered && 'border-r border-border/60 last:border-r-0',
                                                             cellClassName,
                                                         )}
                                                         onClick={

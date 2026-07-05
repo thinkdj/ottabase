@@ -67,7 +67,7 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
     };
 
     return (
-        <div className="p-4 rounded-lg border bg-card border-border text-card-foreground">
+        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
             <Label className="capitalize font-semibold block mb-4">
                 {role} Typography {mode !== 'shared' && `(${mode})`}
             </Label>
@@ -89,7 +89,9 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
 
                 <div className="grid grid-cols-3 gap-4">
                     <div>
-                        <Label className="text-muted-foreground text-xs">Weight</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Weight
+                        </Label>
                         <NativeSelect
                             value={weight}
                             onChange={(e) => onUpdate(mode, role, { fontWeight: e.target.value })}
@@ -103,7 +105,9 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
                         </NativeSelect>
                     </div>
                     <div>
-                        <Label className="text-muted-foreground text-xs">Line Height</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Line Height
+                        </Label>
                         <NativeSelect
                             value={lineHeight}
                             onChange={(e) => onUpdate(mode, role, { lineHeight: e.target.value })}
@@ -116,7 +120,9 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
                         </NativeSelect>
                     </div>
                     <div>
-                        <Label className="text-muted-foreground text-xs">Spacing</Label>
+                        <Label className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Spacing
+                        </Label>
                         <NativeSelect
                             value={letterSpacing}
                             onChange={(e) => onUpdate(mode, role, { letterSpacing: e.target.value })}
@@ -132,7 +138,7 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
                 </div>
 
                 <div
-                    className="mt-4 rounded-md border p-4 bg-muted/30 border-border text-foreground"
+                    className="mt-4 rounded-lg bg-muted/40 p-4 text-foreground"
                     style={{
                         fontFamily: cssRoleDefaults[role],
                         fontWeight: weight,
@@ -282,16 +288,16 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange, ha
     };
 
     const fontEditor = (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Typography</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Typography</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Select Google Fonts, weights, and spacing for your brand. Advanced configurations can be split by
                     color mode.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-accent/50">
+                <div className="flex items-center justify-between rounded-lg bg-background p-4 ring-1 ring-border">
                     <div>
                         <Label>Different for dark mode</Label>
                         <p className="text-xs text-muted-foreground">

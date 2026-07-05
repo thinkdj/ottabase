@@ -146,7 +146,7 @@ describe('OrganizationMembersPage', () => {
     it('renders back link to absolute organizations route', () => {
         render(<OrganizationMembersPage />);
 
-        const backLink = screen.getByRole('link', { name: '← Back to Organizations' });
+        const backLink = screen.getByRole('link', { name: 'Back to Organizations' });
         expect(backLink).toHaveAttribute('href', '/admin/access/organizations');
     });
 });

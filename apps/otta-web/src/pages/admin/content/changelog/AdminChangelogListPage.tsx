@@ -7,11 +7,21 @@
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatShortDate, POST_STATUSES, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button } from '@ottabase/ui-shadcn';
 import { IconEdit, IconEye, IconPlus, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { useState } from 'react';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
+
+const STATUS_DOT_CLASS: Record<PostStatus, string> = {
+    published: 'bg-success',
+    draft: 'bg-muted-foreground/40',
+    scheduled: 'bg-warning',
+    archived: 'bg-destructive',
+};
 
 interface ChangelogPost {
     id: string;
@@ -64,24 +74,19 @@ export function AdminChangelogListPage() {
         }
     };
 
-    const getStatusBadge = (status: PostStatus) => {
-        const variants: Record<PostStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-            published: 'default',
-            draft: 'secondary',
-            scheduled: 'outline',
-            archived: 'destructive',
-        };
-        return <Badge variant={variants[status]}>{POST_STATUSES[status].label}</Badge>;
-    };
+    const getStatusBadge = (status: PostStatus) => (
+        <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[status]}`} aria-hidden="true" />
+            {POST_STATUSES[status].label}
+        </Badge>
+    );
 
     return (
-        <div className="mx-auto max-w-5xl px-4 py-8">
-            <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground dark:text-foreground">Changelog</h1>
-                    <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-                        Product updates shown on /changelog
-                    </p>
+        <div className="space-y-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Changelog</h1>
+                    <p className="text-muted-foreground">Product updates shown on /changelog</p>
                 </div>
                 <Button asChild>
                     <Link to="/admin/content/blog/new" search={{ contentType: 'changelog' }}>
@@ -91,98 +96,118 @@ export function AdminChangelogListPage() {
                 </Button>
             </div>
 
-            <Card className="border-border dark:border-border">
-                <CardHeader>
-                    <CardTitle>Entries</CardTitle>
-                    <CardDescription>Draft and published changelog posts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading && <p className="text-sm text-muted-foreground dark:text-muted-foreground">Loading…</p>}
-                    {!isLoading && rows.length === 0 && (
-                        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+            <section className="space-y-4">
+                <div className="space-y-1">
+                    <h2 className="text-[0.9375rem] font-semibold">Entries</h2>
+                    <p className="text-sm leading-relaxed text-muted-foreground">Draft and published changelog posts</p>
+                </div>
+
+                {isLoading ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading changelog entries...</span>
+                        {Array.from({ length: 4 }, (_, index) => (
+                            <div key={index} className="h-14 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : rows.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <p className="text-sm text-muted-foreground">
                             No entries yet. Create one to show on the public changelog.
                         </p>
-                    )}
-                    <ul className="divide-y divide-border dark:divide-border">
-                        {rows.map((row) => (
-                            <li
-                                key={row.id}
-                                className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0"
-                            >
-                                <div className="min-w-0 flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        title={row.isFeatured ? 'Remove highlight' : 'Highlight this entry'}
-                                        className="shrink-0 text-muted-foreground hover:text-yellow-500 transition-colors"
-                                        onClick={() =>
-                                            updatePost.mutate({
-                                                id: row.id,
-                                                data: { isFeatured: !row.isFeatured },
-                                            })
-                                        }
-                                    >
-                                        {row.isFeatured ? (
-                                            <IconStarFilled className="size-4 text-yellow-500" />
-                                        ) : (
-                                            <IconStar className="size-4" />
-                                        )}
-                                    </button>
-                                    <div className="min-w-0">
-                                        <Link
-                                            to="/admin/content/blog/$postId/edit"
-                                            params={{ postId: row.id }}
-                                            className="font-medium text-foreground dark:text-foreground hover:underline"
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
+                        <ul className="divide-y divide-border/60">
+                            {rows.map((row) => (
+                                <li
+                                    key={row.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 transition-colors duration-normal hover:bg-muted/40"
+                                >
+                                    <div className="min-w-0 flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            title={row.isFeatured ? 'Remove highlight' : 'Highlight this entry'}
+                                            className="shrink-0 text-muted-foreground transition-colors hover:text-warning"
+                                            onClick={() =>
+                                                updatePost.mutate({
+                                                    id: row.id,
+                                                    data: { isFeatured: !row.isFeatured },
+                                                })
+                                            }
                                         >
-                                            {row.title}
-                                        </Link>
-                                        <p className="truncate text-xs text-muted-foreground dark:text-muted-foreground">
-                                            /changelog/{row.slug}
-                                            {row.readingTimeMinutes ? ` · ${row.readingTimeMinutes} min read` : ''}
-                                        </p>
+                                            {row.isFeatured ? (
+                                                <IconStarFilled className="size-4 text-warning" />
+                                            ) : (
+                                                <IconStar className="size-4" />
+                                            )}
+                                        </button>
+                                        <div className="min-w-0">
+                                            <Link
+                                                to="/admin/content/blog/$postId/edit"
+                                                params={{ postId: row.id }}
+                                                className="font-medium text-foreground hover:underline"
+                                            >
+                                                {row.title}
+                                            </Link>
+                                            <p className="truncate text-xs text-muted-foreground">
+                                                /changelog/{row.slug}
+                                                {row.readingTimeMinutes ? ` · ${row.readingTimeMinutes} min read` : ''}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">
-                                        {row.status === 'published'
-                                            ? `Published ${formatShortDate(row.publishedAt)}`
-                                            : `Updated ${formatShortDate(row.updatedAt)}`}
-                                    </span>
-                                    {getStatusBadge(row.status)}
-                                    <Button variant="ghost" size="sm" asChild>
-                                        <a
-                                            href={`/changelog/${row.slug}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            aria-label={`View ${row.title}`}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                            {row.status === 'published'
+                                                ? `Published ${formatShortDate(row.publishedAt)}`
+                                                : `Updated ${formatShortDate(row.updatedAt)}`}
+                                        </span>
+                                        {getStatusBadge(row.status)}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-muted-foreground hover:text-foreground"
+                                            asChild
                                         >
-                                            <IconEye className="size-4" aria-hidden />
-                                        </a>
-                                    </Button>
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link
-                                            to="/admin/content/blog/$postId/edit"
-                                            params={{ postId: row.id }}
-                                            aria-label={`Edit ${row.title}`}
+                                            <a
+                                                href={`/changelog/${row.slug}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                aria-label={`View ${row.title}`}
+                                            >
+                                                <IconEye className="size-4" aria-hidden />
+                                            </a>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-muted-foreground hover:text-foreground"
+                                            asChild
                                         >
-                                            <IconEdit className="mr-1 size-4" aria-hidden />
-                                            Edit
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDelete(row.id, row.title)}
-                                        disabled={deletePost.isPending}
-                                        aria-label={`Delete ${row.title}`}
-                                    >
-                                        <IconTrash className="size-4 text-destructive" aria-hidden />
-                                    </Button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </CardContent>
-            </Card>
+                                            <Link
+                                                to="/admin/content/blog/$postId/edit"
+                                                params={{ postId: row.id }}
+                                                aria-label={`Edit ${row.title}`}
+                                            >
+                                                <IconEdit className="mr-1 size-4" aria-hidden />
+                                                Edit
+                                            </Link>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDelete(row.id, row.title)}
+                                            disabled={deletePost.isPending}
+                                            aria-label={`Delete ${row.title}`}
+                                        >
+                                            <IconTrash className="size-4 text-destructive" aria-hidden />
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </section>
 
             <ConfirmDialog
                 open={deleteDialog !== null}

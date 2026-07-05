@@ -1,5 +1,4 @@
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useLastRefreshed } from '@/hooks/useLastRefreshed';
 import {
     useInviteMember,
@@ -16,11 +15,6 @@ import type { MemberRole, OrganizationMemberRecord } from '@/types/rbac';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -39,7 +33,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
-import { ChevronLeft, ChevronRight, Edit, RefreshCw, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit, RefreshCw, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
 
@@ -173,62 +167,92 @@ export function OrganizationMembersPage() {
     };
 
     return (
-        <div className="space-y-4">
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle>Organization Members</CardTitle>
-                            <CardDescription>Manage members and their roles</CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="flex items-center text-xs text-muted-foreground pr-1">
-                                {lastRefreshedLabel}
-                            </div>
-                            <Button variant="outline" onClick={handleRefresh} disabled={isLoading || isRefetching}>
-                                <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-                            </Button>
-                            <Button variant="outline" asChild>
-                                <Link to={'/admin/access/organizations' as never}>← Back to Organizations</Link>
-                            </Button>
-                            <Button onClick={handleInvite} className="gap-2">
-                                <UserPlus className="h-4 w-4" />
-                                Invite Member
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {error && (
-                        <ApiErrorDisplay
-                            error={error instanceof Error ? error : new Error('Failed to load members')}
-                            onRetry={() => refetch()}
-                            className="mb-4"
-                        />
-                    )}
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to={'/admin/access/organizations' as never}>
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Organizations
+                    </Link>
+                </Button>
 
-                    {isLoading ? (
-                        <TableSkeleton rows={5} columns={6} />
-                    ) : members.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No members found. Invite the first member!
-                        </div>
-                    ) : (
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organization Members</h1>
+                        <p className="max-w-3xl text-muted-foreground">Manage members and their roles</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <span className="pr-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {lastRefreshedLabel}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={handleRefresh}
+                            disabled={isLoading || isRefetching}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                        </Button>
+                        <Button onClick={handleInvite} className="gap-2">
+                            <UserPlus className="h-4 w-4" />
+                            Invite Member
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {error && (
+                    <ApiErrorDisplay
+                        error={error instanceof Error ? error : new Error('Failed to load members')}
+                        onRetry={() => refetch()}
+                    />
+                )}
+
+                {isLoading ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading members…</span>
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : members.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <p className="text-sm text-muted-foreground">No members found. Invite the first member!</p>
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Invited</TableHead>
-                                    <TableHead>Joined</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                            <TableHeader className="bg-muted/40">
+                                <TableRow className="border-border/60 hover:bg-transparent">
+                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        User
+                                    </TableHead>
+                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Role
+                                    </TableHead>
+                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Status
+                                    </TableHead>
+                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Invited
+                                    </TableHead>
+                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Joined
+                                    </TableHead>
+                                    <TableHead className="h-auto px-4 py-3 text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {members.map((member) => (
-                                    <TableRow key={member.id}>
-                                        <TableCell>
+                                    <TableRow
+                                        key={member.id}
+                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                    >
+                                        <TableCell className="px-4 py-3">
                                             <div className="min-w-0 space-y-0.5">
                                                 <div className="truncate font-medium">
                                                     {member.user?.name || 'Unknown user'}
@@ -236,12 +260,12 @@ export function OrganizationMembersPage() {
                                                 <div className="truncate text-xs text-muted-foreground">
                                                     {member.user?.email || member.userId}
                                                 </div>
-                                                <code className="text-[11px] text-muted-foreground">
+                                                <code className="text-[0.6875rem] text-muted-foreground">
                                                     {member.userId}
                                                 </code>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3">
                                             <Select
                                                 value={member.role}
                                                 onValueChange={(value: MemberRole) =>
@@ -251,7 +275,7 @@ export function OrganizationMembersPage() {
                                                     updateRoleMutation.isPending || updateStatusMutation.isPending
                                                 }
                                             >
-                                                <SelectTrigger className="w-32">
+                                                <SelectTrigger className="h-9 w-32">
                                                     <span className="capitalize">{member.role}</span>
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -261,7 +285,7 @@ export function OrganizationMembersPage() {
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3">
                                             <Select
                                                 value={member.status}
                                                 onValueChange={(value: 'active' | 'invited' | 'suspended') =>
@@ -271,7 +295,7 @@ export function OrganizationMembersPage() {
                                                     updateRoleMutation.isPending || updateStatusMutation.isPending
                                                 }
                                             >
-                                                <SelectTrigger className="w-36">
+                                                <SelectTrigger className="h-9 w-36">
                                                     <span className="capitalize">{member.status}</span>
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -281,17 +305,18 @@ export function OrganizationMembersPage() {
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                             {member.invitedAt ? new Date(member.invitedAt).toLocaleDateString() : '-'}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                             {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-'}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="text-muted-foreground hover:text-foreground"
                                                     onClick={() => handleEdit(member)}
                                                     disabled={
                                                         updateRoleMutation.isPending ||
@@ -304,6 +329,7 @@ export function OrganizationMembersPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="text-muted-foreground hover:text-destructive"
                                                     onClick={() => handleDelete(member.userId)}
                                                     disabled={removeMutation.isPending}
                                                 >
@@ -315,33 +341,35 @@ export function OrganizationMembersPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </div>
 
             {/* Pagination Controls */}
             {!isLoading && pagination && pagination.total > pagination.perPage && (
                 <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Showing {(pagination.page - 1) * pagination.perPage + 1}–
                         {Math.min(pagination.page * pagination.perPage, pagination.total)} of {pagination.total} members
                     </p>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={pagination.page <= 1}
                         >
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Prev
                         </Button>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Page {pagination.page} of {pagination.totalPages}
                         </span>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => p + 1)}
                             disabled={pagination.page >= pagination.totalPages}
                         >

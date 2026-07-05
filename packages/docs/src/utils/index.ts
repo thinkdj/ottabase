@@ -18,11 +18,52 @@ export function fileNameToSlug(fileName: string): string {
         .replace(/^-|-$/g, '');
 }
 
-/** Convert a slug to a display title */
+/** Common acronyms that should stay fully uppercase in derived titles (slugs are lowercase). */
+const TITLE_ACRONYMS = new Set([
+    'api',
+    'url',
+    'id',
+    'ui',
+    'ux',
+    'sdk',
+    'cli',
+    'http',
+    'https',
+    'json',
+    'html',
+    'css',
+    'jwt',
+    'kv',
+    'r2',
+    'd1',
+    'db',
+    'sql',
+    'rls',
+    'orm',
+    'rbac',
+    'crud',
+    'ssr',
+    'spa',
+    'seo',
+    'cdn',
+    'dns',
+    'ai',
+    'os',
+    'pdf',
+    'svg',
+    'ci',
+    'cd',
+]);
+
+/** Convert a slug to a display title (acronyms preserved: "api-pagination" → "API Pagination"). */
 export function slugToTitle(slug: string): string {
     return slug
         .replace(/-/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .split(' ')
+        .map((word) =>
+            TITLE_ACRONYMS.has(word.toLowerCase()) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1),
+        )
+        .join(' ')
         .replace(/^Index$/, 'Overview');
 }
 

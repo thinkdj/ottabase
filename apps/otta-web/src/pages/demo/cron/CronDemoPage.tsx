@@ -54,16 +54,19 @@ export function CronDemoPage() {
                 title="Cron"
                 description="Laravel-style cron job scheduler with two modes: static (code-defined) and DB-driven (dynamic scheduler). This demo showcases the cron expression parser and schedule utilities."
                 actions={
-                    <Badge variant="secondary" className="uppercase">
+                    <Badge
+                        variant="outline"
+                        className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                    >
                         @ottabase/cron
                     </Badge>
                 }
             />
 
             {/* Overview card */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg">Package Overview</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Package Overview</CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
                         <p className="font-medium text-foreground">Two scheduling modes:</p>
                         <ol className="list-inside list-decimal space-y-1">
@@ -89,9 +92,9 @@ export function CronDemoPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Cron expression parser */}
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Clock className="h-4 w-4" />
                             Cron Expression Parser
                         </CardTitle>
@@ -112,7 +115,7 @@ export function CronDemoPage() {
                         </div>
 
                         {parseError && (
-                            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-900/20 dark:text-red-400">
+                            <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                                 <XCircle className="h-4 w-4 flex-shrink-0" />
                                 {parseError}
                             </div>
@@ -120,8 +123,10 @@ export function CronDemoPage() {
 
                         {parsed && (
                             <div className="space-y-3">
-                                <div className="rounded-lg bg-muted p-3">
-                                    <h4 className="mb-2 text-sm font-medium">Parsed Fields</h4>
+                                <div className="rounded-lg bg-background p-3 ring-1 ring-border">
+                                    <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Parsed Fields
+                                    </h4>
                                     <div className="grid grid-cols-5 gap-2 text-center text-xs">
                                         {(
                                             [
@@ -143,11 +148,17 @@ export function CronDemoPage() {
                                 <div className="flex items-center gap-2 text-sm">
                                     <span className="font-medium">Matches now:</span>
                                     {matchResult ? (
-                                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                        <Badge
+                                            variant="outline"
+                                            className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                        >
                                             <CheckCircle className="mr-1 h-3 w-3" /> Yes
                                         </Badge>
                                     ) : (
-                                        <Badge variant="secondary">
+                                        <Badge
+                                            variant="outline"
+                                            className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                        >
                                             <XCircle className="mr-1 h-3 w-3" /> No
                                         </Badge>
                                     )}
@@ -158,9 +169,9 @@ export function CronDemoPage() {
                 </Card>
 
                 {/* Next runs */}
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Calendar className="h-4 w-4" />
                             Next Scheduled Runs
                         </CardTitle>
@@ -170,7 +181,10 @@ export function CronDemoPage() {
                         {nextRuns.length > 0 ? (
                             <div className="space-y-2">
                                 {nextRuns.map((run, i) => (
-                                    <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                                    <div
+                                        key={i}
+                                        className="flex items-center justify-between rounded-lg bg-background p-3 ring-1 ring-border"
+                                    >
                                         <span className="text-sm font-medium">Run #{i + 1}</span>
                                         <code className="text-sm text-muted-foreground">
                                             {run
@@ -182,16 +196,18 @@ export function CronDemoPage() {
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-muted-foreground">Parse an expression to see upcoming runs.</p>
+                            <p className="rounded-xl bg-background p-4 text-sm text-muted-foreground ring-1 ring-border">
+                                Parse an expression to see upcoming runs.
+                            </p>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
             {/* Presets */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Zap className="h-4 w-4" />
                         CronPresets
                     </CardTitle>
@@ -226,7 +242,7 @@ export function CronDemoPage() {
                                         // Ignore parse errors for presets
                                     }
                                 }}
-                                className="flex items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted"
+                                className="flex items-center justify-between rounded-lg bg-background p-3 text-left ring-1 ring-border transition-colors duration-normal hover:bg-muted/70"
                             >
                                 <span className="text-sm font-medium">{name}</span>
                                 <code className="text-xs text-muted-foreground">{value}</code>
@@ -237,15 +253,17 @@ export function CronDemoPage() {
             </Card>
 
             {/* Usage examples */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Usage Examples</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage Examples</CardTitle>
                     <CardDescription>How to use @ottabase/cron in your app.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Static CronHandler (code-defined jobs)</h4>
-                        <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                        <h4 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Static CronHandler (code-defined jobs)
+                        </h4>
+                        <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`import { createCronHandler } from '@ottabase/cron';
 
 const handler = createCronHandler({
@@ -266,8 +284,10 @@ export default { scheduled: handler };`}</code>
                     </div>
 
                     <div className="space-y-2">
-                        <h4 className="text-sm font-medium">DB Scheduler (dynamic, Laravel-style)</h4>
-                        <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                        <h4 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            DB Scheduler (dynamic, Laravel-style)
+                        </h4>
+                        <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`import { createScheduler, createTaskRepository } from '@ottabase/cron';
 
 const repo = createTaskRepository(db);

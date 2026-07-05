@@ -10,14 +10,10 @@
  */
 
 import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
     Badge,
     Button,
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
     Table,
@@ -34,6 +30,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import {
     AlertTriangle,
+    ArrowLeft,
     CheckCircle2,
     Database,
     Lock,
@@ -44,6 +41,11 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
+const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const TINT_CARD_CLASS = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 
 interface SecurityTest {
     name: string;
@@ -110,7 +112,6 @@ export function RLSInspectorPage() {
             allowNull: true,
             auditEnabled: true,
             icon: <Shield className="h-4 w-4" />,
-            color: 'text-blue-600',
         },
         {
             model: 'organization_members',
@@ -119,7 +120,6 @@ export function RLSInspectorPage() {
             allowNull: false,
             auditEnabled: true,
             icon: <Users className="h-4 w-4" />,
-            color: 'text-green-600',
         },
         {
             model: 'roles',
@@ -128,7 +128,6 @@ export function RLSInspectorPage() {
             allowNull: true,
             auditEnabled: true,
             icon: <ShieldCheck className="h-4 w-4" />,
-            color: 'text-purple-600',
         },
         {
             model: 'users',
@@ -137,7 +136,6 @@ export function RLSInspectorPage() {
             allowNull: false,
             auditEnabled: true,
             icon: <Lock className="h-4 w-4" />,
-            color: 'text-red-600',
         },
         {
             model: 'audit_logs',
@@ -146,7 +144,6 @@ export function RLSInspectorPage() {
             allowNull: true,
             auditEnabled: false,
             icon: <Database className="h-4 w-4" />,
-            color: 'text-orange-600',
         },
     ];
 
@@ -186,69 +183,80 @@ export function RLSInspectorPage() {
     const getStatusIcon = (status: SecurityTest['status']) => {
         switch (status) {
             case 'passed':
-                return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+                return <CheckCircle2 className="h-4 w-4 text-success" />;
             case 'blocked':
-                return <XCircle className="h-5 w-5 text-red-600" />;
+                return <XCircle className="h-4 w-4 text-destructive" />;
             case 'warning':
-                return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
+                return <AlertTriangle className="h-4 w-4 text-warning" />;
         }
     };
 
     const getStatusBadge = (status: SecurityTest['status']) => {
         switch (status) {
             case 'passed':
-                return <Badge variant="default">Passed</Badge>;
+                return (
+                    <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                        Passed
+                    </Badge>
+                );
             case 'blocked':
-                return <Badge variant="destructive">Blocked</Badge>;
+                return (
+                    <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden="true" />
+                        Blocked
+                    </Badge>
+                );
             case 'warning':
-                return <Badge variant="secondary">Warning</Badge>;
+                return (
+                    <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
+                        Warning
+                    </Badge>
+                );
         }
     };
 
-    const getLevelBadge = (level: string) => {
-        switch (level) {
-            case 'CRITICAL':
-                return <Badge variant="destructive">{level}</Badge>;
-            case 'HIGH':
-                return <Badge variant="secondary">{level}</Badge>;
-            case 'MEDIUM':
-                return <Badge variant="outline">{level}</Badge>;
-            default:
-                return <Badge>{level}</Badge>;
-        }
-    };
+    const getLevelBadge = (level: string) => (
+        <Badge variant="outline" className={`uppercase tracking-wide ${CHIP_CLASS}`}>
+            {level}
+        </Badge>
+    );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Header */}
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-2xl">
-                                <ShieldCheck className="h-6 w-6 text-green-600" />
-                                Row-Level Security (RLS) Demo
-                            </CardTitle>
-                            <CardDescription className="mt-2">
-                                Database-level security that makes data leaks impossible
-                            </CardDescription>
-                        </div>
-                        <Button variant="outline" asChild>
-                            <Link to="/admin">← Back to Admin</Link>
-                        </Button>
-                    </div>
-                </CardHeader>
-            </Card>
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Admin
+                    </Link>
+                </Button>
 
-            {/* Alert */}
-            <Alert>
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Production-Grade Security</AlertTitle>
-                <AlertDescription>
-                    Every database query is automatically filtered by your security context. Cross-tenant access is
-                    blocked at the ORM level before queries execute.
-                </AlertDescription>
-            </Alert>
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Row-Level Security (RLS) Demo</h1>
+                    <p className="max-w-3xl text-muted-foreground">
+                        Database-level security that makes data leaks impossible
+                    </p>
+                </div>
+            </div>
+
+            {/* Callout */}
+            <div className="rounded-xl bg-muted/40 p-4">
+                <div className="flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
+                        <ShieldAlert className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 pt-1">
+                        <h2 className="text-[0.9375rem] font-semibold leading-6">Production-Grade Security</h2>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                            Every database query is automatically filtered by your security context. Cross-tenant access
+                            is blocked at the ORM level before queries execute.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -261,57 +269,57 @@ export function RLSInspectorPage() {
 
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-4">
-                    <Card>
+                    <Card className={TINT_CARD_CLASS}>
                         <CardHeader>
-                            <CardTitle>What is RLS?</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">What is RLS?</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-muted-foreground">
+                            <p className="text-sm leading-relaxed text-muted-foreground">
                                 Row-Level Security (RLS) automatically enforces data isolation at the database level.
                                 Every query is filtered based on your security context (user, organization, app) without
                                 any manual filtering required.
                             </p>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="border rounded-lg p-4 space-y-2">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <div className="space-y-2 rounded-lg bg-background p-4 ring-1 ring-border">
                                     <div className="flex items-center gap-2">
-                                        <Shield className="h-5 w-5 text-blue-600" />
-                                        <h3 className="font-semibold">Automatic Filtering</h3>
+                                        <Shield className="h-4 w-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold">Automatic Filtering</h3>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
                                         No need to add `where: {'{'} organizationId {'}'}` - RLS does it automatically
                                     </p>
                                 </div>
 
-                                <div className="border rounded-lg p-4 space-y-2">
+                                <div className="space-y-2 rounded-lg bg-background p-4 ring-1 ring-border">
                                     <div className="flex items-center gap-2">
-                                        <Lock className="h-5 w-5 text-red-600" />
-                                        <h3 className="font-semibold">Cross-Tenant Prevention</h3>
+                                        <Lock className="h-4 w-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold">Cross-Tenant Prevention</h3>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
                                         Impossible to access or modify another organization's data
                                     </p>
                                 </div>
 
-                                <div className="border rounded-lg p-4 space-y-2">
+                                <div className="space-y-2 rounded-lg bg-background p-4 ring-1 ring-border">
                                     <div className="flex items-center gap-2">
-                                        <Database className="h-5 w-5 text-green-600" />
-                                        <h3 className="font-semibold">Zero Trust</h3>
+                                        <Database className="h-4 w-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold">Zero Trust</h3>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
                                         No model is accessible without an explicit security policy
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="bg-muted p-4 rounded-lg font-mono text-sm">
-                                <div className="text-muted-foreground mb-2">// Before RLS (manual)</div>
-                                <div className="text-red-600">
+                            <div className="rounded-lg bg-background p-4 font-mono text-sm ring-1 ring-border">
+                                <div className="mb-2 text-muted-foreground">// Before RLS (manual)</div>
+                                <div className="text-destructive">
                                     const posts = await Posts.find({'{'} organizationId {'}'});
                                 </div>
-                                <div className="text-muted-foreground mt-4 mb-2">// After RLS (automatic)</div>
-                                <div className="text-green-600">const posts = await Posts.find();</div>
-                                <div className="text-muted-foreground text-xs mt-2">
+                                <div className="mb-2 mt-4 text-muted-foreground">// After RLS (automatic)</div>
+                                <div className="text-success">const posts = await Posts.find();</div>
+                                <div className="mt-2 text-xs text-muted-foreground">
                                     ↳ Automatically filtered by security context
                                 </div>
                             </div>
@@ -321,184 +329,218 @@ export function RLSInspectorPage() {
 
                 {/* Security Tests Tab */}
                 <TabsContent value="tests" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Live Security Tests</CardTitle>
-                            <CardDescription>Real-time validation of RLS policies across your system</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                    <section className="space-y-4">
+                        <div className="space-y-1.5">
+                            <h2 className="text-[0.9375rem] font-semibold">Live Security Tests</h2>
+                            <p className="text-sm leading-relaxed text-muted-foreground">
+                                Real-time validation of RLS policies across your system
+                            </p>
+                        </div>
+
+                        <div className="overflow-hidden rounded-xl border border-border/60">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-12"></TableHead>
-                                        <TableHead>Test Name</TableHead>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead>Level</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Details</TableHead>
+                                <TableHeader className="bg-muted/40">
+                                    <TableRow className="border-border/60 hover:bg-transparent">
+                                        <TableHead className={`w-12 ${TH_CLASS}`}></TableHead>
+                                        <TableHead className={TH_CLASS}>Test Name</TableHead>
+                                        <TableHead className={TH_CLASS}>Description</TableHead>
+                                        <TableHead className={TH_CLASS}>Level</TableHead>
+                                        <TableHead className={TH_CLASS}>Status</TableHead>
+                                        <TableHead className={TH_CLASS}>Details</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {securityTests.map((test, idx) => (
-                                        <TableRow key={idx}>
-                                            <TableCell>{getStatusIcon(test.status)}</TableCell>
-                                            <TableCell className="font-medium">{test.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">{test.description}</TableCell>
-                                            <TableCell>{getLevelBadge(test.level)}</TableCell>
-                                            <TableCell>{getStatusBadge(test.status)}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
+                                        <TableRow
+                                            key={idx}
+                                            className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                        >
+                                            <TableCell className="px-4 py-3">{getStatusIcon(test.status)}</TableCell>
+                                            <TableCell className="px-4 py-3 text-sm font-medium">{test.name}</TableCell>
+                                            <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                                                {test.description}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3">{getLevelBadge(test.level)}</TableCell>
+                                            <TableCell className="px-4 py-3">{getStatusBadge(test.status)}</TableCell>
+                                            <TableCell className="px-4 py-3 text-sm text-muted-foreground">
                                                 {test.details}
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
+                        </div>
 
-                            <div className="mt-6 flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                    <span className="font-semibold text-green-900">All Security Tests Passed</span>
-                                </div>
-                                <Badge variant="default">
-                                    {securityTests.filter((t) => t.status === 'passed').length}/{securityTests.length}
-                                </Badge>
+                        <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success/10 p-4">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-success" />
+                                <span className="text-sm font-medium">All Security Tests Passed</span>
                             </div>
-                        </CardContent>
-                    </Card>
+                            <Badge variant="outline" className={CHIP_CLASS}>
+                                {securityTests.filter((t) => t.status === 'passed').length}/{securityTests.length}
+                            </Badge>
+                        </div>
+                    </section>
                 </TabsContent>
 
                 {/* Model Policies Tab */}
                 <TabsContent value="policies" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Registered Model Policies</CardTitle>
-                            <CardDescription>Security policies for all models in your application</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                    <section className="space-y-4">
+                        <div className="space-y-1.5">
+                            <h2 className="text-[0.9375rem] font-semibold">Registered Model Policies</h2>
+                            <p className="text-sm leading-relaxed text-muted-foreground">
+                                Security policies for all models in your application
+                            </p>
+                        </div>
+
+                        <div className="overflow-hidden rounded-xl border border-border/60">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead></TableHead>
-                                        <TableHead>Model</TableHead>
-                                        <TableHead>Policy Type</TableHead>
-                                        <TableHead>Filter Field</TableHead>
-                                        <TableHead>Allow Null</TableHead>
-                                        <TableHead>Audit Enabled</TableHead>
+                                <TableHeader className="bg-muted/40">
+                                    <TableRow className="border-border/60 hover:bg-transparent">
+                                        <TableHead className={`w-12 ${TH_CLASS}`}></TableHead>
+                                        <TableHead className={TH_CLASS}>Model</TableHead>
+                                        <TableHead className={TH_CLASS}>Policy Type</TableHead>
+                                        <TableHead className={TH_CLASS}>Filter Field</TableHead>
+                                        <TableHead className={TH_CLASS}>Allow Null</TableHead>
+                                        <TableHead className={TH_CLASS}>Audit Enabled</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {modelPolicies.map((policy, idx) => (
-                                        <TableRow key={idx}>
-                                            <TableCell>
-                                                <div className={policy.color}>{policy.icon}</div>
+                                        <TableRow
+                                            key={idx}
+                                            className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                        >
+                                            <TableCell className="px-4 py-3">
+                                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
+                                                    {policy.icon}
+                                                </span>
                                             </TableCell>
-                                            <TableCell>
-                                                <code className="text-sm bg-muted px-2 py-1 rounded">
+                                            <TableCell className="px-4 py-3">
+                                                <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs ring-1 ring-border">
                                                     {policy.model}
                                                 </code>
                                             </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary">{policy.policy}</Badge>
+                                            <TableCell className="px-4 py-3">
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    {policy.policy}
+                                                </Badge>
                                             </TableCell>
-                                            <TableCell>
-                                                <code className="text-xs">{policy.field}</code>
+                                            <TableCell className="px-4 py-3">
+                                                <code className="font-mono text-xs text-muted-foreground">
+                                                    {policy.field}
+                                                </code>
                                             </TableCell>
-                                            <TableCell>
-                                                {policy.allowNull ? (
-                                                    <Badge variant="outline">Yes</Badge>
-                                                ) : (
-                                                    <Badge variant="destructive">No</Badge>
-                                                )}
+                                            <TableCell className="px-4 py-3">
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    {policy.allowNull ? 'Yes' : 'No'}
+                                                </Badge>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="px-4 py-3">
                                                 {policy.auditEnabled ? (
-                                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                    <CheckCircle2 className="h-4 w-4 text-success" />
                                                 ) : (
-                                                    <XCircle className="h-4 w-4 text-gray-400" />
+                                                    <XCircle className="h-4 w-4 text-muted-foreground/50" />
                                                 )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
+                        </div>
 
-                            <div className="mt-6 p-4 bg-muted rounded-lg">
-                                <h4 className="font-semibold mb-2">Add Custom Policy</h4>
-                                <div className="font-mono text-sm">
-                                    <div className="text-muted-foreground">// Register your own models</div>
-                                    <div>
-                                        registerPolicy({'{'}
-                                        <br />
-                                        &nbsp;&nbsp;model: 'posts',
-                                        <br />
-                                        &nbsp;&nbsp;policy: RLSPolicies.TenantScoped(false),
-                                        <br />
-                                        &nbsp;&nbsp;auditEnabled: true,
-                                        <br />
-                                        {'}'});
-                                    </div>
+                        <div className="rounded-xl bg-muted/40 p-4">
+                            <h3 className="mb-2 text-sm font-semibold">Add Custom Policy</h3>
+                            <div className="font-mono text-sm">
+                                <div className="text-muted-foreground">// Register your own models</div>
+                                <div>
+                                    registerPolicy({'{'}
+                                    <br />
+                                    &nbsp;&nbsp;model: 'posts',
+                                    <br />
+                                    &nbsp;&nbsp;policy: RLSPolicies.TenantScoped(false),
+                                    <br />
+                                    &nbsp;&nbsp;auditEnabled: true,
+                                    <br />
+                                    {'}'});
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </section>
                 </TabsContent>
 
                 {/* Features Tab */}
                 <TabsContent value="features" className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-3">
                         {rlsFeatures.map((feature, idx) => (
-                            <Card key={idx}>
+                            <Card key={idx} className={TINT_CARD_CLASS}>
                                 <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <CardTitle className="text-lg">{feature.title}</CardTitle>
-                                            <CardDescription>{feature.description}</CardDescription>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 space-y-1">
+                                            <CardTitle className="text-[0.9375rem] font-semibold">
+                                                {feature.title}
+                                            </CardTitle>
+                                            <p className="text-sm leading-relaxed text-muted-foreground">
+                                                {feature.description}
+                                            </p>
                                         </div>
-                                        <Badge variant="default">{feature.status}</Badge>
+                                        <Badge
+                                            variant="outline"
+                                            className={`gap-1.5 uppercase tracking-wide ${CHIP_CLASS}`}
+                                        >
+                                            <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                                            {feature.status}
+                                        </Badge>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="bg-muted p-3 rounded font-mono text-sm">{feature.example}</div>
+                                    <div className="rounded-lg bg-background p-3 font-mono text-sm ring-1 ring-border">
+                                        {feature.example}
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
                     </div>
 
-                    <Card>
+                    <Card className={TINT_CARD_CLASS}>
                         <CardHeader>
-                            <CardTitle>Benefits</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Benefits</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ul className="space-y-2">
                                 <li className="flex items-start gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                                    <div>
-                                        <strong>Impossible to forget</strong> - Security is automatic, not manual
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
+                                        <strong className="font-medium text-foreground">Impossible to forget</strong> -
+                                        Security is automatic, not manual
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                                    <div>
-                                        <strong>Reduces bugs by 90%</strong> - No manual filtering means no filtering
-                                        bugs
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
+                                        <strong className="font-medium text-foreground">Reduces bugs by 90%</strong> -
+                                        No manual filtering means no filtering bugs
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                                    <div>
-                                        <strong>Single source of truth</strong> - All security rules in one place
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
+                                        <strong className="font-medium text-foreground">Single source of truth</strong>{' '}
+                                        - All security rules in one place
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                                    <div>
-                                        <strong>Compliance ready</strong> - Audit all security violations
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
+                                        <strong className="font-medium text-foreground">Compliance ready</strong> -
+                                        Audit all security violations
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                                    <div>
-                                        <strong>Zero trust architecture</strong> - No model accessible without policy
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
+                                        <strong className="font-medium text-foreground">Zero trust architecture</strong>{' '}
+                                        - No model accessible without policy
                                     </div>
                                 </li>
                             </ul>

@@ -104,11 +104,10 @@ const TOKEN_USAGE: Record<string, string> = {
 
 /**
  * Reusable color swatch – smooth edges (avoids jagged borders).
- * Uses inset box-shadow instead of border (renders cleaner on small elements),
+ * Uses an inset ring instead of border (renders cleaner on small elements),
  * and translateZ(0) to promote to GPU layer for better anti-aliasing.
  */
-export const colorSwatchClass =
-    'shrink-0 rounded shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] [transform:translateZ(0)]';
+export const colorSwatchClass = 'shrink-0 rounded ring-1 ring-inset ring-border/60 [transform:translateZ(0)]';
 
 /** Custom renderer for theme preset items in OttaSelect dropdown (render function, not a component) */
 const themePresetRenderer = ({ item }: ItemRendererProps) => (
@@ -140,7 +139,7 @@ const TokenSwatch = memo(function TokenSwatch({
     onEdit: (mode: 'light' | 'dark', token: string, hex: string) => void;
 }) {
     return (
-        <div className="flex items-center gap-1.5 rounded-md border p-1.5 bg-card/50 dark:border-muted group">
+        <div className="flex items-center gap-1.5 rounded-md bg-background p-1.5 ring-1 ring-border group">
             <label className="relative shrink-0 cursor-pointer">
                 <div className={`h-7 w-7 ${colorSwatchClass}`} style={{ backgroundColor: hslToCss(value) }} />
                 <input
@@ -152,8 +151,10 @@ const TokenSwatch = memo(function TokenSwatch({
                 />
             </label>
             <div className="min-w-0 flex-1">
-                <p className="truncate text-[10px] font-medium leading-tight">{token.replace('-foreground', '-fg')}</p>
-                <p className="truncate text-[9px] font-mono text-muted-foreground leading-tight">{value}</p>
+                <p className="truncate text-[0.625rem] font-medium leading-tight">
+                    {token.replace('-foreground', '-fg')}
+                </p>
+                <p className="truncate text-[0.625rem] font-mono text-muted-foreground leading-tight">{value}</p>
             </div>
         </div>
     );
@@ -535,10 +536,10 @@ export function BrandKitThemeTab({
 
     // ── Preset section ───────────────────────────────────────────────────
     const presetSection = (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Theme preset</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Theme preset</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Base color palette for this Brand Kit. Use the color generator below to override individual tokens.
                 </CardDescription>
             </CardHeader>
@@ -600,7 +601,9 @@ export function BrandKitThemeTab({
 
                 {/* Full resolved palette – all semantic tokens as swatches */}
                 <div className="space-y-2 pt-2">
-                    <p className="text-xs font-medium text-muted-foreground">Resolved palette</p>
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Resolved palette
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                         {DISPLAY_TOKENS.map((token) => {
                             const value = resolvedColors?.[token];
@@ -615,7 +618,7 @@ export function BrandKitThemeTab({
                                         className={`h-7 w-7 ${colorSwatchClass}`}
                                         style={{ backgroundColor: hslToCss(value) }}
                                     />
-                                    <span className="text-[9px] text-muted-foreground leading-tight max-w-[3.5rem] truncate">
+                                    <span className="text-[0.625rem] text-muted-foreground leading-tight max-w-[3.5rem] truncate">
                                         {token.replace('-foreground', '-fg')}
                                     </span>
                                 </div>
@@ -627,8 +630,10 @@ export function BrandKitThemeTab({
                 {/* Primary color 50-950 shade gradient */}
                 {primaryGradient && (
                     <div className="space-y-2 pt-1">
-                        <p className="text-xs font-medium text-muted-foreground">Primary scale (50–950)</p>
-                        <div className="flex rounded-md overflow-hidden shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] [transform:translateZ(0)]">
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Primary scale (50–950)
+                        </p>
+                        <div className="flex rounded-md overflow-hidden ring-1 ring-inset ring-border/60 [transform:translateZ(0)]">
                             {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => (
                                 <div
                                     key={step}
@@ -636,7 +641,7 @@ export function BrandKitThemeTab({
                                     style={{ backgroundColor: primaryGradient[step] }}
                                     title={`${step}: ${primaryGradient[step]}`}
                                 >
-                                    <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono opacity-0 group-hover:opacity-100 transition-opacity mix-blend-difference text-white">
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.625rem] font-mono opacity-0 group-hover:opacity-100 transition-opacity mix-blend-difference text-white">
                                         {step}
                                     </span>
                                 </div>
@@ -652,17 +657,17 @@ export function BrandKitThemeTab({
     const paletteTokenKeys = Object.keys(lightTokens ?? darkTokens ?? {}) as (keyof SemanticPalette)[];
 
     const colorSection = (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Custom color overrides</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Custom color overrides</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Generate a cohesive light &amp; dark palette from a brand color. Click any swatch to fine-tune
                     individual tokens. Changes apply to the live preview on save.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {hasCustomColorOverrides && (
-                    <div className="rounded-md border border-amber-300/50 bg-amber-50/70 p-3 text-sm dark:border-amber-700/40 dark:bg-amber-950/20">
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium">Custom colors active</p>
@@ -680,27 +685,27 @@ export function BrandKitThemeTab({
                 {/* Base color picker + generate */}
                 <div className="space-y-2">
                     <Label>Brand color</Label>
-                    <div className="flex h-10 flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <Input
                             type="color"
                             value={hexColor}
                             onChange={handleColorPickerChange}
-                            className="h-10 w-12 shrink-0 cursor-pointer p-1"
+                            className="h-9 w-12 shrink-0 cursor-pointer p-1"
                         />
                         <Input
                             value={baseColor}
                             onChange={(e) => setBaseColor(e.target.value)}
                             placeholder="222 47% 11%"
-                            className="h-10 w-44 font-mono"
+                            className="h-9 w-44 font-mono"
                         />
-                        <Button onClick={handleGenerate} variant="outline" className="h-10 shrink-0">
+                        <Button onClick={handleGenerate} variant="outline" className="h-9 shrink-0">
                             <IconRefresh className="mr-2 h-4 w-4" />
                             Generate palette
                         </Button>
                         <Button
                             onClick={handleApplyToKit}
                             disabled={!lightTokens && !darkTokens}
-                            className="h-10 shrink-0"
+                            className="h-9 shrink-0"
                         >
                             <IconPalette className="mr-2 h-4 w-4" />
                             Apply to Brand Kit
@@ -715,8 +720,9 @@ export function BrandKitThemeTab({
                         {lightTokens && (
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full bg-amber-400" />
-                                    <p className="text-xs font-semibold">Light mode</p>
+                                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Light mode
+                                    </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
                                     {paletteTokenKeys.map((token) => (
@@ -735,8 +741,9 @@ export function BrandKitThemeTab({
                         {darkTokens && (
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full bg-indigo-500" />
-                                    <p className="text-xs font-semibold">Dark mode</p>
+                                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Dark mode
+                                    </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
                                     {paletteTokenKeys.map((token) => (
@@ -823,17 +830,19 @@ export function BrandKitThemeTab({
 
         return (
             <div
-                className={`space-y-6 flex-1 px-4 max-w-full ${!isShared ? (isDark ? 'bg-zinc-950/20 text-white rounded-r-lg' : 'bg-white text-zinc-900 rounded-l-lg') : ''}`}
+                className={`space-y-6 flex-1 px-4 max-w-full ${!isShared ? (isDark ? 'text-neutral-200' : 'text-neutral-800') : ''}`}
             >
                 {!isShared && <h3 className="font-semibold text-sm capitalize">{mode} Mode Overrides</h3>}
 
                 <div className="grid gap-6">
                     <div className="space-y-2">
-                        <Label className={isDark ? 'text-zinc-200' : ''}>Spacing</Label>
+                        <Label className={isDark ? 'text-neutral-200' : ''}>Spacing</Label>
                         <div className="space-y-2">
                             {(['section', 'card', 'element'] as const).map((key) => (
                                 <div key={key} className="flex items-center gap-2">
-                                    <span className="w-16 shrink-0 text-xs text-muted-foreground capitalize">
+                                    <span
+                                        className={`w-16 shrink-0 text-xs capitalize ${isDark ? 'text-neutral-400' : 'text-muted-foreground'}`}
+                                    >
                                         {key}
                                     </span>
                                     <Input
@@ -844,7 +853,7 @@ export function BrandKitThemeTab({
                                             })
                                         }
                                         placeholder={DEFAULT_SPACING[key]}
-                                        className={`font-mono text-sm ${isDark ? 'border-zinc-800 bg-zinc-900' : ''}`}
+                                        className={`font-mono text-sm ${isDark ? 'border-neutral-700 bg-neutral-800' : ''}`}
                                     />
                                 </div>
                             ))}
@@ -852,19 +861,19 @@ export function BrandKitThemeTab({
                     </div>
 
                     <div className="space-y-2">
-                        <Label className={isDark ? 'text-zinc-200' : ''}>Border radius</Label>
+                        <Label className={isDark ? 'text-neutral-200' : ''}>Border radius</Label>
                         <div className="flex flex-wrap gap-2">
                             {RADIUS_OPTIONS.map((rad) => (
                                 <button
                                     key={rad}
                                     type="button"
                                     onClick={() => handleSpacingRadiusShadowChange(mode, { radius: rad })}
-                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors duration-normal ${
                                         r === rad
-                                            ? 'border-primary bg-primary/10 text-primary'
+                                            ? 'border-transparent bg-background ring-1 ring-border'
                                             : isDark
-                                              ? 'border-zinc-800 hover:bg-zinc-800'
-                                              : 'border-input hover:bg-accent'
+                                              ? 'border-neutral-700 hover:bg-neutral-800'
+                                              : 'border-input hover:bg-muted/70'
                                     }`}
                                     style={{ borderRadius: rad === '9999px' ? '9999px' : rad }}
                                 >
@@ -875,7 +884,7 @@ export function BrandKitThemeTab({
                     </div>
 
                     <div className="space-y-2">
-                        <Label className={isDark ? 'text-zinc-200' : ''}>Shadow elevation</Label>
+                        <Label className={isDark ? 'text-neutral-200' : ''}>Shadow elevation</Label>
                         <div className="grid grid-cols-2 gap-2">
                             {SHADOW_PRESETS.map((pre) => {
                                 const active = matchesPreset(sh, pre);
@@ -884,17 +893,17 @@ export function BrandKitThemeTab({
                                         key={pre.label}
                                         type="button"
                                         onClick={() => handleSpacingRadiusShadowChange(mode, { shadow: pre.value })}
-                                        className={`flex flex-col items-start p-2 rounded-md border text-left transition-colors ${
+                                        className={`flex flex-col items-start p-2 rounded-md border text-left transition-colors duration-normal ${
                                             active
-                                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                                : `${isDark ? 'border-zinc-800 hover:border-zinc-600' : 'border-input hover:bg-accent'}`
+                                                ? 'border-transparent bg-background ring-1 ring-border'
+                                                : `${isDark ? 'border-neutral-700 hover:border-neutral-500' : 'border-input hover:bg-muted/70'}`
                                         }`}
                                     >
-                                        <span className={`text-sm font-semibold ${isDark ? 'text-zinc-200' : ''}`}>
+                                        <span className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : ''}`}>
                                             {pre.label}
                                         </span>
                                         <span
-                                            className={`text-[10px] ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}
+                                            className={`text-[0.625rem] ${isDark ? 'text-neutral-400' : 'text-muted-foreground'}`}
                                         >
                                             {pre.desc}
                                         </span>
@@ -904,16 +913,20 @@ export function BrandKitThemeTab({
                         </div>
                         <details className="mt-2 text-xs">
                             <summary
-                                className={`cursor-pointer ${isDark ? 'text-zinc-400' : 'text-muted-foreground'} hover:text-primary`}
+                                className={`cursor-pointer ${isDark ? 'text-neutral-400' : 'text-muted-foreground'} hover:text-primary`}
                             >
                                 Advanced CSS Overrides
                             </summary>
                             <div
-                                className={`space-y-2 mt-2 pl-2 border-l-2 ${isDark ? 'border-zinc-800' : 'border-muted'}`}
+                                className={`space-y-2 mt-2 pl-2 border-l-2 ${isDark ? 'border-neutral-700' : 'border-muted'}`}
                             >
                                 {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((level) => (
                                     <div key={level} className="flex items-center gap-2">
-                                        <span className="w-6 shrink-0 text-[10px] text-muted-foreground">{level}</span>
+                                        <span
+                                            className={`w-6 shrink-0 text-[0.625rem] ${isDark ? 'text-neutral-400' : 'text-muted-foreground'}`}
+                                        >
+                                            {level}
+                                        </span>
                                         <Input
                                             value={sh[level] ?? ''}
                                             onChange={(e) =>
@@ -924,7 +937,7 @@ export function BrandKitThemeTab({
                                                 })
                                             }
                                             placeholder={DEFAULT_SHADOWS[level]}
-                                            className={`font-mono text-[10px] h-6 px-1.5 ${isDark ? 'border-zinc-800 bg-zinc-900' : ''}`}
+                                            className={`font-mono text-[0.625rem] h-6 px-1.5 ${isDark ? 'border-neutral-700 bg-neutral-800' : ''}`}
                                         />
                                     </div>
                                 ))}
@@ -937,14 +950,16 @@ export function BrandKitThemeTab({
     };
 
     const spacingRadiusShadowSection = (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Spacing, radius &amp; shadows</CardTitle>
-                <CardDescription>Override layout spacing, border radius, and shadow elevation.</CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Spacing, radius &amp; shadows</CardTitle>
+                <CardDescription className="leading-relaxed">
+                    Override layout spacing, border radius, and shadow elevation.
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {hasSpacingRadiusShadowOverrides && (
-                    <div className="rounded-md border border-amber-300/50 bg-amber-50/70 p-3 text-sm dark:border-amber-700/40 dark:bg-amber-950/20">
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium">Custom overrides active</p>
@@ -962,7 +977,7 @@ export function BrandKitThemeTab({
                     </div>
                 )}
 
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-accent/50">
+                <div className="flex items-center justify-between rounded-lg bg-background p-4 ring-1 ring-border">
                     <div>
                         <Label>Different for dark mode</Label>
                         <p className="text-xs text-muted-foreground max-w-sm">
@@ -973,11 +988,12 @@ export function BrandKitThemeTab({
                 </div>
 
                 {!isSplitLayout ? (
-                    <div className="-mx-4 pb-4">{renderSRSConfig('shared')}</div>
+                    <div className="rounded-lg bg-background py-4 ring-1 ring-border">{renderSRSConfig('shared')}</div>
                 ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-0 divide-y xl:divide-y-0 xl:divide-x border border-border rounded-lg dark:divide-zinc-800 dark:border-zinc-800">
-                        <div className="py-4 bg-white/50">{renderSRSConfig('light')}</div>
-                        <div className="py-4 bg-black/5">{renderSRSConfig('dark')}</div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-0 divide-y xl:divide-y-0 xl:divide-x divide-border/60 overflow-hidden rounded-lg ring-1 ring-border">
+                        {/* Simulated light / dark surfaces so mode-specific values are judged in context */}
+                        <div className="py-4 bg-white">{renderSRSConfig('light')}</div>
+                        <div className="py-4 bg-neutral-900">{renderSRSConfig('dark')}</div>
                     </div>
                 )}
             </CardContent>
@@ -986,10 +1002,10 @@ export function BrandKitThemeTab({
 
     // ── Token usage reference ────────────────────────────────────────────
     const tokenUsageSection = (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Token reference</CardTitle>
-                <CardDescription>Where each color token appears in the UI.</CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Token reference</CardTitle>
+                <CardDescription className="leading-relaxed">Where each color token appears in the UI.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1003,10 +1019,10 @@ export function BrandKitThemeTab({
                                     className={`h-3.5 w-3.5 shrink-0 rounded-sm ${colorSwatchClass}`}
                                     style={{ backgroundColor: color ? hslToCss(color) : 'transparent' }}
                                 />
-                                <span className="text-[11px] font-medium min-w-[5.5rem] shrink-0">
+                                <span className="text-[0.6875rem] font-medium min-w-[5.5rem] shrink-0">
                                     {token.replace('-foreground', '-fg')}
                                 </span>
-                                <span className="text-[11px] text-muted-foreground truncate">{usage}</span>
+                                <span className="text-[0.6875rem] text-muted-foreground truncate">{usage}</span>
                             </div>
                         );
                     })}

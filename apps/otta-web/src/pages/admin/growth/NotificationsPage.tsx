@@ -21,7 +21,12 @@ import {
     Textarea,
     Badge,
 } from '@ottabase/ui-shadcn';
-import { Bell, Mail, Radio, Send, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Mail, Radio, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
+const MICRO_LABEL_CLASS = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const TINT_CARD_CLASS = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 
 interface NotificationForm {
     recipientId: string;
@@ -87,14 +92,28 @@ export function AdminNotificationsPage() {
         sendAlert.mutate({ title: form.title, message: form.message, severity, eventType: 'admin.manual' });
     };
 
+    const resultNotice = result && (
+        <div
+            className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
+                result.success
+                    ? 'border-success/40 bg-success/10 text-success'
+                    : 'border-destructive/40 bg-destructive/10 text-destructive'
+            }`}
+        >
+            {result.success ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+            ) : (
+                <AlertCircle className="h-4 w-4 shrink-0" />
+            )}
+            {result.message}
+        </div>
+    );
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                    <Bell className="h-8 w-8" />
-                    Notifications Management
-                </h1>
-                <p className="text-muted-foreground mt-2">
+        <div className="space-y-8">
+            <div className="space-y-1.5">
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Notifications Management</h1>
+                <p className="max-w-3xl text-muted-foreground">
                     Send notifications to users or broadcast system alerts to administrators.
                 </p>
             </div>
@@ -107,10 +126,10 @@ export function AdminNotificationsPage() {
                 </TabsList>
 
                 <TabsContent value="send" className="space-y-4">
-                    <Card>
+                    <Card className={TINT_CARD_CLASS}>
                         <CardHeader>
-                            <CardTitle>Send Notification to User</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Send Notification to User</CardTitle>
+                            <CardDescription className="leading-relaxed">
                                 Choose a channel (email, websocket, or system) and compose your notification
                             </CardDescription>
                         </CardHeader>
@@ -144,7 +163,7 @@ export function AdminNotificationsPage() {
                                         value={form.channel}
                                         onValueChange={(value: any) => setForm({ ...form, channel: value })}
                                     >
-                                        <SelectTrigger id="channel">
+                                        <SelectTrigger id="channel" className="bg-background">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -175,7 +194,7 @@ export function AdminNotificationsPage() {
                                         value={form.priority}
                                         onValueChange={(value: any) => setForm({ ...form, priority: value })}
                                     >
-                                        <SelectTrigger id="priority">
+                                        <SelectTrigger id="priority" className="bg-background">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -215,6 +234,7 @@ export function AdminNotificationsPage() {
                                     value={form.message}
                                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                                     rows={4}
+                                    className="bg-background"
                                 />
                             </div>
 
@@ -239,20 +259,7 @@ export function AdminNotificationsPage() {
                                 </div>
                             </div>
 
-                            {result && (
-                                <div
-                                    className={`p-4 rounded-lg flex items-center gap-2 ${
-                                        result.success ? 'bg-green-50 text-green-900' : 'bg-red-50 text-red-900'
-                                    }`}
-                                >
-                                    {result.success ? (
-                                        <CheckCircle2 className="h-5 w-5" />
-                                    ) : (
-                                        <AlertCircle className="h-5 w-5" />
-                                    )}
-                                    {result.message}
-                                </div>
-                            )}
+                            {resultNotice}
 
                             <Button
                                 onClick={handleSend}
@@ -267,10 +274,10 @@ export function AdminNotificationsPage() {
                 </TabsContent>
 
                 <TabsContent value="system" className="space-y-4">
-                    <Card>
+                    <Card className={TINT_CARD_CLASS}>
                         <CardHeader>
-                            <CardTitle>Broadcast System Alert</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Broadcast System Alert</CardTitle>
+                            <CardDescription className="leading-relaxed">
                                 Send alerts to all administrators about system events or issues
                             </CardDescription>
                         </CardHeader>
@@ -293,6 +300,7 @@ export function AdminNotificationsPage() {
                                     value={form.message}
                                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                                     rows={4}
+                                    className="bg-background"
                                 />
                             </div>
 
@@ -301,77 +309,80 @@ export function AdminNotificationsPage() {
                                     variant="outline"
                                     onClick={() => sendSystemAlert('info')}
                                     disabled={sending || !form.title || !form.message}
+                                    className="gap-2"
                                 >
-                                    <Badge className="mr-2 bg-blue-500">Info</Badge>
+                                    <span
+                                        className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"
+                                        aria-hidden="true"
+                                    />
                                     Send Info Alert
                                 </Button>
                                 <Button
                                     variant="outline"
                                     onClick={() => sendSystemAlert('warning')}
                                     disabled={sending || !form.title || !form.message}
+                                    className="gap-2"
                                 >
-                                    <Badge className="mr-2 bg-yellow-500">Warning</Badge>
+                                    <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
                                     Send Warning
                                 </Button>
                                 <Button
                                     variant="outline"
                                     onClick={() => sendSystemAlert('error')}
                                     disabled={sending || !form.title || !form.message}
+                                    className="gap-2"
                                 >
-                                    <Badge className="mr-2 bg-orange-500">Error</Badge>
+                                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden="true" />
                                     Send Error Alert
                                 </Button>
                                 <Button
                                     variant="destructive"
                                     onClick={() => sendSystemAlert('critical')}
                                     disabled={sending || !form.title || !form.message}
+                                    className="gap-2"
                                 >
-                                    <Badge className="mr-2 bg-red-500">Critical</Badge>
+                                    <span
+                                        className="h-1.5 w-1.5 rounded-full bg-destructive-foreground"
+                                        aria-hidden="true"
+                                    />
                                     Send Critical Alert
                                 </Button>
                             </div>
 
-                            {result && (
-                                <div
-                                    className={`p-4 rounded-lg flex items-center gap-2 ${
-                                        result.success ? 'bg-green-50 text-green-900' : 'bg-red-50 text-red-900'
-                                    }`}
-                                >
-                                    {result.success ? (
-                                        <CheckCircle2 className="h-5 w-5" />
-                                    ) : (
-                                        <AlertCircle className="h-5 w-5" />
-                                    )}
-                                    {result.message}
-                                </div>
-                            )}
+                            {resultNotice}
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="history" className="space-y-4">
-                    <Card>
+                    <Card className={TINT_CARD_CLASS}>
                         <CardHeader>
-                            <CardTitle>Notification History</CardTitle>
-                            <CardDescription>View recently sent notifications and their status</CardDescription>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Notification History</CardTitle>
+                            <CardDescription className="leading-relaxed">
+                                View recently sent notifications and their status
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <div className="rounded-lg border p-4">
+                                <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h4 className="font-medium">Sample Notification</h4>
+                                            <h4 className="text-sm font-medium">Sample Notification</h4>
                                             <p className="text-sm text-muted-foreground">
                                                 Sent to user@example.com via email
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline">
-                                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                                                <span
+                                                    className="h-1.5 w-1.5 rounded-full bg-success"
+                                                    aria-hidden="true"
+                                                />
                                                 Sent
                                             </Badge>
-                                            <Clock className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-sm text-muted-foreground">2 hours ago</span>
+                                            <span className={`${MICRO_LABEL_CLASS} whitespace-nowrap`}>
+                                                2 hours ago
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -384,31 +395,29 @@ export function AdminNotificationsPage() {
                 </TabsContent>
             </Tabs>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Quick Stats</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">0</div>
-                            <div className="text-sm text-muted-foreground">Sent Today</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">0</div>
-                            <div className="text-sm text-muted-foreground">Pending</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">0</div>
-                            <div className="text-sm text-muted-foreground">Failed</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">0</div>
-                            <div className="text-sm text-muted-foreground">Read Rate</div>
-                        </div>
+            <section className="space-y-4">
+                <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    Quick Stats
+                </h2>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="rounded-xl bg-muted/40 p-5">
+                        <p className={MICRO_LABEL_CLASS}>Sent Today</p>
+                        <p className="mt-2 text-2xl font-semibold">0</p>
                     </div>
-                </CardContent>
-            </Card>
+                    <div className="rounded-xl bg-muted/40 p-5">
+                        <p className={MICRO_LABEL_CLASS}>Pending</p>
+                        <p className="mt-2 text-2xl font-semibold">0</p>
+                    </div>
+                    <div className="rounded-xl bg-muted/40 p-5">
+                        <p className={MICRO_LABEL_CLASS}>Failed</p>
+                        <p className="mt-2 text-2xl font-semibold">0</p>
+                    </div>
+                    <div className="rounded-xl bg-muted/40 p-5">
+                        <p className={MICRO_LABEL_CLASS}>Read Rate</p>
+                        <p className="mt-2 text-2xl font-semibold">0</p>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }

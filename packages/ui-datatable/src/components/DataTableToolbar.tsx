@@ -78,17 +78,19 @@ export function DataTableToolbar<TData>({
                 {/* Bulk action bar (when rows selected) */}
                 {hasBulkSelection ? (
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">{selectedCount} selected</span>
+                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {selectedCount} selected
+                        </span>
                         {bulkActions!.map((action, i) => (
                             <button
                                 key={i}
                                 onClick={() => action.onClick(getSelectedRows?.() ?? [])}
                                 className={clsx(
-                                    'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                                    'inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                                     action.variant === 'destructive'
                                         ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                                         : action.variant === 'outline'
-                                          ? 'border border-input hover:bg-accent'
+                                          ? 'bg-background text-foreground ring-1 ring-border hover:bg-muted/70'
                                           : 'bg-primary text-primary-foreground hover:bg-primary/90',
                                 )}
                             >
@@ -98,7 +100,7 @@ export function DataTableToolbar<TData>({
                         ))}
                         <button
                             onClick={clearSelection}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <X className="h-3.5 w-3.5" />
                             Clear
@@ -118,16 +120,16 @@ export function DataTableToolbar<TData>({
                                     onChange={(e) => handleSearchChange(e.target.value)}
                                     placeholder={searchPlaceholder}
                                     className={clsx(
-                                        'h-9 w-full rounded-md border border-input bg-background pl-10 pr-8 text-sm transition-colors',
+                                        'h-9 w-full rounded-md bg-background pl-10 pr-8 text-sm ring-1 ring-border transition-colors duration-normal',
                                         'placeholder:text-muted-foreground',
-                                        'focus:outline-none focus:ring-1 focus:ring-ring',
+                                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                                     )}
                                 />
                                 {searchValue && (
                                     <button
                                         aria-label="Clear search"
                                         onClick={() => handleSearchChange('')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                     >
                                         <X className="h-3.5 w-3.5" />
                                     </button>

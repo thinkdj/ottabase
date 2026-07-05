@@ -378,13 +378,15 @@ export function UserProfilePage() {
     }
 
     return (
-        <div className="space-y-6 max-w-3xl">
+        <div className="mx-auto max-w-3xl space-y-8">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold">Profile Settings</h1>
-                <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+            <div className="space-y-4">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Profile Settings</h1>
+                    <p className="text-muted-foreground">Manage your account settings and preferences</p>
+                </div>
                 {MEDIA_LIBRARY_ENABLED && (
-                    <div className="mt-3">
+                    <div>
                         <Button variant="outline" size="sm" asChild>
                             <Link to="/media-library">Open My Uploads</Link>
                         </Button>
@@ -393,10 +395,10 @@ export function UserProfilePage() {
             </div>
 
             {/* Profile Info */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <User className="h-4 w-4 text-muted-foreground" />
                         Public Profile
                     </CardTitle>
                     <CardDescription>Your profile information visible to others</CardDescription>
@@ -409,16 +411,16 @@ export function UserProfilePage() {
                                 <button
                                     type="button"
                                     onClick={() => setAvatarPreviewOpen(true)}
-                                    className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     aria-label="View profile picture"
                                 >
-                                    <Avatar className="h-20 w-20 cursor-pointer ring-offset-background transition-opacity hover:opacity-90">
+                                    <Avatar className="h-20 w-20 cursor-pointer ring-1 ring-border ring-offset-2 ring-offset-background transition-opacity duration-normal hover:opacity-90">
                                         <AvatarImage src={user.image} />
                                         <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
                                     </Avatar>
                                 </button>
                             ) : (
-                                <Avatar className="h-20 w-20">
+                                <Avatar className="h-20 w-20 ring-1 ring-border ring-offset-2 ring-offset-background">
                                     <AvatarImage src={undefined} />
                                     <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
                                 </Avatar>
@@ -429,14 +431,14 @@ export function UserProfilePage() {
                                     e.stopPropagation();
                                     setAvatarModalOpen(true);
                                 }}
-                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted-foreground/20 hover:text-foreground dark:border-background dark:bg-muted"
+                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label="Edit profile picture"
                             >
                                 <IconPencil className="h-3.5 w-3.5" />
                             </button>
                         </div>
                         <div className="space-y-2">
-                            <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
+                            <h3 className="text-[0.9375rem] font-semibold">{formData.name || 'No name set'}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Mail className="h-4 w-4" />
                                 {formData.email}
@@ -477,7 +479,7 @@ export function UserProfilePage() {
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="text-blue-600 hover:bg-blue-600/10 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-400/10"
+                                        className="text-muted-foreground hover:text-foreground"
                                         onClick={() => window.open(user.image || '', '_blank', 'noopener,noreferrer')}
                                     >
                                         <IconExternalLink className="mr-2 h-4 w-4" />
@@ -613,9 +615,9 @@ export function UserProfilePage() {
             </Card>
 
             {/* Account Info */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Account Information</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Account Information</CardTitle>
                     <CardDescription>Your account details and status</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -623,7 +625,9 @@ export function UserProfilePage() {
                     <div className="space-y-2">
                         <Label>User ID</Label>
                         <div className="flex items-center gap-2">
-                            <code className="text-sm bg-muted px-3 py-2 rounded flex-1">{user.id}</code>
+                            <code className="flex-1 rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border">
+                                {user.id}
+                            </code>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -642,12 +646,20 @@ export function UserProfilePage() {
                         <Label>Email Status</Label>
                         <div>
                             {user.emailVerified ? (
-                                <Badge variant="default" className="gap-1">
+                                <Badge
+                                    variant="outline"
+                                    className="gap-1 rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                >
                                     <Check className="h-3 w-3" />
                                     Verified
                                 </Badge>
                             ) : (
-                                <Badge variant="secondary">Not Verified</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                >
+                                    Not Verified
+                                </Badge>
                             )}
                         </div>
                     </div>
@@ -656,7 +668,11 @@ export function UserProfilePage() {
                             <p className="text-sm text-muted-foreground">
                                 Verify your email to unlock all account features.
                             </p>
-                            {verificationError && <p className="text-sm text-destructive">{verificationError}</p>}
+                            {verificationError && (
+                                <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                    {verificationError}
+                                </p>
+                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -666,7 +682,7 @@ export function UserProfilePage() {
                                 {verificationStatus === 'sending' ? 'Sending...' : 'Resend verification email'}
                             </Button>
                             {verificationStatus === 'sent' && (
-                                <p className="text-xs text-green-600">Verification email sent.</p>
+                                <p className="text-xs font-medium text-success">Verification email sent.</p>
                             )}
                         </div>
                     )}
@@ -692,9 +708,9 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Linked Providers</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Linked Providers</CardTitle>
                     <CardDescription>Sign-in methods associated with this account</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -709,10 +725,10 @@ export function UserProfilePage() {
                             {linkedAccounts.map((account) => (
                                 <div
                                     key={`${account.provider}-${account.createdAt || 'unknown'}`}
-                                    className="border border-border rounded-lg px-3 py-2 flex flex-col gap-1"
+                                    className="flex flex-col gap-1 rounded-lg bg-background px-3 py-2 ring-1 ring-border"
                                 >
-                                    <span className="text-base font-semibold">{account.provider}</span>
-                                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                    <span className="text-[0.9375rem] font-semibold">{account.provider}</span>
+                                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                         {account.type}
                                     </span>
                                     {account.createdAt && (
@@ -733,15 +749,15 @@ export function UserProfilePage() {
             </Card>
 
             {/* Security */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Security</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
                     <CardDescription>Manage your account security settings</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium">Password</h4>
+                            <h4 className="text-sm font-medium">Password</h4>
                             <p className="text-sm text-muted-foreground">Update your account password.</p>
                         </div>
                         <Button
@@ -760,7 +776,7 @@ export function UserProfilePage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium">Two-Factor Authentication</h4>
+                            <h4 className="text-sm font-medium">Two-Factor Authentication</h4>
                             <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
                         </div>
                         <Button variant="outline" size="sm" disabled>
@@ -822,7 +838,11 @@ export function UserProfilePage() {
                             />
                         </div>
 
-                        {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+                        {passwordError && (
+                            <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                {passwordError}
+                            </p>
+                        )}
 
                         <div className="flex justify-end gap-2">
                             <Button

@@ -138,9 +138,9 @@ export function CloudflareQueuesDemoPage() {
                 backLabel="Back to Cloudflare Features"
             />
 
-            <Card className="border-dashed">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">How it works</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">How it works</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-muted-foreground">
                     <p>
@@ -152,7 +152,7 @@ export function CloudflareQueuesDemoPage() {
                     <p>
                         <strong>3. Retry:</strong> Failed jobs are automatically retried (up to 3 times by default)
                     </p>
-                    <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
+                    <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                         {`// Dispatch a job from anywhere
 import { dispatch } from "@ottabase/queue";
 
@@ -165,21 +165,21 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
             </Card>
 
             {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             )}
 
             {success && (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm">{success}</p>
                 </div>
             )}
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Dispatch Job</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Dispatch Job</CardTitle>
                         <CardDescription>Send a job to the queue with typed payload</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -236,9 +236,9 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Batch Dispatch</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Batch Dispatch</CardTitle>
                         <CardDescription>Send multiple jobs at once</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -254,7 +254,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                             />
                         </div>
 
-                        <div className="rounded-lg bg-muted p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <p className="mb-2 text-xs font-medium text-muted-foreground">Preview:</p>
                             <pre className="overflow-x-auto text-xs">
                                 {`{
@@ -277,15 +277,15 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 </Card>
             </div>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Registered Handlers</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Registered Handlers</CardTitle>
                     <CardDescription>Job types that can be processed</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {JOB_TYPES.map((type) => (
-                            <div key={type.value} className="rounded-lg border p-3">
+                            <div key={type.value} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                 <p className="font-mono text-sm">{type.value}</p>
                                 <p className="text-xs text-muted-foreground">{type.description}</p>
                             </div>
@@ -294,14 +294,20 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                         <div>
-                            <CardTitle className="text-base">Recent Jobs</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Recent Jobs</CardTitle>
                             <CardDescription>Jobs stored in KV for demo (expires after 1 hour)</CardDescription>
                         </div>
-                        <Button onClick={loadMessages} disabled={loading} variant="outline" size="sm">
+                        <Button
+                            onClick={loadMessages}
+                            disabled={loading}
+                            variant="outline"
+                            size="sm"
+                            className="bg-background"
+                        >
                             Refresh
                         </Button>
                     </div>
@@ -312,14 +318,14 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                     ) : (
                         <div className="space-y-2">
                             {messages.map((msg) => (
-                                <div key={msg.key} className="rounded-lg border p-3">
+                                <div key={msg.key} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0 flex-1">
                                             <div className="mb-1 flex items-center gap-2">
                                                 <span className="font-mono text-sm font-medium">
                                                     {msg.action || 'unknown'}
                                                 </span>
-                                                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                                <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                                                     {msg.type}
                                                 </span>
                                             </div>
@@ -327,7 +333,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                                                 <p className="text-xs text-muted-foreground">User: {msg.userId}</p>
                                             )}
                                             {msg.data && (
-                                                <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
+                                                <pre className="mt-2 overflow-x-auto rounded bg-muted/40 p-2 text-xs">
                                                     {JSON.stringify(msg.data, null, 2)}
                                                 </pre>
                                             )}

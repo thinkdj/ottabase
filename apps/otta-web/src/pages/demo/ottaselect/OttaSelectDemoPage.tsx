@@ -185,7 +185,9 @@ export function OttaSelectDemoPage() {
         <div className="flex items-center gap-2 flex-1">
             <span>{item.emoji}</span>
             <span className="truncate">{item.name}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-muted">{item.category}</span>
+            <span className="rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground ring-1 ring-border">
+                {item.category}
+            </span>
         </div>
     );
 
@@ -196,7 +198,9 @@ export function OttaSelectDemoPage() {
                 <span className="truncate font-medium">{item.name}</span>
                 <span className="text-xs text-muted-foreground truncate">{item.email}</span>
             </div>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">{item.role}</span>
+            <span className="rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground ring-1 ring-border">
+                {item.role}
+            </span>
         </div>
     );
 
@@ -226,9 +230,9 @@ export function OttaSelectDemoPage() {
             />
 
             {/* Basic Usage */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🔘 Basic Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🔘 Basic Usage</CardTitle>
                     <CardDescription>
                         Simple single and multi-select without custom rendering. Just pass your data and go!
                     </CardDescription>
@@ -246,7 +250,7 @@ export function OttaSelectDemoPage() {
                             placeholder="Pick a fruit or vegetable..."
                         />
                         {singleFruit && (
-                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                            <pre className="overflow-x-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                                 {JSON.stringify(singleFruit, null, 2)}
                             </pre>
                         )}
@@ -264,7 +268,7 @@ export function OttaSelectDemoPage() {
                             placeholder="Pick multiple items..."
                         />
                         {multiFruits && multiFruits.length > 0 && (
-                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto max-h-32">
+                            <pre className="max-h-32 overflow-x-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                                 {JSON.stringify(multiFruits, null, 2)}
                             </pre>
                         )}
@@ -273,12 +277,12 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Custom Renderer Examples */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🎨 Custom Item Renderers</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🎨 Custom Item Renderers</CardTitle>
                     <CardDescription>
-                        Use <code className="bg-muted px-1 rounded">renderItem</code> to display custom content like
-                        flags, avatars, or badges.
+                        Use <code className="rounded bg-background px-1 ring-1 ring-border">renderItem</code> to display
+                        custom content like flags, avatars, or badges.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -301,7 +305,7 @@ export function OttaSelectDemoPage() {
                             )}
                         />
                         {singleCountry && (
-                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                            <pre className="overflow-x-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                                 {JSON.stringify(singleCountry, null, 2)}
                             </pre>
                         )}
@@ -351,9 +355,11 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Multi Select with Custom Rendering */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>☑️ Multi Select with Custom Rendering</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">
+                        ☑️ Multi Select with Custom Rendering
+                    </CardTitle>
                     <CardDescription>Custom renderers work with multi-select too.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -373,7 +379,7 @@ export function OttaSelectDemoPage() {
                                 {multiCountries.map((country, index) => (
                                     <span
                                         key={country.id || `country-${index}`}
-                                        className="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-full text-sm"
+                                        className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1 text-sm ring-1 ring-border"
                                     >
                                         {country.flag} {country.name}
                                     </span>
@@ -398,20 +404,20 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Pagination Handling */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📄 Pagination Support</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">📄 Pagination Support</CardTitle>
                     <CardDescription>
                         Selected items persist even when not in current API page. The{' '}
-                        <code className="bg-muted px-1 rounded">showSelectedFirst</code> prop ensures selected items are
-                        always visible at the top.
+                        <code className="rounded bg-background px-1 ring-1 ring-border">showSelectedFirst</code> prop
+                        ensures selected items are always visible at the top.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
-                        <strong>Demo:</strong> This select uses a simulated API that only returns the first 3 countries.
-                        India and Brazil are pre-selected but won't appear in the API response. Notice they still appear
-                        at the top of the dropdown!
+                    <div className="rounded-lg border border-info/40 bg-info/10 p-3 text-sm text-info">
+                        <strong className="font-semibold">Demo:</strong> This select uses a simulated API that only
+                        returns the first 3 countries. India and Brazil are pre-selected but won't appear in the API
+                        response. Notice they still appear at the top of the dropdown!
                     </div>
 
                     <div className="space-y-2">
@@ -445,7 +451,7 @@ export function OttaSelectDemoPage() {
                                 {paginatedSelection.map((country, index) => (
                                     <span
                                         key={country.id || `country-pag-${index}`}
-                                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                                        className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1 text-sm ring-1 ring-border"
                                     >
                                         {country.flag} {country.name}
                                     </span>
@@ -457,67 +463,70 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Features */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>✨ Features</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">✨ Features</CardTitle>
                     <CardDescription>Key capabilities of OttaSelect</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ul className="space-y-2 text-sm">
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
-                                <strong>Size Variants:</strong> Toggle <code className="bg-muted px-1 rounded">xs</code>
-                                , <code className="bg-muted px-1 rounded">sm</code>,{' '}
-                                <code className="bg-muted px-1 rounded">md</code>, and{' '}
-                                <code className="bg-muted px-1 rounded">lg</code> using the demo switcher
+                                <strong>Size Variants:</strong> Toggle{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">xs</code>,{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">sm</code>,{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">md</code>, and{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">lg</code> using the demo
+                                switcher
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Custom Item Renderer:</strong> Pass{' '}
-                                <code className="bg-muted px-1 rounded">renderItem</code> to display flags, avatars,
-                                badges, etc.
+                                <code className="rounded bg-background px-1 ring-1 ring-border">renderItem</code> to
+                                display flags, avatars, badges, etc.
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Custom Value Renderer:</strong> Pass{' '}
-                                <code className="bg-muted px-1 rounded">renderValue</code> to customize the selected
-                                value display
+                                <code className="rounded bg-background px-1 ring-1 ring-border">renderValue</code> to
+                                customize the selected value display
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Pagination Support:</strong> Selected items persist even when not in current API
                                 response
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Selected First:</strong>{' '}
-                                <code className="bg-muted px-1 rounded">showSelectedFirst</code> keeps selected items at
-                                top
+                                <code className="rounded bg-background px-1 ring-1 ring-border">showSelectedFirst</code>{' '}
+                                keeps selected items at top
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Flexible Input:</strong> Accepts objects with{' '}
-                                <code className="bg-muted px-1 rounded">name</code>,{' '}
-                                <code className="bg-muted px-1 rounded">label</code>, or{' '}
-                                <code className="bg-muted px-1 rounded">title</code>
+                                <code className="rounded bg-background px-1 ring-1 ring-border">name</code>,{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">label</code>, or{' '}
+                                <code className="rounded bg-background px-1 ring-1 ring-border">title</code>
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-success">✓</span>
                             <span>
                                 <strong>Async Loading:</strong> Built-in support for{' '}
-                                <code className="bg-muted px-1 rounded">fetchCollection</code> with loading states
+                                <code className="rounded bg-background px-1 ring-1 ring-border">fetchCollection</code>{' '}
+                                with loading states
                             </span>
                         </li>
                     </ul>
@@ -525,13 +534,13 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📖 Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
                     <CardDescription>How to use custom renderers</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                         {`import { OttaSelect, type ItemRendererProps } from "@ottabase/ottaselect";
 
 const countries = [

@@ -406,12 +406,12 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+            <div className="absolute inset-0 bg-black/80 duration-normal ease-theme" onClick={onCancel} />
 
             {/* Modal */}
-            <div className="relative rounded-lg border border-border bg-background shadow-xl max-w-md w-full mx-4 p-6">
-                <h3 className="text-lg font-semibold text-foreground">Delete {entityName}?</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+            <div className="relative mx-4 w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg duration-normal ease-theme">
+                <h3 className="text-[0.9375rem] font-semibold text-foreground">Delete {entityName}?</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Are you sure you want to delete this {entityName.toLowerCase()} (ID: {recordId}
                     )? This action cannot be undone.
                 </p>
@@ -421,10 +421,10 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                         onClick={onCancel}
                         disabled={isLoading}
                         className={clsx(
-                            'px-4 py-2 rounded-lg font-medium transition-colors',
-                            'text-foreground',
-                            'border border-input bg-background',
-                            'hover:bg-accent hover:text-accent-foreground',
+                            'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
+                            'bg-background text-foreground ring-1 ring-border',
+                            'hover:bg-muted/70',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             'disabled:opacity-50',
                         )}
                     >
@@ -434,13 +434,14 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                         onClick={onConfirm}
                         disabled={isLoading}
                         className={clsx(
-                            'px-4 py-2 rounded-lg font-medium transition-colors',
+                            'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                             'bg-destructive text-destructive-foreground',
                             'hover:bg-destructive/90',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             'disabled:opacity-50',
                         )}
                     >
-                        {isLoading ? 'Deleting...' : 'Delete'}
+                        {isLoading ? 'Deleting…' : 'Delete'}
                     </button>
                 </div>
             </div>
@@ -454,8 +455,8 @@ interface ErrorBannerProps {
 
 function ErrorBanner({ error }: ErrorBannerProps) {
     return (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4">
-            <p className="text-sm text-destructive">{error}</p>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
         </div>
     );
 }

@@ -174,7 +174,7 @@ export function BlogDetailPage() {
     // Loading state — pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
         return (
-            <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8" aria-busy="true">
+            <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading post…</span>
                 <div className="h-4 w-28 animate-pulse rounded-lg bg-muted/40" />
                 <div className="h-10 w-3/4 animate-pulse rounded-xl bg-muted/40" />
@@ -394,7 +394,7 @@ export function BlogDetailPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div>
             {/* SEO Meta Tags */}
             <SEOHead
                 title={seoTitle}

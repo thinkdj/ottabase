@@ -70,15 +70,16 @@ export function DataTablePagination<TData>({
     const endRow = Math.min(currentPage * pageSize, totalRows);
 
     const btnBase = clsx(
-        'inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-sm transition-colors',
-        'hover:bg-accent hover:text-accent-foreground',
+        'inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors duration-normal',
+        'hover:bg-muted/70 hover:text-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:pointer-events-none disabled:opacity-50',
     );
 
     return (
         <div className="flex items-center justify-between gap-4 px-1 py-2">
             {/* Left: row count + selection info */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                 {selectedCount > 0 && (
                     <span>
                         {selectedCount} of {totalRows} row(s) selected
@@ -94,14 +95,14 @@ export function DataTablePagination<TData>({
             {/* Right: page size + navigation */}
             <div className="flex items-center gap-4">
                 {/* Page size selector */}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     <span className="whitespace-nowrap">Rows</span>
                     <div className="relative flex items-center">
                         <select
                             aria-label="Rows per page"
                             value={pageSize}
                             onChange={(e) => setPageSize(Number(e.target.value))}
-                            className="h-8 appearance-none rounded-md border border-input bg-background py-0 pl-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="h-9 appearance-none rounded-md bg-background py-0 pl-2.5 pr-7 text-sm text-foreground ring-1 ring-border transition-colors duration-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {pageSizeOptions.map((size) => (
                                 <option key={size} value={size}>
@@ -114,7 +115,7 @@ export function DataTablePagination<TData>({
                 </div>
 
                 {/* Page indicator */}
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                <span className="whitespace-nowrap text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     Page {currentPage} of {totalPages || 1}
                 </span>
 

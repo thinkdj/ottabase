@@ -39,10 +39,6 @@ describe('HomePage (block content smoke)', () => {
         // warning callout
         expect(screen.getByText('One account. No servers.')).toBeTruthy();
 
-        // testimonials (two variants)
-        expect(screen.getByText('Maya K.')).toBeTruthy();
-        expect(text).toContain('Indie hacker');
-
         // spoiler (text is present but obscured until clicked)
         expect(text).toContain('The landing page is the demo');
 
@@ -51,9 +47,6 @@ describe('HomePage (block content smoke)', () => {
 
         // references
         expect(screen.getByText('Demo gallery')).toBeTruthy();
-
-        // AI disclosure
-        expect(text).toMatch(/AI/);
 
         // CTAs
         expect(screen.getAllByText('Explore demos').length).toBeGreaterThan(0);

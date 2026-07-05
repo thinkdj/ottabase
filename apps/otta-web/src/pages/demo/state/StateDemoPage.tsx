@@ -71,24 +71,24 @@ export function StateDemoPage() {
             />
 
             {/* Current State Display */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📊 Current Global State</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">📊 Current Global State</CardTitle>
                     <CardDescription>Full appStateAtom value displayed as JSON</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                         {JSON.stringify(appState, null, 2)}
                     </pre>
                 </CardContent>
             </Card>
 
             {/* Theme Control */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🎨 Theme</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🎨 Theme</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">themeAtom</code>
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">themeAtom</code>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -102,13 +102,13 @@ export function StateDemoPage() {
             </Card>
 
             {/* Theme Info */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🎭 Theme Info</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🎭 Theme Info</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">themeInfoAtom</code> (theme name),{' '}
-                        <code className="bg-muted px-1 rounded">themeAtom</code> (mode). Theme name is managed by
-                        BrandEngine, mode by next-themes. Both sync to Jotai atoms.
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">themeInfoAtom</code>{' '}
+                        (theme name), <code className="rounded bg-background px-1 ring-1 ring-border">themeAtom</code>{' '}
+                        (mode). Theme name is managed by BrandEngine, mode by next-themes. Both sync to Jotai atoms.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -125,7 +125,7 @@ export function StateDemoPage() {
                             </span>
                             <span className="text-sm text-muted-foreground">(synced via useThemeManager)</span>
                         </div>
-                        <div className="bg-muted p-4 rounded-lg text-sm font-mono">
+                        <div className="rounded-lg bg-background p-4 text-sm font-mono ring-1 ring-border">
                             {JSON.stringify({ name: themeInfo.name, mode: theme }, null, 2)}
                         </div>
                     </div>
@@ -133,12 +133,12 @@ export function StateDemoPage() {
             </Card>
 
             {/* User Control */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>👤 User & Authentication</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">👤 User & Authentication</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">userAtom</code>,{' '}
-                        <code className="bg-muted px-1 rounded">isAuthenticatedAtom</code>
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">userAtom</code>,{' '}
+                        <code className="rounded bg-background px-1 ring-1 ring-border">isAuthenticatedAtom</code>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -158,7 +158,7 @@ export function StateDemoPage() {
                         )}
                     </div>
                     {user && (
-                        <div className="bg-muted p-4 rounded-lg">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <div className="flex items-center gap-4">
                                 {user.image && (
                                     <img src={user.image} alt={user.name || ''} className="w-12 h-12 rounded-full" />
@@ -175,12 +175,12 @@ export function StateDemoPage() {
             </Card>
 
             {/* Sidebar Control */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📱 Sidebar State</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">📱 Sidebar State</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">sidebarStateAtom</code> - Persisted to
-                        localStorage
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">sidebarStateAtom</code> -
+                        Persisted to localStorage
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -257,17 +257,17 @@ export function StateDemoPage() {
                         </div>
                     </div>
 
-                    <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                    <div className="space-y-2 rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                         <p className="font-semibold text-foreground">Persistence Info</p>
                         <p className="text-muted-foreground">
                             ✅ Sidebar state is persisted to localStorage under key:{' '}
-                            <code className="bg-background px-1 rounded">ottabase.sidebar.state</code>
+                            <code className="rounded bg-muted/60 px-1 ring-1 ring-border">ottabase.sidebar.state</code>
                         </p>
                         <p className="text-muted-foreground">
                             Single atom with all properties: isOpen, isCollapsed, width. Try changing values and
                             refreshing the page!
                         </p>
-                        <pre className="bg-background p-2 rounded text-xs overflow-x-auto mt-2">
+                        <pre className="mt-2 overflow-x-auto rounded bg-muted/60 p-2 text-xs ring-1 ring-border">
                             {JSON.stringify(sidebarState, null, 2)}
                         </pre>
                     </div>
@@ -275,13 +275,15 @@ export function StateDemoPage() {
             </Card>
 
             {/* Scale Control */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🔍 UI Scale</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🔍 UI Scale</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">scaleAtom</code> - Sets{' '}
-                        <code className="bg-muted px-1 rounded">document.documentElement.style.fontSize</code> so all
-                        rem-based sizing scales proportionally. Persisted to localStorage.
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">scaleAtom</code> - Sets{' '}
+                        <code className="rounded bg-background px-1 ring-1 ring-border">
+                            document.documentElement.style.fontSize
+                        </code>{' '}
+                        so all rem-based sizing scales proportionally. Persisted to localStorage.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -321,12 +323,12 @@ export function StateDemoPage() {
             </Card>
 
             {/* Browser Zoom */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🖥️ Browser Zoom</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">🖥️ Browser Zoom</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">zoomAtom</code> - Browser zoom level (detected
-                        from window.devicePixelRatio)
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">zoomAtom</code> - Browser
+                        zoom level (detected from window.devicePixelRatio)
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -340,7 +342,7 @@ export function StateDemoPage() {
                             Try using your browser's zoom controls (Ctrl+, Ctrl-, or Cmd+, Cmd-) to change the zoom
                             level. The value will update automatically.
                         </p>
-                        <div className="bg-muted p-4 rounded-lg text-sm font-mono">
+                        <div className="rounded-lg bg-background p-4 text-sm font-mono ring-1 ring-border">
                             {JSON.stringify({ zoom, devicePixelRatio: window.devicePixelRatio }, null, 2)}
                         </div>
                     </div>
@@ -348,11 +350,11 @@ export function StateDemoPage() {
             </Card>
 
             {/* Loading State */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>⏳ Loading State</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">⏳ Loading State</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">isLoadingAtom</code>
+                        Uses: <code className="rounded bg-background px-1 ring-1 ring-border">isLoadingAtom</code>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -369,13 +371,13 @@ export function StateDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📖 Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
                     <CardDescription>How to use @ottabase/state in your app</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                         {`// 1. Create state in src/ottabase/state/appState.ts
 import { createAppState } from "@ottabase/state";
 

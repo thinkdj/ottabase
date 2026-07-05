@@ -4,11 +4,6 @@ import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -24,12 +19,15 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { Edit, Plus, Shield, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useRBACToast } from '@/hooks/useToast';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
+const TH_CLASS = 'h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 interface RoleFormData {
     name: string;
@@ -150,84 +148,105 @@ export function RBACRolesPage() {
     };
 
     return (
-        <div className="space-y-4">
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                RBAC Roles
-                            </CardTitle>
-                            <CardDescription>Manage roles and their permissions</CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" asChild>
-                                <Link to="/admin/access/rbac/permissions">View Permissions Matrix</Link>
-                            </Button>
-                            <Button variant="outline" asChild>
-                                <Link to="/admin/access/rbac">← Back to RBAC</Link>
-                            </Button>
-                            <Button onClick={handleCreate} className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                New Role
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {error && (
-                        <ApiErrorDisplay
-                            error={error}
-                            onRetry={() => fetchRoles()}
-                            onDismiss={() => setError(null)}
-                            className="mb-4"
-                        />
-                    )}
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin/access/rbac">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to RBAC
+                    </Link>
+                </Button>
 
-                    {loading && roles.length === 0 ? (
-                        <TableSkeleton rows={5} columns={6} />
-                    ) : roles.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No roles found. Create your first one!
-                        </div>
-                    ) : (
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">RBAC Roles</h1>
+                        <p className="max-w-3xl text-muted-foreground">Manage roles and their permissions</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+                            <Link to="/admin/access/rbac/permissions">View Permissions Matrix</Link>
+                        </Button>
+                        <Button onClick={handleCreate} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            New Role
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {error && (
+                    <ApiErrorDisplay error={error} onRetry={() => fetchRoles()} onDismiss={() => setError(null)} />
+                )}
+
+                {loading && roles.length === 0 ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading roles…</span>
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : roles.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <p className="text-sm text-muted-foreground">No roles found. Create your first one!</p>
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Display Name</TableHead>
-                                    <TableHead>Description</TableHead>
-                                    <TableHead>Permissions</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                            <TableHeader className="bg-muted/40">
+                                <TableRow className="border-border/60 hover:bg-transparent">
+                                    <TableHead className={TH_CLASS}>Name</TableHead>
+                                    <TableHead className={TH_CLASS}>Display Name</TableHead>
+                                    <TableHead className={TH_CLASS}>Description</TableHead>
+                                    <TableHead className={TH_CLASS}>Permissions</TableHead>
+                                    <TableHead className={TH_CLASS}>Type</TableHead>
+                                    <TableHead className={`${TH_CLASS} text-right`}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {roles.map((role) => (
-                                    <TableRow key={role.id}>
-                                        <TableCell>
-                                            <code className="text-sm bg-muted px-2 py-1 rounded">{role.name}</code>
+                                    <TableRow
+                                        key={role.id}
+                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                    >
+                                        <TableCell className="px-4 py-3">
+                                            <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs ring-1 ring-border">
+                                                {role.name}
+                                            </code>
                                         </TableCell>
-                                        <TableCell className="font-medium">{role.displayName || '-'}</TableCell>
-                                        <TableCell className="max-w-xs truncate">{role.description || '-'}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">{role.permissions?.length || 0} permissions</Badge>
+                                        <TableCell className="px-4 py-3 font-medium">
+                                            {role.displayName || '-'}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="max-w-xs truncate px-4 py-3 text-muted-foreground">
+                                            {role.description || '-'}
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3">
+                                            <Badge variant="outline" className={CHIP_CLASS}>
+                                                {role.permissions?.length || 0} permissions
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3">
                                             {role.isSystem ? (
-                                                <Badge>System</Badge>
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    System
+                                                </Badge>
                                             ) : role.organizationId ? (
-                                                <Badge variant="secondary">Organization</Badge>
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    Organization
+                                                </Badge>
                                             ) : (
-                                                <Badge variant="outline">Custom</Badge>
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    Custom
+                                                </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="text-muted-foreground hover:text-foreground"
                                                     onClick={() => handleEdit(role)}
                                                     disabled={role.isSystem}
                                                 >
@@ -236,6 +255,7 @@ export function RBACRolesPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="text-muted-foreground hover:text-destructive"
                                                     onClick={() => handleDelete(role.id)}
                                                     disabled={role.isSystem}
                                                 >
@@ -247,9 +267,9 @@ export function RBACRolesPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </div>
 
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -316,7 +336,7 @@ export function RBACRolesPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-4 pt-4 border-t">
+                        <div className="flex justify-end gap-4 border-t border-border/60 pt-4">
                             <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                                 Cancel
                             </Button>

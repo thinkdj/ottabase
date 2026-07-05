@@ -39,9 +39,9 @@ export function MenusDemoPage() {
                 }
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconMenu2 className="h-5 w-5" />
                         Controls
                     </CardTitle>
@@ -85,9 +85,9 @@ export function MenusDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconLayoutNavbar className="h-5 w-5" />
                         Renderer Output
                     </CardTitle>
@@ -97,7 +97,7 @@ export function MenusDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-lg border bg-background p-4">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <MenuRenderer
                             menu={menu}
                             type={renderType}

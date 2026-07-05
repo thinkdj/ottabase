@@ -48,17 +48,20 @@ export function ConfigDemoPage() {
                     </>
                 }
                 actions={
-                    <Badge variant="secondary" className="uppercase">
+                    <Badge
+                        variant="outline"
+                        className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                    >
                         @ottabase/config
                     </Badge>
                 }
             />
 
             {/* Overview */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Settings className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <Settings className="h-4 w-4" />
                         Two Configuration Systems
                     </CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
@@ -80,9 +83,9 @@ export function ConfigDemoPage() {
             </Card>
 
             {/* Live config values */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Key className="h-4 w-4" />
                         Resolved AppConfig (createAppConfig)
                     </CardTitle>
@@ -92,22 +95,28 @@ export function ConfigDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {/* App Meta */}
-                        <div className="rounded-lg border p-4">
-                            <h4 className="text-sm font-medium mb-2">App Meta</h4>
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                            <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                App Meta
+                            </h4>
                             {renderEntries(sampleConfig?.meta as unknown as Record<string, unknown>)}
                         </div>
 
                         {/* Auth lives under features in AppConfig */}
-                        <div className="rounded-lg border p-4">
-                            <h4 className="text-sm font-medium mb-2">Auth (features.auth)</h4>
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                            <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Auth (features.auth)
+                            </h4>
                             {renderEntries(sampleConfig?.features?.auth as unknown as Record<string, unknown>)}
                         </div>
 
                         {/* Pagination lives under features in AppConfig */}
-                        <div className="rounded-lg border p-4">
-                            <h4 className="text-sm font-medium mb-2">Pagination (features.pagination)</h4>
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                            <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Pagination (features.pagination)
+                            </h4>
                             {renderEntries(sampleConfig?.features?.pagination as unknown as Record<string, unknown>)}
                         </div>
                     </div>
@@ -115,9 +124,9 @@ export function ConfigDemoPage() {
             </Card>
 
             {/* defineOttabaseConfig */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Package className="h-4 w-4" />
                         Package Gating (defineOttabaseConfig)
                     </CardTitle>
@@ -127,7 +136,7 @@ export function ConfigDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`// ottabase.config.ts
 import { defineOttabaseConfig } from '@ottabase/config';
 
@@ -166,9 +175,11 @@ export default defineOttabaseConfig({
 });`}</code>
                     </pre>
 
-                    <div className="rounded-lg border p-4">
-                        <h4 className="text-sm font-medium mb-2">Built-in Packages</h4>
-                        <div className="flex flex-wrap gap-2">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                        <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Built-in Packages
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
                             {[
                                 'ottablog',
                                 'shortlinks',
@@ -181,7 +192,11 @@ export default defineOttabaseConfig({
                                 'notifications',
                                 'i18n',
                             ].map((pkg) => (
-                                <Badge key={pkg} variant="secondary" className="font-mono text-xs">
+                                <Badge
+                                    key={pkg}
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-muted/40 font-mono text-xs text-muted-foreground ring-1 ring-border"
+                                >
                                     {pkg}
                                 </Badge>
                             ))}
@@ -194,9 +209,9 @@ export default defineOttabaseConfig({
             </Card>
 
             {/* resolveConfigWithEnv */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Layers className="h-4 w-4" />
                         Environment Resolution
                     </CardTitle>
@@ -206,7 +221,7 @@ export default defineOttabaseConfig({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`import { resolveConfigWithEnv } from '@ottabase/config';
 
 // In a Cloudflare Worker handler:
@@ -218,7 +233,7 @@ const config = resolveConfigWithEnv(ottabaseConfig, env);
 // - Feature flags from env vars`}</code>
                     </pre>
 
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`// Check if a package is enabled:
 import { isPackageEnabled } from '@ottabase/config';
 
@@ -237,9 +252,9 @@ if (isCustomPackageEnabled(config, 'invoices')) {
             </Card>
 
             {/* Utility functions */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Utility Functions</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Utility Functions</CardTitle>
                     <CardDescription>Helper functions exported by @ottabase/config.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -278,7 +293,7 @@ if (isCustomPackageEnabled(config, 'invoices')) {
                                 desc: 'Returns current year (for footer copyright, etc.).',
                             },
                         ].map((fn) => (
-                            <div key={fn.name} className="rounded-lg border p-3">
+                            <div key={fn.name} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                 <code className="text-sm font-medium">{fn.name}</code>
                                 <p className="text-xs text-muted-foreground mt-1">{fn.desc}</p>
                             </div>

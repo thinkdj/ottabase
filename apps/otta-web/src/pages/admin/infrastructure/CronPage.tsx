@@ -28,19 +28,7 @@ import {
     Switch,
 } from '@ottabase/ui-shadcn';
 import { api, isApiError } from '@/lib/api';
-import {
-    ArrowLeft,
-    RefreshCw,
-    Clock,
-    CheckCircle,
-    XCircle,
-    Play,
-    Pause,
-    Plus,
-    Trash2,
-    Calendar,
-    AlertTriangle,
-} from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Play, Pause, Plus, Trash2, Calendar, AlertTriangle } from 'lucide-react';
 
 interface ScheduledTask {
     id: string;
@@ -85,6 +73,8 @@ const CRON_PRESETS = [
     { label: 'Monthly (1st)', value: '0 0 1 * *' },
     { label: 'Weekdays at 9am', value: '0 9 * * 1-5' },
 ];
+
+const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 export function AdminCronPage() {
     const [isCreating, setIsCreating] = useState(false);
@@ -201,67 +191,79 @@ export function AdminCronPage() {
     const stats = overview?.stats;
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
-            <Button asChild variant="ghost" className="w-fit">
-                <Link to="/admin">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Admin
-                </Link>
-            </Button>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Admin
+                    </Link>
+                </Button>
 
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="mb-2 text-3xl font-semibold">Scheduled Tasks</h1>
-                    <p className="text-muted-foreground">Manage DB-driven cron jobs (Laravel-style scheduler)</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button size="sm" onClick={() => setIsCreating(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Task
-                    </Button>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Scheduled Tasks</h1>
+                        <p className="max-w-3xl text-muted-foreground">
+                            Manage DB-driven cron jobs (Laravel-style scheduler)
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-muted-foreground"
+                            onClick={() => refetch()}
+                            disabled={isLoading}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button size="sm" className="gap-1.5" onClick={() => setIsCreating(true)}>
+                            <Plus className="h-4 w-4" />
+                            Add Task
+                        </Button>
+                    </div>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Tasks</CardDescription>
-                        <CardTitle className="text-3xl">{stats?.total ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Total Tasks</CardDescription>
+                        <CardTitle className="text-2xl font-semibold">{stats?.total ?? 0}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Scheduled tasks in database</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Active</CardDescription>
-                        <CardTitle className="text-3xl text-green-600">{stats?.active ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Active</CardDescription>
+                        <CardTitle className="text-2xl font-semibold text-success">{stats?.active ?? 0}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">Currently enabled</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Runs</CardDescription>
-                        <CardTitle className="text-3xl">{stats?.totalRuns ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Total Runs</CardDescription>
+                        <CardTitle className="text-2xl font-semibold">{stats?.totalRuns ?? 0}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">All-time executions</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader className="pb-2">
-                        <CardDescription>Failed</CardDescription>
-                        <CardTitle className="text-3xl text-red-600">{stats?.totalFails ?? 0}</CardTitle>
+                        <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
+                        <CardTitle className="text-2xl font-semibold text-destructive">
+                            {stats?.totalFails ?? 0}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">All-time failures</p>
@@ -271,9 +273,9 @@ export function AdminCronPage() {
 
             {/* Create Task Form */}
             {isCreating && (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Add Scheduled Task</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Add Scheduled Task</CardTitle>
                         <CardDescription>Create a new DB-driven cron job</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -292,7 +294,7 @@ export function AdminCronPage() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="task">
-                                        Handler <span className="text-red-500">*</span>
+                                        Handler <span className="text-destructive">*</span>
                                     </Label>
                                     <Select
                                         value={newTask.task}
@@ -365,9 +367,9 @@ export function AdminCronPage() {
                                         setNewTask({ ...newTask, payload: value });
                                         validatePayload(value);
                                     }}
-                                    className={`font-mono text-sm ${payloadError ? 'border-red-500' : ''}`}
+                                    className={`font-mono text-sm ${payloadError ? 'border-destructive' : ''}`}
                                 />
-                                {payloadError && <p className="text-xs text-red-600">{payloadError}</p>}
+                                {payloadError && <p className="text-xs text-destructive">{payloadError}</p>}
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -396,11 +398,11 @@ export function AdminCronPage() {
                             </div>
 
                             {createMutation.isError && (
-                                <p className="text-sm text-red-600">
+                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                                     {isApiError(createMutation.error)
                                         ? createMutation.error.message
                                         : 'Failed to create task'}
-                                </p>
+                                </div>
                             )}
                         </form>
                     </CardContent>
@@ -408,17 +410,22 @@ export function AdminCronPage() {
             )}
 
             {/* Tasks List */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Scheduled Tasks</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Scheduled Tasks</CardTitle>
                     <CardDescription>All tasks in the database</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading...</p>
+                        <div className="space-y-3" aria-busy="true">
+                            <span className="sr-only">Loading scheduled tasks…</span>
+                            {Array.from({ length: 3 }, (_, index) => (
+                                <div key={index} className="h-20 animate-pulse rounded-lg bg-background/60" />
+                            ))}
+                        </div>
                     ) : !overview?.tasks?.length ? (
-                        <div className="rounded-lg border border-dashed p-8 text-center">
-                            <Calendar className="mx-auto h-8 w-8 text-muted-foreground" />
+                        <div className="py-10 text-center">
+                            <Calendar className="mx-auto h-8 w-8 text-muted-foreground opacity-40" />
                             <p className="mt-2 text-sm text-muted-foreground">
                                 No scheduled tasks yet. Create one to get started.
                             </p>
@@ -428,28 +435,28 @@ export function AdminCronPage() {
                             {overview.tasks.map((task) => (
                                 <div
                                     key={task.id}
-                                    className={`rounded-lg border p-4 ${!task.isActive ? 'opacity-60' : ''}`}
+                                    className={`rounded-lg bg-background p-4 ring-1 ring-border ${!task.isActive ? 'opacity-60' : ''}`}
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
+                                            <div className="mb-1 flex items-center gap-2">
                                                 {task.isActive ? (
-                                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                                    <CheckCircle className="h-4 w-4 text-success" />
                                                 ) : (
                                                     <Pause className="h-4 w-4 text-muted-foreground" />
                                                 )}
                                                 <span className="font-medium">{task.name}</span>
-                                                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                                                <code className="rounded-md bg-muted/40 px-1.5 py-0.5 font-mono text-xs">
                                                     {task.schedule}
                                                 </code>
                                                 {task.lastStatus === 'failed' && (
-                                                    <span className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-destructive ring-1 ring-border">
                                                         <AlertTriangle className="h-3 w-3" />
                                                         Failed
                                                     </span>
                                                 )}
                                                 {task.lastStatus === 'running' && (
-                                                    <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                                                         <RefreshCw className="h-3 w-3 animate-spin" />
                                                         Running
                                                     </span>
@@ -457,7 +464,9 @@ export function AdminCronPage() {
                                             </div>
 
                                             {task.description && (
-                                                <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+                                                <p className="mb-2 text-sm leading-relaxed text-muted-foreground">
+                                                    {task.description}
+                                                </p>
                                             )}
 
                                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -468,7 +477,7 @@ export function AdminCronPage() {
                                                     Runs: <strong>{task.runCount}</strong>
                                                 </span>
                                                 {task.failCount > 0 && (
-                                                    <span className="text-red-600">
+                                                    <span className="text-destructive">
                                                         Fails: <strong>{task.failCount}</strong>
                                                     </span>
                                                 )}
@@ -482,10 +491,10 @@ export function AdminCronPage() {
 
                                             {task.lastError && (
                                                 <details className="mt-2">
-                                                    <summary className="cursor-pointer text-xs text-red-600">
+                                                    <summary className="cursor-pointer text-xs text-destructive">
                                                         View last error
                                                     </summary>
-                                                    <pre className="mt-1 overflow-auto rounded bg-red-50 p-2 text-xs text-red-700">
+                                                    <pre className="mt-1 overflow-auto rounded-lg border border-destructive/40 bg-destructive/10 p-2 font-mono text-xs text-destructive">
                                                         {task.lastError}
                                                     </pre>
                                                 </details>
@@ -493,10 +502,10 @@ export function AdminCronPage() {
 
                                             {task.payload && (
                                                 <details className="mt-2">
-                                                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                                                    <summary className="cursor-pointer text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground">
                                                         View payload
                                                     </summary>
-                                                    <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-xs">
+                                                    <pre className="mt-1 overflow-auto rounded-lg bg-muted/40 p-2 font-mono text-xs">
                                                         {JSON.stringify(JSON.parse(task.payload), null, 2)}
                                                     </pre>
                                                 </details>
@@ -505,22 +514,22 @@ export function AdminCronPage() {
 
                                         <div className="flex items-center gap-1">
                                             <Button
-                                                variant="outline"
+                                                variant="ghost"
                                                 size="sm"
                                                 onClick={() => runNowMutation.mutate(task.id)}
                                                 disabled={runNowMutation.isPending || !task.isActive}
                                                 title="Run now"
-                                                className="h-8 px-2"
+                                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
                                             >
                                                 <Play className="h-4 w-4" />
                                             </Button>
                                             <Button
-                                                variant="outline"
+                                                variant="ghost"
                                                 size="sm"
                                                 onClick={() => toggleMutation.mutate(task.id)}
                                                 disabled={toggleMutation.isPending}
                                                 title={task.isActive ? 'Pause' : 'Enable'}
-                                                className="h-8 px-2"
+                                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
                                             >
                                                 {task.isActive ? (
                                                     <Pause className="h-4 w-4" />
@@ -529,14 +538,14 @@ export function AdminCronPage() {
                                                 )}
                                             </Button>
                                             <Button
-                                                variant="outline"
+                                                variant="ghost"
                                                 size="sm"
                                                 onClick={() =>
                                                     setDeleteDialog({ taskId: task.id, taskName: task.name })
                                                 }
                                                 disabled={deleteMutation.isPending}
                                                 title="Delete"
-                                                className="h-8 px-2 text-red-600 hover:bg-red-50"
+                                                className="h-8 px-2 text-muted-foreground hover:text-destructive"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -551,15 +560,18 @@ export function AdminCronPage() {
 
             {/* Registered Handlers */}
             {overview?.registeredHandlers && overview.registeredHandlers.length > 0 && (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Registered Handlers</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Registered Handlers</CardTitle>
                         <CardDescription>Available task handlers in your scheduler</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-wrap gap-2">
                             {overview.registeredHandlers.map((handler) => (
-                                <code key={handler} className="rounded bg-muted px-2 py-1 text-sm">
+                                <code
+                                    key={handler}
+                                    className="rounded-full bg-background px-2.5 py-1 font-mono text-xs text-muted-foreground ring-1 ring-border"
+                                >
                                     {handler}
                                 </code>
                             ))}

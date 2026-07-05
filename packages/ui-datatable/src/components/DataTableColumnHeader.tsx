@@ -30,22 +30,24 @@ export function DataTableColumnHeader<TData, TValue>({
         return <div className={clsx('flex items-center', headerClassName, className)}>{title}</div>;
     }
 
+    const sorted = column.getIsSorted();
+
     return (
         <button
             className={clsx(
-                'flex items-center gap-1 font-medium transition-colors hover:text-foreground -ml-2 px-2 py-1 rounded-md hover:bg-accent',
+                'group -ml-2 flex items-center gap-1 rounded-md px-2 py-1 transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 headerClassName,
                 className,
             )}
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            onClick={() => column.toggleSorting(sorted === 'asc')}
         >
             {title}
-            {column.getIsSorted() === 'asc' ? (
-                <ArrowUp className="h-3.5 w-3.5" />
-            ) : column.getIsSorted() === 'desc' ? (
-                <ArrowDown className="h-3.5 w-3.5" />
+            {sorted === 'asc' ? (
+                <ArrowUp className="h-3 w-3 transition-transform duration-normal group-hover:-translate-y-0.5" />
+            ) : sorted === 'desc' ? (
+                <ArrowDown className="h-3 w-3 transition-transform duration-normal group-hover:translate-y-0.5" />
             ) : (
-                <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
+                <ArrowUpDown className="h-3 w-3 opacity-40 transition-opacity duration-normal group-hover:opacity-70" />
             )}
         </button>
     );

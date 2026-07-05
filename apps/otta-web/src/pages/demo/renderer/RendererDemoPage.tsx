@@ -379,9 +379,9 @@ export function RendererDemoPage() {
                 </TabsList>
 
                 <TabsContent value="editorjs" className="space-y-4 py-4">
-                    <Card>
+                    <Card className="rounded-xl border-border/60 shadow-none">
                         <CardHeader>
-                            <CardTitle>EditorJS Content</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">EditorJS Content</CardTitle>
                             <CardDescription>
                                 Rich content rendering with advanced images, interactive checklists, code blocks,
                                 tables, and more.
@@ -402,9 +402,9 @@ export function RendererDemoPage() {
                 </TabsContent>
 
                 <TabsContent value="html" className="space-y-4 py-4">
-                    <Card>
+                    <Card className="rounded-xl border-border/60 shadow-none">
                         <CardHeader>
-                            <CardTitle>HTML Content</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">HTML Content</CardTitle>
                             <CardDescription>
                                 Rendering basic HTML content with Tailwind prose styling and dark mode support.
                             </CardDescription>
@@ -416,9 +416,9 @@ export function RendererDemoPage() {
                 </TabsContent>
             </Tabs>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Package Features</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Package Features</CardTitle>
                     <CardDescription>What's included in @ottabase/ottarenderer</CardDescription>
                 </CardHeader>
                 <CardContent>

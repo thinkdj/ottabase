@@ -46,10 +46,10 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
 
     return (
         <>
-            <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2 pl-2 border-l'}`}>
+            <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2 border-l border-border/60 pl-2'}`}>
                 <Button asChild variant="ghost" size="sm">
                     <Link to="/profile" className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
+                        <Avatar className="h-6 w-6 ring-1 ring-border">
                             {user?.image && <AvatarImage src={user.image} />}
                             <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
                         </Avatar>

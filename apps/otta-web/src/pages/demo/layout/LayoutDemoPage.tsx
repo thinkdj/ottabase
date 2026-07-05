@@ -49,10 +49,10 @@ export function LayoutDemoPage() {
             />
 
             <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <IconLayout className="h-5 w-5" />
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                            <IconLayout className="h-4 w-4" />
                             Preset Browser
                         </CardTitle>
                         <CardDescription>Inspect built-in layout preset configs.</CardDescription>
@@ -73,16 +73,16 @@ export function LayoutDemoPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                        <pre className="max-h-72 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             {JSON.stringify(selectedConfig, null, 2)}
                         </pre>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <IconRoute className="h-5 w-5" />
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                            <IconRoute className="h-4 w-4" />
                             Path Resolver
                         </CardTitle>
                         <CardDescription>Type a path to see which layout template gets selected.</CardDescription>
@@ -96,7 +96,7 @@ export function LayoutDemoPage() {
                         <p className="text-sm text-muted-foreground">
                             Resolved layout: <code>{resolvedLayout ?? 'none'}</code>
                         </p>
-                        <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                        <pre className="max-h-72 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             {JSON.stringify(DEMO_ROUTE_MAPPINGS, null, 2)}
                         </pre>
                     </CardContent>

@@ -11,7 +11,9 @@ export const BrandFooter = memo(function BrandFooter({ containerClass }: { conta
     const { config } = useBrand();
 
     const defaultFooter = (
-        <div className={`mx-auto px-4 py-6 text-center text-xs text-muted-foreground ${containerClass}`}>
+        <div
+            className={`mx-auto px-4 py-6 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ${containerClass}`}
+        >
             Built with Ottabase
         </div>
     );
@@ -28,5 +30,5 @@ export const BrandFooter = memo(function BrandFooter({ containerClass }: { conta
         defaultFooter
     );
 
-    return <footer className="border-t mt-auto">{footerNav}</footer>;
+    return <footer className="mt-auto border-t border-border/60">{footerNav}</footer>;
 });

@@ -32,9 +32,9 @@ export function I18nDemoPage() {
             />
 
             {/* Language Switcher Component */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Language Switcher</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Language Switcher</CardTitle>
                     <CardDescription>Interactive component to change the application language</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-4">
@@ -44,9 +44,9 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Supported Languages */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Supported Languages</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Supported Languages</CardTitle>
                     <CardDescription>
                         The following languages are currently configured in the{' '}
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded">@ottabase/i18n</code> package
@@ -58,7 +58,11 @@ export function I18nDemoPage() {
                             <Badge
                                 key={lang}
                                 variant={i18n.language === lang ? 'default' : 'outline'}
-                                className="px-3 py-1"
+                                className={
+                                    i18n.language === lang
+                                        ? 'rounded-full px-3 py-1'
+                                        : 'rounded-full border-transparent bg-background px-3 py-1 text-muted-foreground ring-1 ring-border'
+                                }
                             >
                                 {languageNames[lang]}
                             </Badge>
@@ -68,9 +72,9 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Translation Examples */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Translation Examples</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Translation Examples</CardTitle>
                     <CardDescription>
                         Below are examples of common translations. Switch languages to see them change in real-time.
                     </CardDescription>
@@ -144,9 +148,9 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Advanced Examples */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Advanced Examples</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Advanced Examples</CardTitle>
                     <CardDescription>Interpolation, pluralization, and rich text rendering</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -216,34 +220,54 @@ export function I18nDemoPage() {
             </Card>
 
             {/* App Config Overrides */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>📝 App Config Overrides</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">App Config Overrides</CardTitle>
                     <CardDescription>How this app configures i18n using ottabase/config/i18n.config.ts</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium">Default Language</p>
-                            <Badge variant="outline">{i18nConfig.defaultLanguage}</Badge>
+                        <div className="space-y-1.5">
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Default Language
+                            </p>
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                            >
+                                {i18nConfig.defaultLanguage}
+                            </Badge>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium">Fallback Language</p>
-                            <Badge variant="outline">{i18nConfig.fallbackLanguage}</Badge>
+                        <div className="space-y-1.5">
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Fallback Language
+                            </p>
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                            >
+                                {i18nConfig.fallbackLanguage}
+                            </Badge>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium">Enabled Languages</p>
-                            <div className="flex gap-1">
+                        <div className="space-y-1.5">
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Enabled Languages
+                            </p>
+                            <div className="flex gap-1.5">
                                 {i18nConfig.enabledLanguages.map((lang) => (
-                                    <Badge key={lang} variant="secondary" className="text-xs">
+                                    <Badge
+                                        key={lang}
+                                        variant="outline"
+                                        className="rounded-full border-transparent bg-background text-xs text-muted-foreground ring-1 ring-border"
+                                    >
                                         {lang}
                                     </Badge>
                                 ))}
                             </div>
                         </div>
                     </div>
-                    <div className="mt-4 p-4 bg-muted rounded-md">
-                        <pre className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                    <div className="mt-4 rounded-lg bg-background p-4 ring-1 ring-border">
+                        <pre className="text-xs">
                             {`// src/ottabase/config/i18n.config.ts
 export const i18nConfig = {
   defaultLanguage: '${i18nConfig.defaultLanguage}',
@@ -256,20 +280,27 @@ export const i18nConfig = {
             </Card>
 
             {/* Global State Integration */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🔄 Global State Integration</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Global State Integration</CardTitle>
                     <CardDescription>Language syncs with @ottabase/state via Jotai atom</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <p className="text-sm font-medium">i18n Language</p>
-                            <Badge className="text-base px-4 py-2">{i18n.language}</Badge>
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                i18n Language
+                            </p>
+                            <Badge className="rounded-full px-4 py-2 text-base">{i18n.language}</Badge>
                         </div>
                         <div className="space-y-2">
-                            <p className="text-sm font-medium">State Atom Language</p>
-                            <Badge className="text-base px-4 py-2" variant="secondary">
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                State Atom Language
+                            </p>
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background px-4 py-2 text-base text-muted-foreground ring-1 ring-border"
+                            >
                                 {globalLanguage}
                             </Badge>
                         </div>
@@ -300,19 +331,23 @@ export const i18nConfig = {
             </Card>
 
             {/* Persistence Demonstration */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>💾 Persistence Demonstration</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Persistence Demonstration</CardTitle>
                     <CardDescription>Language selection persists to localStorage</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <p className="text-sm font-medium">localStorage Key</p>
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                localStorage Key
+                            </p>
                             <code className="text-xs bg-muted px-2 py-1 rounded">ottabase.language</code>
                         </div>
                         <div className="space-y-2">
-                            <p className="text-sm font-medium">Stored Value</p>
+                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Stored Value
+                            </p>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
                                 {typeof localStorage !== 'undefined'
                                     ? localStorage.getItem('ottabase.language') || 'Not set'
@@ -320,21 +355,21 @@ export const i18nConfig = {
                             </code>
                         </div>
                     </div>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
-                        <p className="text-sm font-medium mb-2">🔄 Try it!</p>
-                        <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
+                        <p className="mb-2 text-sm font-medium">Try it!</p>
+                        <ol className="list-inside list-decimal space-y-1 text-sm text-muted-foreground">
                             <li>Change language using switcher above</li>
                             <li>Reload this page (F5 or Ctrl+R)</li>
-                            <li>Your language selection will be preserved ✅</li>
+                            <li>Your language selection will be preserved</li>
                         </ol>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Resource Override Comparison */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>🎨 Resource Override Example</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Resource Override Example</CardTitle>
                     <CardDescription>App resources override package defaults via deep merge</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -372,8 +407,8 @@ export const i18nConfig = {
                             </TableRow>
                         </TableBody>
                     </Table>
-                    <div className="mt-4 p-4 bg-muted rounded-md">
-                        <pre className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                    <div className="mt-4 rounded-lg bg-background p-4 ring-1 ring-border">
+                        <pre className="text-xs">
                             {`// src/locales/en/app.json
 {
   "welcome": "Welcome to Ottabase (App Override)", // Overrides package
@@ -386,17 +421,21 @@ export const i18nConfig = {
             </Card>
 
             {/* Package Info */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Package Information</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Package Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div>
-                        <h4 className="text-sm font-semibold mb-2">Location</h4>
+                        <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Location
+                        </h4>
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded">packages/i18n</code>
                     </div>
                     <div>
-                        <h4 className="text-sm font-semibold mb-2">Key Features</h4>
+                        <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Key Features
+                        </h4>
                         <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                             <li>Centralized i18n configuration for the entire monorepo</li>
                             <li>Type-safe translations with TypeScript support</li>
@@ -409,7 +448,9 @@ export const i18nConfig = {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-sm font-semibold mb-2">Usage</h4>
+                        <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Usage
+                        </h4>
                         <div className="space-y-2">
                             <p className="text-sm">
                                 Import the provider:{' '}

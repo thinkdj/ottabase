@@ -2,10 +2,8 @@
  * User Management Page (Admin)
  *
  * System-wide user management for admins
- * GitHub-like minimal UI with dark mode support
  */
 
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Avatar,
@@ -13,11 +11,6 @@ import {
     AvatarImage,
     Badge,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Input,
     Table,
     TableBody,
@@ -28,10 +21,15 @@ import {
 } from '@ottabase/ui-shadcn';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
 import { Link } from '@tanstack/react-router';
-import { Calendar, ChevronLeft, ChevronRight, Mail, Search, Shield, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Mail, Search, Shield } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const PER_PAGE = 25;
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
+const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const MICRO_LABEL_CLASS = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 interface User {
     id: string;
@@ -95,114 +93,139 @@ export function UserManagementPage() {
     const pageEnd = pagination ? Math.min(pagination.page * pagination.perPage, pagination.total) : 0;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Users className="h-6 w-6" />
-                        User Management
-                    </h1>
-                    <p className="text-muted-foreground mt-1">View and manage all users across the system</p>
-                </div>
-                <Button variant="outline" asChild>
-                    <Link to="/admin">← Back to Admin</Link>
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Admin
+                    </Link>
                 </Button>
+
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User Management</h1>
+                    <p className="max-w-3xl text-muted-foreground">View and manage all users across the system</p>
+                </div>
             </div>
 
             {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-1">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription>Total Users</CardDescription>
-                        <CardTitle className="text-2xl">{pagination?.total ?? '—'}</CardTitle>
-                    </CardHeader>
-                </Card>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-xl bg-muted/40 p-5">
+                    <p className={MICRO_LABEL_CLASS}>Total Users</p>
+                    <p className="mt-2 text-2xl font-semibold">{pagination?.total ?? '—'}</p>
+                </div>
             </div>
 
             {/* Users Table */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle>All Users</CardTitle>
-                        <div className="relative w-64">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search users..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-8"
-                            />
-                        </div>
+            <section className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-[0.9375rem] font-semibold">All Users</h2>
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-9 pl-10"
+                        />
                     </div>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <TableSkeleton rows={5} columns={5} />
-                    ) : users.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No users found matching your search
-                        </div>
-                    ) : (
+                </div>
+
+                {isLoading ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading users…</span>
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : users.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <p className="text-sm text-muted-foreground">No users found matching your search</p>
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Joined</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                            <TableHeader className="bg-muted/40">
+                                <TableRow className="border-border/60 hover:bg-transparent">
+                                    <TableHead className={TH_CLASS}>User</TableHead>
+                                    <TableHead className={TH_CLASS}>Email</TableHead>
+                                    <TableHead className={TH_CLASS}>Role</TableHead>
+                                    <TableHead className={TH_CLASS}>Status</TableHead>
+                                    <TableHead className={TH_CLASS}>Joined</TableHead>
+                                    <TableHead className={`${TH_CLASS} text-right`}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
+                                    <TableRow
+                                        key={user.id}
+                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                    >
+                                        <TableCell className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8">
+                                                <Avatar className="h-8 w-8 ring-1 ring-border">
                                                     <AvatarImage src={user.image || undefined} />
                                                     <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
                                                     <div className="font-medium">{user.name || 'No name'}</div>
-                                                    <code className="text-xs text-muted-foreground">{user.id}</code>
+                                                    <code className="font-mono text-xs text-muted-foreground">
+                                                        {user.id}
+                                                    </code>
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <Mail className="h-4 w-4 text-muted-foreground" />
                                                 {user.email || 'No email'}
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3">
                                             {user.role === 'admin' ? (
-                                                <Badge variant="default" className="gap-1">
+                                                <Badge variant="outline" className={`gap-1 ${CHIP_CLASS}`}>
                                                     <Shield className="h-3 w-3" />
                                                     Admin
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary">User</Badge>
+                                                <Badge variant="outline" className={CHIP_CLASS}>
+                                                    User
+                                                </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="px-4 py-3">
                                             {user.emailVerified ? (
-                                                <Badge variant="outline" className="gap-1">
+                                                <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                                                    <span
+                                                        className="h-1.5 w-1.5 rounded-full bg-success"
+                                                        aria-hidden="true"
+                                                    />
                                                     Verified
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary">Pending</Badge>
+                                                <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                                                    <span
+                                                        className="h-1.5 w-1.5 rounded-full bg-warning"
+                                                        aria-hidden="true"
+                                                    />
+                                                    Pending
+                                                </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <TableCell className="px-4 py-3">
+                                            <div className="flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 <Calendar className="h-4 w-4" />
                                                 {new Date(user.createdAt).toLocaleDateString()}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" asChild>
+                                        <TableCell className="px-4 py-3 text-right">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-muted-foreground hover:text-foreground"
+                                                asChild
+                                            >
                                                 <Link to={`/admin/access/users/${user.id}/rbac`}>View</Link>
                                             </Button>
                                         </TableCell>
@@ -210,32 +233,34 @@ export function UserManagementPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </section>
 
             {/* Pagination Controls */}
             {!isLoading && pagination && pagination.total > PER_PAGE && (
                 <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
+                    <p className={MICRO_LABEL_CLASS}>
                         Showing {pageStart}–{pageEnd} of {pagination.total} users
                     </p>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={pagination.page <= 1}
                         >
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Prev
                         </Button>
-                        <span className="text-sm text-muted-foreground">
+                        <span className={MICRO_LABEL_CLASS}>
                             Page {pagination.page} of {pagination.totalPages}
                         </span>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => p + 1)}
                             disabled={pagination.page >= pagination.totalPages}
                         >

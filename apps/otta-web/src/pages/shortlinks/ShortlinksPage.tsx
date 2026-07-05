@@ -3,7 +3,6 @@ import type { PaginatedResponse, Pagination } from '@/lib/api-types';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
-    Badge,
     Button,
     Card,
     CardContent,
@@ -185,17 +184,17 @@ export function ShortlinksPage() {
     };
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-12">
+        <div className="space-y-8">
             {/* Header */}
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                        <Link2 className="h-8 w-8 text-primary" />
-                        <h1 className="text-4xl font-semibold tracking-tight">Shortlinks</h1>
+                        <Link2 className="h-7 w-7 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Shortlinks</h1>
                     </div>
                     <p className="text-muted-foreground">Create and manage short URLs for easy sharing</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                     <Button variant="outline" asChild>
                         <Link to="/analytics" search={{ tab: 'shortlinks' }}>
                             <BarChart3 className="mr-2 h-4 w-4" />
@@ -230,27 +229,33 @@ export function ShortlinksPage() {
 
             {/* Error Display */}
             {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             )}
 
             {/* Stats */}
             <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Total Links</CardTitle>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Total Links
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{pagination?.total ?? shortlinks.length}</div>
+                        <div className="text-2xl font-bold tracking-tight">
+                            {pagination?.total ?? shortlinks.length}
+                        </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Active Links</CardTitle>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Active Links
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">
+                        <div className="text-2xl font-bold tracking-tight">
                             {shortlinks.filter((link) => !isExpired(link.expiryDate)).length}
                         </div>
                     </CardContent>
@@ -258,15 +263,15 @@ export function ShortlinksPage() {
             </div>
 
             {/* Shortlinks Table */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Your Links</CardTitle>
+                        <div className="space-y-1">
+                            <CardTitle className="text-[0.9375rem] font-semibold">Your Links</CardTitle>
                             <CardDescription>Manage and track your shortlinks</CardDescription>
                         </div>
                         {pagination && (
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                 Showing {(pagination.page - 1) * pagination.perPage + 1} -{' '}
                                 {Math.min(pagination.page * pagination.perPage, pagination.total)} of {pagination.total}
                             </div>
@@ -275,30 +280,47 @@ export function ShortlinksPage() {
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <div className="flex h-32 items-center justify-center">
-                            <p className="text-muted-foreground">Loading...</p>
+                        <div className="space-y-2" aria-busy="true">
+                            <span className="sr-only">Loading shortlinks...</span>
+                            {Array.from({ length: 5 }, (_, i) => (
+                                <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/40" />
+                            ))}
                         </div>
                     ) : shortlinks.length === 0 ? (
-                        <div className="flex h-32 flex-col items-center justify-center gap-2">
-                            <Link2 className="h-12 w-12 text-muted-foreground/50" />
-                            <p className="text-muted-foreground">No shortlinks yet</p>
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-background py-12 ring-1 ring-border">
+                            <Link2 className="h-10 w-10 text-muted-foreground/50" />
+                            <p className="text-sm text-muted-foreground">No shortlinks yet</p>
                             <Button onClick={handleCreate} variant="outline" size="sm">
                                 Create your first link
                             </Button>
                         </div>
                     ) : (
                         <>
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto rounded-xl bg-background ring-1 ring-border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Short Code</TableHead>
-                                            <TableHead>Destination</TableHead>
-                                            <TableHead>Link</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>App</TableHead>
-                                            <TableHead>Expires</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Short Code
+                                            </TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Destination
+                                            </TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Link
+                                            </TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Type
+                                            </TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                App
+                                            </TableHead>
+                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Expires
+                                            </TableHead>
+                                            <TableHead className="text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -318,7 +340,7 @@ export function ShortlinksPage() {
                                                             }
                                                         >
                                                             {copiedId === `${link.id}-code` ? (
-                                                                <span className="text-xs text-green-600">✓</span>
+                                                                <span className="text-xs text-success">✓</span>
                                                             ) : (
                                                                 <Copy className="h-3 w-3" />
                                                             )}
@@ -348,7 +370,7 @@ export function ShortlinksPage() {
                                                             }
                                                         >
                                                             {copiedId === `${link.id}-dest` ? (
-                                                                <span className="text-xs text-green-600">✓</span>
+                                                                <span className="text-xs text-success">✓</span>
                                                             ) : (
                                                                 <Copy className="h-3 w-3" />
                                                             )}
@@ -381,7 +403,7 @@ export function ShortlinksPage() {
                                                             }
                                                         >
                                                             {copiedId === `${link.id}-link` ? (
-                                                                <span className="text-xs text-green-600">✓</span>
+                                                                <span className="text-xs text-success">✓</span>
                                                             ) : (
                                                                 <Copy className="h-3 w-3" />
                                                             )}
@@ -389,20 +411,26 @@ export function ShortlinksPage() {
                                                     </div>
                                                 </TableCell>
 
-                                                {/* Type - simple text */}
-                                                <TableCell className="text-sm text-muted-foreground capitalize">
-                                                    {link.type}
+                                                {/* Type - quiet chip */}
+                                                <TableCell>
+                                                    <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium capitalize text-muted-foreground ring-1 ring-border">
+                                                        {link.type}
+                                                    </span>
                                                 </TableCell>
 
-                                                {/* App - simple text */}
-                                                <TableCell className="text-sm text-muted-foreground">
-                                                    {link.appId || 'default'}
+                                                {/* App - quiet chip */}
+                                                <TableCell>
+                                                    <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
+                                                        {link.appId || 'default'}
+                                                    </span>
                                                 </TableCell>
 
                                                 {/* Expires */}
                                                 <TableCell>
                                                     {isExpired(link.expiryDate) ? (
-                                                        <Badge variant="destructive">Expired</Badge>
+                                                        <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-destructive ring-1 ring-destructive/40">
+                                                            Expired
+                                                        </span>
                                                     ) : link.expiryDate ? (
                                                         <span className="text-sm text-muted-foreground">
                                                             {formatDate(link.expiryDate)}
@@ -441,9 +469,11 @@ export function ShortlinksPage() {
 
                             {/* Pagination Controls */}
                             {pagination && pagination.totalPages > 1 && (
-                                <div className="mt-6 flex items-center justify-between border-t pt-4">
+                                <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">Items per page:</span>
+                                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                            Items per page
+                                        </span>
                                         <Select value={String(perPage)} onValueChange={handlePerPageChange}>
                                             <SelectTrigger className="w-20">
                                                 <SelectValue />
@@ -527,7 +557,7 @@ export function ShortlinksPage() {
                                         </Button>
                                     </div>
 
-                                    <div className="text-sm text-muted-foreground">
+                                    <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                         Page {currentPage} of {pagination.totalPages}
                                     </div>
                                 </div>

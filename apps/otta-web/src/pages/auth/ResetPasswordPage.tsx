@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { APP_META } from '@/ottabase/config';
 import { resetPassword } from '@/lib/auth-api';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
 
@@ -56,16 +57,26 @@ export function ResetPasswordPage() {
 
     return (
         <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Reset your password</CardTitle>
-                        <CardDescription>Choose a new password for your account</CardDescription>
+            <div className="w-full max-w-md space-y-6">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
+                        {APP_META.appName.charAt(0)}
+                    </span>
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Reset your password</h1>
+                        <p className="text-muted-foreground">Choose a new password for your account</p>
+                    </div>
+                </div>
+
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="gap-1.5">
+                        <CardTitle className="text-[0.9375rem] font-semibold">New password</CardTitle>
+                        <CardDescription>Enter and confirm your new password below</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {success ? (
                             <div className="space-y-2 text-sm">
-                                <p className="font-medium text-green-600">Password updated successfully.</p>
+                                <p className="font-medium text-success">Password updated successfully.</p>
                                 <p className="text-muted-foreground">Redirecting to login...</p>
                             </div>
                         ) : (
@@ -90,7 +101,11 @@ export function ResetPasswordPage() {
                                         autoComplete="new-password"
                                     />
                                 </div>
-                                {error && <p className="text-sm text-destructive">{error}</p>}
+                                {error && (
+                                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                        {error}
+                                    </div>
+                                )}
                                 <Button type="submit" className="w-full" disabled={isLoading}>
                                     {isLoading ? 'Updating...' : 'Reset password'}
                                 </Button>

@@ -25,7 +25,7 @@ function TableInfoBar() {
     if (!message) return null;
 
     return (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground animate-in fade-in slide-in-from-top-1">
+        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground animate-in fade-in slide-in-from-top-1">
             <Info className="h-4 w-4 shrink-0 text-primary" />
             <span className="flex-1">
                 <span className="font-medium text-muted-foreground">Table said: </span>
@@ -92,11 +92,11 @@ const todoColumns = createColumns<Todo>([
         width: 100,
         cell: ({ value }) =>
             value ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    <CheckCircle2 className="h-3 w-3" /> Done
+                <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
+                    <CheckCircle2 className="h-3 w-3 text-success" /> Done
                 </span>
             ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
                     <XCircle className="h-3 w-3" /> Pending
                 </span>
             ),
@@ -108,9 +108,9 @@ const todoColumns = createColumns<Todo>([
         width: 100,
         cell: ({ value }) => {
             const colors: Record<string, string> = {
-                high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                low: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                high: 'bg-destructive/10 text-destructive',
+                medium: 'bg-warning/10 text-warning',
+                low: 'bg-info/10 text-info',
             };
             return (
                 <span
@@ -156,15 +156,15 @@ export function DataTableDemoPage() {
             />
 
             {/* Demo Tabs */}
-            <div className="flex gap-2 border-b border-border pb-2">
+            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-muted/40 p-0.5">
                 {(['basic', 'selection', 'server', 'compact'] as const).map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveDemo(tab)}
-                        className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+                        className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors duration-normal ${
                             activeDemo === tab
-                                ? 'bg-primary text-primary-foreground'
-                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                ? 'bg-background text-foreground ring-1 ring-border'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         {tab === 'server' ? 'Server-Side' : tab}
@@ -184,12 +184,12 @@ export function DataTableDemoPage() {
             </TableMessageContext.Provider>
 
             {/* Code Example */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Usage Example</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-sm text-gray-100">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm text-foreground ring-1 ring-border">
                         <code>{`import { DataTable, useDataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable';
 
 // 1. Define columns declaratively
@@ -242,9 +242,9 @@ return (
             </Card>
 
             {/* Features */}
-            <Card className="bg-muted/50">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Features</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -306,9 +306,9 @@ function BasicDemo() {
     });
 
     return (
-        <Card>
+        <Card className="rounded-xl border-border/60 shadow-none">
             <CardHeader>
-                <CardTitle>Basic Table</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Basic Table</CardTitle>
                 <CardDescription>Client-side sorting, pagination, column visibility, and row actions</CardDescription>
             </CardHeader>
             <CardContent>
@@ -355,9 +355,9 @@ function SelectionDemo() {
     });
 
     return (
-        <Card>
+        <Card className="rounded-xl border-border/60 shadow-none">
             <CardHeader>
-                <CardTitle>Row Selection + Bulk Actions</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Row Selection + Bulk Actions</CardTitle>
                 <CardDescription>
                     Select rows with checkboxes. Bulk action toolbar appears when rows are selected.
                 </CardDescription>
@@ -418,13 +418,15 @@ function ServerSideDemo() {
     });
 
     return (
-        <Card>
+        <Card className="rounded-xl border-border/60 shadow-none">
             <CardHeader>
-                <CardTitle>Server-Side Pagination & Sorting</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Server-Side Pagination & Sorting</CardTitle>
                 <CardDescription>
                     Simulates server-driven data with manual sorting, pagination, and search. In production, use{' '}
-                    <code className="text-xs bg-muted px-1 py-0.5 rounded">useServerTable()</code> to connect to
-                    OttaORM.
+                    <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                        useServerTable()
+                    </code>{' '}
+                    to connect to OttaORM.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -453,9 +455,9 @@ function CompactDemo() {
     });
 
     return (
-        <Card>
+        <Card className="rounded-xl border-border/60 shadow-none">
             <CardHeader>
-                <CardTitle>Compact & Striped</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Compact & Striped</CardTitle>
                 <CardDescription>Compact mode with striped rows for dense data views.</CardDescription>
             </CardHeader>
             <CardContent>

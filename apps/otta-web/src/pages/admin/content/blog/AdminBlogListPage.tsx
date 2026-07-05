@@ -4,7 +4,6 @@
  * Unified content management for all content types (blog, changelog, docs, news, announcements).
  * Lists all posts with filtering, status management, and CRUD operations.
  */
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { api } from '@/lib/api';
 import type { PaginatedResponse } from '@/lib/api-types';
@@ -19,13 +18,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    Badge,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -237,48 +230,57 @@ export function AdminBlogListPage() {
     };
 
     const getStatusBadge = (status: PostStatus) => {
-        const variants: Record<PostStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-            published: 'default',
-            draft: 'secondary',
-            scheduled: 'outline',
-            archived: 'destructive',
+        const dots: Record<PostStatus, string> = {
+            published: 'bg-success',
+            draft: 'bg-muted-foreground/40',
+            scheduled: 'bg-warning',
+            archived: 'bg-destructive',
         };
-        return <Badge variant={variants[status]}>{POST_STATUSES[status].label}</Badge>;
+        return (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${dots[status]}`} />
+                {POST_STATUSES[status].label}
+            </span>
+        );
     };
 
     const getContentTypeBadge = (contentType: ContentType) => {
         return (
-            <Badge variant="outline" className="text-xs">
+            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                 {CONTENT_TYPES[contentType].label}
-            </Badge>
+            </span>
         );
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <BlogAdminNav />
 
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Content</h1>
-                    <p className="text-muted-foreground mt-1">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content</h1>
+                    <p className="max-w-3xl text-muted-foreground">
                         Manage blog posts, changelogs, documentation, news, and announcements.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                     {/* Seed Kitchensink: creates a demo post with all block types */}
                     {(kitchensinkState === 'created' || kitchensinkState === 'exists') && kitchensinkSlug ? (
-                        <Badge variant="outline" className="text-xs">
+                        <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                             {kitchensinkState === 'created' ? '✓ Created' : 'Already exists'}{' '}
-                            <a href={`/blog/${kitchensinkSlug}`} className="ml-1 underline text-primary">
+                            <a
+                                href={`/blog/${kitchensinkSlug}`}
+                                className="ml-1 underline underline-offset-2 transition-colors duration-normal hover:text-foreground"
+                            >
                                 View
                             </a>
-                        </Badge>
+                        </span>
                     ) : null}
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
+                        className="text-muted-foreground"
                         onClick={seedKitchensink}
                         disabled={
                             kitchensinkState === 'loading' ||
@@ -315,15 +317,16 @@ export function AdminBlogListPage() {
             </div>
 
             {/* Content Type Tabs */}
-            <div className="flex items-center gap-1 border-b">
+            <div className="flex w-fit max-w-full flex-wrap items-center gap-1 rounded-lg bg-muted/40 p-1">
                 {CONTENT_TYPE_TABS.map(({ value, label }) => (
                     <button
                         key={value}
                         onClick={() => handleFilterChange(() => setContentTypeFilter(value))}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                        aria-pressed={contentTypeFilter === value}
+                        className={`inline-flex h-8 items-center whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
                             contentTypeFilter === value
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                                ? 'bg-background text-foreground ring-1 ring-border'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         {label}
@@ -332,221 +335,234 @@ export function AdminBlogListPage() {
             </div>
 
             {/* Filters */}
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by title, slug, or excerpt..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                className="pl-9"
-                            />
-                            {isLoading && debouncedSearch && (
-                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                            )}
-                        </div>
-
-                        {/* Status Filter */}
-                        <div className="flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-muted-foreground" />
-                            <NativeSelect
-                                value={statusFilter}
-                                onChange={(e) =>
-                                    handleFilterChange(() => setStatusFilter(e.target.value as PostStatus | 'all'))
-                                }
-                                aria-label="Filter by status"
-                            >
-                                <NativeSelectOption value="all">All Status</NativeSelectOption>
-                                {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                                    <NativeSelectOption key={value} value={value}>
-                                        {label}
-                                    </NativeSelectOption>
-                                ))}
-                            </NativeSelect>
-                        </div>
+            <div className="rounded-xl bg-muted/40 p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    {/* Search */}
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by title, slug, or excerpt..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="h-9 pl-9"
+                        />
+                        {isLoading && debouncedSearch && (
+                            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                        )}
                     </div>
-                </CardContent>
-            </Card>
+
+                    {/* Status Filter */}
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <NativeSelect
+                            value={statusFilter}
+                            onChange={(e) =>
+                                handleFilterChange(() => setStatusFilter(e.target.value as PostStatus | 'all'))
+                            }
+                            aria-label="Filter by status"
+                        >
+                            <NativeSelectOption value="all">All Status</NativeSelectOption>
+                            {Object.entries(POST_STATUSES).map(([value, { label }]) => (
+                                <NativeSelectOption key={value} value={value}>
+                                    {label}
+                                </NativeSelectOption>
+                            ))}
+                        </NativeSelect>
+                    </div>
+                </div>
+            </div>
 
             {/* Error State */}
             {error && (
-                <Card className="border-destructive">
-                    <CardContent className="pt-6">
-                        <p className="text-destructive">{error.message}</p>
-                    </CardContent>
-                </Card>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error.message}
+                </div>
             )}
 
             {/* Posts List */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <span>{CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label || 'Content'}</span>
-                        {isLoading && <span className="text-sm font-normal text-muted-foreground">Loading...</span>}
-                    </CardTitle>
-                    <CardDescription>
+            <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-[0.9375rem] font-semibold">
+                        {CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label || 'Content'}
+                    </h2>
+                    <span className="inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                         {totalCount} item{totalCount !== 1 ? 's' : ''}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <TableSkeleton rows={6} columns={6} />
-                    ) : posts.length === 0 ? (
-                        <div className="text-center py-12">
-                            <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-lg font-semibold">No posts found</h3>
-                            <p className="mt-2 text-muted-foreground">
-                                {totalCount === 0
-                                    ? 'Get started by creating your first one.'
-                                    : 'Try adjusting your search or filters.'}
-                            </p>
-                            {totalCount === 0 && (
-                                <Button asChild className="mt-4">
-                                    <Link
-                                        to="/admin/content/blog/new"
-                                        search={
-                                            contentTypeFilter !== 'all' ? { contentType: contentTypeFilter } : undefined
-                                        }
+                    </span>
+                </div>
+                {isLoading ? (
+                    <div className="space-y-2" aria-busy="true">
+                        <span className="sr-only">Loading posts...</span>
+                        {Array.from({ length: 6 }, (_, index) => (
+                            <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : posts.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                        <h3 className="mt-4 text-[0.9375rem] font-semibold">No posts found</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                            {totalCount === 0
+                                ? 'Get started by creating your first one.'
+                                : 'Try adjusting your search or filters.'}
+                        </p>
+                        {totalCount === 0 && (
+                            <Button asChild className="mt-4">
+                                <Link
+                                    to="/admin/content/blog/new"
+                                    search={
+                                        contentTypeFilter !== 'all' ? { contentType: contentTypeFilter } : undefined
+                                    }
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    {contentTypeFilter !== 'all'
+                                        ? `Create ${CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label ?? 'Post'}`
+                                        : 'Create Post'}
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-xl border border-border/60">
+                        <Table>
+                            <TableHeader className="bg-muted/40">
+                                <TableRow className="border-border/60 hover:bg-transparent">
+                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Title
+                                    </TableHead>
+                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Status
+                                    </TableHead>
+                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Type
+                                    </TableHead>
+                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Author
+                                    </TableHead>
+                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Publish
+                                    </TableHead>
+                                    <TableHead className="text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Actions
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {posts.map((post) => (
+                                    <TableRow
+                                        key={post.id}
+                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
                                     >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        {contentTypeFilter !== 'all'
-                                            ? `Create ${CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label ?? 'Post'}`
-                                            : 'Create Post'}
-                                    </Link>
-                                </Button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Title</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Author</TableHead>
-                                        <TableHead>Publish</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {posts.map((post) => (
-                                        <TableRow key={post.id} className="hover:bg-muted/50">
-                                            <TableCell className="max-w-[360px]">
-                                                <div className="flex items-start gap-3">
-                                                    <button
-                                                        type="button"
-                                                        title={
-                                                            post.isFeatured ? 'Remove highlight' : 'Highlight this post'
-                                                        }
-                                                        className="mt-1 shrink-0 text-muted-foreground hover:text-yellow-500 transition-colors"
-                                                        onClick={() => handleToggleFeatured(post.id, post.isFeatured)}
-                                                        disabled={updatePost.isPending}
+                                        <TableCell className="max-w-[360px]">
+                                            <div className="flex items-start gap-3">
+                                                <button
+                                                    type="button"
+                                                    title={post.isFeatured ? 'Remove highlight' : 'Highlight this post'}
+                                                    className="mt-1 shrink-0 text-muted-foreground transition-colors duration-normal hover:text-warning"
+                                                    onClick={() => handleToggleFeatured(post.id, post.isFeatured)}
+                                                    disabled={updatePost.isPending}
+                                                >
+                                                    {post.isFeatured ? (
+                                                        <Star className="h-4 w-4 fill-warning text-warning" />
+                                                    ) : (
+                                                        <Star className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                                <div className="min-w-0">
+                                                    <Link
+                                                        to="/admin/content/blog/$postId/edit"
+                                                        params={{ postId: post.id }}
+                                                        className="font-medium hover:underline line-clamp-1"
                                                     >
-                                                        {post.isFeatured ? (
-                                                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                                        ) : (
-                                                            <Star className="h-4 w-4" />
-                                                        )}
-                                                    </button>
-                                                    <div className="min-w-0">
-                                                        <Link
-                                                            to="/admin/content/blog/$postId/edit"
-                                                            params={{ postId: post.id }}
-                                                            className="font-medium hover:underline line-clamp-1"
-                                                        >
-                                                            {post.title}
-                                                        </Link>
-                                                        {post.excerpt && (
-                                                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                                                {post.excerpt}
-                                                            </p>
-                                                        )}
-                                                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                                            <Clock className="h-3 w-3" />
-                                                            {post.readingTimeMinutes
-                                                                ? `${post.readingTimeMinutes} min read`
-                                                                : '—'}
-                                                        </div>
+                                                        {post.title}
+                                                    </Link>
+                                                    {post.excerpt && (
+                                                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                                            {post.excerpt}
+                                                        </p>
+                                                    )}
+                                                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <Clock className="h-3 w-3" />
+                                                        {post.readingTimeMinutes
+                                                            ? `${post.readingTimeMinutes} min read`
+                                                            : '—'}
                                                     </div>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>{getStatusBadge(post.status)}</TableCell>
-                                            <TableCell>{getContentTypeBadge(post.contentType)}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {post.author?.name || '—'}
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {post.status === 'published'
-                                                    ? `Published ${formatShortDate(post.publishedAt)}`
-                                                    : post.status === 'scheduled'
-                                                      ? `Scheduled ${formatShortDate(post.publishAt)}`
-                                                      : `Updated ${formatShortDate(post.updatedAt)}`}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" asChild>
-                                                        <a
-                                                            href={getPublicUrl(post.slug, post.contentType)}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            aria-label="View"
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </a>
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" asChild>
-                                                        <Link
-                                                            to="/admin/content/blog/$postId/edit"
-                                                            params={{ postId: post.id }}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDelete(post.id, post.title)}
-                                                        disabled={deletePost.isPending}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{getStatusBadge(post.status)}</TableCell>
+                                        <TableCell>{getContentTypeBadge(post.contentType)}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {post.author?.name || '—'}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {post.status === 'published'
+                                                ? `Published ${formatShortDate(post.publishedAt)}`
+                                                : post.status === 'scheduled'
+                                                  ? `Scheduled ${formatShortDate(post.publishAt)}`
+                                                  : `Updated ${formatShortDate(post.updatedAt)}`}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant="ghost" size="icon" asChild>
+                                                    <a
+                                                        href={getPublicUrl(post.slug, post.contentType)}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        aria-label="View"
                                                     >
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                                        <Eye className="h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                                <Button variant="ghost" size="icon" asChild>
+                                                    <Link
+                                                        to="/admin/content/blog/$postId/edit"
+                                                        params={{ postId: post.id }}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDelete(post.id, post.title)}
+                                                    disabled={deletePost.isPending}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </section>
 
             {/* Pagination Controls */}
             {!isLoading && pagination && pagination.total > 0 && (
                 <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Showing {pageStart} to {pageEnd} of {pagination.total} results
                     </p>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={pagination.page <= 1}
                         >
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Previous
                         </Button>
-                        <span className="text-sm text-muted-foreground px-2">
+                        <span className="px-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Page {pagination.page} of {pagination.totalPages}
                         </span>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setCurrentPage((p) => p + 1)}
                             disabled={pagination.page >= pagination.totalPages}
                         >

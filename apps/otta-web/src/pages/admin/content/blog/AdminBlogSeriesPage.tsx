@@ -9,11 +9,6 @@ import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Input,
     Label,
     Sheet,
@@ -23,9 +18,12 @@ import {
     SheetTitle,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { CheckCircle, Edit, Layers, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { Edit, Layers, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
 
 interface BlogSeries {
     id: string;
@@ -135,14 +133,14 @@ export function AdminBlogSeriesPage() {
     const isSaving = createSeries.isPending || updateSeries.isPending;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <BlogAdminNav />
 
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Series</h1>
-                    <p className="text-muted-foreground mt-1">Manage blog series</p>
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Series</h1>
+                    <p className="text-muted-foreground">Manage blog series</p>
                 </div>
                 <Button onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -150,66 +148,70 @@ export function AdminBlogSeriesPage() {
                 </Button>
             </div>
 
-            {/* Search */}
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="relative">
+            {/* Series list */}
+            <section className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <Layers className="h-4 w-4 text-muted-foreground" />
+                        Series
+                        <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
+                            {filteredSeries.length} series
+                        </span>
+                    </h2>
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Search series..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9"
+                            className="h-9 pl-10"
                         />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
 
-            {/* Series List */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                            <Layers className="h-5 w-5" />
-                            Series
-                        </span>
-                        {isLoading && <span className="text-sm font-normal text-muted-foreground">Loading...</span>}
-                    </CardTitle>
-                    <CardDescription>{filteredSeries.length} series</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {filteredSeries.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Layers className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-lg font-semibold">No series found</h3>
-                            <p className="mt-2 text-muted-foreground">
-                                {seriesList.length === 0
-                                    ? 'Get started by creating your first series.'
-                                    : 'Try adjusting your search.'}
-                            </p>
-                            {seriesList.length === 0 && (
-                                <Button className="mt-4" onClick={openCreate}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create Series
-                                </Button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
+                {isLoading ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading series...</span>
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : filteredSeries.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <Layers className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                        <h3 className="mt-4 text-sm font-medium">No series found</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {seriesList.length === 0
+                                ? 'Get started by creating your first series.'
+                                : 'Try adjusting your search.'}
+                        </p>
+                        {seriesList.length === 0 && (
+                            <Button className="mt-4" onClick={openCreate}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Series
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
+                        <div className="divide-y divide-border/60">
                             {filteredSeries.map((series) => (
                                 <div
                                     key={series.id}
-                                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50 cursor-pointer"
+                                    className="flex cursor-pointer items-center justify-between p-3 transition-colors duration-normal hover:bg-muted/40"
                                     onClick={() => setEditingSeries(series)}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <span className="font-medium">{series.title}</span>
-                                        <Badge variant="outline" className="text-xs">
+                                        <span className="text-sm font-medium">{series.title}</span>
+                                        <Badge variant="outline" className={CHIP_CLASS}>
                                             {series.slug}
                                         </Badge>
                                         {series.isComplete && (
-                                            <Badge variant="default" className="text-xs gap-1">
-                                                <CheckCircle className="h-3 w-3" />
+                                            <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
+                                                <span
+                                                    className="h-1.5 w-1.5 rounded-full bg-success"
+                                                    aria-hidden="true"
+                                                />
                                                 Complete
                                             </Badge>
                                         )}
@@ -218,6 +220,7 @@ export function AdminBlogSeriesPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setEditingSeries(series);
@@ -228,6 +231,7 @@ export function AdminBlogSeriesPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-8 w-8"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDeleteDialog({ id: series.id, title: series.title });
@@ -239,9 +243,9 @@ export function AdminBlogSeriesPage() {
                                 </div>
                             ))}
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </section>
 
             {/* Edit / Create Sheet */}
             <Sheet open={sheetOpen} onOpenChange={(open) => !open && closeSheet()}>

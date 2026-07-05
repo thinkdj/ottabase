@@ -30,10 +30,11 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
             <Link
                 key={link.to}
                 to={link.to}
-                className={`px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap md:whitespace-normal ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal whitespace-nowrap md:whitespace-normal ${
                     isActive
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                        ? 'bg-background text-foreground font-medium ring-1 ring-border'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
                 }`}
             >
                 {link.label}
@@ -56,7 +57,7 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
 
     return (
         <aside
-            className="w-full border-b bg-sidebar md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto"
+            className="w-full border-b border-border/60 bg-sidebar md:shrink-0 md:border-b-0 md:border-r md:border-border/60 md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto"
             style={{ '--sidebar-width': desktopWidth } as React.CSSProperties}
         >
             <style>{SIDEBAR_WIDTH_CSS}</style>

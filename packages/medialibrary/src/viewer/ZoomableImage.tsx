@@ -201,7 +201,7 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
 
             {/* Zoom level indicator */}
             {isZoomed && (
-                <span className="pointer-events-none absolute bottom-2 right-2 select-none rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white backdrop-blur-sm">
+                <span className="pointer-events-none absolute bottom-2 right-2 select-none rounded-full bg-background/70 px-2 py-0.5 text-[0.6875rem] font-medium tabular-nums text-muted-foreground ring-1 ring-border backdrop-blur-md">
                     {zoom.toFixed(1)}x
                 </span>
             )}

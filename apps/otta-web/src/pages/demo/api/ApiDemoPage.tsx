@@ -45,9 +45,9 @@ export function ApiDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader title="API Client" description="@ottabase/api fetch wrapper" />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Test Requests</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Test Requests</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
@@ -84,13 +84,17 @@ export function ApiDemoPage() {
                         </Button>
                     </div>
 
-                    {result && <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto">{result}</pre>}
+                    {result && (
+                        <pre className="overflow-auto rounded-lg bg-background p-4 text-sm ring-1 ring-border">
+                            {result}
+                        </pre>
+                    )}
                 </CardContent>
             </Card>
 
-            <div className="rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
-                <p className="font-medium mb-2">Usage:</p>
-                <pre className="text-xs">
+            <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">Usage</p>
+                <pre className="overflow-x-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                     {`await api("/api/demo");              // GET
 await api("/api/demo", "DELETE");    // shorthand
 await api("/api/demo", { method: "POST", body: {...} });`}

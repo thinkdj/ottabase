@@ -1,5 +1,5 @@
 import { APP_META } from '@/ottabase/config';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { DEMO_ITEMS } from './demoItems';
@@ -45,17 +45,14 @@ export function DemoIndexPage() {
                                         </Badge>
                                     ) : null}
                                 </div>
-                                <CardTitle className="text-[0.9375rem] font-semibold">{item.title}</CardTitle>
+                                <CardTitle className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
+                                    {item.title}
+                                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-normal group-hover:translate-x-0.5 group-hover:text-foreground" />
+                                </CardTitle>
                                 <CardDescription className="line-clamp-2 leading-relaxed">
                                     {item.description}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                                    View demo
-                                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                                </span>
-                            </CardContent>
                         </Card>
                     </Link>
                 ))}

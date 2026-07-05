@@ -128,9 +128,9 @@ export function CropperDemoPage() {
             />
 
             <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Cropper</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Cropper</CardTitle>
                         <CardDescription>
                             Select PNG/JPEG, drag to move, resize with handles, zoom with wheel or buttons, flip/rotate
                             with smooth transitions
@@ -139,7 +139,7 @@ export function CropperDemoPage() {
                     <CardContent className="space-y-4">
                         <div
                             ref={containerRef}
-                            className="rounded-lg border bg-muted/30 p-4 dark:bg-muted/10"
+                            className="rounded-lg bg-background p-4 ring-1 ring-border"
                             style={{ minHeight: 120 }}
                         />
                         <Button onClick={handleExport} className="gap-2">
@@ -149,9 +149,9 @@ export function CropperDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Realtime Config</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Realtime Config</CardTitle>
                         <CardDescription>All capabilities – change and see effect immediately</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -259,13 +259,17 @@ export function CropperDemoPage() {
             </div>
 
             {previewUrl && (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Preview</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Preview</CardTitle>
                         <CardDescription>Cropped output (JPEG, 92% quality)</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <img src={previewUrl} alt="Cropped" className="max-h-64 rounded-lg border object-contain" />
+                        <img
+                            src={previewUrl}
+                            alt="Cropped"
+                            className="max-h-64 rounded-lg object-contain ring-1 ring-border"
+                        />
                     </CardContent>
                 </Card>
             )}

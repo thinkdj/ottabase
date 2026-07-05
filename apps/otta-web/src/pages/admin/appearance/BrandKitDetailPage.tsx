@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconActivity,
     IconArrowLeft,
+    IconArrowRight,
     IconBadge,
     IconDownload,
     IconPalette,
@@ -61,7 +62,7 @@ function BrandKitPreviewPanel({
 
     return (
         <div
-            className="rounded-xl border bg-background p-4 dark:border-muted overflow-hidden relative group"
+            className="rounded-xl border bg-background p-4 overflow-hidden relative group"
             style={
                 {
                     ...varMap,
@@ -102,8 +103,10 @@ function BrandKitPreviewPanel({
                     </div>
                 </div>
 
-                <div className="space-y-2 rounded-lg border p-3 bg-card border-border dark:border-muted">
-                    <p className="text-xs font-medium text-muted-foreground">Color palette</p>
+                <div className="space-y-2 rounded-lg border p-3 bg-card border-border">
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Color palette
+                    </p>
                     <div className="flex flex-wrap gap-2">
                         {['primary', 'secondary', 'accent', 'muted', 'destructive'].map((token) => (
                             <div
@@ -122,7 +125,9 @@ function BrandKitPreviewPanel({
                 </div>
 
                 <div className="space-y-3">
-                    <p className="text-xs font-medium text-muted-foreground">Shadows &amp; Interactive Elements</p>
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Shadows &amp; Interactive Elements
+                    </p>
                     <div className="flex flex-wrap gap-3">
                         <button
                             type="button"
@@ -181,7 +186,7 @@ function BrandKitPreviewPanel({
                         Heading Typography
                     </p>
                     <p
-                        className="text-[13px] text-muted-foreground mt-1"
+                        className="text-sm text-muted-foreground mt-1"
                         style={{
                             fontFamily: 'var(--font-body)',
                             lineHeight: 'var(--typography-body-line-height, 1.5)',
@@ -414,8 +419,19 @@ export function AdminBrandKitDetailPage() {
 
     if (!isNew && (isLoading || !kit)) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Loading Brand Kit...</p>
+            <div className="space-y-8" aria-busy="true">
+                <span className="sr-only">Loading Brand Kit...</span>
+                <div className="flex items-center justify-between">
+                    <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-9 w-48 animate-pulse rounded-xl bg-muted/40" />
+                </div>
+                <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
+                    <div className="h-96 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="space-y-4">
+                        <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                        <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -448,61 +464,67 @@ export function AdminBrandKitDetailPage() {
     const saving = isNew ? createMutation.isPending : updateMutation.isPending;
 
     return (
-        <div className="space-y-theme-section">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-theme-card">
-                    <Link to="/admin/appearance/brand-kits">
-                        <button
-                            type="button"
-                            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-                        >
-                            <IconArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Kits
-                        </button>
-                    </Link>
-                    <h1 className="text-2xl font-bold">{draft.name || kitForView.name}</h1>
-                </div>
-                {!isNew ? (
-                    <Link
-                        to="/admin/appearance/layouts"
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        Configure layouts & route mappings
-                    </Link>
-                ) : null}
-                <div className="flex items-center gap-2">
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Link to="/admin/appearance/brand-kits">
                     <button
                         type="button"
-                        className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-                        onClick={handleDownloadKit}
-                        title="Download kit as JSON backup (ottabase_&lt;name&gt;_YYYYMMDD.json)"
+                        className="-ml-2 inline-flex h-9 w-fit items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                        <IconDownload className="mr-2 h-4 w-4" />
-                        Download
+                        <IconArrowLeft className="h-4 w-4" />
+                        Back to Kits
                     </button>
-                    {isNew || isDefaultKit ? null : (
+                </Link>
+
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                            {draft.name || kitForView.name}
+                        </h1>
+                        {!isNew ? (
+                            <Link
+                                to="/admin/appearance/layouts"
+                                className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                Configure layouts & route mappings
+                                <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-normal group-hover:translate-x-0.5" />
+                            </Link>
+                        ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
                         <button
                             type="button"
-                            className="inline-flex items-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
-                            onClick={handleDelete}
-                            disabled={deleteMutation.isPending}
+                            className="inline-flex h-9 items-center rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors duration-normal hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            onClick={handleDownloadKit}
+                            title="Download kit as JSON backup (ottabase_&lt;name&gt;_YYYYMMDD.json)"
                         >
-                            <IconTrash className="mr-2 h-4 w-4" />
-                            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                            <IconDownload className="mr-2 h-4 w-4" />
+                            Download
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-                        onClick={handleSave}
-                        disabled={saving}
-                    >
-                        {saving ? (isNew ? 'Creating...' : 'Saving...') : isNew ? 'Create Brand Kit' : 'Save'}
-                    </button>
+                        {isNew || isDefaultKit ? null : (
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center rounded-md border border-destructive/40 px-4 text-sm font-medium text-destructive transition-colors duration-normal hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                                onClick={handleDelete}
+                                disabled={deleteMutation.isPending}
+                            >
+                                <IconTrash className="mr-2 h-4 w-4" />
+                                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-normal hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? (isNew ? 'Creating...' : 'Saving...') : isNew ? 'Create Brand Kit' : 'Save'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid gap-theme-section lg:grid-cols-[1fr,320px]">
+            <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof VALID_TABS)[number])} className="w-full">
                     <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:w-auto lg:inline-flex lg:flex-wrap">
                         <TabsTrigger value="brand">
@@ -548,7 +570,7 @@ export function AdminBrandKitDetailPage() {
                     </TabsContent>
                     <TabsContent value="logo">
                         {isNew ? (
-                            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                            <div className="rounded-xl bg-muted/40 p-6 text-sm text-muted-foreground">
                                 Save the Brand Kit first to upload logos.
                             </div>
                         ) : (
@@ -603,17 +625,19 @@ export function AdminBrandKitDetailPage() {
                 </Tabs>
 
                 {/* Realtime preview – light and dark stacked */}
-                <div className="space-y-theme-card lg:sticky lg:top-4 lg:self-start">
+                <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
                     <div>
-                        <p className="text-sm font-medium text-muted-foreground">Live preview</p>
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Live preview
+                        </p>
                         {hasColorOverrides ? (
-                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
-                                Showing custom token colors (overrides preset).
-                            </p>
+                            <p className="mt-1 text-xs text-warning">Showing custom token colors (overrides preset).</p>
                         ) : null}
                     </div>
                     <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Light</p>
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Light
+                        </p>
                         <BrandKitPreviewPanel
                             kitData={{
                                 tokensJson: draft.tokensJson,
@@ -624,7 +648,9 @@ export function AdminBrandKitDetailPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Dark</p>
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Dark
+                        </p>
                         <BrandKitPreviewPanel
                             kitData={{
                                 tokensJson: draft.tokensJson,

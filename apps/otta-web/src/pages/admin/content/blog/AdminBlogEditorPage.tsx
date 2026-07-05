@@ -43,7 +43,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    Badge,
     Button,
     Card,
     CardContent,
@@ -192,6 +191,14 @@ const blogTagLinkHooks = createModelHooks<BlogTagLink>({ entityName: 'post_tag_l
 const blogCategoryHooks = createModelHooks<BlogCategory>({ entityName: 'categories' });
 const blogCategoryLinkHooks = createModelHooks<BlogCategoryLink>({ entityName: 'post_category_links' });
 
+/** Status dot colors for the header status chip (semantic tokens only). */
+const STATUS_DOT_CLASS: Record<PostStatus, string> = {
+    published: 'bg-success',
+    draft: 'bg-muted-foreground/40',
+    scheduled: 'bg-warning',
+    archived: 'bg-destructive',
+};
+
 /** Triggers a browser download for a text string as a file. */
 function downloadText(content: string, filename: string): void {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -240,8 +247,19 @@ export function AdminBlogEditorPage() {
     // Show loading state until data is ready (for edit mode)
     if (isEditMode && (isLoadingPost || !existingPost)) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-6" aria-busy="true">
+                <span className="sr-only">Loading post...</span>
+                <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="space-y-6 lg:col-span-2">
+                        <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
+                        <div className="h-96 animate-pulse rounded-xl bg-muted/40" />
+                    </div>
+                    <div className="space-y-6">
+                        <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                        <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -1184,8 +1202,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">{isEditMode ? 'Edit Post' : 'New Post'}</h1>
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                            {isEditMode ? 'Edit Post' : 'New Post'}
+                        </h1>
                         <p className="text-sm text-muted-foreground">
                             {isEditMode ? 'Update your blog post' : 'Create a new blog post'}
                         </p>
@@ -1193,9 +1213,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Badge variant={status === 'published' ? 'default' : 'secondary'}>
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[status]}`} />
                         {POST_STATUSES[status].label}
-                    </Badge>
+                    </span>
                     <Button variant="outline" onClick={() => handleSave(false)} disabled={saveDisabled}>
                         {isSaving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1220,7 +1241,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 {/* Left Column - Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Title & Slug */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardContent className="pt-6 space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="title">Title</Label>
@@ -1291,9 +1312,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </TabsList>
 
                         <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle>Main Content</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">Main Content</CardTitle>
                                     <CardDescription>
                                         Write your post content using the rich text editor
                                     </CardDescription>
@@ -1359,9 +1380,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </TabsContent>
 
                         <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle>Private Notes</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">Private Notes</CardTitle>
                                     <CardDescription>
                                         Personal notes for the author (not shown publicly)
                                     </CardDescription>
@@ -1369,16 +1390,18 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                 <CardContent>
                                     <div
                                         ref={notesEditor.editorRef}
-                                        className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4 bg-yellow-50/50 dark:bg-yellow-900/10"
+                                        className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
                                     />
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
                         <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle>Footnotes & References</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">
+                                        Footnotes & References
+                                    </CardTitle>
                                     <CardDescription>
                                         Add footnotes, citations, and references (shown at the end of the post)
                                     </CardDescription>
@@ -1393,9 +1416,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </TabsContent>
 
                         <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle>SEO Settings</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">SEO Settings</CardTitle>
                                     <CardDescription>Optimize your post for search engines</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -1447,9 +1470,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </TabsContent>
 
                         <TabsContent value="meta" className="mt-4 data-[state=inactive]:hidden">
-                            <Card>
+                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                                 <CardHeader>
-                                    <CardTitle>Custom Meta</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold">Custom Meta</CardTitle>
                                     <CardDescription>
                                         Free-form key/value metadata stored on the post. Not used by the blog engine
                                         itself &mdash; available to themes, plugins, and custom renderers.
@@ -1478,9 +1501,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Tabs>
 
                     {/* Excerpt */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Excerpt</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Excerpt</CardTitle>
                             <CardDescription>Short summary shown in listings (auto-generated if empty)</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -1497,10 +1520,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 {/* Right Column - Settings */}
                 <div className="space-y-6">
                     {/* Hero Image */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <ImageIcon className="h-4 w-4 text-muted-foreground" />
                                 Hero Image
                             </CardTitle>
                         </CardHeader>
@@ -1552,10 +1575,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             ) : (
                                 <button
                                     type="button"
-                                    className={`w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                                    className={`w-full rounded-lg border-2 border-dashed p-6 text-center outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                         isHeroDropActive
                                             ? 'border-primary bg-primary/5'
-                                            : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                                            : 'border-border bg-background hover:bg-muted/40'
                                     }`}
                                     onClick={() => setIsHeroMediaPickerOpen(true)}
                                     onDragEnter={(e) => {
@@ -1633,10 +1656,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Dialog>
 
                     {/* Post Settings */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Settings className="h-4 w-4 text-muted-foreground" />
                                 Settings
                             </CardTitle>
                         </CardHeader>
@@ -1748,7 +1771,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                                         ? 'Leave blank to keep current'
                                                         : 'Set password'
                                                 }
-                                                className="bg-background dark:bg-background"
                                             />
                                             <p className="text-xs text-muted-foreground">
                                                 {initialData?.isProtected
@@ -1764,7 +1786,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                                 value={passwordHint}
                                                 onChange={(e) => setPasswordHint(e.target.value)}
                                                 placeholder="e.g. Our wedding date"
-                                                className="bg-background dark:bg-background"
                                             />
                                             <p className="text-xs text-muted-foreground">
                                                 Shown on the lock screen to help readers.
@@ -1777,10 +1798,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Series */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Layers className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Layers className="h-4 w-4 text-muted-foreground" />
                                 Series
                             </CardTitle>
                             <CardDescription>Group this post with related content</CardDescription>
@@ -1823,10 +1844,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Tags */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Tag className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Tag className="h-4 w-4 text-muted-foreground" />
                                 Tags
                             </CardTitle>
                             <CardDescription>Categorize your post with tags</CardDescription>
@@ -1908,10 +1929,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Category */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <FolderTree className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <FolderTree className="h-4 w-4 text-muted-foreground" />
                                 Categories
                             </CardTitle>
                             <CardDescription>Assign categories to this post</CardDescription>
@@ -1935,10 +1956,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Version History */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <History className="h-4 w-4" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <History className="h-4 w-4 text-muted-foreground" />
                                 Version History
                             </CardTitle>
                             <CardDescription>Track changes and restore previous versions</CardDescription>
@@ -1969,7 +1990,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     maxVersionsToKeep != null &&
                                     maxVersionsToKeep > 0 &&
                                     versions.length > maxVersionsToKeep && (
-                                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                        <p className="text-xs font-medium text-warning">
                                             {versions.length - maxVersionsToKeep} version
                                             {versions.length - maxVersionsToKeep === 1 ? '' : 's'} in the database would
                                             be deleted on next save.
@@ -1978,20 +1999,21 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </div>
 
                             {isEditMode && isLoadingVersions && (
-                                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    Loading version history...
+                                <div className="space-y-2" aria-busy="true">
+                                    <span className="sr-only">Loading version history...</span>
+                                    <div className="h-9 animate-pulse rounded-lg bg-muted/70" />
+                                    <div className="h-9 animate-pulse rounded-lg bg-muted/70" />
                                 </div>
                             )}
 
                             {isEditMode && !isLoadingVersions && versions.length > 0 && (
                                 <div className="space-y-2">
                                     <Label>All Versions ({versions.length})</Label>
-                                    <div className="max-h-[200px] overflow-y-auto rounded-md border divide-y">
+                                    <div className="max-h-[200px] divide-y divide-border/60 overflow-y-auto rounded-lg bg-background ring-1 ring-border">
                                         {versions.map((version) => (
                                             <div
                                                 key={version.id}
-                                                className="flex items-center justify-between p-2 text-sm hover:bg-muted/50"
+                                                className="flex items-center justify-between p-2 text-sm transition-colors duration-normal hover:bg-muted/40"
                                             >
                                                 <div>
                                                     <span className="font-medium">v{version.versionNumber}</span>
@@ -2071,9 +2093,11 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
                     {/* Danger Zone */}
                     {isEditMode && (
-                        <Card className="border-destructive/50">
+                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                             <CardHeader>
-                                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                                <CardTitle className="text-[0.9375rem] font-semibold text-destructive">
+                                    Danger Zone
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Button
@@ -2208,22 +2232,21 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         <DialogTitle>Compare current with Version {compareVersion?.versionNumber}</DialogTitle>
                         <DialogDescription>
                             Comparing the selected historical version with the current saved content.
-                            <span className="text-green-600 dark:text-green-400 font-medium ml-2">Green</span> is newly
-                            added,
-                            <span className="text-red-600 dark:text-red-400 font-medium ml-2">Red</span> is removed.
+                            <span className="ml-2 font-medium text-success">Green</span> is newly added,
+                            <span className="ml-2 font-medium text-destructive">Red</span> is removed.
                         </DialogDescription>
                     </DialogHeader>
 
                     {compareVersion && compareDiffs && (
                         <div className="space-y-8 mt-4">
                             <div>
-                                <h3 className="text-lg font-semibold mb-2">Title Changes</h3>
-                                <div className="p-4 bg-muted rounded-md text-lg">
+                                <h3 className="mb-2 text-[0.9375rem] font-semibold">Title Changes</h3>
+                                <div className="rounded-lg bg-muted/40 p-4 text-lg">
                                     {compareDiffs.titleDiff.map((part, index) => {
                                         const color = part.added
-                                            ? 'text-green-600 bg-green-100 dark:bg-green-900/30'
+                                            ? 'text-success bg-success/10'
                                             : part.removed
-                                              ? 'text-red-600 bg-red-100 line-through dark:bg-red-900/30'
+                                              ? 'text-destructive bg-destructive/10 line-through'
                                               : 'text-foreground';
                                         return (
                                             <span key={index} className={`px-0.5 rounded ${color}`}>
@@ -2235,13 +2258,15 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </div>
 
                             <div>
-                                <h3 className="text-lg font-semibold mb-2">Content Changes (Text Extraction)</h3>
-                                <div className="p-4 bg-muted rounded-md whitespace-pre-wrap font-mono text-sm">
+                                <h3 className="mb-2 text-[0.9375rem] font-semibold">
+                                    Content Changes (Text Extraction)
+                                </h3>
+                                <div className="whitespace-pre-wrap rounded-lg bg-muted/40 p-4 font-mono text-sm">
                                     {compareDiffs.contentDiff.map((part, index) => {
                                         const color = part.added
-                                            ? 'text-green-600 bg-green-100 dark:bg-green-900/30'
+                                            ? 'text-success bg-success/10'
                                             : part.removed
-                                              ? 'text-red-600 bg-red-100 line-through dark:bg-red-900/30'
+                                              ? 'text-destructive bg-destructive/10 line-through'
                                               : 'text-foreground';
                                         return (
                                             <span key={index} className={`px-0.5 rounded ${color}`}>

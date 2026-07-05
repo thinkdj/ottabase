@@ -28,13 +28,13 @@ export function OverrideSection({ label, isOverridden, onToggle, children }: Ove
     return (
         <div className="space-y-4">
             {/* Override toggle bar */}
-            <div className="flex items-center justify-between rounded-lg border border-dashed p-3 dark:border-muted">
+            <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
                 <div className="flex items-center gap-2">
                     <IconGitBranch className="h-4 w-4 text-muted-foreground" />
                     <Label className="text-sm font-medium">Override {label}</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                         {isOverridden ? 'Custom values' : 'Inherited from parent'}
                     </span>
                     <Switch checked={isOverridden} onCheckedChange={onToggle} />
@@ -45,9 +45,10 @@ export function OverrideSection({ label, isOverridden, onToggle, children }: Ove
             {isOverridden ? (
                 children
             ) : (
-                <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center dark:border-muted">
-                    <p className="text-sm text-muted-foreground">
-                        Using <strong>parent kit's</strong> {label.toLowerCase()}. Enable the toggle above to customize.
+                <div className="rounded-xl bg-muted/40 p-6 text-center">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                        Using <strong className="font-medium text-foreground">parent kit's</strong>{' '}
+                        {label.toLowerCase()}. Enable the toggle above to customize.
                     </p>
                 </div>
             )}

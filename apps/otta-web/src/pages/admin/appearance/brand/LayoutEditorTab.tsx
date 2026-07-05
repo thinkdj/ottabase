@@ -76,7 +76,7 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: 
 
     return (
         <div className="space-y-2">
-            <div className="aspect-[16/10] rounded-md border bg-muted/10 p-2 dark:border-muted/60">
+            <div className="aspect-[16/10] rounded-lg bg-background p-2 ring-1 ring-border/60">
                 <div className="flex h-full gap-1.5">
                     {config.header === 'sidebar' ? <div className="w-2.5 rounded bg-muted" /> : null}
                     <div className="flex flex-1 flex-col gap-1">
@@ -108,12 +108,22 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: 
                     </div>
                 </div>
             </div>
-            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                <span className="rounded bg-muted px-1.5 py-0.5">width: {config.contentWidth}</span>
-                <span className="rounded bg-muted px-1.5 py-0.5">density: {config.density}</span>
-                <span className="rounded bg-muted px-1.5 py-0.5">footer: {config.footer ? 'on' : 'off'}</span>
-                <span className="rounded bg-muted px-1.5 py-0.5">header: {config.header}</span>
-                <span className="rounded bg-muted px-1.5 py-0.5">nav: {config.navigation}</span>
+            <div className="flex flex-wrap gap-1 text-[0.625rem] text-muted-foreground">
+                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                    width: {config.contentWidth}
+                </span>
+                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                    density: {config.density}
+                </span>
+                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                    footer: {config.footer ? 'on' : 'off'}
+                </span>
+                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                    header: {config.header}
+                </span>
+                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                    nav: {config.navigation}
+                </span>
             </div>
         </div>
     );
@@ -121,8 +131,8 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: 
 
 function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChange: (c: LayoutConfig) => void }) {
     return (
-        <div className="space-y-3 rounded-lg border p-3 dark:border-muted">
-            <p className="text-sm font-medium">Layout config</p>
+        <div className="space-y-3 rounded-lg bg-muted/40 p-3">
+            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">Layout config</p>
             <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                     <Label>Header</Label>
@@ -315,23 +325,26 @@ export function LayoutEditorTab() {
 
     if (loadingTemplates || loadingMappings || loadingKits) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Loading layouts...</p>
+            <div className="space-y-6" aria-busy="true">
+                <span className="sr-only">Loading layouts...</span>
+                <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>How layout routing works</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">How layout routing works</CardTitle>
+                    <CardDescription className="leading-relaxed">
                         Route mappings are the primary control; layout templates simply describe the structures you
                         attach to those routes.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
                     <ol className="space-y-1 list-decimal pl-5">
                         <li>Define a path pattern &amp; assign the Brand Kit that should own it.</li>
                         <li>Select a layout preset or custom template that matches the desired structure.</li>
@@ -340,10 +353,10 @@ export function LayoutEditorTab() {
                 </CardContent>
             </Card>
 
-            <Card className="space-y-0">
+            <Card className="space-y-0 rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Route mappings</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Route mappings</CardTitle>
+                    <CardDescription className="leading-relaxed">
                         Higher priorities win. This form builds the list of patterns that the router evaluates every
                         request against.
                     </CardDescription>
@@ -377,10 +390,10 @@ export function LayoutEditorTab() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Layout templates</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Layout templates</CardTitle>
+                    <CardDescription className="leading-relaxed">
                         Built-in presets are guaranteed, but you can clone any structure as a template to map on
                         multiple routes.
                     </CardDescription>
@@ -397,7 +410,7 @@ export function LayoutEditorTab() {
                                 {templates.map((t) => {
                                     const config = getTemplateConfig(t);
                                     return (
-                                        <div key={t.id} className="rounded-lg border p-4 dark:border-muted">
+                                        <div key={t.id} className="rounded-lg bg-background p-4 ring-1 ring-border">
                                             <div className="mb-3 flex items-center justify-between gap-2">
                                                 <p className="font-medium">{t.name}</p>
                                                 <EditTemplateDialog template={t} />
@@ -468,7 +481,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Marketing Shell"
                         />
-                        {duplicateName ? <p className="mt-1 text-xs text-amber-600">Name already exists.</p> : null}
+                        {duplicateName ? <p className="mt-1 text-xs text-warning">Name already exists.</p> : null}
                     </div>
                     <div>
                         <Label className="mb-2 block">Start from preset</Label>
@@ -478,10 +491,10 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                                     key={id}
                                     type="button"
                                     onClick={() => setBasePreset(id)}
-                                    className={`rounded-lg border p-2 text-center text-xs transition-colors ${
+                                    className={`rounded-lg border p-2 text-center text-xs transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                         basePreset === id
-                                            ? 'border-primary bg-primary/5 font-medium'
-                                            : 'hover:bg-muted/40'
+                                            ? 'border-transparent bg-background font-medium ring-1 ring-border'
+                                            : 'border-transparent bg-muted/40 hover:bg-muted/70'
                                     }`}
                                 >
                                     {id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
@@ -641,33 +654,39 @@ function MappingsEditor({
         <div className="space-y-4">
             {/* Existing mappings table (shown first) */}
             {kits.length === 0 ? (
-                <p className="text-sm text-amber-600 dark:text-amber-500">
-                    Create a Brand Kit first before adding mappings.
-                </p>
+                <p className="text-sm text-warning">Create a Brand Kit first before adding mappings.</p>
             ) : null}
             {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-8 text-center dark:border-muted">
+                <div className="rounded-lg bg-background py-8 text-center ring-1 ring-border">
                     <p className="text-sm text-muted-foreground">No mappings yet. Add one below.</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                        Example: <code className="rounded bg-muted px-1">/blog/**</code> or{' '}
-                        <code className="rounded bg-muted px-1">/admin/**</code>
+                        Example: <code className="rounded bg-muted/70 px-1">/blog/**</code> or{' '}
+                        <code className="rounded bg-muted/70 px-1">/admin/**</code>
                     </p>
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-lg border dark:border-muted">
-                    <table className="min-w-full divide-y divide-muted text-sm">
-                        <thead className="bg-muted/20">
+                <div className="overflow-x-auto rounded-lg bg-background ring-1 ring-border">
+                    <table className="min-w-full divide-y divide-border/60 text-sm">
+                        <thead className="bg-muted/40">
                             <tr>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                                <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                     Path pattern
                                 </th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Layout</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Brand Kit</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Priority</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Actions</th>
+                                <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Layout
+                                </th>
+                                <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Brand Kit
+                                </th>
+                                <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Priority
+                                </th>
+                                <th className="px-3 py-2 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-muted bg-background">
+                        <tbody className="divide-y divide-border/60 bg-background">
                             {items.map((m, idx) => {
                                 const hasOverrides = !!m.tokenOverridesJson && m.tokenOverridesJson !== '{}';
                                 return (
@@ -695,17 +714,19 @@ function MappingsEditor({
             </Button>
 
             {/* Add new mapping (below save button) */}
-            <div className="space-y-3 rounded-lg border p-4 dark:border-muted">
-                <p className="text-sm font-medium text-muted-foreground">Add new mapping</p>
+            <div className="space-y-3 rounded-lg bg-background p-4 ring-1 ring-border">
+                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    Add new mapping
+                </p>
                 <div className="flex flex-wrap gap-2">
                     <div>
                         <Input
                             value={pathPattern}
                             onChange={(e) => handlePathPatternChange(e.target.value)}
                             placeholder="/* or /admin/**"
-                            className={`max-w-[180px] ${patternError ? 'border-red-500' : ''}`}
+                            className={`max-w-[180px] ${patternError ? 'border-destructive' : ''}`}
                         />
-                        {patternError ? <p className="mt-1 text-xs text-red-500">{patternError}</p> : null}
+                        {patternError ? <p className="mt-1 text-xs text-destructive">{patternError}</p> : null}
                     </div>
                     <Select value={brandKitId} onValueChange={setBrandKitId}>
                         <SelectTrigger className="w-[220px]">
@@ -742,7 +763,9 @@ function MappingsEditor({
                     </Button>
                 </div>
                 <div>
-                    <p className="mb-2 text-sm font-medium">Select layout</p>
+                    <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Select layout
+                    </p>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {layoutOptions.map((option) => {
                             const selected = layoutTemplateId === option.id;
@@ -753,14 +776,19 @@ function MappingsEditor({
                                     key={option.id}
                                     type="button"
                                     onClick={() => setLayoutTemplateId(option.id)}
-                                    className={`rounded-lg border p-2 text-left transition-colors ${
-                                        selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'
+                                    className={`rounded-lg border p-2 text-left transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                        selected
+                                            ? 'border-transparent bg-background ring-1 ring-border'
+                                            : 'border-transparent bg-muted/40 hover:bg-muted/70'
                                     }`}
                                 >
                                     <div className="mb-1 flex items-center gap-2">
                                         <p className="truncate text-sm font-medium">{option.name}</p>
                                         {isPreset ? (
-                                            <Badge variant="secondary" className="text-[10px]">
+                                            <Badge
+                                                variant="secondary"
+                                                className="bg-background text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                                            >
                                                 Preset
                                             </Badge>
                                         ) : null}
@@ -826,16 +854,16 @@ const MappingRow = memo(function MappingRow({
 
     return (
         <>
-            <tr>
+            <tr className="transition-colors duration-normal hover:bg-muted/40">
                 <td className="px-3 py-2 align-top">
                     <div>
                         <Input
                             value={mapping.pathPattern}
                             onChange={(e) => handlePathChange(e.target.value)}
                             placeholder="/* or /admin/**"
-                            className={`h-8 font-mono text-xs ${pathError ? 'border-red-500' : ''}`}
+                            className={`h-8 font-mono text-xs ${pathError ? 'border-destructive' : ''}`}
                         />
-                        {pathError ? <p className="mt-0.5 text-[10px] text-red-500">{pathError}</p> : null}
+                        {pathError ? <p className="mt-0.5 text-[0.625rem] text-destructive">{pathError}</p> : null}
                     </div>
                 </td>
                 <td className="px-3 py-2 align-top">
@@ -894,11 +922,13 @@ const MappingRow = memo(function MappingRow({
             {expanded && (
                 <tr>
                     <td colSpan={5} className="px-3 pb-3 pt-0">
-                        <div className="rounded-lg border border-dashed p-3 space-y-2 bg-muted/5">
+                        <div className="rounded-lg bg-muted/40 p-3 space-y-2">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs font-medium">Route token overrides</p>
-                                    <p className="text-[11px] text-muted-foreground">
+                                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                        Route token overrides
+                                    </p>
+                                    <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                                         Partial JSON merged on top of the Brand Kit's theme for this route only.
                                         Override colors, typography, etc. without creating a separate kit.
                                     </p>
@@ -918,7 +948,7 @@ const MappingRow = memo(function MappingRow({
                                 )}
                             </div>
                             <textarea
-                                className="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary dark:border-muted"
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 rows={5}
                                 value={overrideText}
                                 onChange={(e) => setOverrideText(e.target.value)}
@@ -926,10 +956,10 @@ const MappingRow = memo(function MappingRow({
                                 placeholder={`{\n  "colors": {\n    "primary": "220 90% 56%"\n  }\n}`}
                                 spellCheck={false}
                             />
-                            {jsonError && <p className="text-xs text-red-500">{jsonError}</p>}
-                            <p className="text-[10px] text-muted-foreground">
+                            {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
+                            <p className="text-[0.625rem] text-muted-foreground">
                                 Tip: Use HSL values matching your design tokens. E.g.{' '}
-                                <code className="rounded bg-muted px-1">{`{"colors":{"primary":"220 90% 56%"}}`}</code>
+                                <code className="rounded bg-background px-1 ring-1 ring-border">{`{"colors":{"primary":"220 90% 56%"}}`}</code>
                             </p>
                         </div>
                     </td>

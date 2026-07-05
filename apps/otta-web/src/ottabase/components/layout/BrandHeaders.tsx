@@ -3,7 +3,6 @@ import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
 import { APP_META } from '@/ottabase/config';
-import { Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
 import { ControlsSection } from './ControlsSection';
@@ -29,11 +28,24 @@ export const TopbarHeader = memo(function TopbarHeader({
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-                <Button asChild variant="ghost" size="sm" key={link.to}>
-                    <Link to={link.to}>{link.label}</Link>
-                </Button>
-            ))}
+            {navLinks.map((link) => {
+                const isActive =
+                    location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+                return (
+                    <Link
+                        key={link.to}
+                        to={link.to}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
+                            isActive
+                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                        }`}
+                    >
+                        {link.label}
+                    </Link>
+                );
+            })}
         </nav>
     );
 
@@ -53,15 +65,20 @@ export const TopbarHeader = memo(function TopbarHeader({
 
     return (
         <header
-            className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
+            className={`border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
         >
             <div className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                     {leading}
-                    <Link to="/" className="font-semibold">
+                    <Link
+                        to="/"
+                        className="font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
+                    >
                         {APP_META.appName}
                     </Link>
-                    <span className="text-xs text-muted-foreground">TanStack</span>
+                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        TanStack
+                    </span>
                 </div>
 
                 {headerNav}
@@ -93,11 +110,24 @@ export const MinimalHeader = memo(function MinimalHeader({
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-                <Button asChild variant="ghost" size="sm" key={link.to}>
-                    <Link to={link.to}>{link.label}</Link>
-                </Button>
-            ))}
+            {navLinks.map((link) => {
+                const isActive =
+                    location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+                return (
+                    <Link
+                        key={link.to}
+                        to={link.to}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
+                            isActive
+                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                        }`}
+                    >
+                        {link.label}
+                    </Link>
+                );
+            })}
         </nav>
     );
 
@@ -115,11 +145,14 @@ export const MinimalHeader = memo(function MinimalHeader({
         ) : null;
 
     return (
-        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+        <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
             <div className={`mx-auto flex items-center justify-between px-4 py-2 ${containerClass}`}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                     {leading}
-                    <Link to="/" className="font-semibold text-sm">
+                    <Link
+                        to="/"
+                        className="text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
+                    >
                         {APP_META.appName}
                     </Link>
                 </div>

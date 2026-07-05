@@ -43,8 +43,9 @@ describe('fileNameToSlug', () => {
 });
 
 describe('slugToTitle', () => {
-    it('converts slug to title case', () => {
-        expect(slugToTitle('api-pagination')).toBe('Api Pagination');
+    it('converts slug to title case, preserving acronyms', () => {
+        expect(slugToTitle('api-pagination')).toBe('API Pagination');
+        expect(slugToTitle('getting-started')).toBe('Getting Started');
     });
 
     it('converts index to Overview', () => {

@@ -88,20 +88,20 @@ export function CloudflareKVDemoPage() {
             />
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             {result ? (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm">{result}</p>
                 </div>
             ) : null}
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Operations</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Operations</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">

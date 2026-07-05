@@ -112,11 +112,11 @@ export function ThemingDemoPage() {
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr] items-start">
                 <div className="space-y-4">
-                    <Card className="border-dashed">
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">
                                 Theme Switcher
-                                <small className="block py-1">(Local, Preview)</small>
+                                <small className="block py-1 font-normal text-muted-foreground">(Local, Preview)</small>
                             </CardTitle>
                             <CardDescription>
                                 Demo-only preset switcher. Updates the preview canvas only.
@@ -178,7 +178,7 @@ export function ThemingDemoPage() {
                                 <span className="text-muted-foreground">Selected preset</span>
                                 <span className="font-medium">{selectedPresetItem?.name ?? 'Default'}</span>
                             </div>
-                            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+                            <div className="flex items-center justify-between rounded-lg bg-background px-3 py-2 ring-1 ring-border">
                                 <span className="text-xs text-muted-foreground">Preview mode</span>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -200,11 +200,11 @@ export function ThemingDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">
                                 Active theme
-                                <small className="block py-1">(Global)</small>
+                                <small className="block py-1 font-normal text-muted-foreground">(Global)</small>
                             </CardTitle>
                             <CardDescription>App-level preset (admin-configured) for current app.</CardDescription>
                         </CardHeader>

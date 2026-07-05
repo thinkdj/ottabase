@@ -8,6 +8,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    Input,
     Table,
     TableBody,
     TableCell,
@@ -17,7 +18,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight, Database, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Database, Search, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -46,6 +47,10 @@ interface ModelsMetadataResponse {
     total: number;
 }
 
+const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const CATEGORY_CHIP =
+    'inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border';
+
 export function AdminDbPage() {
     const navigate = useNavigate();
     const search = useSearch({ from: '/admin/infrastructure/database' });
@@ -56,6 +61,7 @@ export function AdminDbPage() {
     const queryClient = useQueryClient();
     const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
     const [deleteRowDialog, setDeleteRowDialog] = useState<{ id: any; pkField: string } | null>(null);
+    const [tableFilter, setTableFilter] = useState('');
 
     // Load tables list
     const { data: tablesData, isLoading: tablesLoading } = useQuery({
@@ -224,14 +230,17 @@ export function AdminDbPage() {
             Unknown: [],
         };
 
-        tablesData.tables.forEach((table) => {
-            const category = getTableCategory(table);
-            if (groups[category]) {
-                groups[category].push(table);
-            } else {
-                groups.Unknown.push(table);
-            }
-        });
+        const query = tableFilter.trim().toLowerCase();
+        tablesData.tables
+            .filter((table) => !query || table.toLowerCase().includes(query))
+            .forEach((table) => {
+                const category = getTableCategory(table);
+                if (groups[category]) {
+                    groups[category].push(table);
+                } else {
+                    groups.Unknown.push(table);
+                }
+            });
 
         // Sort tables within each category
         Object.keys(groups).forEach((category) => {
@@ -242,40 +251,63 @@ export function AdminDbPage() {
     })();
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link to="/admin">← Back to Admin</Link>
-                    </Button>
-                    <h1 className="text-3xl font-bold tracking-tight">Database Manager</h1>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Admin
+                    </Link>
+                </Button>
+
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Database Manager</h1>
+                    <p className="max-w-3xl text-muted-foreground">Browse tables and inspect raw rows.</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-12 gap-6">
                 {/* Sidebar - Table List */}
                 <div className="col-span-12 md:col-span-3">
-                    <Card>
-                        <CardHeader className="py-4">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Database className="w-4 h-4" />
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <CardHeader className="gap-3 py-4">
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Database className="h-4 w-4 text-muted-foreground" />
                                 Tables
                             </CardTitle>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={tableFilter}
+                                    onChange={(e) => setTableFilter(e.target.value)}
+                                    placeholder="Filter tables…"
+                                    aria-label="Filter tables"
+                                    className="h-8 bg-background pl-8 pr-8 text-sm"
+                                />
+                                {tableFilter && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setTableFilter('')}
+                                        aria-label="Clear filter"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors duration-normal hover:text-foreground"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {tablesLoading ? (
-                                <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+                                <div className="space-y-2 p-4" aria-busy="true">
+                                    <span className="sr-only">Loading tables…</span>
+                                    {Array.from({ length: 6 }, (_, index) => (
+                                        <div key={index} className="h-8 animate-pulse rounded-lg bg-background/60" />
+                                    ))}
+                                </div>
                             ) : (
-                                <div className="flex flex-col max-h-[calc(100vh-300px)] overflow-y-auto">
+                                <div className="flex max-h-[calc(100vh-300px)] flex-col overflow-y-auto pb-2">
                                     {(() => {
                                         const categoryOrder = ['App', 'Package', 'Core', 'Unknown'];
-                                        const categoryColors: Record<string, string> = {
-                                            App: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
-                                            Package:
-                                                'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-                                            Core: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-                                            Unknown: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-                                        };
 
                                         return categoryOrder.map((category) => {
                                             const tables = groupedTables[category] || [];
@@ -284,7 +316,7 @@ export function AdminDbPage() {
                                             return (
                                                 <div key={category}>
                                                     <div
-                                                        className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b border-border/50 ${categoryColors[category] || ''}`}
+                                                        className={`border-b border-border/60 px-4 py-2 ${MICRO_LABEL}`}
                                                     >
                                                         {category}
                                                     </div>
@@ -292,10 +324,11 @@ export function AdminDbPage() {
                                                         <button
                                                             key={table}
                                                             onClick={() => handleTableSelect(table)}
-                                                            className={`px-4 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors w-full ${
+                                                            title={table}
+                                                            className={`block w-full truncate px-4 py-2 text-left font-mono text-xs outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
                                                                 selectedTable === table
-                                                                    ? 'bg-accent text-accent-foreground font-medium border-l-2 border-primary'
-                                                                    : 'border-l-2 border-transparent'
+                                                                    ? 'bg-background font-medium text-foreground ring-1 ring-inset ring-border'
+                                                                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                                                             }`}
                                                         >
                                                             {table}
@@ -305,8 +338,10 @@ export function AdminDbPage() {
                                             );
                                         });
                                     })()}
-                                    {tablesData?.tables.length === 0 && (
-                                        <div className="p-4 text-sm text-muted-foreground">No tables found</div>
+                                    {Object.values(groupedTables).every((t) => (t as string[]).length === 0) && (
+                                        <div className="p-4 text-sm text-muted-foreground">
+                                            {tableFilter ? 'No tables match your filter' : 'No tables found'}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -317,39 +352,28 @@ export function AdminDbPage() {
                 {/* Main Content - Data View */}
                 <div className="col-span-12 md:col-span-9">
                     {!selectedTable ? (
-                        <Card className="h-full min-h-[400px] flex items-center justify-center bg-muted/20 border-dashed">
+                        <Card className="flex h-full min-h-[400px] items-center justify-center rounded-xl border-transparent bg-muted/40 shadow-none">
                             <div className="text-center text-muted-foreground">
-                                <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                <p>Select a table to view data</p>
+                                <Database className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                                <p className="text-sm">Select a table to view data</p>
                             </div>
                         </Card>
                     ) : (
-                        <Card>
-                            <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0">
+                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                                 <div className="space-y-1">
-                                    <CardTitle className="text-xl font-mono">{selectedTable}</CardTitle>
+                                    <CardTitle className="font-mono text-xl">{selectedTable}</CardTitle>
                                     {(() => {
                                         const metadata = getTableMetadata(selectedTable);
                                         if (metadata) {
-                                            const categoryColors: Record<string, string> = {
-                                                core: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-                                                app: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
-                                                package:
-                                                    'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-                                            };
                                             const categoryLabels: Record<string, string> = {
                                                 core: 'Core',
                                                 app: 'App',
                                                 package: 'Package',
                                             };
                                             return (
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span
-                                                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                            categoryColors[metadata.packageType] ||
-                                                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                                                        }`}
-                                                    >
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className={CATEGORY_CHIP}>
                                                         {categoryLabels[metadata.packageType] || metadata.packageType}
                                                     </span>
                                                     <code className="text-xs text-muted-foreground">
@@ -375,38 +399,46 @@ export function AdminDbPage() {
                                     onClick={handleDropTable}
                                     disabled={deleteTableMutation.status === 'pending'}
                                 >
-                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    <Trash2 className="mr-2 h-4 w-4" />
                                     Drop Table
                                 </Button>
                             </CardHeader>
                             <CardContent>
                                 {tableLoading ? (
-                                    <div className="py-20 text-center text-muted-foreground">Loading data...</div>
+                                    <div className="space-y-3" aria-busy="true">
+                                        <span className="sr-only">Loading table data…</span>
+                                        {Array.from({ length: 5 }, (_, index) => (
+                                            <div
+                                                key={index}
+                                                className="h-10 animate-pulse rounded-lg bg-background/60"
+                                            />
+                                        ))}
+                                    </div>
                                 ) : tableError ? (
-                                    <div className="py-10 text-center text-destructive">
+                                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                                         {/* error handling */}
                                         Error:{' '}
                                         {isApiError(tableError) ? tableError.message : (tableError as Error).message}
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        <div className="rounded-md border overflow-x-auto">
+                                        <div className="overflow-x-auto rounded-lg bg-background ring-1 ring-border">
                                             <Table>
-                                                <TableHeader>
-                                                    <TableRow>
+                                                <TableHeader className="bg-muted/40">
+                                                    <TableRow className="border-border/60 hover:bg-transparent">
                                                         <TableHead className="w-[50px]"></TableHead>
                                                         {tableData?.columns.map((col) => (
                                                             <TableHead
                                                                 key={col.name}
-                                                                className="whitespace-nowrap font-mono text-xs"
+                                                                className="whitespace-nowrap font-mono text-xs text-muted-foreground"
                                                             >
                                                                 {col.name}
                                                                 {col.pk > 0 && (
-                                                                    <span className="ml-1 text-primary text-[10px]">
+                                                                    <span className="ml-1 text-[0.6875rem] font-medium text-foreground">
                                                                         (PK)
                                                                     </span>
                                                                 )}
-                                                                <span className="ml-1 text-muted-foreground text-[10px] font-normal">
+                                                                <span className="ml-1 text-[0.6875rem] font-normal text-muted-foreground">
                                                                     ({col.type})
                                                                 </span>
                                                             </TableHead>
@@ -415,7 +447,7 @@ export function AdminDbPage() {
                                                 </TableHeader>
                                                 <TableBody>
                                                     {tableData?.rows.length === 0 ? (
-                                                        <TableRow>
+                                                        <TableRow className="border-border/60">
                                                             <TableCell
                                                                 colSpan={(tableData?.columns.length || 0) + 1}
                                                                 className="h-24 text-center text-muted-foreground"
@@ -425,26 +457,29 @@ export function AdminDbPage() {
                                                         </TableRow>
                                                     ) : (
                                                         tableData?.rows.map((row, i) => (
-                                                            <TableRow key={i} className="group hover:bg-muted/50">
+                                                            <TableRow
+                                                                key={i}
+                                                                className="group border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                                            >
                                                                 <TableCell>
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                                                                         onClick={() => handleDelete(row)}
                                                                         title="Delete row"
                                                                     >
-                                                                        <Trash2 className="w-4 h-4" />
+                                                                        <Trash2 className="h-4 w-4" />
                                                                     </Button>
                                                                 </TableCell>
                                                                 {tableData?.columns.map((col) => (
                                                                     <TableCell
                                                                         key={col.name}
-                                                                        className="font-mono text-xs max-w-[200px] truncate"
+                                                                        className="max-w-[200px] truncate font-mono text-xs"
                                                                         title={String(row[col.name])}
                                                                     >
                                                                         {row[col.name] === null ? (
-                                                                            <span className="text-muted-foreground italic">
+                                                                            <span className="italic text-muted-foreground">
                                                                                 null
                                                                             </span>
                                                                         ) : (
@@ -462,27 +497,29 @@ export function AdminDbPage() {
                                         {/* Pagination */}
                                         {(tableData?.pagination.totalPages || 0) > 1 && (
                                             <div className="flex items-center justify-between">
-                                                <div className="text-sm text-muted-foreground">
+                                                <div className={MICRO_LABEL}>
                                                     Page {page} of {tableData?.pagination.totalPages}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Button
-                                                        variant="outline"
+                                                        variant="ghost"
                                                         size="sm"
+                                                        className="text-muted-foreground"
                                                         onClick={() => handlePageChange(page - 1)}
                                                         disabled={page <= 1}
                                                     >
-                                                        <ChevronLeft className="w-4 h-4 mr-1" />
+                                                        <ChevronLeft className="mr-1 h-4 w-4" />
                                                         Prev
                                                     </Button>
                                                     <Button
-                                                        variant="outline"
+                                                        variant="ghost"
                                                         size="sm"
+                                                        className="text-muted-foreground"
                                                         onClick={() => handlePageChange(page + 1)}
                                                         disabled={page >= (tableData?.pagination.totalPages || 1)}
                                                     >
                                                         Next
-                                                        <ChevronRight className="w-4 h-4 ml-1" />
+                                                        <ChevronRight className="ml-1 h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>

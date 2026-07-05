@@ -62,7 +62,7 @@ function getCSSVar(name: string): string {
 function TokenSwatch({ name, tw, desc }: { name: string; tw: string; desc: string }) {
     const value = getCSSVar(name);
     return (
-        <div className="flex items-center gap-3 rounded-lg border p-3">
+        <div className="flex items-center gap-3 rounded-lg bg-background p-3 ring-1 ring-border">
             <div
                 className="h-8 w-8 shrink-0 rounded-md border"
                 style={{ backgroundColor: value ? `hsl(${value})` : 'transparent' }}
@@ -95,23 +95,30 @@ export function UiTailwindDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Paintbrush className="h-5 w-5" />
                         How It Works
                     </CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
                         <p>
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/ui-tailwind</code> exports
-                            a Tailwind <strong>preset</strong> that maps CSS variables to utility classes. The variables
-                            are set by BrandEngine at runtime (or by your CSS theme file).
+                            <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                @ottabase/ui-tailwind
+                            </code>{' '}
+                            exports a Tailwind <strong>preset</strong> that maps CSS variables to utility classes. The
+                            variables are set by BrandEngine at runtime (or by your CSS theme file).
                         </p>
                         <p>
                             This means components only use Tailwind utilities like{' '}
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">bg-primary</code>,{' '}
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">text-muted-foreground</code>, etc.
-                            The actual color values are resolved from CSS variables, enabling dynamic theming and
+                            <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                bg-primary
+                            </code>
+                            ,{' '}
+                            <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                text-muted-foreground
+                            </code>
+                            , etc. The actual color values are resolved from CSS variables, enabling dynamic theming and
                             dark/light mode.
                         </p>
                     </div>
@@ -119,13 +126,13 @@ export function UiTailwindDemoPage() {
             </Card>
 
             {/* Setup */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Setup</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                     <CardDescription>Add the preset to your Tailwind config.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`// tailwind.config.cjs
 const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
 
@@ -140,9 +147,9 @@ module.exports = {
 
             {/* Live token swatches */}
             {TOKEN_GROUPS.map((group) => (
-                <Card key={group.label}>
+                <Card key={group.label} className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Palette className="h-4 w-4" />
                             {group.label}
                         </CardTitle>
@@ -161,9 +168,9 @@ module.exports = {
             ))}
 
             {/* Dark mode */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Sun className="h-4 w-4" />
                         <Moon className="h-4 w-4" />
                         Dark Mode

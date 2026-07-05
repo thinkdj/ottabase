@@ -205,9 +205,9 @@ export function CloudflareAIDemoPage() {
 
             {/* ── Binding Status ──────────────────────────────────────────── */}
             {status ? (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Binding Status</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Binding Status</CardTitle>
                         <CardDescription>Which AI services are configured in your Worker environment</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -234,23 +234,21 @@ export function CloudflareAIDemoPage() {
 
             {/* ── Error Banner ────────────────────────────────────────────── */}
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             {!authLoading && !isAuthenticated ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                        AI sending is disabled for guest users. Please sign in to send prompts.
-                    </p>
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                    AI sending is disabled for guest users. Please sign in to send prompts.
                 </div>
             ) : null}
 
             {/* ── Mode Selector ───────────────────────────────────────────── */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Chat Mode</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Chat Mode</CardTitle>
                     <CardDescription>Choose how to route your AI request</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -293,9 +291,9 @@ export function CloudflareAIDemoPage() {
             </Card>
 
             {/* ── Provider & Model ────────────────────────────────────────── */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Provider & Model</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Provider & Model</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {mode !== 'workers-ai' ? (
@@ -350,9 +348,9 @@ export function CloudflareAIDemoPage() {
 
             {/* ── Fallback Chain (Universal mode only) ────────────────── */}
             {mode === 'universal' ? (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Fallback Chain</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Fallback Chain</CardTitle>
                         <CardDescription>
                             Add providers in priority order. If the primary fails, each fallback is tried sequentially.
                         </CardDescription>
@@ -471,9 +469,9 @@ export function CloudflareAIDemoPage() {
             ) : null}
 
             {/* ── Chat Input ──────────────────────────────────────────────── */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Send a Message</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Send a Message</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -512,9 +510,9 @@ export function CloudflareAIDemoPage() {
 
             {/* ── Response ────────────────────────────────────────────────── */}
             {response ? (
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Response</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Response</CardTitle>
                         <CardDescription>
                             {response.provider ? (
                                 <>
@@ -540,11 +538,11 @@ export function CloudflareAIDemoPage() {
                     </CardHeader>
                     <CardContent>
                         {response.text ? (
-                            <div className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 text-sm">
+                            <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm ring-1 ring-border">
                                 {response.text}
                             </div>
                         ) : (
-                            <pre className="overflow-auto rounded-lg border bg-muted/50 p-4 text-xs">
+                            <pre className="overflow-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                                 {JSON.stringify(response.response ?? response, null, 2)}
                             </pre>
                         )}
@@ -558,9 +556,9 @@ export function CloudflareAIDemoPage() {
             ) : null}
 
             {/* ── Setup Info ──────────────────────────────────────────────── */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Setup</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>

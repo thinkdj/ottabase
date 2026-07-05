@@ -136,20 +136,20 @@ export function MediaLightbox({
             />
 
             <div className="relative flex h-full flex-col text-foreground">
-                <div className="flex items-center justify-between gap-4 border-b border-border/40 px-4 py-3 md:px-6">
+                <div className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 md:px-6">
                     <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             {activeIndex + 1} of {items.length}
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                         <a
                             href={currentItem.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Open media in new tab"
                         >
                             <IconExternalLink className="h-5 w-5" />
@@ -159,7 +159,7 @@ export function MediaLightbox({
                             download={currentItem.originalName ?? undefined}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Download media"
                         >
                             <IconArrowBarToDown className="h-5 w-5" />
@@ -167,7 +167,7 @@ export function MediaLightbox({
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                         >
                             {isFullscreen ? <IconMinimize className="h-5 w-5" /> : <IconMaximize className="h-5 w-5" />}
@@ -175,7 +175,7 @@ export function MediaLightbox({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Close media viewer"
                         >
                             <IconX className="h-5 w-5" />
@@ -186,7 +186,7 @@ export function MediaLightbox({
                 <div className="relative grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 py-4 md:grid-cols-[minmax(0,1fr)_22rem] md:px-6">
                     <div
                         ref={mediaContainerRef}
-                        className="relative flex min-h-0 items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-4 md:p-6"
+                        className="relative flex min-h-0 items-center justify-center overflow-hidden rounded-xl bg-muted/40 p-4 md:p-6"
                     >
                         {items.length > 1 && (
                             <>
@@ -194,7 +194,7 @@ export function MediaLightbox({
                                     type="button"
                                     onClick={onPrevious}
                                     disabled={!canGoPrevious}
-                                    className="absolute left-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="absolute left-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Previous media item"
                                 >
                                     <IconChevronLeft className="h-6 w-6" />
@@ -203,7 +203,7 @@ export function MediaLightbox({
                                     type="button"
                                     onClick={onNext}
                                     disabled={!canGoNext}
-                                    className="absolute right-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="absolute right-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Next media item"
                                 >
                                     <IconChevronRight className="h-6 w-6" />
@@ -217,10 +217,10 @@ export function MediaLightbox({
                     </div>
 
                     {showMetadata && (
-                        <aside className="rounded-2xl border border-border/40 bg-background/80 p-5">
+                        <aside className="rounded-xl bg-muted/40 p-5">
                             <div className="space-y-5">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+                                    <h3 className="text-[0.9375rem] font-semibold text-foreground">{title}</h3>
                                     {currentItem.caption && (
                                         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                                             {currentItem.caption}
@@ -229,13 +229,15 @@ export function MediaLightbox({
                                 </div>
 
                                 <div className="grid gap-3 text-sm">
-                                    <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Type</p>
+                                    <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
+                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                            Type
+                                        </p>
                                         <p className="mt-1 text-foreground">{currentItem.mediaKind ?? 'media'}</p>
                                     </div>
 
-                                    <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                    <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
+                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                             File Size
                                         </p>
                                         <p className="mt-1 text-foreground">
@@ -244,8 +246,8 @@ export function MediaLightbox({
                                     </div>
 
                                     {dimensions && (
-                                        <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                        <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Dimensions
                                             </p>
                                             <p className="mt-1 text-foreground">{dimensions}</p>
@@ -253,8 +255,8 @@ export function MediaLightbox({
                                     )}
 
                                     {currentItem.mimeType && (
-                                        <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                        <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 MIME Type
                                             </p>
                                             <p className="mt-1 break-all text-foreground">{currentItem.mimeType}</p>
@@ -262,8 +264,8 @@ export function MediaLightbox({
                                     )}
 
                                     {currentItem.originalName && (
-                                        <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-                                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                        <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                 Original Name
                                             </p>
                                             <p className="mt-1 break-all text-foreground">{currentItem.originalName}</p>
@@ -276,8 +278,8 @@ export function MediaLightbox({
                 </div>
 
                 {items.length > 1 && (
-                    <div className="border-t border-border/40 px-4 py-3 md:px-6">
-                        <div className="flex gap-3 overflow-x-auto pb-1">
+                    <div className="border-t border-border/60 px-4 py-3 md:px-6">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
                             {items.map((item, index) => {
                                 const itemTitle = getMediaDisplayTitle({
                                     title: item.title ?? null,
@@ -290,10 +292,10 @@ export function MediaLightbox({
                                         key={item.id}
                                         type="button"
                                         onClick={() => onSelectIndex(index)}
-                                        className={`h-20 w-20 shrink-0 overflow-hidden rounded-xl border transition-all ${
+                                        className={`h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted/40 transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                             index === activeIndex
-                                                ? 'border-primary ring-2 ring-primary/30'
-                                                : 'border-border/40 opacity-70 hover:opacity-100'
+                                                ? 'ring-2 ring-primary'
+                                                : 'opacity-70 ring-1 ring-border hover:opacity-100'
                                         }`}
                                         aria-label={`View ${itemTitle}`}
                                     >

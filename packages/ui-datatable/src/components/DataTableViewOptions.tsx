@@ -42,9 +42,9 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
             <button
                 onClick={() => setOpen(!open)}
                 className={clsx(
-                    'inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    open && 'bg-accent text-accent-foreground',
+                    'inline-flex h-9 items-center gap-1.5 rounded-md bg-background px-3 text-sm font-medium ring-1 ring-border transition-colors duration-normal',
+                    'hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    open && 'bg-muted/70 text-foreground',
                 )}
             >
                 <SlidersHorizontal className="h-4 w-4" />
@@ -52,13 +52,15 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
             </button>
 
             {open && (
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Toggle columns</div>
-                    <div className="-mx-1 my-1 h-px bg-border" />
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-border/60 bg-popover p-2 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                    <div className="px-2 py-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Toggle columns
+                    </div>
+                    <div className="-mx-1 my-1 h-px bg-border/60" />
                     {hideableColumns.map((column) => (
                         <label
                             key={column.id}
-                            className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-normal hover:bg-muted/70"
                         >
                             <input
                                 type="checkbox"

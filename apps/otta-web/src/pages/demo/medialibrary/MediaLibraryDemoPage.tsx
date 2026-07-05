@@ -67,8 +67,8 @@ function MediaTile({ item }: { item: MediaLibraryItemLike }) {
     const { open } = useMediaLightboxRegistration(item.id, viewerItem);
 
     return (
-        <Card className="overflow-hidden">
-            <div className="h-48 w-full bg-muted/20">
+        <Card className="overflow-hidden rounded-xl border-border/60 shadow-none transition-colors duration-normal hover:border-border">
+            <div className="h-48 w-full bg-muted/40">
                 <MediaPreview item={viewerItem} mode="tile" />
             </div>
             <CardContent className="space-y-3 p-4">
@@ -111,9 +111,9 @@ export function MediaLibraryDemoPage() {
                 </Badge>
             </div>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Interactive Gallery</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Interactive Gallery</CardTitle>
                     <CardDescription>
                         Click any card to open the package lightbox provider and navigate media items.
                     </CardDescription>

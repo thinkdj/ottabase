@@ -75,27 +75,32 @@ export function ScriptsDemoPage() {
                 title="Scripts"
                 description="CLI tools for Cloudflare setup, validation, cache management, and database cleanup. These are terminal commands — not runtime code."
                 actions={
-                    <Badge variant="secondary" className="uppercase">
+                    <Badge
+                        variant="outline"
+                        className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                    >
                         @ottabase/scripts
                     </Badge>
                 }
             />
 
             {/* Overview */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Terminal className="h-5 w-5" />
                         How to Use
                     </CardTitle>
-                    <div className="text-sm text-muted-foreground space-y-2">
+                    <div className="space-y-2 text-sm text-muted-foreground">
                         <p>
                             All commands are registered as <strong>bin</strong> entries in{' '}
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">@ottabase/scripts</code>. Run them
-                            directly from the monorepo root with <code>npx</code> or add them to your{' '}
+                            <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
+                                @ottabase/scripts
+                            </code>
+                            . Run them directly from the monorepo root with <code>npx</code> or add them to your{' '}
                             <code>package.json</code> scripts.
                         </p>
-                        <pre className="rounded-lg bg-muted p-3 text-xs">
+                        <pre className="rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             <code>{`# Example: full development reset
 npx clean-cache && npx kill-ports && pnpm dev`}</code>
                         </pre>
@@ -105,22 +110,22 @@ npx clean-cache && npx kill-ports && pnpm dev`}</code>
 
             {/* Commands by category */}
             {categories.map((category) => (
-                <Card key={category}>
+                <Card key={category} className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">{category} Commands</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">{category} Commands</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
                             {CLI_COMMANDS.filter((c) => c.category === category).map((cmd) => (
-                                <div key={cmd.name} className="rounded-lg border p-4">
+                                <div key={cmd.name} className="rounded-lg bg-background p-4 ring-1 ring-border">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <div className="p-1.5 rounded-md bg-primary/10">
-                                            <cmd.icon className="h-4 w-4 text-primary" />
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground ring-1 ring-border">
+                                            <cmd.icon className="h-4 w-4" />
                                         </div>
                                         <code className="text-sm font-semibold">{cmd.name}</code>
                                     </div>
                                     <p className="text-sm text-muted-foreground mb-2">{cmd.desc}</p>
-                                    <pre className="rounded bg-muted p-2 text-xs">
+                                    <pre className="rounded bg-muted/60 p-2 text-xs ring-1 ring-border">
                                         <code>{cmd.usage}</code>
                                     </pre>
                                 </div>
@@ -131,15 +136,15 @@ npx clean-cache && npx kill-ports && pnpm dev`}</code>
             ))}
 
             {/* Typical workflow */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Typical Workflows</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Typical Workflows</CardTitle>
                     <CardDescription>Common command sequences for development tasks.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <h4 className="text-sm font-medium">First-time Cloudflare Setup</h4>
-                        <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                        <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`npx cloudflare-login      # Authenticate
 npx cloudflare-setup      # Create D1, KV, R2, etc.
 npx cloudflare-validate   # Verify bindings`}</code>
@@ -148,7 +153,7 @@ npx cloudflare-validate   # Verify bindings`}</code>
 
                     <div className="space-y-2">
                         <h4 className="text-sm font-medium">Clean Development Environment</h4>
-                        <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                        <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`npx clean-cache    # Clear build caches
 npx kill-ports     # Free dev ports
 pnpm dev           # Start fresh`}</code>
@@ -157,7 +162,7 @@ pnpm dev           # Start fresh`}</code>
 
                     <div className="space-y-2">
                         <h4 className="text-sm font-medium">Nuclear Reset (start from scratch)</h4>
-                        <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                        <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`npx clean-reset    # Remove everything + reinstall
 npx clean-db       # Wipe local database
 npx clean-kv       # Flush KV namespace

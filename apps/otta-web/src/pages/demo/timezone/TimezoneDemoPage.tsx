@@ -69,21 +69,21 @@ export function TimezoneDemoPage() {
                 description="Production-ready timezone standardization for SaaS apps: store in UTC, display in the user's timezone."
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>1. Timezone Detection</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">1. Timezone Detection</CardTitle>
                     <CardDescription>Detect timezone from the browser</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg bg-muted p-4">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <div className="grid gap-2 text-sm">
                             <div className="flex justify-between gap-3">
                                 <span className="font-medium">Detected Timezone:</span>
-                                <code className="rounded bg-background px-2 py-1">{userTimezone}</code>
+                                <code className="rounded bg-muted/50 px-2 py-1">{userTimezone}</code>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span className="font-medium">Timezone Offset:</span>
-                                <code className="rounded bg-background px-2 py-1">
+                                <code className="rounded bg-muted/50 px-2 py-1">
                                     UTC
                                     {getTimezoneOffsetMinutes(userTimezone) < 0 ? '-' : '+'}
                                     {Math.abs(Math.floor(Math.abs(getTimezoneOffsetMinutes(userTimezone)) / 60))}:
@@ -94,13 +94,13 @@ export function TimezoneDemoPage() {
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span className="font-medium">Is Valid Timezone:</span>
-                                <code className="rounded bg-background px-2 py-1">
+                                <code className="rounded bg-muted/50 px-2 py-1">
                                     {isValidTimezone(userTimezone) ? '✓ Yes' : '✗ No'}
                                 </code>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span className="font-medium">Currently DST:</span>
-                                <code className="rounded bg-background px-2 py-1">
+                                <code className="rounded bg-muted/50 px-2 py-1">
                                     {isDST(currentTime, userTimezone) ? 'Yes (Summer)' : 'No (Winter)'}
                                 </code>
                             </div>
@@ -130,14 +130,16 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>2. Live Clock (UTC vs User Timezone)</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">
+                        2. Live Clock (UTC vs User Timezone)
+                    </CardTitle>
                     <CardDescription>Compare storage time (UTC) vs display time (user timezone)</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium text-muted-foreground">UTC (Database)</h3>
                             <div className="space-y-1">
                                 <p className="font-mono text-2xl font-bold">
@@ -146,20 +148,20 @@ export function TimezoneDemoPage() {
                                 <p className="text-sm text-muted-foreground">
                                     {formatInUserTimezone(currentTime, 'PPP', 'UTC')}
                                 </p>
-                                <code className="block rounded bg-background p-2 text-xs">
+                                <code className="block rounded-lg bg-muted/50 p-2 text-xs">
                                     nowUTC(): {nowUTC().toISOString()}
                                 </code>
                             </div>
                         </div>
 
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium">{selectedTimezone} (Display)</h3>
                             <div className="space-y-1">
                                 <p className="font-mono text-2xl font-bold">
                                     {formatInUserTimezone(currentTime, 'HH:mm:ss', selectedTimezone)}
                                 </p>
                                 <p className="text-sm">{formatInUserTimezone(currentTime, 'PPP', selectedTimezone)}</p>
-                                <code className="block rounded bg-background p-2 text-xs">
+                                <code className="block rounded-lg bg-muted/50 p-2 text-xs">
                                     formatInUserTimezone(date, 'PPpp')
                                 </code>
                             </div>
@@ -168,13 +170,13 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>3. Database Storage (Always UTC)</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">3. Database Storage (Always UTC)</CardTitle>
                     <CardDescription>Convert user input to UTC before storing</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg bg-muted p-4">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <div className="mb-4">
                             <h4 className="mb-2 text-sm font-semibold">Scenario</h4>
                             <p className="text-sm">
@@ -183,14 +185,14 @@ export function TimezoneDemoPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <div className="rounded bg-background p-3">
+                            <div className="rounded-lg bg-muted/50 p-3">
                                 <p className="mb-1 text-xs font-medium text-muted-foreground">User Input</p>
                                 <code className="text-sm">{exampleDates.userInput}</code>
                             </div>
 
                             <div className="text-center text-sm text-muted-foreground">↓ toUTC(date, userTimezone)</div>
 
-                            <div className="rounded bg-background p-3">
+                            <div className="rounded-lg bg-muted/50 p-3">
                                 <p className="mb-1 text-xs font-medium text-muted-foreground">Store in Database</p>
                                 <code className="text-sm">
                                     {toUTC(exampleDates.userInput, selectedTimezone)?.toISOString()}
@@ -199,7 +201,7 @@ export function TimezoneDemoPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-lg border bg-muted/50 p-4">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <h4 className="mb-2 text-sm font-semibold">Best Practice</h4>
                         <code className="block whitespace-pre-wrap text-xs">
                             {`// Creating a new record\nconst userScheduledTime = "2024-01-15T14:30:00";\nconst dbRecord = {\n  title: "Meeting",\n  scheduledAt: toUTC(userScheduledTime, userTimezone),\n  createdAt: nowUTC(),\n};\n// Store dbRecord in database`}
@@ -208,29 +210,29 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>4. Display (Convert from UTC)</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">4. Display (Convert from UTC)</CardTitle>
                     <CardDescription>Convert stored UTC dates into user timezone for display</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Stored in DB (UTC)</h3>
-                            <code className="block rounded bg-background p-2 text-xs">
+                            <code className="block rounded-lg bg-muted/50 p-2 text-xs">
                                 {exampleDates.utcDate.toISOString()}
                             </code>
                         </div>
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium">Display ({selectedTimezone})</h3>
-                            <code className="block rounded bg-background p-2 text-xs">
+                            <code className="block rounded-lg bg-muted/50 p-2 text-xs">
                                 {fromUTC(exampleDates.utcDate, selectedTimezone)?.toString()}
                             </code>
                         </div>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium">Formatting helpers</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between gap-3">
@@ -280,7 +282,7 @@ export function TimezoneDemoPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-lg border bg-muted/50 p-4">
+                        <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                             <h3 className="mb-2 text-sm font-medium">Conversions</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between gap-3">

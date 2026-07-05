@@ -117,22 +117,22 @@ export function CloudflareD1DemoPage() {
             />
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             {!dbReady && !error ? (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm text-muted-foreground">Initializing database...</p>
                 </div>
             ) : null}
 
             {dbReady ? (
                 <>
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-base">Add Todo</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Add Todo</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={addTodo} className="flex gap-2">
@@ -152,12 +152,15 @@ export function CloudflareD1DemoPage() {
 
                     <div className="space-y-2">
                         {todos.length === 0 ? (
-                            <div className="rounded-lg border bg-muted/50 p-8 text-center">
+                            <div className="rounded-xl bg-muted/40 p-8 text-center">
                                 <p className="text-sm text-muted-foreground">No todos yet. Add one above!</p>
                             </div>
                         ) : (
                             todos.map((todo) => (
-                                <div key={todo.id} className="flex items-center gap-3 rounded-lg border p-4">
+                                <div
+                                    key={todo.id}
+                                    className="flex items-center gap-3 rounded-lg bg-muted/40 p-4 transition-colors duration-normal hover:bg-muted/70"
+                                >
                                     <input
                                         type="checkbox"
                                         checked={todo.completed}

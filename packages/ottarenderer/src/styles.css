@@ -46,9 +46,6 @@
 
 .cdc-content-table {
     width: 100%;
-    display: table;
-    table-layout: fixed;
-    border-collapse: collapse;
 }
 
 .cdc-content-delimiter {
@@ -242,6 +239,65 @@
 /* Handle common container constraints */
 .advanced-image-block--stretched {
     box-sizing: border-box;
+}
+
+/* ======================================= */
+/* Header (Heading) Block                  */
+/* ======================================= */
+
+/* Per-level sizing and vertical rhythm. Specificity 0,1,1 (tag + class) beats
+   prose :where() (0,1,0) so these win consistently in both prose and bare contexts. */
+
+h1.cdc-content-header {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h2.cdc-content-header {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+    margin-top: 2.25rem;
+    margin-bottom: 0.75rem;
+}
+
+h3.cdc-content-header {
+    font-size: 1.3125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin-top: 1.875rem;
+    margin-bottom: 0.5rem;
+}
+
+h4.cdc-content-header {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+h5.cdc-content-header,
+h6.cdc-content-header {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-top: 1.25rem;
+    margin-bottom: 0.375rem;
+}
+
+/* First heading — no orphaned top gap when it opens a section */
+h1.cdc-content-header:first-child,
+h2.cdc-content-header:first-child,
+h3.cdc-content-header:first-child,
+h4.cdc-content-header:first-child {
+    margin-top: 0;
 }
 
 /* ======================================= */

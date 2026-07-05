@@ -188,7 +188,9 @@ export function AdminBlogStudioPage() {
     if (isError && error) {
         return (
             <div className="space-y-6">
-                <p className="text-destructive">Failed to load studio state.</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    Failed to load studio state.
+                </div>
                 <Button asChild variant="outline">
                     <Link to="/admin/content/blog">Back to Blog</Link>
                 </Button>
@@ -198,31 +200,38 @@ export function AdminBlogStudioPage() {
 
     if (!state) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-6" aria-busy="true">
+                <span className="sr-only">Loading content studio...</span>
+                <div className="h-8 w-64 animate-pulse rounded-xl bg-muted/40" />
+                <div className="grid gap-6 md:grid-cols-2">
+                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <BlogAdminNav />
 
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Content Studio</h1>
-                <p className="text-muted-foreground mt-1">Manage themes and plugins for your content.</p>
+            <div className="space-y-1.5">
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content Studio</h1>
+                <p className="max-w-3xl text-muted-foreground">Manage themes and plugins for your content.</p>
             </div>
 
             {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="grid gap-6 md:grid-cols-2" aria-busy="true">
+                    <span className="sr-only">Loading themes and plugins...</span>
+                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Palette className="h-5 w-5" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Palette className="h-4 w-4 text-muted-foreground" />
                                 Themes
                             </CardTitle>
                             <CardDescription>Choose the active theme for your blog.</CardDescription>
@@ -232,15 +241,17 @@ export function AdminBlogStudioPage() {
                                 state.themes.map((theme) => (
                                     <div
                                         key={theme.id}
-                                        className="flex items-center justify-between rounded-lg border p-3 dark:border-border"
+                                        className="flex items-center justify-between rounded-lg bg-background p-3 ring-1 ring-border"
                                     >
                                         <div className="min-w-0 flex-1">
-                                            <p className="font-medium">{theme.name}</p>
+                                            <p className="text-sm font-medium">{theme.name}</p>
                                             {theme.description && (
-                                                <p className="text-muted-foreground text-sm">{theme.description}</p>
+                                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                                    {theme.description}
+                                                </p>
                                             )}
                                             {(theme.version || theme.author) && (
-                                                <p className="text-muted-foreground text-xs mt-0.5">
+                                                <p className="mt-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                                     {[
                                                         theme.version && `v${theme.version}`,
                                                         theme.author && `by ${theme.author}`,
@@ -268,10 +279,10 @@ export function AdminBlogStudioPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Puzzle className="h-5 w-5" />
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                <Puzzle className="h-4 w-4 text-muted-foreground" />
                                 Plugins
                             </CardTitle>
                             <CardDescription>Enable or disable plugins.</CardDescription>
@@ -281,12 +292,14 @@ export function AdminBlogStudioPage() {
                                 state.plugins.map((plugin) => (
                                     <div
                                         key={plugin.id}
-                                        className="flex items-center justify-between gap-2 rounded-lg border p-3 dark:border-border"
+                                        className="flex items-center justify-between gap-2 rounded-lg bg-background p-3 ring-1 ring-border"
                                     >
                                         <div className="min-w-0 flex-1">
-                                            <p className="font-medium">{plugin.name}</p>
+                                            <p className="text-sm font-medium">{plugin.name}</p>
                                             {plugin.description && (
-                                                <p className="text-muted-foreground text-sm">{plugin.description}</p>
+                                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                                    {plugin.description}
+                                                </p>
                                             )}
                                         </div>
                                         <div className="flex shrink-0 gap-1">

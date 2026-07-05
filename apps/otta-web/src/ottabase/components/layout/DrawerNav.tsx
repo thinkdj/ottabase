@@ -24,10 +24,11 @@ export function DrawerNav() {
             <Link
                 key={link.to}
                 to={link.to}
-                className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
                     isActive
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        ? 'bg-background text-foreground font-medium ring-1 ring-border'
+                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
                 onClick={() => setOpen(false)}
             >
@@ -65,13 +66,13 @@ export function DrawerNav() {
                             role="presentation"
                         />
                         <div
-                            className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r z-50 flex flex-col animate-in slide-in-from-left duration-200"
+                            className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r border-border/60 shadow-lg z-50 flex flex-col animate-in slide-in-from-left duration-normal"
                             role="dialog"
                             aria-modal="true"
                             aria-label="Navigation Menu"
                         >
-                            <div className="flex items-center justify-between p-4 border-b">
-                                <span className="font-semibold text-sm">{APP_META.appName}</span>
+                            <div className="flex items-center justify-between p-4 border-b border-border/60">
+                                <span className="text-sm font-semibold">{APP_META.appName}</span>
                                 <Button
                                     variant="ghost"
                                     size="sm"

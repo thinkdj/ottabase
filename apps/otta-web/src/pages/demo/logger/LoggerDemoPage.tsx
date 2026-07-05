@@ -104,16 +104,19 @@ export function LoggerDemoPage() {
                     </>
                 }
                 actions={
-                    <Badge variant="secondary" className="uppercase">
+                    <Badge
+                        variant="outline"
+                        className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                    >
                         @ottabase/logger
                     </Badge>
                 }
             />
 
             {/* How to use — client-side console visualization */}
-            <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-lg">How to use this demo</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">How to use this demo</CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
                         <p className="font-medium text-foreground">Quick flow:</p>
                         <ol className="list-inside list-decimal space-y-1">
@@ -142,9 +145,9 @@ export function LoggerDemoPage() {
             </Card>
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="dark:border-border dark:bg-card">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Log levels</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Log levels</CardTitle>
                         <CardDescription>
                             <strong>Minimum level</strong> the logger will output. Only messages at or above this level
                             appear. Pick a level, then click &quot;Run level demo&quot; to emit DEBUG, INFO, WARN, ERROR
@@ -175,9 +178,9 @@ export function LoggerDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="dark:border-border dark:bg-card">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Actions</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Actions</CardTitle>
                         <CardDescription>
                             Other demos. Results go to the browser Console and (after &quot;Refresh log list&quot;) to
                             the in-page list below.
@@ -211,9 +214,9 @@ export function LoggerDemoPage() {
                 </Card>
             </div>
 
-            <Card className="dark:border-border dark:bg-card">
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>In-memory logs (last 50)</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">In-memory logs (last 50)</CardTitle>
                     <CardDescription>
                         Logs accumulate across all actions (MemoryTransport keeps the last 50). Click &quot;Refresh log
                         list&quot; to update; &quot;Clear logs&quot; to reset. Same entries go to the browser Console.
@@ -221,9 +224,11 @@ export function LoggerDemoPage() {
                 </CardHeader>
                 <CardContent>
                     {logs.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Run a demo above, then click Refresh log list.</p>
+                        <p className="rounded-xl bg-background p-4 text-sm text-muted-foreground ring-1 ring-border">
+                            Run a demo above, then click Refresh log list.
+                        </p>
                     ) : (
-                        <pre className="max-h-64 overflow-auto rounded-md border bg-muted/50 p-3 text-xs dark:border-border dark:bg-muted/20">
+                        <pre className="max-h-64 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             {logs.map((line, i) => (
                                 <div key={i}>{line}</div>
                             ))}

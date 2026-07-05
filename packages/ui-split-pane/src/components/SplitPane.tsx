@@ -14,31 +14,35 @@ const baseStyles: Record<string, CSSProperties> = {
         position: 'relative',
     },
     resizer: {
-        background: 'rgba(0, 0, 0, 0.1)',
+        // Quiet hairline gutter — a single centered token-driven divider, no fill.
+        backgroundColor: 'hsl(var(--border) / 0.6)',
         zIndex: 1,
         boxSizing: 'border-box',
         backgroundClip: 'padding-box',
         cursor: 'col-resize',
         flexShrink: 0,
-        transition: 'background-color 0.2s ease',
+        transition: 'background-color var(--duration-normal, 200ms) var(--ease, ease)',
     },
     resizerVertical: {
+        // 3px transparent guttering on each side keeps the visible divider a 2px hairline.
         width: '8px',
         cursor: 'col-resize',
-        borderLeft: '2px solid transparent',
-        borderRight: '2px solid transparent',
+        borderLeft: '3px solid transparent',
+        borderRight: '3px solid transparent',
     },
     resizerHorizontal: {
         height: '8px',
         cursor: 'row-resize',
-        borderTop: '2px solid transparent',
-        borderBottom: '2px solid transparent',
+        borderTop: '3px solid transparent',
+        borderBottom: '3px solid transparent',
     },
     resizerHover: {
-        background: 'rgba(0, 0, 0, 0.2)',
+        // Hover deepens the divider to a primary tint.
+        backgroundColor: 'hsl(var(--primary) / 0.4)',
     },
     resizerDragging: {
-        background: 'rgba(0, 0, 0, 0.3)',
+        // Active drag = solid primary.
+        backgroundColor: 'hsl(var(--primary))',
     },
 };
 

@@ -51,9 +51,9 @@ export function SpotlightDemoPage() {
             />
 
             <div className="grid gap-4 md:grid-cols-2">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconSearch className="h-5 w-5" />
                             Local Spotlight
                         </CardTitle>
@@ -67,7 +67,7 @@ export function SpotlightDemoPage() {
                                 <IconSparkles className="mr-2 h-4 w-4" />
                                 Open local palette
                             </Button>
-                            <Button variant="outline" onClick={() => setQuery('')}>
+                            <Button variant="outline" onClick={() => setQuery('')} className="bg-background">
                                 Clear query
                             </Button>
                         </div>
@@ -80,9 +80,9 @@ export function SpotlightDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconCommand className="h-5 w-5" />
                             App Spotlight Provider
                         </CardTitle>
@@ -92,7 +92,7 @@ export function SpotlightDemoPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <Button variant="outline" onClick={() => globalSpotlight.toggle()}>
+                        <Button variant="outline" onClick={() => globalSpotlight.toggle()} className="bg-background">
                             <IconBolt className="mr-2 h-4 w-4" />
                             Toggle global spotlight
                         </Button>

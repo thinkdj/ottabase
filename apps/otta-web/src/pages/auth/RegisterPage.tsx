@@ -1,3 +1,4 @@
+import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
@@ -113,26 +114,31 @@ export function RegisterPage() {
 
     return (
         <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-4">
-                <div className="flex items-center gap-2">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link to="/login" className="flex items-center gap-1">
+            <div className="w-full max-w-md space-y-6">
+                <div className="flex items-center">
+                    <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                        <Link to="/login">
                             <ArrowLeft className="h-4 w-4" />
                             Back to Login
                         </Link>
                     </Button>
                 </div>
 
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold">Create Account</h1>
-                    <p className="text-muted-foreground">Sign up to get started</p>
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
+                        {APP_META.appName.charAt(0)}
+                    </span>
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Create Account</h1>
+                        <p className="text-muted-foreground">Sign up to get started</p>
+                    </div>
                     {referralCode && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
+                        <div className="w-full rounded-lg bg-background p-3 text-left text-sm ring-1 ring-border">
                             <p className="font-medium">
                                 You were referred by: <strong>{referralCode}</strong>
                             </p>
                             {referralExpiry && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     Referral expires in {referralExpiry.daysRemaining} days
                                 </p>
                             )}
@@ -140,22 +146,26 @@ export function RegisterPage() {
                     )}
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Registration</CardTitle>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="gap-1.5">
+                        <CardTitle className="text-[0.9375rem] font-semibold">Registration</CardTitle>
                         <CardDescription>Fill in your details to create a new account</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {verificationRequired ? (
                             <div className="space-y-4 text-sm">
-                                <div className="rounded-lg border border-muted bg-muted/40 p-4">
+                                <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                                     <p className="font-medium">Check your email to verify your account</p>
-                                    <p className="text-muted-foreground mt-1">
+                                    <p className="mt-1 text-muted-foreground">
                                         We sent a verification link to <strong>{registeredEmail}</strong>. You must
                                         verify your email before signing in.
                                     </p>
                                 </div>
-                                {error && <p className="text-sm text-destructive">{error}</p>}
+                                {error && (
+                                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                        {error}
+                                    </div>
+                                )}
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -201,33 +211,28 @@ export function RegisterPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardContent className="pt-6">
-                        <p className="text-center text-sm">
-                            Already have an account?{' '}
-                            <Link to="/login" className="font-medium text-primary hover:underline">
-                                Sign in
-                            </Link>
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+                    Already have an account?{' '}
+                    <Link to="/login" className="font-medium text-foreground hover:underline">
+                        Sign in
+                    </Link>
+                </div>
 
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle className="text-sm">Security</CardTitle>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="gap-1.5">
+                        <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
                         <CardDescription className="text-xs">Your credentials are stored securely</CardDescription>
                     </CardHeader>
-                    <CardContent className="text-xs space-y-2">
+                    <CardContent className="space-y-2 text-xs text-muted-foreground">
                         <p>
-                            <strong>Password requirements:</strong> 8+ chars with uppercase, lowercase, number, and
-                            symbol
+                            <strong className="font-medium text-foreground">Password requirements:</strong> 8+ chars
+                            with uppercase, lowercase, number, and symbol
                         </p>
                         <p>
-                            <strong>Registration:</strong> Creates your account and signs you in automatically
+                            <strong className="font-medium text-foreground">Registration:</strong> Creates your account
+                            and signs you in automatically
                         </p>
-                        <p className="text-muted-foreground">
-                            Email verification can be enabled via worker configuration
-                        </p>
+                        <p>Email verification can be enabled via worker configuration</p>
                     </CardContent>
                 </Card>
             </div>

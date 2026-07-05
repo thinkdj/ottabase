@@ -46,9 +46,9 @@ export function UiComponentsDemoPage() {
             />
 
             {/* ConfirmDialog */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <AlertTriangle className="h-4 w-4" />
                         ConfirmDialog
                     </CardTitle>
@@ -115,12 +115,12 @@ export function UiComponentsDemoPage() {
                     </div>
 
                     {confirmResult && (
-                        <div className="rounded-lg bg-muted p-3 text-sm">
+                        <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
                             <span className="font-medium">Result:</span> {confirmResult}
                         </div>
                     )}
 
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`import { ConfirmDialog } from '@ottabase/ui-components';
 
 <ConfirmDialog
@@ -136,9 +136,9 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* MessageBox */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Info className="h-4 w-4" />
                         MessageBox
                     </CardTitle>
@@ -151,8 +151,8 @@ export function UiComponentsDemoPage() {
                     {/* Message types grid */}
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {MESSAGE_TYPES.map(({ type, message }) => (
-                            <div key={type} className="rounded-lg border">
-                                <div className="border-b px-3 py-1.5">
+                            <div key={type} className="rounded-lg bg-background ring-1 ring-border">
+                                <div className="border-b border-border/60 px-3 py-1.5">
                                     <code className="text-xs">{type}</code>
                                 </div>
                                 <MessageBox message={message} messageType={type} />
@@ -164,14 +164,14 @@ export function UiComponentsDemoPage() {
                     <div>
                         <h4 className="mb-3 text-sm font-medium">Loading States</h4>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-lg border">
-                                <div className="border-b px-3 py-1.5">
+                            <div className="rounded-lg bg-background ring-1 ring-border">
+                                <div className="border-b border-border/60 px-3 py-1.5">
                                     <code className="text-xs">spinner (default)</code>
                                 </div>
                                 <MessageBox isLoading loadingType="spinner" />
                             </div>
-                            <div className="rounded-lg border">
-                                <div className="border-b px-3 py-1.5">
+                            <div className="rounded-lg bg-background ring-1 ring-border">
+                                <div className="border-b border-border/60 px-3 py-1.5">
                                     <code className="text-xs">skeleton</code>
                                 </div>
                                 <MessageBox isLoading loadingType="skeleton" />
@@ -179,7 +179,7 @@ export function UiComponentsDemoPage() {
                         </div>
                     </div>
 
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`import { MessageBox } from '@ottabase/ui-components';
 
 // Status message
@@ -195,9 +195,9 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* Logo */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconPhoto className="h-4 w-4" aria-hidden />
                         Logo
                     </CardTitle>
@@ -207,10 +207,10 @@ export function UiComponentsDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-border bg-muted/30 p-4 dark:bg-muted/20">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <Logo appName="Ottabase UI Components" darkModeSwitcher />
                     </div>
-                    <pre className="rounded-lg bg-muted p-4 text-xs overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                         <code>{`import { Logo } from '@ottabase/ui-components';
 
 <Logo appName="My App" darkModeSwitcher linkUrl="/" />`}</code>
@@ -219,16 +219,16 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* DarkModeToggle */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconMoon className="h-4 w-4" aria-hidden />
                         DarkModeToggle
                     </CardTitle>
                     <CardDescription>Uses next-themes; switch or button presentation.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border p-4">
+                    <div className="flex flex-wrap items-center gap-6 rounded-lg bg-background p-4 ring-1 ring-border">
                         <div className="space-y-2">
                             <p className="text-xs font-medium text-muted-foreground">type=&quot;toggle-switch&quot;</p>
                             <DarkModeToggle type="toggle-switch" />
@@ -242,9 +242,9 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* HistoryGoBackButton */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconArrowLeft className="h-4 w-4" aria-hidden />
                         HistoryGoBackButton
                     </CardTitle>
@@ -253,16 +253,16 @@ export function UiComponentsDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-lg border border-border p-4">
+                    <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <HistoryGoBackButton />
                     </div>
                 </CardContent>
             </Card>
 
             {/* BlogPagination */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />
                         BlogPagination
                     </CardTitle>
@@ -277,9 +277,9 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* Component list */}
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />
                         All Exported Components
                     </CardTitle>
@@ -319,7 +319,7 @@ export function UiComponentsDemoPage() {
                                 import: "import { BlogPagination } from '@ottabase/ui-components';",
                             },
                         ].map((comp) => (
-                            <div key={comp.name} className="rounded-lg border p-3">
+                            <div key={comp.name} className="rounded-lg bg-background p-3 ring-1 ring-border">
                                 <div className="flex items-center justify-between">
                                     <span className="font-medium text-sm">{comp.name}</span>
                                 </div>

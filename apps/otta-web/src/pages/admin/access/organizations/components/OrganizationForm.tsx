@@ -198,7 +198,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-4 pt-4 border-t">
+            <div className="flex justify-end gap-4 border-t border-border/60 pt-4">
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     Cancel
                 </Button>

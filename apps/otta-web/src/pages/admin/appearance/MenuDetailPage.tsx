@@ -21,7 +21,7 @@ import {
     SelectValue,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconEye, IconPlus, IconTrash, IconUpload, IconX } from '@tabler/icons-react';
+import { IconArrowLeft, IconEye, IconPlus, IconTrash, IconUpload, IconX } from '@tabler/icons-react';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
@@ -68,8 +68,16 @@ export function AdminMenuDetailPage() {
 
     if (isLoading || !menu) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Loading menu...</p>
+            <div className="flex gap-6" aria-busy="true">
+                <span className="sr-only">Loading menu...</span>
+                <div className="flex-1 min-w-0 space-y-6">
+                    <div className="h-9 w-36 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-72 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                </div>
+                <div className="w-72 shrink-0">
+                    <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                </div>
             </div>
         );
     }
@@ -78,8 +86,14 @@ export function AdminMenuDetailPage() {
         <div className="flex gap-6">
             <div className="flex-1 min-w-0 space-y-6">
                 <div>
-                    <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/admin/appearance/menus' })}>
-                        ← Back to menus
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-2 gap-1.5 text-muted-foreground"
+                        onClick={() => navigate({ to: '/admin/appearance/menus' })}
+                    >
+                        <IconArrowLeft className="h-4 w-4" />
+                        Back to menus
                     </Button>
                 </div>
                 <MenuEditForm menu={menu} onTypeChange={setPreviewType} />
@@ -108,40 +122,48 @@ function MenuCreateView({
             <div className="flex-1 min-w-0">
                 <div className="space-y-6">
                     <div>
-                        <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
-                            ← Back
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="-ml-2 gap-1.5 text-muted-foreground"
+                            onClick={() => window.history.back()}
+                        >
+                            <IconArrowLeft className="h-4 w-4" />
+                            Back
                         </Button>
                     </div>
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Create Menu</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Create Menu</CardTitle>
+                            <CardDescription className="leading-relaxed">
                                 Create a new menu. Use slug &quot;sidebar&quot; to override the main sidebar nav.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div>
+                            <div className="space-y-1.5">
                                 <Label htmlFor="name">Name</Label>
                                 <Input
                                     id="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Main Navigation"
+                                    className="bg-background"
                                 />
                             </div>
-                            <div>
+                            <div className="space-y-1.5">
                                 <Label htmlFor="slug">Slug</Label>
                                 <Input
                                     id="slug"
                                     value={slug}
                                     onChange={(e) => setSlug(e.target.value)}
                                     placeholder="sidebar"
+                                    className="bg-background"
                                 />
                             </div>
-                            <div>
+                            <div className="space-y-1.5">
                                 <Label htmlFor="type">Default render type</Label>
                                 <Select value={type} onValueChange={(v) => setType(v as MenuRenderType)}>
-                                    <SelectTrigger id="type">
+                                    <SelectTrigger id="type" className="bg-background">
                                         <SelectValue placeholder="Type" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -182,20 +204,18 @@ function MenuPreviewPanel({ menu, type }: { menu: MenuWithItemsDto | null; type:
     const isWide = type === 'mega' || type === 'navbar' || type === 'footer';
 
     return (
-        <Card className="sticky top-4">
+        <Card className="sticky top-4 rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <IconEye className="h-4 w-4" />
+                <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                    <IconEye className="h-4 w-4 text-muted-foreground" />
                     Preview
                 </CardTitle>
-                <CardDescription>Preview as {type} (default render type)</CardDescription>
+                <CardDescription className="leading-relaxed">Preview as {type} (default render type)</CardDescription>
             </CardHeader>
             <CardContent>
                 {menu && menu.items.length > 0 ? (
                     <div
-                        className={`rounded-md border bg-muted/30 p-3 dark:bg-muted/10 ${
-                            isWide ? 'overflow-x-auto' : ''
-                        }`}
+                        className={`rounded-lg bg-background p-3 ring-1 ring-border ${isWide ? 'overflow-x-auto' : ''}`}
                     >
                         {renderMenu(menu, type, {
                             isAuthenticated: true,
@@ -204,7 +224,7 @@ function MenuPreviewPanel({ menu, type }: { menu: MenuWithItemsDto | null; type:
                         })}
                     </div>
                 ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
                         {menu ? 'Add items to see preview.' : 'Create the menu and add items to see preview.'}
                     </p>
                 )}
@@ -242,37 +262,39 @@ function MenuEditForm({ menu, onTypeChange }: { menu: MenuWithItemsDto; onTypeCh
     });
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Menu settings</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Menu settings</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Name, slug, and default render type. Supports sidebar, flyout, mega menu, navbar, dropdown, and
                     footer layouts.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div>
+                <div className="space-y-1.5">
                     <Label htmlFor="edit-name">Name</Label>
                     <Input
                         id="edit-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Main Navigation"
+                        className="bg-background"
                     />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                     <Label htmlFor="edit-slug">Slug</Label>
                     <Input
                         id="edit-slug"
                         value={slug}
                         onChange={(e) => setSlug(e.target.value)}
                         placeholder="sidebar"
+                        className="bg-background"
                     />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                     <Label htmlFor="edit-type">Default render type</Label>
                     <Select value={type} onValueChange={(v) => handleTypeChange(v as MenuRenderType)}>
-                        <SelectTrigger id="edit-type">
+                        <SelectTrigger id="edit-type" className="bg-background">
                             <SelectValue placeholder="Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -334,10 +356,10 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
     const tree = buildItemTree(menu.items);
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Menu items</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Menu items</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Items can be nested. Use &quot;Add child&quot; to create sub-items. Each item: name, link, optional
                     newTab, authRequired.
                 </CardDescription>
@@ -423,7 +445,11 @@ function ItemTreeNode({
     depth?: number;
 }) {
     return (
-        <div key={node.item.id} className={depth > 0 ? 'ml-4 border-l border-muted pl-3' : ''}>
+        // Nested items indent with a hairline thread line (comments-thread treatment)
+        <div
+            key={node.item.id}
+            className={depth > 0 ? 'ml-1 space-y-2 border-l border-border/60 pl-4 pt-2' : 'space-y-2'}
+        >
             <ItemRow
                 item={node.item}
                 menuId={menuId}
@@ -498,31 +524,48 @@ function ItemRow({
     }
 
     return (
-        <div className="flex items-center justify-between rounded-lg border p-3">
-            {item.image && <img src={item.image} alt="" className="mr-3 h-8 w-8 shrink-0 rounded object-cover" />}
+        <div className="flex items-center justify-between rounded-lg bg-background p-3 ring-1 ring-border">
+            {item.image && (
+                <img
+                    src={item.image}
+                    alt=""
+                    className="mr-3 h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-border"
+                />
+            )}
             <div className="min-w-0 flex-1">
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium">{item.name}</p>
+                <p className="truncate text-sm text-muted-foreground">
                     {item.link}
                     {item.newTab && ' (new tab)'}
                     {item.authRequired && ' [auth]'}
                 </p>
             </div>
             <div className="flex shrink-0 gap-1">
-                <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={onEdit}
+                >
                     Edit
                 </Button>
                 <Button
                     variant="ghost"
                     size="sm"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={onAddChild}
                     disabled={allItems.length >= 100}
                     title={allItems.length >= 100 ? 'Maximum 100 items per menu' : undefined}
                 >
                     Add child
                 </Button>
-                <Button variant="ghost" size="icon" onClick={onDelete}>
-                    <IconTrash className="h-4 w-4 text-destructive" />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={onDelete}
+                >
+                    <IconTrash className="h-4 w-4" />
                 </Button>
             </div>
         </div>
@@ -605,8 +648,8 @@ function ItemForm({
     };
 
     return (
-        <div className="space-y-3 rounded-lg border p-4">
-            <div>
+        <div className="space-y-3 rounded-lg bg-background p-4 ring-1 ring-border">
+            <div className="space-y-1.5">
                 <Label>Parent</Label>
                 <Select
                     value={selectedParentId ?? 'root'}
@@ -646,7 +689,7 @@ function ItemForm({
             <Input placeholder="Tooltip (optional)" value={tooltip} onChange={(e) => setTooltip(e.target.value)} />
 
             {/* Image upload */}
-            <div>
+            <div className="space-y-1.5">
                 <Label>Image (optional)</Label>
                 <input
                     ref={fileInputRef}
@@ -661,12 +704,13 @@ function ItemForm({
                     }}
                 />
                 {image ? (
-                    <div className="mt-1 flex items-center gap-2">
-                        <img src={image} alt="" className="h-10 w-10 rounded border object-cover" />
+                    <div className="flex items-center gap-2">
+                        <img src={image} alt="" className="h-10 w-10 rounded-md object-cover ring-1 ring-border" />
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={() => setImage('')}
                             title="Remove image"
                         >
@@ -678,7 +722,6 @@ function ItemForm({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="mt-1"
                         disabled={uploading}
                         onClick={() => fileInputRef.current?.click()}
                     >

@@ -142,7 +142,7 @@ export function OttaFormsDemoPage() {
                     </Button>
 
                     {/* CRUD Interface */}
-                    <Card>
+                    <Card className="rounded-xl border-border/60 shadow-none">
                         <CardContent className="pt-6">
                             <ModelCrud
                                 config={modelConfigs[selectedModel]}
@@ -168,11 +168,13 @@ export function OttaFormsDemoPage() {
                         {(Object.keys(modelConfigs) as ModelKey[]).map((key) => (
                             <Card
                                 key={key}
-                                className="cursor-pointer transition-shadow hover:shadow-md"
+                                className="cursor-pointer rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
                                 onClick={() => setSelectedModel(key)}
                             >
                                 <CardHeader>
-                                    <CardTitle className="capitalize">{modelConfigs[key].displayNamePlural}</CardTitle>
+                                    <CardTitle className="text-[0.9375rem] font-semibold capitalize">
+                                        {modelConfigs[key].displayNamePlural}
+                                    </CardTitle>
                                     <CardDescription>{modelDescriptions[key]}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
@@ -183,7 +185,7 @@ export function OttaFormsDemoPage() {
                                             .map(([fieldKey, field]) => (
                                                 <span
                                                     key={fieldKey}
-                                                    className="rounded-full bg-muted px-2 py-1 text-xs"
+                                                    className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground ring-1 ring-border"
                                                 >
                                                     {field.uiConfig?.label || fieldKey}
                                                 </span>
@@ -203,9 +205,9 @@ export function OttaFormsDemoPage() {
                     </div>
 
                     {/* Features Section */}
-                    <Card className="bg-muted/50">
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Features</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -238,12 +240,12 @@ export function OttaFormsDemoPage() {
                     </Card>
 
                     {/* Code Example */}
-                    <Card>
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
-                            <CardTitle>Usage Example</CardTitle>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-sm text-gray-100">
+                            <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm text-foreground ring-1 ring-border">
                                 <code>{`import { ModelCrud, createModelConfig } from "@ottabase/forms";
 import { User } from "@ottabase/ottaorm/models";
 

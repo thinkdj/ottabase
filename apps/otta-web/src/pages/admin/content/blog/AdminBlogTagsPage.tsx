@@ -9,11 +9,6 @@ import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Input,
     Label,
     Sheet,
@@ -25,6 +20,9 @@ import {
 import { Edit, Loader2, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+
+const CHIP_CLASS =
+    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
 
 interface BlogTag {
     id: string;
@@ -129,14 +127,14 @@ export function AdminBlogTagsPage() {
     const isSaving = createTag.isPending || updateTag.isPending;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <BlogAdminNav />
 
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Tags</h1>
-                    <p className="text-muted-foreground mt-1">Manage blog tags</p>
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tags</h1>
+                    <p className="text-muted-foreground">Manage blog tags</p>
                 </div>
                 <Button onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -144,73 +142,75 @@ export function AdminBlogTagsPage() {
                 </Button>
             </div>
 
-            {/* Search */}
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="relative">
+            {/* Tags list */}
+            <section className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        Tags
+                        <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
+                            {filteredTags.length} tag{filteredTags.length !== 1 ? 's' : ''}
+                        </span>
+                    </h2>
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Search tags..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9"
+                            className="h-9 pl-10"
                         />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
 
-            {/* Tags Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                            <Tag className="h-5 w-5" />
-                            Tags
-                        </span>
-                        {isLoading && <span className="text-sm font-normal text-muted-foreground">Loading...</span>}
-                    </CardTitle>
-                    <CardDescription>
-                        {filteredTags.length} tag{filteredTags.length !== 1 ? 's' : ''}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {filteredTags.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Tag className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-lg font-semibold">No tags found</h3>
-                            <p className="mt-2 text-muted-foreground">
-                                {tags.length === 0
-                                    ? 'Get started by creating your first tag.'
-                                    : 'Try adjusting your search.'}
-                            </p>
-                            {tags.length === 0 && (
-                                <Button className="mt-4" onClick={openCreate}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create Tag
-                                </Button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
+                {isLoading ? (
+                    <div className="space-y-3" aria-busy="true">
+                        <span className="sr-only">Loading tags...</span>
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        ))}
+                    </div>
+                ) : filteredTags.length === 0 ? (
+                    <div className="rounded-xl bg-muted/40 py-12 text-center">
+                        <Tag className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                        <h3 className="mt-4 text-sm font-medium">No tags found</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {tags.length === 0
+                                ? 'Get started by creating your first tag.'
+                                : 'Try adjusting your search.'}
+                        </p>
+                        {tags.length === 0 && (
+                            <Button className="mt-4" onClick={openCreate}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Tag
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border/60">
+                        <div className="divide-y divide-border/60">
                             {filteredTags.map((tag) => (
                                 <div
                                     key={tag.id}
-                                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50 cursor-pointer"
+                                    className="flex cursor-pointer items-center justify-between p-3 transition-colors duration-normal hover:bg-muted/40"
                                     onClick={() => setEditingTag(tag)}
                                 >
                                     <div className="flex items-center gap-3">
                                         {tag.color && (
                                             <span
-                                                className="h-4 w-4 rounded-full border"
+                                                className="h-4 w-4 rounded-full ring-1 ring-border"
                                                 style={{ backgroundColor: tag.color }}
                                             />
                                         )}
-                                        <span className="font-medium">{tag.name}</span>
-                                        <Badge variant="outline" className="text-xs">
+                                        <span className="text-sm font-medium">{tag.name}</span>
+                                        <Badge variant="outline" className={CHIP_CLASS}>
                                             {tag.slug}
                                         </Badge>
                                         {tag.type && tag.type !== 'post' && (
-                                            <Badge variant="secondary" className="text-xs">
+                                            <Badge
+                                                variant="outline"
+                                                className={`uppercase tracking-wide ${CHIP_CLASS}`}
+                                            >
                                                 {tag.type}
                                             </Badge>
                                         )}
@@ -219,6 +219,7 @@ export function AdminBlogTagsPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setEditingTag(tag);
@@ -229,6 +230,7 @@ export function AdminBlogTagsPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-8 w-8"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDeleteDialog({ id: tag.id, name: tag.name });
@@ -240,9 +242,9 @@ export function AdminBlogTagsPage() {
                                 </div>
                             ))}
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </section>
 
             {/* Edit / Create Sheet */}
             <Sheet open={sheetOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -279,7 +281,7 @@ export function AdminBlogTagsPage() {
                                 />
                                 {formColor && (
                                     <span
-                                        className="h-10 w-10 rounded-md border"
+                                        className="h-10 w-10 rounded-md ring-1 ring-border"
                                         style={{ backgroundColor: formColor }}
                                     />
                                 )}

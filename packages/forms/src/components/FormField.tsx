@@ -7,7 +7,7 @@
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { JsonEditor, type JsonValue } from '@ottabase/ui-components';
 import { clsx } from 'clsx';
-import { AlertCircle, Calendar, Check, Eye, EyeOff, Upload, X } from 'lucide-react';
+import { AlertCircle, Calendar, Check, Eye, EyeOff, Loader2, Upload, X } from 'lucide-react';
 import React, { useCallback } from 'react';
 import type { FormFieldProps, ModelFieldDescriptor } from '../types';
 
@@ -36,13 +36,11 @@ export function FormField({
     const helpText = formConfig.helpText || uiConfig.hint;
 
     const baseInputClasses = clsx(
-        'w-full px-3 py-2 rounded-lg border transition-colors duration-150',
-        'bg-background',
-        'text-foreground',
+        'w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground transition-colors duration-normal',
         'placeholder:text-muted-foreground',
-        'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
-        error ? 'border-destructive' : 'border-input hover:border-input/80',
-        disabled && 'opacity-50 cursor-not-allowed bg-muted',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent',
+        error ? 'border-destructive/60' : 'border-border/60 hover:border-border',
+        disabled && 'opacity-50 cursor-not-allowed bg-muted/40',
     );
 
     // Check if value is an object (not null, not array, not Date, not primitive)
@@ -66,7 +64,7 @@ export function FormField({
                     disabled={disabled}
                     placeholder={placeholder || '{}'}
                     rows={formConfig.rows || 6}
-                    className={clsx(baseInputClasses, 'font-mono text-sm resize-y min-h-[150px]')}
+                    className={clsx(baseInputClasses, 'resize-y min-h-[150px] font-mono')}
                 />
             );
         }
@@ -81,7 +79,7 @@ export function FormField({
                         disabled={disabled}
                         placeholder={placeholder || '{}'}
                         rows={formConfig.rows || 10}
-                        className={clsx(baseInputClasses, 'font-mono text-sm resize-y min-h-[220px]')}
+                        className={clsx(baseInputClasses, 'resize-y min-h-[220px] font-mono')}
                     />
                 );
             case 'textarea':
@@ -231,9 +229,9 @@ export function FormField({
                             checked={Boolean(value)}
                             onChange={(e) => onChange(e.target.checked)}
                             disabled={disabled}
-                            className="w-5 h-5 rounded border-input text-primary focus:ring-ring"
+                            className="h-4 w-4 rounded border-border/60 text-primary focus-visible:ring-2 focus-visible:ring-ring"
                         />
-                        <span className="text-foreground">{uiConfig.description || label}</span>
+                        <span className="text-sm text-foreground">{uiConfig.description || label}</span>
                     </label>
                 );
 
@@ -283,7 +281,12 @@ export function FormField({
 
             case 'readonly':
                 return (
-                    <div className={clsx(baseInputClasses, 'bg-muted cursor-not-allowed')}>
+                    <div
+                        className={clsx(
+                            baseInputClasses,
+                            'flex min-h-9 items-center border-transparent bg-muted/40 text-muted-foreground',
+                        )}
+                    >
                         {formatDisplayValue(value, field)}
                     </div>
                 );
@@ -316,7 +319,7 @@ export function FormField({
             {fieldType !== 'boolean' && (
                 <label htmlFor={name} className="block text-sm font-medium text-foreground">
                     {label}
-                    {field.validation?.rules?.includes('required') && <span className="text-destructive ml-1">*</span>}
+                    {field.validation?.rules?.includes('required') && <span className="ml-1 text-destructive">*</span>}
                 </label>
             )}
 
@@ -324,10 +327,10 @@ export function FormField({
             {renderField()}
 
             {/* Help text */}
-            {helpText && !error && <p className="text-sm text-muted-foreground">{helpText}</p>}
+            {helpText && !error && <p className="text-xs leading-relaxed text-muted-foreground">{helpText}</p>}
 
             {/* Error */}
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
     );
 }
@@ -438,13 +441,13 @@ function PasswordField({
                 <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors duration-normal hover:text-foreground"
                 >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
             </div>
             {showHints && password.length > 0 && (
-                <div className="text-xs space-y-1">
+                <div className="space-y-1 text-xs">
                     <PasswordHint passed={hasMinLength} text={`At least ${minLength || 8} characters`} />
                     <PasswordHint passed={hasUppercase} text="One uppercase letter" />
                     <PasswordHint passed={hasLowercase} text="One lowercase letter" />
@@ -458,10 +461,8 @@ function PasswordField({
 
 function PasswordHint({ passed, text }: { passed: boolean; text: string }) {
     return (
-        <div
-            className={clsx('flex items-center gap-1', passed ? 'text-green-600 dark:text-green-400' : 'text-gray-400')}
-        >
-            {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+        <div className={clsx('flex items-center gap-1', passed ? 'text-success' : 'text-muted-foreground')}>
+            {passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
             <span>{text}</span>
         </div>
     );
@@ -591,8 +592,8 @@ function SelectField({
                 searchable={true}
             />
             {fetchError && (
-                <div className="flex items-center gap-1 text-xs text-red-500 dark:text-red-400">
-                    <AlertCircle className="w-3 h-3" />
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                    <AlertCircle className="h-3 w-3" />
                     <span>{fetchError}</span>
                 </div>
             )}
@@ -693,25 +694,23 @@ function FileField({
         <div className="space-y-2">
             <div
                 className={clsx(
-                    'flex items-center justify-center w-full',
-                    'border-2 border-dashed rounded-lg',
-                    'border-gray-300 dark:border-gray-600',
-                    'hover:border-gray-400 dark:hover:border-gray-500',
-                    'transition-colors cursor-pointer',
-                    (disabled || uploading) && 'opacity-50 cursor-not-allowed',
+                    'flex w-full items-center justify-center',
+                    'rounded-xl border border-dashed border-border/60 bg-muted/40',
+                    'cursor-pointer transition-colors duration-normal hover:bg-muted/70',
+                    (disabled || uploading) && 'cursor-not-allowed opacity-50',
                 )}
                 onClick={() => !disabled && !uploading && inputRef.current?.click()}
             >
                 {uploading ? (
-                    <div className="flex flex-col items-center justify-center py-8 px-4">
-                        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Uploading... {uploadProgress > 0 && `${uploadProgress}%`}
+                    <div className="flex flex-col items-center justify-center px-4 py-8">
+                        <Loader2 className="mb-2 h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                            Uploading… {uploadProgress > 0 && `${uploadProgress}%`}
                         </p>
                     </div>
                 ) : isImage && preview ? (
                     <div className="relative w-full p-2">
-                        <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded" />
+                        <img src={preview} alt="Preview" className="mx-auto max-h-48 rounded-lg" />
                         <button
                             type="button"
                             onClick={(e) => {
@@ -720,22 +719,25 @@ function FileField({
                                 onChange(null);
                                 if (inputRef.current) inputRef.current.value = '';
                             }}
-                            className="absolute top-4 right-4 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                            aria-label="Remove image"
+                            className="absolute right-4 top-4 rounded-full bg-background p-1.5 text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-destructive"
                         >
-                            ×
+                            <X className="h-3.5 w-3.5" />
                         </button>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-8 px-4">
-                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col items-center justify-center px-4 py-8">
+                        <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
                             Click to upload {isImage ? 'an image' : 'a file'}
                         </p>
-                        {accept && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Accepted: {accept}</p>}
-                        {uploadEndpoint && (
-                            <p className="text-xs text-blue-400 dark:text-blue-500 mt-1">
-                                Files will be uploaded automatically
+                        {accept && (
+                            <p className="mt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Accepted: {accept}
                             </p>
+                        )}
+                        {uploadEndpoint && (
+                            <p className="mt-1 text-xs text-muted-foreground">Files will be uploaded automatically</p>
                         )}
                     </div>
                 )}
@@ -752,8 +754,8 @@ function FileField({
             />
 
             {error && (
-                <div className="flex items-center gap-1 text-sm text-red-500">
-                    <AlertCircle className="w-4 h-4" />
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                    <AlertCircle className="h-3.5 w-3.5" />
                     <span>{error}</span>
                 </div>
             )}

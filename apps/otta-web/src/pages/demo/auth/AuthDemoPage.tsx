@@ -67,19 +67,42 @@ export function AuthDemoPage() {
                 }
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <IconKey className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <IconKey className="h-4 w-4" />
                         Session Status
                     </CardTitle>
                     <CardDescription>Current session state from the shared auth hook.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant={authState === 'authenticated' ? 'default' : 'outline'}>{authState}</Badge>
-                        {user?.email && <Badge variant="secondary">{user.email}</Badge>}
-                        <Badge variant={emailVerified ? 'default' : 'outline'}>
+                        <Badge
+                            variant={authState === 'authenticated' ? 'default' : 'outline'}
+                            className={
+                                authState === 'authenticated'
+                                    ? 'rounded-full'
+                                    : 'rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border'
+                            }
+                        >
+                            {authState}
+                        </Badge>
+                        {user?.email && (
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                            >
+                                {user.email}
+                            </Badge>
+                        )}
+                        <Badge
+                            variant={emailVerified ? 'default' : 'outline'}
+                            className={
+                                emailVerified
+                                    ? 'rounded-full'
+                                    : 'rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border'
+                            }
+                        >
                             {emailVerified ? `email verified` : 'email unverified'}
                         </Badge>
                     </div>
@@ -102,20 +125,20 @@ export function AuthDemoPage() {
                         )}
                     </div>
                     {Object.keys(storageSnapshot).length > 0 && (
-                        <pre className="max-h-56 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                        <pre className="max-h-56 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             {JSON.stringify(storageSnapshot, null, 2)}
                         </pre>
                     )}
-                    <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                    <pre className="max-h-72 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                         {JSON.stringify(session, null, 2)}
                     </pre>
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <IconShieldLock className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <IconShieldLock className="h-4 w-4" />
                         Authorization Snapshot
                     </CardTitle>
                     <CardDescription>
@@ -123,19 +146,30 @@ export function AuthDemoPage() {
                         server-side KV snapshot, so they can be revoked without waiting for the cookie to expire).
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                    <div>
-                        <div className="mb-1 font-medium">Active organization</div>
-                        <Badge variant={user?.organizationId ? 'secondary' : 'outline'}>
+                <CardContent className="space-y-4 text-sm">
+                    <div className="space-y-1.5">
+                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Active organization
+                        </div>
+                        <Badge
+                            variant="outline"
+                            className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                        >
                             {user?.organizationId ?? 'none'}
                         </Badge>
                     </div>
-                    <div>
-                        <div className="mb-1 font-medium">Roles ({roles.length})</div>
-                        <div className="flex flex-wrap gap-1">
+                    <div className="space-y-1.5">
+                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Roles ({roles.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
                             {roles.length ? (
                                 roles.map((r) => (
-                                    <Badge key={r} variant="default">
+                                    <Badge
+                                        key={r}
+                                        variant="outline"
+                                        className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                    >
                                         {r}
                                     </Badge>
                                 ))
@@ -144,12 +178,18 @@ export function AuthDemoPage() {
                             )}
                         </div>
                     </div>
-                    <div>
-                        <div className="mb-1 font-medium">Permissions ({permissions.length})</div>
-                        <div className="flex flex-wrap gap-1">
+                    <div className="space-y-1.5">
+                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Permissions ({permissions.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
                             {permissions.length ? (
                                 permissions.map((p) => (
-                                    <Badge key={p} variant="outline" className="font-mono">
+                                    <Badge
+                                        key={p}
+                                        variant="outline"
+                                        className="rounded-full border-transparent bg-background font-mono text-muted-foreground ring-1 ring-border"
+                                    >
                                         {p}
                                     </Badge>
                                 ))
@@ -161,9 +201,9 @@ export function AuthDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>CSRF Token</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">CSRF Token</CardTitle>
                     <CardDescription>
                         <code>GET /api/auth/csrf</code> sets a paired HttpOnly cookie and returns the plain token that
                         state-changing requests must echo back. The client API fetches this automatically for you.
@@ -174,16 +214,16 @@ export function AuthDemoPage() {
                         {csrfLoading ? 'Fetching…' : 'Fetch CSRF token'}
                     </Button>
                     {csrfToken && (
-                        <pre className="overflow-auto rounded-lg bg-muted p-3 text-xs font-mono break-all">
+                        <pre className="overflow-auto break-all rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                             {csrfToken}
                         </pre>
                     )}
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Auth Flows</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Auth Flows</CardTitle>
                     <CardDescription>Use the app auth pages to test full sign-in behavior.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">

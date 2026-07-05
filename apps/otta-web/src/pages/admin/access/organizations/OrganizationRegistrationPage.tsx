@@ -122,12 +122,12 @@ export function OrganizationRegistrationPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-            <Card className="w-full max-w-md">
+            <Card className="w-full max-w-md rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader className="text-center space-y-2">
-                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Building2 className="h-6 w-6 text-primary" />
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
+                        <Building2 className="h-5 w-5" />
                     </div>
-                    <CardTitle className="text-2xl">Create Organization</CardTitle>
+                    <CardTitle className="text-2xl font-bold tracking-tight">Create Organization</CardTitle>
                     <CardDescription>Set up your organization to get started</CardDescription>
                 </CardHeader>
 

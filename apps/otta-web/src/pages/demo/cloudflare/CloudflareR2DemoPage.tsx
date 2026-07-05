@@ -161,20 +161,20 @@ export function CloudflareR2DemoPage() {
             />
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm text-destructive">{error}</p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
                 </div>
             ) : null}
 
             {success ? (
-                <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm">{success}</p>
                 </div>
             ) : null}
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Upload File</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Upload File</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleUpload} className="space-y-4">
@@ -211,11 +211,17 @@ export function CloudflareR2DemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-base">Files in Bucket</CardTitle>
-                        <Button onClick={loadObjects} disabled={loading} variant="outline" size="sm">
+                        <CardTitle className="text-[0.9375rem] font-semibold">Files in Bucket</CardTitle>
+                        <Button
+                            onClick={loadObjects}
+                            disabled={loading}
+                            variant="outline"
+                            size="sm"
+                            className="bg-background"
+                        >
                             Refresh
                         </Button>
                     </div>
@@ -227,7 +233,7 @@ export function CloudflareR2DemoPage() {
                         objects.map((obj) => (
                             <div
                                 key={obj.key}
-                                className="flex items-center justify-between gap-4 rounded-lg border p-3"
+                                className="flex items-center justify-between gap-4 rounded-lg bg-background p-3 ring-1 ring-border"
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-medium">{obj.key}</p>

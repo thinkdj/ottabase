@@ -65,13 +65,16 @@ export function CloudflareDemoIndexPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
                 {demos.map((demo) => (
-                    <Card key={demo.href} className="transition-colors">
+                    <Card
+                        key={demo.href}
+                        className="rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
+                    >
                         <CardHeader>
-                            <CardTitle className="text-lg">{demo.name}</CardTitle>
-                            <CardDescription>{demo.description}</CardDescription>
+                            <CardTitle className="text-[0.9375rem] font-semibold">{demo.name}</CardTitle>
+                            <CardDescription className="leading-relaxed">{demo.description}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button asChild variant="outline" className="w-full">
+                            <Button asChild variant="outline" className="w-full bg-background">
                                 <Link to={demo.href}>Open</Link>
                             </Button>
                         </CardContent>
@@ -79,9 +82,9 @@ export function CloudflareDemoIndexPage() {
                 ))}
             </div>
 
-            <div className="rounded-lg border bg-muted/50 p-4">
-                <h3 className="mb-2 text-sm font-medium">Setup Required</h3>
-                <p className="text-sm text-muted-foreground">
+            <div className="rounded-xl bg-muted/40 p-4">
+                <h3 className="mb-1.5 text-[0.9375rem] font-semibold">Setup Required</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
                     Configure bindings in <code>wrangler.jsonc</code> for the Worker.
                 </p>
             </div>

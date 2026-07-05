@@ -27,26 +27,49 @@ export function BrandEngineDemoPage() {
                 }
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <IconPalette className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <IconPalette className="h-4 w-4" />
                         Current Resolved Brand Config
                     </CardTitle>
                     <CardDescription>Shows values already applied by the app-level BrandProvider.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant={isLoading ? 'secondary' : 'outline'}>{isLoading ? 'loading' : 'loaded'}</Badge>
-                        {error && <Badge variant="destructive">error</Badge>}
-                        {config?.brandName && <Badge variant="outline">{config.brandName}</Badge>}
-                        {config?.layoutTemplateId && <Badge variant="outline">layout: {config.layoutTemplateId}</Badge>}
+                        <Badge
+                            variant="outline"
+                            className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                        >
+                            {isLoading ? 'loading' : 'loaded'}
+                        </Badge>
+                        {error && (
+                            <Badge variant="destructive" className="rounded-full">
+                                error
+                            </Badge>
+                        )}
+                        {config?.brandName && (
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                            >
+                                {config.brandName}
+                            </Badge>
+                        )}
+                        {config?.layoutTemplateId && (
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                            >
+                                layout: {config.layoutTemplateId}
+                            </Badge>
+                        )}
                     </div>
                     <Button onClick={() => refresh()} variant="outline" size="sm">
                         <IconRefresh className="mr-2 h-4 w-4" />
                         Refresh brand config
                     </Button>
-                    <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                    <pre className="max-h-72 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                         {JSON.stringify(
                             {
                                 brandName: config?.brandName ?? null,
@@ -62,10 +85,10 @@ export function BrandEngineDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <IconRoute className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <IconRoute className="h-4 w-4" />
                         Route Mapping Probe
                     </CardTitle>
                     <CardDescription>Tests how route patterns resolve to brand/layout assignments.</CardDescription>
@@ -73,11 +96,13 @@ export function BrandEngineDemoPage() {
                 <CardContent className="space-y-4">
                     <Input value={testPath} onChange={(e) => setTestPath(e.target.value)} placeholder="/pricing" />
                     {matchedRoute ? (
-                        <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs">
+                        <pre className="max-h-64 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
                             {JSON.stringify(matchedRoute, null, 2)}
                         </pre>
                     ) : (
-                        <p className="text-sm text-muted-foreground">No route mapping matched this path.</p>
+                        <p className="rounded-xl bg-background p-4 text-sm text-muted-foreground ring-1 ring-border">
+                            No route mapping matched this path.
+                        </p>
                     )}
                 </CardContent>
             </Card>

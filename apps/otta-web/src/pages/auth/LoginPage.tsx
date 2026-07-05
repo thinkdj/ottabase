@@ -1,3 +1,4 @@
+import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
@@ -92,8 +93,9 @@ export function LoginPage() {
         navigate({ to: redirectTarget.current, replace: true });
     }, [isAuthenticated, isSessionLoading, navigate]);
 
-    // Check for missing configuration and show warnings
+    // Check for missing configuration and show warnings (dev only)
     useEffect(() => {
+        if (!import.meta.env.DEV) return;
         const newWarnings: string[] = [];
 
         // Check for AUTH_SECRET
@@ -231,48 +233,45 @@ export function LoginPage() {
 
     return (
         <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-4">
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold">Welcome</h1>
-                    <p className="text-muted-foreground">Sign in to access your dashboard</p>
+            <div className="w-full max-w-md space-y-6">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
+                        {APP_META.appName.charAt(0)}
+                    </span>
+                    <div className="space-y-1.5">
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome</h1>
+                        <p className="text-muted-foreground">Sign in to access your dashboard</p>
+                    </div>
                 </div>
 
                 {passwordChanged && (
-                    <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
-                        <CardContent className="p-6 text-sm text-green-700 dark:text-green-400">
-                            Password changed successfully. Please sign in with your new password.
-                        </CardContent>
-                    </Card>
+                    <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
+                        Password changed successfully. Please sign in with your new password.
+                    </div>
                 )}
 
                 {emailVerified && (
-                    <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
-                        <CardContent className="p-6 text-sm text-green-700 dark:text-green-400">
-                            Email verified successfully. Please sign in.
-                        </CardContent>
-                    </Card>
+                    <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
+                        Email verified successfully. Please sign in.
+                    </div>
                 )}
 
-                {/* Configuration Warnings */}
-                {warnings.length > 0 && (
-                    <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-                                <AlertCircle className="h-4 w-4" />
-                                Configuration Warnings
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-xs space-y-1">
+                {/* Configuration Warnings — dev only */}
+                {import.meta.env.DEV && warnings.length > 0 && (
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                        <p className="flex items-center gap-2 font-medium">
+                            <AlertCircle className="h-4 w-4" />
+                            Configuration Warnings
+                        </p>
+                        <ul className="mt-2 space-y-1 text-xs">
                             {warnings.map((warning, index) => (
-                                <p key={index} className="text-yellow-600 dark:text-yellow-500">
-                                    • {warning}
-                                </p>
+                                <li key={index}>• {warning}</li>
                             ))}
-                            <p className="text-muted-foreground mt-2 pt-2 border-t border-yellow-200 dark:border-yellow-800">
-                                See wrangler.jsonc and .env files to configure auth providers
-                            </p>
-                        </CardContent>
-                    </Card>
+                        </ul>
+                        <p className="mt-2 border-t border-warning/30 pt-2 text-xs text-warning/80">
+                            See wrangler.jsonc and .env files to configure auth providers
+                        </p>
+                    </div>
                 )}
 
                 {/* Login Form */}
@@ -299,21 +298,17 @@ export function LoginPage() {
                 />
 
                 {/* Sign Up Link */}
-                <Card>
-                    <CardContent className="pt-6">
-                        <p className="text-center text-sm">
-                            Don't have an account?{' '}
-                            <Link to="/register" className="font-medium text-primary hover:underline">
-                                Create one now
-                            </Link>
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="font-medium text-foreground hover:underline">
+                        Create one now
+                    </Link>
+                </div>
 
                 {/* Production Info */}
-                <Card className="mt-4 border-green-500/50 bg-green-50 dark:bg-green-950/20">
-                    <CardHeader>
-                        <CardTitle className="text-sm flex items-center gap-2 text-green-700 dark:text-green-400">
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader className="gap-1.5">
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold text-success">
                             <CheckCircle2 className="h-4 w-4" />
                             Production-Ready Auth
                         </CardTitle>
@@ -321,17 +316,20 @@ export function LoginPage() {
                             Powered by Ottabase Auth with Cloudflare D1
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="text-xs space-y-2">
+                    <CardContent className="space-y-2 text-xs text-muted-foreground">
                         <p>
-                            <strong>Credentials:</strong> Email/password authentication with secure hashing
+                            <strong className="font-medium text-foreground">Credentials:</strong> Email/password
+                            authentication with secure hashing
                         </p>
                         <p>
-                            <strong>Social Login:</strong> OAuth 2.0 providers (Google, GitHub, Discord, etc.)
+                            <strong className="font-medium text-foreground">Social Login:</strong> OAuth 2.0 providers
+                            (Google, GitHub, Discord, etc.)
                         </p>
                         <p>
-                            <strong>Magic Link:</strong> Passwordless authentication via email
+                            <strong className="font-medium text-foreground">Magic Link:</strong> Passwordless
+                            authentication via email
                         </p>
-                        <p className="text-muted-foreground pt-2 border-t border-green-200 dark:border-green-800">
+                        <p className="border-t border-border/60 pt-2">
                             Sessions are JWT-based and stored in cookies for 30 days
                         </p>
                     </CardContent>
@@ -358,7 +356,7 @@ export function LoginPage() {
                         />
                         {forgotError && <p className="text-sm text-destructive">{forgotError}</p>}
                         {forgotStatus === 'sent' && (
-                            <p className="text-sm text-green-600">Reset email sent. Check your inbox.</p>
+                            <p className="text-sm text-success">Reset email sent. Check your inbox.</p>
                         )}
                     </div>
                     <DialogFooter>

@@ -101,10 +101,10 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
         const disableAnimations = Boolean(config.disableAnimations);
 
         return (
-            <div className="space-y-4 p-4 rounded-lg border bg-card border-border text-card-foreground">
+            <div className="space-y-4 rounded-lg bg-background p-4 ring-1 ring-border">
                 {mode !== 'shared' && <h3 className="font-semibold text-sm capitalize mb-2">{mode} Mode Overrides</h3>}
 
-                <div className="flex items-start gap-3 rounded-lg border p-3 bg-muted/20">
+                <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
                     <Checkbox
                         id={`disable-animations-${mode}`}
                         checked={disableAnimations}
@@ -197,7 +197,7 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
                         ))}
                     </NativeSelect>
                 </div>
-                <div className="mt-4 p-4 rounded bg-muted/20 flex items-center justify-center overflow-hidden h-24">
+                <div className="mt-4 p-4 rounded-lg bg-muted/40 flex items-center justify-center overflow-hidden h-24">
                     <div
                         className="w-8 h-8 rounded-full bg-primary"
                         style={{
@@ -216,16 +216,16 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
     };
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle>Motion &amp; Animation</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-[0.9375rem] font-semibold">Motion &amp; Animation</CardTitle>
+                <CardDescription className="leading-relaxed">
                     Configure transition speeds and easing curves across the UI. You can define a separate set of
                     animation tokens specifically for users in dark mode.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-accent/50">
+                <div className="flex items-center justify-between rounded-lg bg-background p-4 ring-1 ring-border">
                     <div>
                         <Label>Different for dark mode</Label>
                         <p className="text-xs text-muted-foreground">

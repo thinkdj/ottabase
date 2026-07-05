@@ -1,9 +1,6 @@
 import { registerAppEmailTemplates } from '@/email/templates';
 import { listEmailTemplates, renderEmail } from '@ottabase/email';
 import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
     Badge,
     Button,
     Card,
@@ -232,9 +229,9 @@ export function EmailDemoPage() {
             />
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Template Settings</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Template Settings</CardTitle>
                         <CardDescription>Choose a template + email type and adjust the variables JSON.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5">
@@ -327,31 +324,33 @@ export function EmailDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle>Rendered Preview</CardTitle>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Rendered Preview</CardTitle>
                         <CardDescription>Subject: {rendered.subject || '(no subject)'}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="overflow-hidden rounded-lg border border-border bg-muted/30 shadow-sm dark:bg-muted/20">
+                        <div className="overflow-hidden rounded-lg bg-background ring-1 ring-border">
                             <iframe
-                                className="email-preview block min-h-[28rem] w-full bg-white dark:bg-zinc-950"
+                                className="email-preview block min-h-[28rem] w-full bg-background"
                                 title="Rendered email HTML preview"
                                 sandbox=""
                                 srcDoc={rendered.html}
                             />
                         </div>
-                        <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-                            <div className="font-semibold text-foreground">Plain Text</div>
+                        <div className="rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-border">
+                            <div className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Plain Text
+                            </div>
                             <pre className="whitespace-pre-wrap break-words">{rendered.text}</pre>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Send Test Emails</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Send Test Emails</CardTitle>
                     <CardDescription>
                         Enter comma-separated email addresses to send the current template.
                     </CardDescription>
@@ -379,18 +378,23 @@ export function EmailDemoPage() {
                         {selectedProvider !== 'auto' &&
                             providers[selectedProvider] &&
                             !providers[selectedProvider]?.available && (
-                                <Alert variant="destructive">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Provider not configured</AlertTitle>
-                                    <AlertDescription className="text-xs">
-                                        Missing required environment variables:{' '}
-                                        {providers[selectedProvider]?.required.join(', ')}
-                                    </AlertDescription>
-                                </Alert>
+                                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                                    <div>
+                                        <div className="font-medium">Provider not configured</div>
+                                        <p className="mt-0.5 text-xs">
+                                            Missing required environment variables:{' '}
+                                            {providers[selectedProvider]?.required.join(', ')}
+                                        </p>
+                                    </div>
+                                </div>
                             )}
                         {selectedProvider !== 'auto' && providers[selectedProvider]?.available && (
-                            <Badge variant="outline" className="text-xs">
-                                ✓ Configured and ready
+                            <Badge
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-xs text-success ring-1 ring-border"
+                            >
+                                Configured and ready
                             </Badge>
                         )}
                     </div>
@@ -416,12 +420,18 @@ export function EmailDemoPage() {
                         {sendStatus.state === 'sending' ? 'Sending…' : 'Send Test Email'}
                     </Button>
 
-                    {sendStatus.state === 'error' && <Badge variant="destructive">{sendStatus.message}</Badge>}
+                    {sendStatus.state === 'error' && (
+                        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            {sendStatus.message}
+                        </div>
+                    )}
 
                     {sendStatus.state === 'success' && (
-                        <div className="rounded-md border p-3 text-sm">
-                            <div className="font-semibold">Results</div>
-                            <ul className="mt-2 space-y-1">
+                        <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
+                            <div className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Results
+                            </div>
+                            <ul className="space-y-1">
                                 {sendStatus.results.map((result) => (
                                     <li key={result.email}>
                                         {result.email}: {result.ok ? 'Sent' : 'Failed'}
@@ -433,9 +443,9 @@ export function EmailDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle>Email Provider Configuration</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Email Provider Configuration</CardTitle>
                     <CardDescription>Configure one or more email providers via environment variables.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
@@ -445,9 +455,19 @@ export function EmailDemoPage() {
                                 <strong>Dev Trap</strong> (KV-backed local inbox)
                             </div>
                             {providers.devTrap?.available ? (
-                                <Badge variant="outline">✓ Configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                >
+                                    Configured
+                                </Badge>
                             ) : (
-                                <Badge variant="destructive">Not configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                >
+                                    Not configured
+                                </Badge>
                             )}
                         </div>
                         <p className="text-muted-foreground text-xs">
@@ -466,9 +486,19 @@ export function EmailDemoPage() {
                                 <strong>Resend</strong> (HTTP API - Edge Compatible)
                             </div>
                             {providers.resend?.available ? (
-                                <Badge variant="outline">✓ Configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                >
+                                    Configured
+                                </Badge>
                             ) : (
-                                <Badge variant="destructive">Not configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                >
+                                    Not configured
+                                </Badge>
                             )}
                         </div>
                         <p className="text-muted-foreground text-xs">
@@ -484,9 +514,19 @@ export function EmailDemoPage() {
                                 <strong>AWS SES</strong> (HTTP API - Edge Compatible)
                             </div>
                             {providers.ses?.available ? (
-                                <Badge variant="outline">✓ Configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                >
+                                    Configured
+                                </Badge>
                             ) : (
-                                <Badge variant="destructive">Not configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                >
+                                    Not configured
+                                </Badge>
                             )}
                         </div>
                         <p className="text-muted-foreground text-xs">
@@ -502,9 +542,19 @@ export function EmailDemoPage() {
                                 <strong>Nodemailer</strong> (SMTP - Node.js only)
                             </div>
                             {providers.nodemailer?.available ? (
-                                <Badge variant="outline">✓ Configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
+                                >
+                                    Configured
+                                </Badge>
                             ) : (
-                                <Badge variant="destructive">Not configured</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
+                                >
+                                    Not configured
+                                </Badge>
                             )}
                         </div>
                         <p className="text-muted-foreground text-xs">
@@ -512,15 +562,17 @@ export function EmailDemoPage() {
                             <br />
                             Optional: <code>EMAIL_FROM</code>
                             <br />
-                            <span className="text-yellow-600 dark:text-yellow-400">
-                                ⚠️ Note: Nodemailer requires Node.js and won't work in Cloudflare Workers
+                            <span className="text-warning">
+                                Note: Nodemailer requires Node.js and won't work in Cloudflare Workers
                             </span>
                         </p>
                     </div>
 
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-800 dark:bg-blue-950">
-                        <p className="font-semibold text-blue-900 dark:text-blue-100">Edge Compatibility</p>
-                        <p className="mt-1 text-blue-700 dark:text-blue-300">
+                    <div className="rounded-lg bg-background p-3 text-xs ring-1 ring-border">
+                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            Edge Compatibility
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
                             The dev trap, Resend, and AWS SES work in Cloudflare Workers. Nodemailer uses SMTP (TCP
                             sockets) and only works in Node.js environments.
                         </p>

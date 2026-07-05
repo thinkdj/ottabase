@@ -11,9 +11,9 @@ export function CloudflareHyperdriveDemoPage() {
                 backLabel="Back to Cloudflare Features"
             />
 
-            <Card>
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-base">Production-only Feature</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Production-only Feature</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>

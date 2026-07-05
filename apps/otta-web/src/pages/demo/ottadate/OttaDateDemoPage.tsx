@@ -67,14 +67,14 @@ function DatePickerDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Date Picker</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Date Picker</CardTitle>
                 <CardDescription>Single date selection. Returns UTC unix timestamp by default.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {JSON.stringify({ value, type: typeof value }, null, 2)}
                 </pre>
             </CardContent>
@@ -95,14 +95,14 @@ function DatePickerInlineDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Inline Date Picker</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Inline Date Picker</CardTitle>
                 <CardDescription>Always-visible calendar, no popover trigger.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {value != null ? `Selected: ${value} (unix)` : 'No date selected'}
                 </pre>
             </CardContent>
@@ -123,16 +123,16 @@ function DateRangeDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Date Range Picker</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Date Range Picker</CardTitle>
                 <CardDescription>
                     Two-calendar layout for start/end selection. Click once for start, again for end.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {JSON.stringify(range, null, 2)}
                 </pre>
             </CardContent>
@@ -155,16 +155,16 @@ function DateRangePresetsDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Date Range — Presets</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Date Range — Presets</CardTitle>
                 <CardDescription>
                     Sidebar with quick-select presets (Today, Last 7 days, etc.) plus Apply / Cancel flow.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {JSON.stringify(range, null, 2)}
                 </pre>
             </CardContent>
@@ -186,14 +186,14 @@ function DateTimeDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">DateTime Picker</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">DateTime Picker</CardTitle>
                 <CardDescription>Calendar with time inputs. Combines date and time selection.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {value != null
                         ? JSON.stringify(
                               {
@@ -223,9 +223,9 @@ function FuzzyDateTimeDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Fuzzy DateTime Picker</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime Picker</CardTitle>
                 <CardDescription>
                     For dates you don't remember exactly. Choose resolution (year, month, day, hour…) and approximation
                     (exact, around, sometime).
@@ -235,8 +235,10 @@ function FuzzyDateTimeDemo() {
                 <div ref={ref} />
                 {fuzzy && (
                     <div className="space-y-2">
-                        <div className="rounded-md bg-muted p-3 text-sm italic text-center">"{fuzzy.label}"</div>
-                        <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
+                            "{fuzzy.label}"
+                        </div>
+                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                             {JSON.stringify(fuzzy, null, 2)}
                         </pre>
                     </div>
@@ -261,9 +263,11 @@ function FuzzyDateTimeInlineDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Fuzzy DateTime (Inline, Limited Options)</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">
+                    Fuzzy DateTime (Inline, Limited Options)
+                </CardTitle>
                 <CardDescription>
                     Inline mode with restricted resolutions (year/month/day) and approximations (sometime/around).
                 </CardDescription>
@@ -271,7 +275,7 @@ function FuzzyDateTimeInlineDemo() {
             <CardContent className="space-y-4">
                 <div ref={ref} />
                 {fuzzy && (
-                    <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                    <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                         {JSON.stringify(fuzzy, null, 2)}
                     </pre>
                 )}
@@ -293,9 +297,9 @@ function FuzzyCompactDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Fuzzy DateTime (Compact)</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Compact)</CardTitle>
                 <CardDescription>
                     Native &lt;select&gt; based layout — space-efficient for forms and sidebars. Auto-applies on change.
                 </CardDescription>
@@ -304,8 +308,10 @@ function FuzzyCompactDemo() {
                 <div ref={ref} className="max-w-xs" />
                 {fuzzy && (
                     <div className="space-y-2">
-                        <div className="rounded-md bg-muted p-3 text-sm italic text-center">"{fuzzy.label}"</div>
-                        <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
+                            "{fuzzy.label}"
+                        </div>
+                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                             {JSON.stringify(fuzzy, null, 2)}
                         </pre>
                     </div>
@@ -330,9 +336,9 @@ function FuzzyCompactInlineDemo() {
     );
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Fuzzy Compact (Inline)</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy Compact (Inline)</CardTitle>
                 <CardDescription>
                     Inline compact mode with limited resolutions. Minimal footprint for embedded forms.
                 </CardDescription>
@@ -340,7 +346,7 @@ function FuzzyCompactInlineDemo() {
             <CardContent className="space-y-4">
                 <div ref={ref} className="max-w-xs" />
                 {fuzzy && (
-                    <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto">
+                    <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                         {JSON.stringify(fuzzy, null, 2)}
                     </pre>
                 )}
@@ -368,9 +374,9 @@ function ProgrammaticApiDemo() {
     }, []);
 
     return (
-        <Card>
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-lg">Programmatic API</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Programmatic API</CardTitle>
                 <CardDescription>Control the picker via JavaScript: open, close, setValue, getValue.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -406,7 +412,7 @@ function ProgrammaticApiDemo() {
                         </Button>
                     </div>
                 </div>
-                <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-auto max-h-32">
+                <pre className="max-h-32 overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                     {log.length ? log.join('\n') : 'Interact with the buttons above…'}
                 </pre>
             </CardContent>

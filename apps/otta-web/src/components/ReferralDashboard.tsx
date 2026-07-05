@@ -190,7 +190,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const totalPages = trackingData?.pagination.totalPages || 1;
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Referral Dashboard</h1>
                 <p className="text-muted-foreground mt-2">Manage your referral links and track conversions</p>

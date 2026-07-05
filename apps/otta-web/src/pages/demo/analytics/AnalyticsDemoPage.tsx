@@ -91,10 +91,10 @@ export function AnalyticsDemoPage() {
             />
 
             <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <IconSend className="h-5 w-5" />
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                            <IconSend className="h-4 w-4" />
                             Send Event
                         </CardTitle>
                         <CardDescription>Posts a sample event to the analytics tracking endpoint.</CardDescription>
@@ -113,15 +113,17 @@ export function AnalyticsDemoPage() {
                             {loadingTrack ? 'Sending...' : 'Send track event'}
                         </Button>
                         {trackResult && (
-                            <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs">{trackResult}</pre>
+                            <pre className="max-h-64 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
+                                {trackResult}
+                            </pre>
                         )}
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <IconChartBar className="h-5 w-5" />
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                            <IconChartBar className="h-4 w-4" />
                             Query Aggregate Data
                         </CardTitle>
                         <CardDescription>Reads aggregated rows from the core analytics endpoint.</CardDescription>
@@ -158,7 +160,9 @@ export function AnalyticsDemoPage() {
                             {loadingQuery ? 'Querying...' : 'Fetch analytics rows'}
                         </Button>
                         {queryResult && (
-                            <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs">{queryResult}</pre>
+                            <pre className="max-h-64 overflow-auto rounded-lg bg-background p-3 text-xs ring-1 ring-border">
+                                {queryResult}
+                            </pre>
                         )}
                     </CardContent>
                 </Card>
