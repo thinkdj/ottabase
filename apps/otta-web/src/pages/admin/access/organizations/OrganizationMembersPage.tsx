@@ -149,7 +149,7 @@ export function OrganizationMembersPage() {
                     organizationId,
                     userId: editingMember.userId,
                     role: data.role,
-                    status: data.status,
+                    status: data.status ?? editingMember.status,
                 });
                 toast.rbac.memberUpdated();
             } else {

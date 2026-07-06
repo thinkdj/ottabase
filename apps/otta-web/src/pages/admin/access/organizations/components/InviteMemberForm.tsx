@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { isEmail } from '@ottabase/utils/string';
 import type { MemberRole, MemberStatus, OrganizationMemberRecord } from '@/types/rbac';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
@@ -6,6 +7,7 @@ import {
     AvatarFallback,
     AvatarImage,
     Button,
+    Input,
     Label,
     Select,
     SelectContent,
@@ -23,9 +25,10 @@ export interface InviteMemberFormProps {
 }
 
 export interface InviteMemberFormData {
-    userId: string;
+    userId?: string;
+    email?: string;
     role: MemberRole;
-    status: MemberStatus;
+    status?: MemberStatus;
 }
 
 interface InvitableUserRecord {
@@ -114,6 +117,9 @@ function UserOptionRow({ item }: ItemRendererProps) {
 export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCancel }: InviteMemberFormProps) {
     const isEditing = !!editingMember;
     const [loading, setLoading] = useState(false);
+    const [inviteBy, setInviteBy] = useState<'existing' | 'email'>('existing');
+    const [emailInput, setEmailInput] = useState('');
+    const [emailError, setEmailError] = useState<string | null>(null);
     const [selectedUser, setSelectedUser] = useState<InvitableUserOption | null>(null);
     const [formData, setFormData] = useState<InviteMemberFormData>({
         userId: '',
@@ -123,6 +129,9 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
 
     useEffect(() => {
         if (!editingMember) {
+            setInviteBy('existing');
+            setEmailInput('');
+            setEmailError(null);
             setSelectedUser(null);
             setFormData({
                 userId: '',
@@ -174,6 +183,25 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!isEditing && inviteBy === 'email') {
+            const email = emailInput.trim();
+            if (!isEmail(email)) {
+                setEmailError('Enter a valid email address');
+                return;
+            }
+            setEmailError(null);
+            setLoading(true);
+            try {
+                // No status: the server decides — 'active' if this email already has an account
+                // and is added immediately, 'invited' (pending signup) otherwise.
+                await onSubmit({ email, role: formData.role });
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
         if (!formData.userId) {
             return;
         }
@@ -185,49 +213,94 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
         }
     };
 
+    const canSubmit = isEditing
+        ? !!formData.userId
+        : inviteBy === 'email'
+          ? emailInput.trim().length > 0
+          : !!formData.userId;
+
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
+                {!isEditing && (
+                    <div className="space-y-2">
+                        <Label>Invite by</Label>
+                        <Select value={inviteBy} onValueChange={(value: 'existing' | 'email') => setInviteBy(value)}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="existing">Existing user</SelectItem>
+                                <SelectItem value="email">Email address (invite someone new)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+
                 {/* User */}
-                <div className="space-y-2">
-                    <Label>User*</Label>
-                    <OttaSelect
-                        mode="single"
-                        value={selectedUser}
-                        onChange={(value) => {
-                            const nextUser = value as InvitableUserOption | null;
-                            setSelectedUser(nextUser);
-                            setFormData({
-                                ...formData,
-                                userId: nextUser?.id ?? '',
-                            });
-                        }}
-                        fetchCollection={(query) => searchInvitableUsers(query)}
-                        placeholder={isEditing ? 'Selected member' : 'Search by name, email, or user ID'}
-                        searchPlaceholder="Type at least 2 characters..."
-                        loadingMessage="Searching users..."
-                        emptyMessage="No matching users found"
-                        renderItem={UserOptionRow}
-                        renderValue={(item) => {
-                            const option = item as InvitableUserOption;
-                            return (
-                                <span className="flex min-w-0 flex-col text-left leading-tight">
-                                    <span className="truncate text-sm font-medium">{option.name}</span>
-                                    <span className="truncate text-xs text-muted-foreground">
-                                        {option.email || option.id}
+                {(isEditing || inviteBy === 'existing') && (
+                    <div className="space-y-2">
+                        <Label>User*</Label>
+                        <OttaSelect
+                            mode="single"
+                            value={selectedUser}
+                            onChange={(value) => {
+                                const nextUser = value as InvitableUserOption | null;
+                                setSelectedUser(nextUser);
+                                setFormData({
+                                    ...formData,
+                                    userId: nextUser?.id ?? '',
+                                });
+                            }}
+                            fetchCollection={(query) => searchInvitableUsers(query)}
+                            placeholder={isEditing ? 'Selected member' : 'Search by name, email, or user ID'}
+                            searchPlaceholder="Type at least 2 characters..."
+                            loadingMessage="Searching users..."
+                            emptyMessage="No matching users found"
+                            renderItem={UserOptionRow}
+                            renderValue={(item) => {
+                                const option = item as InvitableUserOption;
+                                return (
+                                    <span className="flex min-w-0 flex-col text-left leading-tight">
+                                        <span className="truncate text-sm font-medium">{option.name}</span>
+                                        <span className="truncate text-xs text-muted-foreground">
+                                            {option.email || option.id}
+                                        </span>
                                     </span>
-                                </span>
-                            );
-                        }}
-                        className="w-full"
-                        disabled={isEditing || loading}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                        {isEditing
-                            ? 'User cannot be changed while editing. Update role or status only.'
-                            : "Admins can search by name, email, or user ID. The selected user's internal ID is stored."}
-                    </p>
-                </div>
+                                );
+                            }}
+                            className="w-full"
+                            disabled={isEditing || loading}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            {isEditing
+                                ? 'User cannot be changed while editing. Update role or status only.'
+                                : "Admins can search by name, email, or user ID. The selected user's internal ID is stored."}
+                        </p>
+                    </div>
+                )}
+
+                {!isEditing && inviteBy === 'email' && (
+                    <div className="space-y-2">
+                        <Label htmlFor="invite-email">Email address*</Label>
+                        <Input
+                            id="invite-email"
+                            type="email"
+                            value={emailInput}
+                            onChange={(e) => {
+                                setEmailInput(e.target.value);
+                                if (emailError) setEmailError(null);
+                            }}
+                            placeholder="name@example.com"
+                            disabled={loading}
+                        />
+                        {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+                        <p className="text-sm text-muted-foreground">
+                            If no account exists for this email yet, they'll receive an invite to sign up. Once they
+                            create an account with this email, they're automatically added to the organization.
+                        </p>
+                    </div>
+                )}
 
                 {/* Role */}
                 <div className="space-y-2">
@@ -250,24 +323,26 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                 </div>
 
                 {/* Status */}
-                <div className="space-y-2">
-                    <Label htmlFor="status">Status*</Label>
-                    <Select
-                        value={formData.status}
-                        onValueChange={(value: 'active' | 'invited' | 'suspended') =>
-                            setFormData({ ...formData, status: value })
-                        }
-                    >
-                        <SelectTrigger id="status">
-                            <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="active">Active (Access granted)</SelectItem>
-                            <SelectItem value="invited">Invited (Pending acceptance)</SelectItem>
-                            <SelectItem value="suspended">Suspended (Access revoked)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+                {(isEditing || inviteBy === 'existing') && (
+                    <div className="space-y-2">
+                        <Label htmlFor="status">Status*</Label>
+                        <Select
+                            value={formData.status}
+                            onValueChange={(value: 'active' | 'invited' | 'suspended') =>
+                                setFormData({ ...formData, status: value })
+                            }
+                        >
+                            <SelectTrigger id="status">
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">Active (Access granted)</SelectItem>
+                                <SelectItem value="invited">Invited (Pending acceptance)</SelectItem>
+                                <SelectItem value="suspended">Suspended (Access revoked)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
             </div>
 
             {/* Actions */}
@@ -275,7 +350,7 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={loading || !formData.userId}>
+                <Button type="submit" disabled={loading || !canSubmit}>
                     {loading ? (isEditing ? 'Saving...' : 'Inviting...') : isEditing ? 'Save Changes' : 'Invite Member'}
                 </Button>
             </div>

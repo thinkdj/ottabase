@@ -217,13 +217,15 @@ export function useInviteMember() {
         mutationFn: async ({
             organizationId,
             userId,
+            email,
             role,
             status,
         }: {
             organizationId: string;
-            userId: string;
+            userId?: string;
+            email?: string;
             role: MemberRole;
-            status: 'active' | 'invited' | 'suspended';
+            status?: 'active' | 'invited' | 'suspended';
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
                 `/api/admin/organizations/${organizationId}/members/invite`,
@@ -231,6 +233,7 @@ export function useInviteMember() {
                     method: 'POST',
                     body: {
                         userId,
+                        email,
                         role,
                         status,
                     },
