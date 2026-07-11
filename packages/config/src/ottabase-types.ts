@@ -22,6 +22,27 @@ export interface ReferralsFeatureConfig {
     enabled: boolean;
     trackClicks: boolean;
     expiryDays: number;
+    /**
+     * URL query-param key that carries an inbound referral code, e.g. `ref` in
+     * `https://app.example.com/?ref=johndoe`. Change it to rebrand share links
+     * (`?invite=`, `?r=`, …). Overridable per deploy via the REFERRAL_PARAM env var.
+     * Default: `ref`.
+     */
+    referralParam: string;
+}
+
+/** Default inbound referral query-param key. */
+export const DEFAULT_REFERRAL_PARAM = 'ref';
+
+/**
+ * Normalize a referral param key to something URL-safe. A query-param name with
+ * spaces/`=`/`&`/`?`/`#` would break link building and parsing, so anything that
+ * isn't a letter, digit, underscore, or hyphen falls back to the default.
+ */
+export function normalizeReferralParam(value: string | undefined | null): string {
+    if (typeof value !== 'string') return DEFAULT_REFERRAL_PARAM;
+    const trimmed = value.trim();
+    return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : DEFAULT_REFERRAL_PARAM;
 }
 
 export interface SpotlightFeatureConfig {

@@ -61,6 +61,11 @@ export default defineOttabaseConfig({
             enabled: true,
             trackClicks: true,
             expiryDays: 90,
+            // URL query-param key for inbound referral links (e.g. ?ref=johndoe).
+            // Change it to rebrand share links (?invite=, ?r=, …); the tracker,
+            // URL cleanup, and dashboard share links all follow this value.
+            // Also overridable per deploy via the REFERRAL_PARAM env var.
+            referralParam: 'ref',
         },
         spotlight: {
             enabled: true,

@@ -11,6 +11,15 @@ import { api } from './api';
 const REFERRAL_CODE_KEY = 'ottabase.referral-code';
 const REFERRAL_TIMESTAMP_KEY = 'ottabase.referral-timestamp';
 
+/**
+ * URL query-param key that carries an inbound referral code (e.g. `ref` in
+ * `?ref=johndoe`). Configurable via `features.referrals.referralParam` in
+ * ottabase.config.ts (or the REFERRAL_PARAM env var); falls back to `ref`.
+ */
+export function getReferralParamKey(): string {
+    return REFERRALS_CONFIG?.referralParam || 'ref';
+}
+
 // Calculate expiry based on config (with fallback)
 const getReferralExpiryMs = () => {
     try {
@@ -149,20 +158,31 @@ export function extractUtmParams(): Record<string, string> {
 }
 
 /**
- * Remove ref parameter from URL (clean URL)
+ * Remove the referral parameter from the URL (clean URL)
  */
 export function cleanReferralFromUrl(): void {
     if (typeof window === 'undefined') return;
 
     try {
+        const paramKey = getReferralParamKey();
         const url = new URL(window.location.href);
-        if (url.searchParams.has('ref')) {
-            url.searchParams.delete('ref');
+        if (url.searchParams.has(paramKey)) {
+            url.searchParams.delete(paramKey);
             window.history.replaceState({}, '', url.toString());
         }
     } catch (error) {
         console.error('Error cleaning referral from URL:', error);
     }
+}
+
+/**
+ * Build a shareable referral link for a username using the configured param key.
+ */
+export function buildReferralLink(referralUsername: string, origin?: string): string {
+    const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
+    const url = new URL(base || 'http://localhost');
+    url.searchParams.set(getReferralParamKey(), referralUsername);
+    return base ? url.toString() : `${url.pathname}${url.search}`;
 }
 
 /**

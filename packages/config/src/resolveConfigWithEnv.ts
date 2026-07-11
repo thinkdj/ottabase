@@ -7,7 +7,7 @@
 
 import { ENV_KEYS } from './env-keys';
 import type { BuiltInPackageName, OttabaseConfig } from './ottabase-types';
-import { BUILT_IN_PACKAGES } from './ottabase-types';
+import { BUILT_IN_PACKAGES, normalizeReferralParam } from './ottabase-types';
 
 const PACKAGE_ENV_KEYS: Record<BuiltInPackageName, string> = {
     comments: ENV_KEYS.OTTABASE_PKG_COMMENTS,
@@ -79,6 +79,9 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                 enabled: bool(env, ENV_KEYS.REFERRALS_ENABLED) ?? config.features.referrals.enabled,
                 trackClicks: bool(env, ENV_KEYS.REFERRALS_TRACK_CLICKS) ?? config.features.referrals.trackClicks,
                 expiryDays: num(env, ENV_KEYS.REFERRALS_EXPIRY_DAYS) ?? config.features.referrals.expiryDays,
+                referralParam: normalizeReferralParam(
+                    str(env, ENV_KEYS.REFERRAL_PARAM) ?? config.features.referrals.referralParam,
+                ),
             },
             spotlight: {
                 ...config.features.spotlight,
