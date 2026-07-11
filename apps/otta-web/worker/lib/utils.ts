@@ -84,3 +84,31 @@ export function createSecureToken(bytes = 32): string {
     const buffer = crypto.getRandomValues(new Uint8Array(bytes));
     return base64UrlEncode(buffer);
 }
+
+/**
+ * Whether ENVIRONMENT names an explicit dev/test deploy. Fails closed: an unset or
+ * unrecognized ENVIRONMENT is never treated as dev, so a misconfigured deploy can't
+ * fall back to a dev-only auth bypass.
+ */
+export function isDevEnvironment(env: { ENVIRONMENT?: string }): boolean {
+    const value = (env.ENVIRONMENT || '').trim().toLowerCase();
+    return value === 'development' || value === 'dev' || value === 'test' || value === 'local';
+}
+
+/**
+ * Auth for endpoints meant to be triggered by an external scheduler, not a browser.
+ * Open in an explicit dev environment; otherwise requires CRON_SECRET via header or Bearer token
+ * (no query-string fallback, so the secret never lands in access logs or referrer headers).
+ */
+export function checkCronAuth(request: Request, env: { ENVIRONMENT?: string; CRON_SECRET?: string }): boolean {
+    if (isDevEnvironment(env)) return true;
+    if (!env.CRON_SECRET) return false;
+
+    const headerSecret = request.headers.get('x-cron-secret');
+    if (headerSecret === env.CRON_SECRET) return true;
+
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ') && authHeader.substring(7) === env.CRON_SECRET) return true;
+
+    return false;
+}

@@ -42,7 +42,7 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
-import { readJson } from './utils';
+import { isDevEnvironment, readJson } from './utils';
 
 let initializedD1Binding: CloudflareEnv['OBCF_D1'] | null = null;
 let dbConnectionReady = false;
@@ -59,8 +59,7 @@ export function initAdminCron(env: CloudflareEnv): Response | null {
 }
 
 export async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
-    const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
-    if (isDev) return true;
+    if (isDevEnvironment(env)) return true;
 
     if (!env.MIGRATION_SECRET) return false;
 

@@ -6,8 +6,10 @@ import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottauplo
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { persistUploadedMediaRecord } from './media-library';
+import type { ApiRouteContext } from './router';
 
 export interface StorageRouteContext {
     request: Request;
@@ -26,7 +28,10 @@ async function hashUserId(userId: string): Promise<string> {
         .substring(0, 32);
 }
 
-export async function handleCloudflareKV(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareKV(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env, url } = context;
     if (!env.OBCF_KV) {
         return errorResponse('KV namespace binding not configured', 500, {
@@ -87,7 +92,10 @@ export async function handleCloudflareKV(context: StorageRouteContext): Promise<
     });
 }
 
-export async function handleCloudflareR2(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareR2(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env, url } = context;
     if (!env.OBCF_R2) {
         return errorResponse('R2 bucket binding not configured', 500, {
@@ -303,7 +311,10 @@ export async function handleUploadFile(context: StorageRouteContext): Promise<Re
     return new Response(object.body, { headers });
 }
 
-export async function handleCloudflareImages(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareImages(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     const envConfig = env as Record<string, string | undefined>;
     const accountId = envConfig.CF_IMAGES_ACCOUNT_ID;

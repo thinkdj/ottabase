@@ -3,16 +3,15 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
 import { isDevTrapAvailable, resolveAppMailer } from '../lib/email-provider';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import type { TemplateContent, TemplateVariables } from '@ottabase/email';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import type { ApiRouteContext } from './router';
 
-export interface EmailRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-}
+export async function handleEmailProviders(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
-export function handleEmailProviders(context: EmailRouteContext): Response {
     const { env } = context;
     const providers = {
         devTrap: {
@@ -40,7 +39,10 @@ export function handleEmailProviders(context: EmailRouteContext): Response {
     return jsonResponse(providers);
 }
 
-export async function handleEmailTest(context: EmailRouteContext): Promise<Response> {
+export async function handleEmailTest(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env } = context;
     const body = await readJson<{
         recipients?: string[];

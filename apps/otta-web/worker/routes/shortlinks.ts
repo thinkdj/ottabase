@@ -9,8 +9,10 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
-import { readJson } from '../lib/utils';
+import { isDevEnvironment, readJson } from '../lib/utils';
+import type { ApiRouteContext } from './router';
 
 export interface ShortlinkContext {
     request: Request;
@@ -33,7 +35,10 @@ function pushShortlinkClick(env: CloudflareEnv, request: Request, shortCode: str
     });
 }
 
-export async function handleShortlinksList(context: ShortlinkContext): Promise<Response> {
+export async function handleShortlinksList(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, url } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -66,7 +71,10 @@ export async function handleShortlinksList(context: ShortlinkContext): Promise<R
     });
 }
 
-export async function handleShortlinksCreate(context: ShortlinkContext): Promise<Response> {
+export async function handleShortlinksCreate(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -117,10 +125,13 @@ export async function handleShortlinksCreate(context: ShortlinkContext): Promise
 }
 
 export async function handleShortlinkById(
-    context: ShortlinkContext,
+    context: ApiRouteContext,
     id: string,
     method: 'PATCH' | 'DELETE',
 ): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -257,11 +268,7 @@ export async function handleShortlinksAnalytics(context: ShortlinkContext): Prom
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
+    const isDev = isDevEnvironment(env);
 
     if (!userId && !isDev) {
         return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });

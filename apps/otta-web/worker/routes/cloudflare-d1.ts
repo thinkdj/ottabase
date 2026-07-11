@@ -4,6 +4,8 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { Todo } from '../../ottabase/models/Todo';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
+import type { ApiRouteContext } from './router';
 
 export interface D1RouteContext {
     request: Request;
@@ -11,7 +13,10 @@ export interface D1RouteContext {
     url: URL;
 }
 
-export async function handleD1Init(context: D1RouteContext): Promise<Response> {
+export async function handleD1Init(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured. Check wrangler.jsonc', 500, {
@@ -42,7 +47,10 @@ export async function handleD1Init(context: D1RouteContext): Promise<Response> {
     });
 }
 
-export async function handleD1Todos(context: D1RouteContext): Promise<Response> {
+export async function handleD1Todos(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -88,10 +96,13 @@ export async function handleD1Todos(context: D1RouteContext): Promise<Response> 
 }
 
 export async function handleD1TodoById(
-    context: D1RouteContext,
+    context: ApiRouteContext,
     id: string,
     method: 'PATCH' | 'DELETE',
 ): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {

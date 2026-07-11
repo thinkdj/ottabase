@@ -258,15 +258,14 @@ describe('Cloudflare Worker API', () => {
     });
 
     describe('Legacy /api/shortlinks', () => {
-        it('should list shortlinks (paginated)', async () => {
-            // Legacy endpoint returns paginated response structure
+        it('rejects unauthenticated requests (admin-only management endpoint)', async () => {
+            // Anyone could once list/create/edit every shortlink; the endpoint now requires
+            // an authenticated admin session (see requireAdminAccess in worker/routes/shortlinks.ts).
             env.OBCF_D1.prepare.mockImplementation(() => createStatement([]));
+            (getSession as any).mockResolvedValue(null);
 
             const resp = await worker.fetch(createRequest('/api/shortlinks'), env);
-            expect(resp.status).toBe(200);
-            const data = (await resp.json()) as any;
-            expect(data.data).toBeDefined();
-            expect(data.pagination?.total).toBeDefined();
+            expect(resp.status).toBe(401);
         });
     });
 

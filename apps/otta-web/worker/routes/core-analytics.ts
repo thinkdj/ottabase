@@ -4,6 +4,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { ApiRouteContext } from './router';
 import { getAuthOptions } from '../lib/auth-utils';
+import { isDevEnvironment } from '../lib/utils';
 
 /**
  * Handle GET /api/analytics/core - query WAE for core event analytics
@@ -15,11 +16,7 @@ export async function handleCoreAnalytics(context: ApiRouteContext): Promise<Res
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
+    const isDev = isDevEnvironment(env);
 
     if (!userId && !isDev) {
         return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
