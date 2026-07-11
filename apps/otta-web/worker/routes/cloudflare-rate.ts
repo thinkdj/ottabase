@@ -2,14 +2,8 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
 import { getRateLimitData } from '../lib/rate-limiting';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
-
-export interface RateLimitingContext {
-    request: Request;
-    env: CloudflareEnv;
-}
 
 export async function handleRateLimiting(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'system' });

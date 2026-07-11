@@ -1,14 +1,8 @@
 import { RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
-
-export interface RealtimeRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-}
 
 export async function handleRealtimeWebsocket(context: ApiRouteContext): Promise<Response | null> {
     const auth = await requireAdminAccess(context, { scope: 'system' });

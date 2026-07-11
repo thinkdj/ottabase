@@ -3,15 +3,8 @@ import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { Todo } from '../../ottabase/models/Todo';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
-
-export interface D1RouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-}
 
 export async function handleD1Init(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'system' });
