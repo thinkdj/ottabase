@@ -152,6 +152,20 @@ describe('Cloudflare Worker API', () => {
     });
 
     describe('/api/ottaorm/shortlinks', () => {
+        beforeEach(() => {
+            // Shortlinks are admin/owner-only (see F-03 fix): anyone could otherwise mint
+            // redirects under the app's own domain via this generic CRUD route.
+            (getSession as any).mockResolvedValue({ user: { id: 'admin-1', roles: ['admin'] } });
+        });
+
+        it('rejects anonymous requests', async () => {
+            (getSession as any).mockResolvedValue(null);
+            env.OBCF_D1.prepare.mockImplementation(() => createStatement([]));
+
+            const resp = await worker.fetch(createRequest('/api/ottaorm/shortlinks'), env);
+            expect(resp.status).toBe(403);
+        });
+
         it('should list shortlinks', async () => {
             // Mock D1 response for listing
             env.OBCF_D1.prepare.mockImplementation(() => createStatement([]));

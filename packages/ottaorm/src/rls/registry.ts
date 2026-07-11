@@ -238,10 +238,12 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Shortlinks - app-scoped
+    // Shortlinks - app-scoped, admin/owner only (unauthenticated CRUD here would let anyone mint
+    // redirects under the app's own domain — the generic /api/ottaorm/shortlinks route has no other
+    // auth check of its own, unlike users/menus/organization_members which are blocked outright).
     {
         model: 'shortlinks',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
+        policy: { ...RLSPolicies.AppScoped(), requiredRoles: ['admin', 'owner'] },
         auditEnabled: true,
     },
 
