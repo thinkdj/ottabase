@@ -60,6 +60,7 @@ Durable Objects.
   [Security](./.github/SECURITY.md), [Support](./.github/SUPPORT.md), [Maintainers](./.github/MAINTAINERS.md)
 - Demo: demo.ottabase.com
 - Community: [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
+- **AI-agent-ready**: agents, start at [AGENTS.md](./AGENTS.md) — lean monorepo map, per-package digests, and deep runbooks in `docs/agents/`
 
 ## Comparison
 
