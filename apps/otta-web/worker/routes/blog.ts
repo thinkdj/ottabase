@@ -18,7 +18,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import kitchensinkContentTemplate from '../fixtures/kitchensink-content.json';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { readJson } from '../lib/utils';
+import { checkCronAuth, readJson } from '../lib/utils';
 
 export interface BlogRouteContext {
     request: Request;
@@ -797,9 +797,15 @@ ${urls}
  * Intended to be called from a cron/scheduled worker.
  */
 export async function handleBlogPublishScheduled(context: BlogRouteContext): Promise<Response> {
-    const { env, url } = context;
+    const { env, request, url } = context;
+
+    if (!checkCronAuth(request, env)) {
+        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    }
+
     const d1Error = ensureD1(env);
     if (d1Error) return d1Error;
+
     registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const appId = url.searchParams.get('appId') || null;
