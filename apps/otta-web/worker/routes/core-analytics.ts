@@ -4,6 +4,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { ApiRouteContext } from './router';
 import { getAuthOptions } from '../lib/auth-utils';
+import { requireSessionOrDev } from '../lib/utils';
 
 /**
  * Handle GET /api/analytics/core - query WAE for core event analytics
@@ -15,15 +16,9 @@ export async function handleCoreAnalytics(context: ApiRouteContext): Promise<Res
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
 
-    if (!userId && !isDev) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const authError = requireSessionOrDev(userId, env);
+    if (authError) return authError;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,

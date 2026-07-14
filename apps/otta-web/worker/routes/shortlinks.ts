@@ -11,7 +11,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
-import { readJson } from '../lib/utils';
+import { readJson, requireSessionOrDev } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 export interface ShortlinkContext {
@@ -271,15 +271,9 @@ export async function handleShortlinksAnalytics(context: ShortlinkContext): Prom
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
 
-    if (!userId && !isDev) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const authError = requireSessionOrDev(userId, env);
+    if (authError) return authError;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,

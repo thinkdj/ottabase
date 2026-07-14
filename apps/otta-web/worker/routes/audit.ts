@@ -2,6 +2,7 @@ import { getSession } from '@ottabase/auth/backend';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { getAuthOptions } from '../lib/auth-utils';
+import { isDevEnvironment, requireSessionOrDev } from '../lib/utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface AuditRouteContext {
@@ -21,15 +22,10 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
+    const isDev = isDevEnvironment(env);
 
-    if (!userId && !isDev) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const authError = requireSessionOrDev(userId, env);
+    if (authError) return authError;
 
     const sessionUser = session?.user as any | undefined;
     const userOrgId = sessionUser?.organizationId as string | undefined;

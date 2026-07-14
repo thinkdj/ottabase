@@ -10,7 +10,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions } from '../lib/auth-utils';
-import { readJson } from '../lib/utils';
+import { readJson, requireSessionOrDev } from '../lib/utils';
 
 export interface ReferralRouteContext {
     request: Request;
@@ -231,15 +231,9 @@ export async function handleReferralsAnalytics(context: ReferralRouteContext): P
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev =
-        !env.ENVIRONMENT ||
-        env.ENVIRONMENT === 'development' ||
-        env.ENVIRONMENT === 'dev' ||
-        env.ENVIRONMENT === 'test';
 
-    if (!userId && !isDev) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const authError = requireSessionOrDev(userId, env);
+    if (authError) return authError;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,
