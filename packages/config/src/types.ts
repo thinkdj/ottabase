@@ -49,6 +49,8 @@ export interface ReferralsConfig {
     enabled: boolean;
     trackClicks: boolean;
     expiryDays: number;
+    /** URL query-param key carrying an inbound referral code (default `ref`). */
+    referralParam: string;
 }
 
 export interface AppConfig {

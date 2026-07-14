@@ -1,3 +1,4 @@
+import { normalizeReferralParam } from './ottabase-types';
 import { AppConfig, AppMeta, ConfigOptions, SupportedUIFramework, ThemeColors } from './types';
 
 /**
@@ -155,6 +156,9 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
                 enabled: getBoolEnv('REFERRALS_ENABLED', defaults.features?.referrals?.enabled ?? false),
                 trackClicks: getBoolEnv('REFERRALS_TRACK_CLICKS', defaults.features?.referrals?.trackClicks ?? true),
                 expiryDays: getNumberEnv('REFERRALS_EXPIRY_DAYS', defaults.features?.referrals?.expiryDays ?? 30),
+                referralParam: normalizeReferralParam(
+                    getEnv('REFERRAL_PARAM', defaults.features?.referrals?.referralParam ?? 'ref'),
+                ),
             },
         },
 

@@ -15,7 +15,7 @@ export type {
     OttabaseEmailConfig,
     OttabaseUIConfig,
 } from './ottabase-types';
-export { BUILT_IN_PACKAGES } from './ottabase-types';
+export { BUILT_IN_PACKAGES, DEFAULT_REFERRAL_PARAM, normalizeReferralParam } from './ottabase-types';
 export { resolveConfigWithEnv, type EnvLike } from './resolveConfigWithEnv';
 
 // Export types
@@ -38,6 +38,7 @@ export { createAppConfig, createStorageKey, createThemeColors, getCurrentYear } 
 
 // Import for internal use
 import type { SupportedUIFramework, ThemeColors } from './types';
+import { DEFAULT_REFERRAL_PARAM } from './ottabase-types';
 
 // Export constants and defaults
 export const DEFAULT_UI_FRAMEWORK: SupportedUIFramework = 'mantine';
@@ -108,6 +109,7 @@ export const DEFAULT_REFERRALS_CONFIG = {
     enabled: false,
     trackClicks: true,
     expiryDays: 30,
+    referralParam: DEFAULT_REFERRAL_PARAM,
 } as const;
 
 // Common storage keys

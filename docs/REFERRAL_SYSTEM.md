@@ -186,20 +186,39 @@ Referral behavior is controlled in **`apps/otta-web/ottabase/ottabase.config.ts`
 ```typescript
 features: {
     referrals: {
-        enabled: true,       // Master switch (tracker + client storage behavior)
-        trackClicks: true,   // POST /api/referrals/track on visit
-        expiryDays: 90,      // localStorage validity window
+        enabled: true,          // Master switch (tracker + client storage behavior)
+        trackClicks: true,      // POST /api/referrals/track on visit
+        expiryDays: 90,         // localStorage validity window
+        referralParam: 'ref',   // URL query-param key for inbound links (?ref=johndoe)
     },
 },
 ```
 
-| Option        | Type      | Default | Purpose                                                                       |
-| ------------- | --------- | ------- | ----------------------------------------------------------------------------- |
-| `enabled`     | `boolean` | `true`  | Disables tracker and storage when `false`                                     |
-| `trackClicks` | `boolean` | `true`  | When `false`, skips click API calls; code may still be stored for attribution |
-| `expiryDays`  | `number`  | `90`    | Expired codes are cleared client-side                                         |
+| Option          | Type      | Default | Purpose                                                                             |
+| --------------- | --------- | ------- | ----------------------------------------------------------------------------------- |
+| `enabled`       | `boolean` | `true`  | Disables tracker and storage when `false`                                           |
+| `trackClicks`   | `boolean` | `true`  | When `false`, skips click API calls; code may still be stored for attribution       |
+| `expiryDays`    | `number`  | `90`    | Expired codes are cleared client-side                                               |
+| `referralParam` | `string`  | `'ref'` | Query-param key carrying an inbound referral code; rebrand share links (`?invite=`) |
 
 The client reads **`REFERRALS_CONFIG`** from `ottabase/config.loader.ts` (derived from the same file).
+
+### Changing the referral param key
+
+`referralParam` is the query-param key that carries an inbound referral code — `ref` in
+`https://app.example.com/?ref=johndoe`. Set it once and the tracker (reads `?<key>=`), the URL cleanup, and the
+dashboard share-link builder all follow it; no other code changes are needed. Keys are restricted to letters, digits,
+underscore, and hyphen — any other value falls back to `ref`.
+
+- **Owner / config file** — edit `features.referrals.referralParam` in `ottabase/ottabase.config.ts`. This is the value
+  the browser client uses (client has no access to Cloudflare env), so it is the source of truth for share links and
+  inbound tracking.
+- **Per-deploy env override** — `REFERRAL_PARAM` overrides the value wherever the worker resolves config via
+  `getOttabaseConfig(env)`. As with the other referral flags (`enabled`, `trackClicks`, `expiryDays`), set the config
+  file for anything the client relies on.
+
+Changing the key does not migrate existing shared links: old `?ref=` links stop being tracked once the key changes.
+Prefer setting it before launch, or keep supporting the previous key downstream if you rotate it.
 
 ---
 
@@ -211,10 +230,10 @@ The client reads **`REFERRALS_CONFIG`** from `ottabase/config.loader.ts` (derive
 true. It:
 
 1. Respects `features.referrals.enabled`
-2. Reads `?ref=` from the URL
+2. Reads the configured referral param from the URL (default `?ref=`, see `features.referrals.referralParam`)
 3. Applies first-touch rules and expiry
 4. Optionally calls `/api/referrals/track` when `trackClicks` is true
-5. Normalizes the URL (removes `ref`)
+5. Normalizes the URL (removes the referral param)
 
 You normally do **not** add the tracker to `router.tsx` manually unless you use a custom layout.
 

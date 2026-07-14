@@ -10,7 +10,13 @@
  * - expiryDays: How long stored referral codes are valid
  */
 
-import { cleanReferralFromUrl, getStoredReferralCode, storeReferralCode, trackReferralClick } from '@/lib/referrals';
+import {
+    cleanReferralFromUrl,
+    getReferralParamKey,
+    getStoredReferralCode,
+    storeReferralCode,
+    trackReferralClick,
+} from '@/lib/referrals';
 import { REFERRALS_CONFIG } from '@/ottabase/config';
 import { useEffect, useRef } from 'react';
 
@@ -27,9 +33,9 @@ export function ReferralTracker() {
         if (hasTracked.current) return;
         hasTracked.current = true;
 
-        // Check for ref parameter in URL
+        // Check for the referral parameter in URL (configurable, default ?ref=)
         const params = new URLSearchParams(window.location.search);
-        const referralCode = params.get('ref');
+        const referralCode = params.get(getReferralParamKey());
 
         if (!referralCode) {
             // No referral code in URL

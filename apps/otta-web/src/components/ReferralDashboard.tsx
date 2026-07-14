@@ -5,7 +5,12 @@
  */
 
 import { api } from '@/lib/api';
-import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
+import {
+    buildReferralLink,
+    clearStoredReferralCode,
+    getReferralExpiryInfo,
+    getStoredReferralCode,
+} from '@/lib/referrals';
 import { validateReferralUsername } from '@ottabase/referrals';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
@@ -145,7 +150,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const handleCopyLink = () => {
         if (!data?.user.referralUsername) return;
 
-        const link = `${window.location.origin}?ref=${data.user.referralUsername}`;
+        const link = buildReferralLink(data.user.referralUsername);
         navigator.clipboard.writeText(link);
         toast.success('Referral link copied to clipboard!');
     };
@@ -183,9 +188,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
         );
     }
 
-    const referralLink = data.user.referralUsername
-        ? `${window.location.origin}?ref=${data.user.referralUsername}`
-        : null;
+    const referralLink = data.user.referralUsername ? buildReferralLink(data.user.referralUsername) : null;
 
     const totalPages = trackingData?.pagination.totalPages || 1;
 

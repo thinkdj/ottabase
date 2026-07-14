@@ -14,12 +14,13 @@ import type {
     ReferralsFeatureConfig,
     SpotlightFeatureConfig,
 } from './ottabase-types';
-import { BUILT_IN_PACKAGES } from './ottabase-types';
+import { BUILT_IN_PACKAGES, DEFAULT_REFERRAL_PARAM, normalizeReferralParam } from './ottabase-types';
 
 const DEFAULT_REFERRALS: ReferralsFeatureConfig = {
     enabled: false,
     trackClicks: true,
     expiryDays: 30,
+    referralParam: DEFAULT_REFERRAL_PARAM,
 };
 
 const DEFAULT_SPOTLIGHT: SpotlightFeatureConfig = {
@@ -98,8 +99,10 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
     }
 
     // Merge features with defaults
+    const referrals = { ...DEFAULT_REFERRALS, ...input.features?.referrals };
+    referrals.referralParam = normalizeReferralParam(referrals.referralParam);
     const features = {
-        referrals: { ...DEFAULT_REFERRALS, ...input.features?.referrals },
+        referrals,
         spotlight: { ...DEFAULT_SPOTLIGHT, ...input.features?.spotlight },
         pagination: { ...DEFAULT_PAGINATION, ...input.features?.pagination },
         crudHub: { ...DEFAULT_CRUDHUB, ...input.features?.crudHub },
