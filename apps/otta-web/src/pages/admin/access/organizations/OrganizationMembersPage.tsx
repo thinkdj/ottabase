@@ -149,7 +149,7 @@ export function OrganizationMembersPage() {
                     organizationId,
                     userId: editingMember.userId,
                     role: data.role,
-                    status: data.status,
+                    status: data.status ?? editingMember.status,
                 });
                 toast.rbac.memberUpdated();
             } else {
@@ -247,98 +247,131 @@ export function OrganizationMembersPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {members.map((member) => (
-                                    <TableRow
-                                        key={member.id}
-                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
-                                    >
-                                        <TableCell className="px-4 py-3">
-                                            <div className="min-w-0 space-y-0.5">
-                                                <div className="truncate font-medium">
-                                                    {member.user?.name || 'Unknown user'}
+                                {members.map((member) => {
+                                    // Pending email invites (not yet linked to an account) carry a
+                                    // null userId — they can't be looked up by userId server-side,
+                                    // so quick-edit actions are disabled until the invitee signs up
+                                    // and the invite is activated.
+                                    const isPending = !member.userId;
+                                    const invitedEmail = (member as unknown as { invitedEmail?: string | null })
+                                        .invitedEmail;
+
+                                    return (
+                                        <TableRow
+                                            key={member.id}
+                                            className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
+                                        >
+                                            <TableCell className="px-4 py-3">
+                                                <div className="min-w-0 space-y-0.5">
+                                                    <div className="truncate font-medium">
+                                                        {isPending
+                                                            ? 'Pending invite'
+                                                            : member.user?.name || 'Unknown user'}
+                                                    </div>
+                                                    <div className="truncate text-xs text-muted-foreground">
+                                                        {isPending
+                                                            ? invitedEmail || 'Awaiting signup'
+                                                            : member.user?.email || member.userId}
+                                                    </div>
+                                                    {!isPending && (
+                                                        <code className="text-[0.6875rem] text-muted-foreground">
+                                                            {member.userId}
+                                                        </code>
+                                                    )}
                                                 </div>
-                                                <div className="truncate text-xs text-muted-foreground">
-                                                    {member.user?.email || member.userId}
-                                                </div>
-                                                <code className="text-[0.6875rem] text-muted-foreground">
-                                                    {member.userId}
-                                                </code>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            <Select
-                                                value={member.role}
-                                                onValueChange={(value: MemberRole) =>
-                                                    handleQuickRoleChange(member.userId, value)
-                                                }
-                                                disabled={
-                                                    updateRoleMutation.isPending || updateStatusMutation.isPending
-                                                }
-                                            >
-                                                <SelectTrigger className="h-9 w-32">
-                                                    <span className="capitalize">{member.role}</span>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="owner">Owner</SelectItem>
-                                                    <SelectItem value="admin">Admin</SelectItem>
-                                                    <SelectItem value="member">Member</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            <Select
-                                                value={member.status}
-                                                onValueChange={(value: 'active' | 'invited' | 'suspended') =>
-                                                    handleQuickStatusChange(member.userId, value)
-                                                }
-                                                disabled={
-                                                    updateRoleMutation.isPending || updateStatusMutation.isPending
-                                                }
-                                            >
-                                                <SelectTrigger className="h-9 w-36">
-                                                    <span className="capitalize">{member.status}</span>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="active">Active</SelectItem>
-                                                    <SelectItem value="invited">Invited</SelectItem>
-                                                    <SelectItem value="suspended">Suspended</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                            {member.invitedAt ? new Date(member.invitedAt).toLocaleDateString() : '-'}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                            {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-'}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-muted-foreground hover:text-foreground"
-                                                    onClick={() => handleEdit(member)}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3">
+                                                <Select
+                                                    value={member.role}
+                                                    onValueChange={(value: MemberRole) =>
+                                                        handleQuickRoleChange(member.userId, value)
+                                                    }
                                                     disabled={
+                                                        isPending ||
                                                         updateRoleMutation.isPending ||
-                                                        updateStatusMutation.isPending ||
-                                                        updateMemberMutation.isPending
+                                                        updateStatusMutation.isPending
                                                     }
                                                 >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-muted-foreground hover:text-destructive"
-                                                    onClick={() => handleDelete(member.userId)}
-                                                    disabled={removeMutation.isPending}
+                                                    <SelectTrigger className="h-9 w-32">
+                                                        <span className="capitalize">{member.role}</span>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="owner">Owner</SelectItem>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                        <SelectItem value="member">Member</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3">
+                                                <Select
+                                                    value={member.status}
+                                                    onValueChange={(value: 'active' | 'invited' | 'suspended') =>
+                                                        handleQuickStatusChange(member.userId, value)
+                                                    }
+                                                    disabled={
+                                                        isPending ||
+                                                        updateRoleMutation.isPending ||
+                                                        updateStatusMutation.isPending
+                                                    }
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                                    <SelectTrigger className="h-9 w-36">
+                                                        <span className="capitalize">{member.status}</span>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="active">Active</SelectItem>
+                                                        <SelectItem value="invited">Invited</SelectItem>
+                                                        <SelectItem value="suspended">Suspended</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                {member.invitedAt
+                                                    ? new Date(member.invitedAt).toLocaleDateString()
+                                                    : '-'}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-'}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-muted-foreground hover:text-foreground"
+                                                        onClick={() => handleEdit(member)}
+                                                        disabled={
+                                                            isPending ||
+                                                            updateRoleMutation.isPending ||
+                                                            updateStatusMutation.isPending ||
+                                                            updateMemberMutation.isPending
+                                                        }
+                                                        title={
+                                                            isPending
+                                                                ? 'This invite is pending signup and cannot be edited yet'
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleDelete(member.userId)}
+                                                        disabled={isPending || removeMutation.isPending}
+                                                        title={
+                                                            isPending
+                                                                ? 'This invite is pending signup and cannot be removed yet'
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

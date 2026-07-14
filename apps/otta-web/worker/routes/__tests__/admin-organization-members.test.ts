@@ -68,7 +68,7 @@ describe('handleAdminOrganizationInviteMember', () => {
             session: {},
         });
         vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
-        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({}) } as any);
+        vi.spyOn(OrganizationMember, 'findExistingInvite').mockResolvedValue({ id: 'existing-member' } as any);
 
         const response = await handleAdminOrganizationInviteMember(
             {

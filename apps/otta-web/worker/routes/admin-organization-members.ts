@@ -1,13 +1,18 @@
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { sendTemplatedEmail } from '@ottabase/email';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { isEmail } from '@ottabase/utils/string';
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
-import { bumpProfileVersion, invalidateMembershipCache } from '../lib/auth-utils';
+import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
+import { normalizeEmail } from '../lib/utils';
+import { registerAppEmailTemplates } from '../../src/email/templates';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
     userId?: string;
+    email?: string;
     role?: 'owner' | 'admin' | 'member';
     status?: 'active' | 'invited' | 'suspended';
 }
@@ -29,6 +34,16 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
     return (
         (body.role !== undefined && body.role !== 'owner') || (body.status !== undefined && body.status !== 'active')
     );
+}
+
+/** Escape a string for safe interpolation into an HTML email body. */
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 export async function handleAdminOrganizationMembersList(
@@ -76,6 +91,48 @@ export async function handleAdminOrganizationMembersList(
     }
 }
 
+/**
+ * Best-effort notification email for a new org invite. Failure to send must never block the
+ * invite itself — the membership row is the source of truth, the email is just a nudge.
+ */
+async function sendOrgInviteEmail(
+    context: ApiRouteContext,
+    params: { toEmail: string; organizationId: string; alreadyHasAccount: boolean },
+): Promise<void> {
+    try {
+        const { mailer, from } = await resolveMailer(context.env);
+        if (!mailer) return;
+
+        const organization = await Organization.find(params.organizationId);
+        const orgName = escapeHtml((organization?.get('name') as string | undefined) ?? 'the organization');
+
+        registerAppEmailTemplates();
+
+        const destinationUrl = new URL(context.env.AUTH_URL || context.request.url);
+        destinationUrl.pathname = params.alreadyHasAccount ? '/login' : '/register';
+        destinationUrl.searchParams.set('email', params.toEmail);
+
+        await sendTemplatedEmail(mailer, {
+            from,
+            to: params.toEmail,
+            template: 'minimalist',
+            subject: `You've been invited to join ${orgName}`,
+            variables: {
+                subject: `You've been invited to join ${orgName}`,
+                header: `Join ${orgName}`,
+                body: params.alreadyHasAccount
+                    ? `<p>You've been added to <strong>${orgName}</strong>. Sign in to get started.</p>
+<p><a href="${destinationUrl.toString()}">Sign in</a></p>`
+                    : `<p>You've been invited to join <strong>${orgName}</strong>. Create an account with this email address to accept.</p>
+<p><a href="${destinationUrl.toString()}">Create your account</a></p>`,
+                footer: '',
+            },
+        });
+    } catch (error) {
+        console.warn('Failed to send organization invite email:', error);
+    }
+}
+
 export async function handleAdminOrganizationInviteMember(
     context: ApiRouteContext,
     organizationId: string,
@@ -99,45 +156,69 @@ export async function handleAdminOrganizationInviteMember(
     }
 
     const userId = body.userId?.trim();
+    const email = typeof body.email === 'string' ? normalizeEmail(body.email) : undefined;
     const role = body.role ?? 'member';
-    const status = body.status ?? 'invited';
 
-    if (!userId) {
-        return errorResponse('User is required', 400, {
+    if (!userId && !email) {
+        return errorResponse('A user or email is required', 400, {
             code: 'VALIDATION_ERROR',
-            fieldErrors: { userId: ['User is required'] },
+            fieldErrors: { userId: ['Provide a user ID or an email address'] },
         });
     }
 
-    if (!isValidRole(role) || !isValidStatus(status)) {
+    if (email && !isEmail(email)) {
+        return errorResponse('Invalid email address', 400, {
+            code: 'VALIDATION_ERROR',
+            fieldErrors: { email: ['Invalid email address'] },
+        });
+    }
+
+    if (!isValidRole(role) || (body.status !== undefined && !isValidStatus(body.status))) {
         return errorResponse('Invalid invite payload', 400, {
             code: 'VALIDATION_ERROR',
             fieldErrors: {
                 ...(isValidRole(role) ? {} : { role: ['Invalid role'] }),
-                ...(isValidStatus(status) ? {} : { status: ['Invalid status'] }),
+                ...(body.status === undefined || isValidStatus(body.status) ? {} : { status: ['Invalid status'] }),
             },
         });
     }
 
-    const user = await User.find(userId);
-    if (!user) {
+    // Resolve to an existing user account either by explicit userId or by matching email.
+    const user = userId ? await User.find(userId) : email ? await User.findByEmail(email) : undefined;
+    if (userId && !user) {
         return errorResponse('User not found', 404, {
             code: 'USER_NOT_FOUND',
             fieldErrors: { userId: ['User not found'] },
         });
     }
 
-    const existingMember = await OrganizationMember.first({ userId, organizationId });
+    const userJson = user?.toJson();
+    const resolvedUserId = userJson?.id as string | undefined;
+    const resolvedEmail = email ?? (userJson?.email as string | undefined);
+
+    // Check by userId AND by email so a still-pending email invite for this person (row with
+    // userId: null) is found even when this request resolved a userId (e.g. they've since
+    // registered) — otherwise a duplicate row could be created instead of being caught here.
+    const existingMember = await OrganizationMember.findExistingInvite({
+        organizationId,
+        userId: resolvedUserId ?? null,
+        invitedEmail: resolvedEmail ?? null,
+    });
     if (existingMember) {
-        return errorResponse('User is already a member of this organization', 409, {
+        return errorResponse('This user is already a member or has a pending invite', 409, {
             code: 'MEMBER_ALREADY_EXISTS',
-            fieldErrors: { userId: ['User is already a member of this organization'] },
+            fieldErrors: { userId: ['Already a member or invited'], email: ['Already a member or invited'] },
         });
     }
 
+    // body.status is already validated above (undefined or a valid status), and the fallback
+    // literals are valid by construction — no re-check needed here.
+    const status = body.status ?? (resolvedUserId ? 'active' : 'invited');
+
     try {
         const member = await OrganizationMember.create({
-            userId,
+            userId: resolvedUserId ?? null,
+            invitedEmail: resolvedUserId ? null : resolvedEmail,
             organizationId,
             role,
             status,
@@ -145,11 +226,26 @@ export async function handleAdminOrganizationInviteMember(
             invitedAt: Date.now(),
         } as any);
 
-        // Membership granted — drop the user's cached security-context lookups.
-        await invalidateMembershipCache(context.env.OBCF_KV, userId);
-        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
-        // refresh their live session so it isn't served the stale snapshot until the JWT expires.
-        await bumpProfileVersion(context.env, userId);
+        if (resolvedUserId) {
+            // Membership granted — drop the user's cached security-context lookups.
+            await invalidateMembershipCache(context.env.OBCF_KV, resolvedUserId);
+            // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+            // refresh their live session so it isn't served the stale snapshot until the JWT expires.
+            await bumpProfileVersion(context.env, resolvedUserId);
+        }
+
+        // Only notify when the admin explicitly supplied an email (the "invite by email" flow).
+        // Gate on the caller-supplied `email`/`userId` (not the resolved values) so: (a) adding an
+        // existing user by userId never sends a notification to their account email, and (b) a
+        // request that supplies both fields never sends to a caller-supplied address that may be
+        // unrelated to the userId being granted membership.
+        if (email && !userId) {
+            await sendOrgInviteEmail(context, {
+                toEmail: email,
+                organizationId,
+                alreadyHasAccount: !!resolvedUserId,
+            });
+        }
 
         return jsonResponse({ data: member.toJson() }, 201);
     } catch (err) {
