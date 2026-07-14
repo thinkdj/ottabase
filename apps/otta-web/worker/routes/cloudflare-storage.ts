@@ -5,15 +5,10 @@ import { createR2Client } from '@ottabase/cf/r2';
 import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { persistUploadedMediaRecord } from './media-library';
-
-export interface StorageRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-}
+import type { ApiRouteContext } from './router';
 
 /** Deterministic hash of userId for avatar path obfuscation (SHA-256, 32 hex chars) */
 async function hashUserId(userId: string): Promise<string> {
@@ -26,7 +21,10 @@ async function hashUserId(userId: string): Promise<string> {
         .substring(0, 32);
 }
 
-export async function handleCloudflareKV(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareKV(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env, url } = context;
     if (!env.OBCF_KV) {
         return errorResponse('KV namespace binding not configured', 500, {
@@ -87,7 +85,10 @@ export async function handleCloudflareKV(context: StorageRouteContext): Promise<
     });
 }
 
-export async function handleCloudflareR2(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareR2(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env, url } = context;
     if (!env.OBCF_R2) {
         return errorResponse('R2 bucket binding not configured', 500, {
@@ -149,7 +150,7 @@ export async function handleCloudflareR2(context: StorageRouteContext): Promise<
     });
 }
 
-export async function handleUpload(context: StorageRouteContext): Promise<Response> {
+export async function handleUpload(context: ApiRouteContext): Promise<Response> {
     const { request, env } = context;
     const envConfig = env as Record<string, string | undefined>;
     if (request.method !== 'POST') {
@@ -278,7 +279,7 @@ export async function handleUpload(context: StorageRouteContext): Promise<Respon
     }
 }
 
-export async function handleUploadFile(context: StorageRouteContext): Promise<Response> {
+export async function handleUploadFile(context: ApiRouteContext): Promise<Response> {
     const { env, url } = context;
     if (!env.OBCF_R2) {
         return errorResponse('R2 bucket binding not configured', 500, {
@@ -303,7 +304,10 @@ export async function handleUploadFile(context: StorageRouteContext): Promise<Re
     return new Response(object.body, { headers });
 }
 
-export async function handleCloudflareImages(context: StorageRouteContext): Promise<Response> {
+export async function handleCloudflareImages(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     const envConfig = env as Record<string, string | undefined>;
     const accountId = envConfig.CF_IMAGES_ACCOUNT_ID;

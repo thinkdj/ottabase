@@ -4,15 +4,13 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
 import { dispatch, dispatchBatch } from '@ottabase/queue';
 import { incrementDispatchStats } from '../../ottabase/queue';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
+import type { ApiRouteContext } from './router';
 
-export interface CloudflareQueueContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-}
+export async function handleCloudflareQueue(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
-export async function handleCloudflareQueue(context: CloudflareQueueContext): Promise<Response> {
     const { request, env } = context;
 
     if (request.method === 'POST') {

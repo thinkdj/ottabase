@@ -1,14 +1,13 @@
 import { RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
+import type { ApiRouteContext } from './router';
 
-export interface RealtimeRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-}
+export async function handleRealtimeWebsocket(context: ApiRouteContext): Promise<Response | null> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
-export function handleRealtimeWebsocket(context: RealtimeRouteContext): Response | null {
     const { request, env } = context;
     if (!env.OBCF_REALTIME) {
         return errorResponse('Realtime is not available in this environment', 501, {
@@ -29,7 +28,10 @@ export function handleRealtimeWebsocket(context: RealtimeRouteContext): Response
     return stub.fetch(request as any) as unknown as Response;
 }
 
-export async function handleRealtimeBroadcast(context: RealtimeRouteContext): Promise<Response> {
+export async function handleRealtimeBroadcast(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env } = context;
 
     if (!env.OBCF_REALTIME) {
@@ -74,7 +76,10 @@ export async function handleRealtimeBroadcast(context: RealtimeRouteContext): Pr
     });
 }
 
-export async function handleRealtimeStats(context: RealtimeRouteContext): Promise<Response> {
+export async function handleRealtimeStats(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env } = context;
     if (!env.OBCF_REALTIME) {
         return errorResponse('Realtime is not available in this environment', 501, {

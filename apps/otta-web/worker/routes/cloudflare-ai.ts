@@ -11,6 +11,8 @@ import { createWorkersAIClient } from '@ottabase/cf-ai/workers-ai';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
+import type { ApiRouteContext } from './router';
 
 /** Build an error response from an Error or AIError, forwarding code/details when available. */
 function aiErrorResponse(error: Error, fallbackStatus = 500): Response {
@@ -25,16 +27,10 @@ function aiErrorResponse(error: Error, fallbackStatus = 500): Response {
     return errorResponse(error.message, fallbackStatus, { code: 'AI_ERROR' });
 }
 
-export interface AIRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-}
-
 /**
  * GET /api/cloudflare/ai/providers — list available providers
  */
-export async function handleAIProviders(_context: AIRouteContext): Promise<Response> {
+export async function handleAIProviders(_context: ApiRouteContext): Promise<Response> {
     const providers = Object.entries(AI_PROVIDERS).map(([key, p]) => ({
         key,
         name: p.name,
@@ -46,7 +42,10 @@ export async function handleAIProviders(_context: AIRouteContext): Promise<Respo
 /**
  * GET /api/cloudflare/ai/status — check which AI bindings are configured
  */
-export async function handleAIStatus(context: AIRouteContext): Promise<Response> {
+export async function handleAIStatus(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env } = context;
     return jsonResponse({
         workersAI: !!env.OBCF_AI, // Binding presence is the best check for Workers AI since it doesn't use API keys
@@ -61,7 +60,10 @@ export async function handleAIStatus(context: AIRouteContext): Promise<Response>
  * POST /api/cloudflare/ai/chat — Workers AI text generation
  * Body: { prompt: string, model?: string, systemPrompt?: string }
  */
-export async function handleAIChat(context: AIRouteContext): Promise<Response> {
+export async function handleAIChat(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
 
     if (!env.OBCF_AI) {
@@ -109,7 +111,10 @@ export async function handleAIChat(context: AIRouteContext): Promise<Response> {
  * POST /api/cloudflare/ai/gateway/chat — AI Gateway chat completion
  * Body: { provider: string, model: string, prompt: string, systemPrompt?: string, apiKey?: string }
  */
-export async function handleAIGatewayChat(context: AIRouteContext): Promise<Response> {
+export async function handleAIGatewayChat(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
 
     if (!env.CFAI_GATEWAY_NAME) {
@@ -187,7 +192,10 @@ export async function handleAIGatewayChat(context: AIRouteContext): Promise<Resp
  * POST /api/cloudflare/ai/universal/chat — Universal AI chat with optional fallback
  * Body: { prompt: string, systemPrompt?: string, provider?: string, model?: string, fallback?: Array<{ provider, model, apiKey? }> }
  */
-export async function handleAIUniversalChat(context: AIRouteContext): Promise<Response> {
+export async function handleAIUniversalChat(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
 
     if (!env.CFAI_GATEWAY_NAME) {
