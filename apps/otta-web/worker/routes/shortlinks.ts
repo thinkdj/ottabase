@@ -9,8 +9,10 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
+import type { ApiRouteContext } from './router';
 
 export interface ShortlinkContext {
     request: Request;
@@ -33,7 +35,10 @@ function pushShortlinkClick(env: CloudflareEnv, request: Request, shortCode: str
     });
 }
 
-export async function handleShortlinksList(context: ShortlinkContext): Promise<Response> {
+export async function handleShortlinksList(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, url } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -41,7 +46,8 @@ export async function handleShortlinksList(context: ShortlinkContext): Promise<R
         });
     }
 
-    registerConnection('default', createD1Driver(env.OBCF_D1));
+    // requireAdminAccess() above already ran initDbConnection(env), which registers the
+    // 'default' connection — no need to construct another D1Driver and re-register it here.
 
     const { page, perPage, orderBy, order } = parsePaginationParams(url.searchParams);
     const appId = url.searchParams.get('appId');
@@ -66,7 +72,10 @@ export async function handleShortlinksList(context: ShortlinkContext): Promise<R
     });
 }
 
-export async function handleShortlinksCreate(context: ShortlinkContext): Promise<Response> {
+export async function handleShortlinksCreate(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -74,7 +83,8 @@ export async function handleShortlinksCreate(context: ShortlinkContext): Promise
         });
     }
 
-    registerConnection('default', createD1Driver(env.OBCF_D1));
+    // requireAdminAccess() above already ran initDbConnection(env), which registers the
+    // 'default' connection — no need to construct another D1Driver and re-register it here.
 
     const body = await readJson<{
         fullUrl?: string;
@@ -117,10 +127,13 @@ export async function handleShortlinksCreate(context: ShortlinkContext): Promise
 }
 
 export async function handleShortlinkById(
-    context: ShortlinkContext,
+    context: ApiRouteContext,
     id: string,
     method: 'PATCH' | 'DELETE',
 ): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -128,7 +141,8 @@ export async function handleShortlinkById(
         });
     }
 
-    registerConnection('default', createD1Driver(env.OBCF_D1));
+    // requireAdminAccess() above already ran initDbConnection(env), which registers the
+    // 'default' connection — no need to construct another D1Driver and re-register it here.
 
     if (method === 'PATCH') {
         const body = await readJson<{

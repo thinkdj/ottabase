@@ -58,6 +58,19 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    if (crudRequest.model === 'shortlinks') {
+        // RLS's requiredRoles check (packages/ottaorm/src/rls/registry.ts) tests role NAME
+        // membership only, not which organization the role was granted in — since every
+        // self-registered user gets RBAC role 'owner' scoped to their own personal org, that
+        // check alone doesn't actually restrict this to system admins. Force all shortlink
+        // management through the dedicated /api/shortlinks routes, which correctly gate on
+        // requireAdminAccess({ scope: 'system' }).
+        return errorResponse('Shortlinks CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/shortlinks endpoints (correctly scoped to system admins)',
+        });
+    }
+
     if (
         crudRequest.model === 'posts' &&
         crudRequest.body &&

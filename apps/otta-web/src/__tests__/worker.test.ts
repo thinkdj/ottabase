@@ -1,9 +1,7 @@
 import { getSession } from '@ottabase/auth/backend';
 import { Account, User } from '@ottabase/ottaorm';
-import { Shortlink } from '@ottabase/shortlinks';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from '../../cloudflare-worker';
-import { APP_ID } from '../../ottabase/config.loader';
 
 vi.mock('@ottabase/auth/backend', async () => {
     const actual = await vi.importActual<any>('@ottabase/auth/backend');
@@ -152,121 +150,40 @@ describe('Cloudflare Worker API', () => {
     });
 
     describe('/api/ottaorm/shortlinks', () => {
-        it('should list shortlinks', async () => {
-            // Mock D1 response for listing
-            env.OBCF_D1.prepare.mockImplementation(() => createStatement([]));
+        // The generic CRUD route is fully disabled for shortlinks (like users/menus/
+        // organization_members): RLS's requiredRoles check only tests role-NAME membership,
+        // not which organization a role was granted in, so it can't actually restrict this to
+        // system admins (every self-registered user holds an org-scoped 'owner' role). All
+        // shortlink management goes through /api/shortlinks, which correctly gates on
+        // requireAdminAccess({ scope: 'system' }) — see 'Legacy /api/shortlinks' below.
+        it('should be disabled, even for an authenticated admin session', async () => {
+            (getSession as any).mockResolvedValue({ user: { id: 'admin-1', roles: ['admin'] } });
 
             const resp = await worker.fetch(createRequest('/api/ottaorm/shortlinks'), env);
-            expect(resp.status).toBe(200);
+            expect(resp.status).toBe(403);
             const data = (await resp.json()) as any;
-            expect(Array.isArray(data.data)).toBe(true);
-            expect(data.pagination).toBeDefined();
-            // Check handleCrud implementation, it returns `jsonResponse(result.data, result.status)`
-            // If Model.currentDriver.list returns array, then it is array.
+            expect(data.code).toBe('CRUD_DISABLED');
         });
 
-        it('should create a shortlink', async () => {
-            const payload = {
-                fullUrl: 'https://google.com',
-                shortCode: 'goog',
-            };
+        it('rejects anonymous requests', async () => {
+            (getSession as any).mockResolvedValue(null);
 
-            // Mock findByCode (return null = not found)
-            // Then mock create (return success)
-            // Since handleCrud uses the model, and we know Shortlink calls D1.
-
-            // We need to carefully mock the D1 calls sequence or use a more sophisticated mock that retains state in memory?
-            // For now simple mock:
-            // 1. check unique (select ... where shortCode = ?) -> returns []
-            // 2. insert -> returns success
-
-            const shortlinkResult = new Shortlink({
-                entity: Shortlink.entity,
-                data: {
-                    id: '1',
-                    fullUrl: payload.fullUrl,
-                    shortCode: payload.shortCode,
-                    type: 'redirect',
-                    appId: null,
-                    expiryDate: null,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                },
-            } as any);
-            const createSpy = vi.spyOn(Shortlink, 'create').mockResolvedValue(shortlinkResult);
-
-            const resp = await worker.fetch(createRequest('/api/ottaorm/shortlinks', 'POST', payload), env);
-
-            // Note: The generic handleCrud might fail if mocks aren't perfect, but let's see.
-            expect(resp.status).toBe(201);
+            const resp = await worker.fetch(createRequest('/api/ottaorm/shortlinks'), env);
+            expect(resp.status).toBe(403);
             const data = (await resp.json()) as any;
-            // Response format changed - now returns object directly, not wrapped
-            expect(data.shortCode).toBe('goog');
-            createSpy.mockRestore();
-        });
-
-        it('should find shortlink by field/value', async () => {
-            const mockShortlink = {
-                id: 'test-1',
-                shortCode: 'test-code',
-                fullUrl: 'https://example.com',
-                type: 'redirect',
-                appId: 'test',
-                expiryDate: null,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-            };
-
-            const shortlinkResult = new Shortlink({
-                entity: Shortlink.entity,
-                data: mockShortlink,
-            } as any);
-
-            const firstSpy = vi.spyOn(Shortlink, 'first').mockResolvedValue(shortlinkResult);
-            vi.spyOn(shortlinkResult, 'toJson').mockReturnValue(mockShortlink);
-
-            const resp = await worker.fetch(
-                createRequest('/api/ottaorm/shortlinks?field=shortCode&value=test-code'),
-                env,
-            );
-
-            expect(resp.status).toBe(200);
-            const data = (await resp.json()) as any;
-            // Response should be the object directly, not wrapped
-            expect(data.shortCode).toBe('test-code');
-            expect(data.id).toBe('test-1');
-            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'test-code', appId: APP_ID });
-
-            firstSpy.mockRestore();
-        });
-
-        it('should return 404 when shortlink not found by field/value', async () => {
-            const firstSpy = vi.spyOn(Shortlink, 'first').mockResolvedValue(null);
-
-            const resp = await worker.fetch(
-                createRequest('/api/ottaorm/shortlinks?field=shortCode&value=non-existent'),
-                env,
-            );
-
-            expect(resp.status).toBe(404);
-            const data = (await resp.json()) as any;
-            expect(data.error).toContain('not found');
-            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'non-existent', appId: APP_ID });
-
-            firstSpy.mockRestore();
+            expect(data.code).toBe('CRUD_DISABLED');
         });
     });
 
     describe('Legacy /api/shortlinks', () => {
-        it('should list shortlinks (paginated)', async () => {
-            // Legacy endpoint returns paginated response structure
+        it('rejects unauthenticated requests (admin-only management endpoint)', async () => {
+            // Anyone could once list/create/edit every shortlink; the endpoint now requires
+            // an authenticated admin session (see requireAdminAccess in worker/routes/shortlinks.ts).
             env.OBCF_D1.prepare.mockImplementation(() => createStatement([]));
+            (getSession as any).mockResolvedValue(null);
 
             const resp = await worker.fetch(createRequest('/api/shortlinks'), env);
-            expect(resp.status).toBe(200);
-            const data = (await resp.json()) as any;
-            expect(data.data).toBeDefined();
-            expect(data.pagination?.total).toBeDefined();
+            expect(resp.status).toBe(401);
         });
     });
 
