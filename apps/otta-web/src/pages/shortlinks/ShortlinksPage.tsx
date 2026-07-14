@@ -63,10 +63,10 @@ export function ShortlinksPage() {
         try {
             setLoading(true);
             setError(null);
-            const response = await api<ShortlinksResponse>(
-                `/api/ottaorm/shortlinks?page=${page}&per_page=${itemsPerPage}`,
-                { method: 'GET', callerId: 'ShortlinksPage:fetchShortlinks' },
-            );
+            const response = await api<ShortlinksResponse>(`/api/shortlinks?page=${page}&per_page=${itemsPerPage}`, {
+                method: 'GET',
+                callerId: 'ShortlinksPage:fetchShortlinks',
+            });
             if (response.data) {
                 setShortlinks(response.data);
                 setPagination(response.pagination);
@@ -102,7 +102,7 @@ export function ShortlinksPage() {
 
         const id = deleteDialog;
         try {
-            await api(`/api/ottaorm/shortlinks/${id}`, { method: 'DELETE' });
+            await api(`/api/shortlinks/${id}`, { method: 'DELETE' });
             await fetchShortlinks(currentPage, perPage);
         } catch (err) {
             setError(isApiError(err) ? err.message : 'Failed to delete shortlink');

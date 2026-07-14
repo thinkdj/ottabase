@@ -67,13 +67,13 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
 
             if (shortlink) {
                 // Update existing shortlink
-                await api(`/api/ottaorm/shortlinks/${shortlink.id}`, {
+                await api(`/api/shortlinks/${shortlink.id}`, {
                     method: 'PATCH',
                     body: payload,
                 });
             } else {
                 // Create new shortlink
-                await api('/api/ottaorm/shortlinks', {
+                await api('/api/shortlinks', {
                     method: 'POST',
                     body: payload,
                 });

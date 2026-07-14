@@ -92,6 +92,8 @@ export async function handleShortlinksCreate(context: ApiRouteContext): Promise<
         type?: string;
         appId?: string;
         expiryDate?: string | null;
+        interstitialEnabled?: boolean;
+        interstitialSeconds?: number | null;
     }>(request);
 
     if (!body.fullUrl || !body.shortCode) {
@@ -113,6 +115,8 @@ export async function handleShortlinksCreate(context: ApiRouteContext): Promise<
             type: body.type || 'redirect',
             appId: body.appId || 'default',
             expiryDate: Number.isNaN(expiryDate) ? null : expiryDate,
+            interstitialEnabled: body.interstitialEnabled ?? false,
+            interstitialSeconds: body.interstitialSeconds ?? null,
         });
 
         return jsonResponse({
@@ -150,6 +154,8 @@ export async function handleShortlinkById(
             shortCode?: string;
             type?: string;
             expiryDate?: string | null;
+            interstitialEnabled?: boolean;
+            interstitialSeconds?: number | null;
         }>(request);
 
         const shortlink = await Shortlink.find(id);
@@ -173,6 +179,8 @@ export async function handleShortlinkById(
             const expiryDate = body.expiryDate ? new Date(body.expiryDate).getTime() : null;
             shortlink.set('expiryDate', Number.isNaN(expiryDate) ? null : expiryDate);
         }
+        if (body.interstitialEnabled !== undefined) shortlink.set('interstitialEnabled', body.interstitialEnabled);
+        if (body.interstitialSeconds !== undefined) shortlink.set('interstitialSeconds', body.interstitialSeconds);
 
         try {
             await shortlink.save();
