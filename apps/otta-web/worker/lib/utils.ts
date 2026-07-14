@@ -1,3 +1,5 @@
+import { errorResponse } from '@ottabase/utils/http-errors';
+
 export async function readJson<T = any>(request: Request): Promise<T> {
     try {
         return (await request.json()) as T;
@@ -83,4 +85,56 @@ export function base64UrlEncode(bytes: Uint8Array): string {
 export function createSecureToken(bytes = 32): string {
     const buffer = crypto.getRandomValues(new Uint8Array(bytes));
     return base64UrlEncode(buffer);
+}
+
+/**
+ * Whether ENVIRONMENT names an explicit dev/test deploy. Fails closed: an unset or
+ * unrecognized ENVIRONMENT is never treated as dev, so a misconfigured deploy can't
+ * fall back to a dev-only auth bypass.
+ */
+export function isDevEnvironment(env: { ENVIRONMENT?: string }): boolean {
+    const value = (env.ENVIRONMENT || '').trim().toLowerCase();
+    return value === 'development' || value === 'dev' || value === 'test' || value === 'local';
+}
+
+/**
+ * Auth for endpoints that only require an authenticated session (not admin) — open in an
+ * explicit dev environment, otherwise requires a logged-in user. Returns the 401 response to
+ * short-circuit on, or null to continue. Shared so the "session or dev" gate can't drift
+ * independently across call sites the way isDevEnvironment itself once did.
+ */
+export function requireSessionOrDev(userId: string | null | undefined, env: { ENVIRONMENT?: string }): Response | null {
+    if (userId || isDevEnvironment(env)) return null;
+    return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+}
+
+/** Constant-time string comparison — avoids leaking secret bytes via response-timing variance. */
+function timingSafeEqual(a: string, b: string): boolean {
+    const encoder = new TextEncoder();
+    const aBytes = encoder.encode(a);
+    const bBytes = encoder.encode(b);
+    if (aBytes.length !== bBytes.length) return false;
+    let diff = 0;
+    for (let i = 0; i < aBytes.length; i++) {
+        diff |= aBytes[i] ^ bBytes[i];
+    }
+    return diff === 0;
+}
+
+/**
+ * Auth for endpoints meant to be triggered by an external scheduler, not a browser.
+ * Open in an explicit dev environment; otherwise requires CRON_SECRET via header or Bearer token
+ * (no query-string fallback, so the secret never lands in access logs or referrer headers).
+ */
+export function checkCronAuth(request: Request, env: { ENVIRONMENT?: string; CRON_SECRET?: string }): boolean {
+    if (isDevEnvironment(env)) return true;
+    if (!env.CRON_SECRET) return false;
+
+    const headerSecret = request.headers.get('x-cron-secret');
+    if (headerSecret && timingSafeEqual(headerSecret, env.CRON_SECRET)) return true;
+
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ') && timingSafeEqual(authHeader.substring(7), env.CRON_SECRET)) return true;
+
+    return false;
 }

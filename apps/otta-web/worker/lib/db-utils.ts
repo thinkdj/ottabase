@@ -59,6 +59,9 @@ export function initAdminCron(env: CloudflareEnv): Response | null {
 }
 
 export async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
+    // Deliberately narrower than isDevEnvironment(): this gates schema auto-migrations
+    // (including destructive ones), so only an explicit 'development' ENVIRONMENT or an
+    // unset one bypasses MIGRATION_SECRET — 'dev'/'test'/'local' still require the secret.
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
     if (isDev) return true;
 
