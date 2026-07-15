@@ -9,7 +9,7 @@ JS — no React, Vue, or Angular required.
 - **DateRangePicker** — Two-calendar layout for start/end range selection
 - **DateRangePicker (with Presets)** — Sidebar with quick-select presets + Apply/Cancel footer
 - **DateTimePicker** — Calendar + time inputs (hours, minutes, optional seconds, 12h/24h toggle)
-- **FuzzyDateTimePicker** — Approximate dates with chip-based year/month/day grids and resolution levels
+- **FuzzyDateTimePicker** — Approximate dates with a year stepper, chip-based month/day grids, and resolution levels
 - **FuzzyDateTimeCompact** — Space-efficient fuzzy picker using native `<select>` dropdowns
 - **UTC-first** — Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
   objects
@@ -148,8 +148,8 @@ const dt = OttaDate.createDateTimePicker(container, {
 
 ### `OttaDate.createFuzzyDateTimePicker(container, options)`
 
-For dates the user doesn't fully remember. Uses chip-based grids for year, month, day, and time selection at varying
-resolution levels.
+For dates the user doesn't fully remember. Year is a compact stepper; month, day, and time use chip/grid selection at
+varying resolution levels.
 
 ```typescript
 const fuzzy = OttaDate.createFuzzyDateTimePicker(container, {

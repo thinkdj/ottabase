@@ -335,19 +335,6 @@ export function createFuzzyDateTimeCompact(
         return row;
     }
 
-    /** Row 5: Side-by-side Resolution info + metadata preview */
-    function renderInfoRow(): HTMLElement {
-        const row = div('ottadate-compact-info');
-
-        const resInfo = span('ottadate-compact-info-label', '');
-        resInfo.innerHTML =
-            `<strong>Resolution:</strong> ${RESOLUTION_LABELS[resolution]} &middot; ` +
-            `<strong>Stored Meta:</strong> ${APPROXIMATION_LABELS[approximation]}`;
-
-        row.appendChild(resInfo);
-        return row;
-    }
-
     function renderFooter(): HTMLElement {
         const footer = div('ottadate-footer');
 
@@ -392,9 +379,6 @@ export function createFuzzyDateTimeCompact(
         // 4. Time row (if resolution >= hour)
         const timeRow = renderTimeRow();
         if (timeRow) wrapper.appendChild(timeRow);
-
-        // 5. Info row (resolution + stored metadata)
-        wrapper.appendChild(renderInfoRow());
 
         popover.appendChild(wrapper);
         popover.appendChild(renderFooter());

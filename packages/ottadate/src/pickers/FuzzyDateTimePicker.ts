@@ -18,7 +18,6 @@
 import {
     APPROXIMATION_LABELS,
     createFuzzyDateTime,
-    getResolutionDescription,
     isResolutionFinerOrEqual,
     parseFuzzyDateTime,
     RESOLUTION_LABELS,
@@ -31,8 +30,20 @@ import type {
     FuzzyDateTimePickerInstance,
     FuzzyDateTimePickerOptions,
 } from '../core/types';
-import { getIntlLocale, getMonthNamesShort, getYearRange, pad2, resolveConfig } from '../core/utils';
-import { btn, clearChildren, div, el, iconCalendar, iconX, onClickOutside, onEscape, span } from '../dom/helpers';
+import { getIntlLocale, getMonthNamesShort, pad2, resolveConfig } from '../core/utils';
+import {
+    btn,
+    clearChildren,
+    div,
+    el,
+    iconCalendar,
+    iconChevronLeft,
+    iconChevronRight,
+    iconX,
+    onClickOutside,
+    onEscape,
+    span,
+} from '../dom/helpers';
 
 export function createFuzzyDateTimePicker(
     container: HTMLElement,
@@ -107,7 +118,9 @@ export function createFuzzyDateTimePicker(
     // Popover
     const popover = div('ottadate-popover');
     popover.style.display = config.inline ? '' : 'none';
-    popover.style.minWidth = '20rem';
+    // Narrower now that the year selector is a stepper and the month grid is 6-wide,
+    // not a 3-column grid — the old 20rem was sized for those bulkier layouts.
+    popover.style.minWidth = '17rem';
     if (config.inline) isOpen = true;
     root.appendChild(popover);
 
@@ -183,39 +196,34 @@ export function createFuzzyDateTimePicker(
             chips.appendChild(chip);
         }
         section.appendChild(chips);
-
-        // Description
-        const desc = span('', getResolutionDescription(resolution));
-        desc.style.fontSize = 'var(--od-font-size-sm)';
-        desc.style.color = 'var(--od-muted-fg)';
-        desc.style.marginTop = '0.25rem';
-        section.appendChild(desc);
-
         return section;
     }
 
+    /** Compact prev/value/next stepper — a single year is one field, not a range to browse. */
     function renderYearSelector(): HTMLElement {
         const section = div('ottadate-fuzzy-section');
         section.appendChild(span('ottadate-fuzzy-label', 'Year'));
 
-        const grid = div('ottadate-years');
-        const years = getYearRange(selectedYear, 5);
+        const stepper = div('ottadate-fuzzy-year-stepper');
 
-        for (const year of years) {
-            const yearBtn = btn('ottadate-year-cell', year.toString(), () => {
-                if (config.disabled) return;
-                selectedYear = year;
-                updateAndRender();
-            });
-            if (year === selectedYear) {
-                yearBtn.classList.add('ottadate-year-cell--selected');
-            }
-            if (year === new Date().getFullYear()) {
-                yearBtn.classList.add('ottadate-year-cell--current');
-            }
-            grid.appendChild(yearBtn);
-        }
-        section.appendChild(grid);
+        const prevBtn = btn('ottadate-nav-btn', '', () => {
+            if (config.disabled) return;
+            selectedYear -= 1;
+            updateAndRender();
+        });
+        prevBtn.innerHTML = iconChevronLeft();
+
+        const yearValue = span('ottadate-fuzzy-year-value', selectedYear.toString());
+
+        const nextBtn = btn('ottadate-nav-btn', '', () => {
+            if (config.disabled) return;
+            selectedYear += 1;
+            updateAndRender();
+        });
+        nextBtn.innerHTML = iconChevronRight();
+
+        stepper.append(prevBtn, yearValue, nextBtn);
+        section.appendChild(stepper);
         return section;
     }
 
