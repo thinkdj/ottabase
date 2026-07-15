@@ -8,6 +8,7 @@ URL shortening system for Cloudflare D1 — redirect handling, interstitial page
 - Multi-app support via `appId`
 - Optional expiry dates
 - Interstitial countdown page before redirect
+- Standalone theme-aware interstitial UI with a built-in countdown and manual continue actions
 - Expired link page
 - Click tracking via Cloudflare Analytics Engine (WAE)
 - Built on OttaORM for Cloudflare D1

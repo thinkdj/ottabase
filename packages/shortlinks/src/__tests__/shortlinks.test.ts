@@ -36,7 +36,8 @@ describe('Shortlink model helpers', () => {
         const response = buildRedirectResponse(shortlink);
         expect(response.status).toBe(200);
         const body = await response.text();
-        expect(body).toContain('Redirecting');
+        expect(body).toContain('Opening your link');
+        expect(body).toContain('Open now');
         expect(body).toContain('5');
     });
 
