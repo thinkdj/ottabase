@@ -176,12 +176,8 @@ export function AvatarEditModal({
                     </DialogHeader>
 
                     <div className="space-y-4">
-                        {/* Cropper renders its own "Choose image" button + filename label */}
-                        <div
-                            ref={containerRef}
-                            className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-4"
-                            style={{ minHeight: 120 }}
-                        />
+                        {/* The cropper owns its complete upload and editing surface. */}
+                        <div ref={containerRef} />
 
                         {hasImage && (
                             <Button

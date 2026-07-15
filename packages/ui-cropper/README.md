@@ -5,7 +5,8 @@ PNG/JPEG. Zero React. ~3–4 KB gzipped.
 
 ## Features
 
-- **Theme-aware** - CSS custom properties integrate with shadcn/tailwind design tokens; dark mode supported
+- **Theme-aware editor surface** - Uses the host shadcn/tailwind tokens directly, so app-controlled light and dark modes
+  stay in sync
 - **Smooth interactions** - Slick transitions inspired by react-advanced-cropper
 - **Zoom support** - Mouse wheel zoom, programmatic zoom, smooth scaling
 - **Resize handles** - Drag corner and edge handles to resize crop area
@@ -233,7 +234,14 @@ channels (e.g. `0 0% 100%`) are wrapped in `hsl()` internally, with sensible fal
 ```
 
 Override any of these on `.ottacropper` (or the container element) to restyle without touching the JS. Dark mode is
-applied automatically via `.dark`/`[class*='dark']` ancestors or `prefers-color-scheme: dark`.
+controlled by the host application's theme tokens. The cropper intentionally does not infer a color scheme from the OS,
+which prevents a light application surface from rendering as dark when the operating system prefers dark mode.
+
+## Interface Design
+
+The cropper owns one complete editing surface: an upload row and empty state before an image is selected, a neutral
+checkerboard stage while editing, and a compact toolbar for aspect ratio and transforms. Consumers should mount it in a
+plain container; avoid adding a second card, dashed border, or padding around the root element.
 
 ## Technical Details
 

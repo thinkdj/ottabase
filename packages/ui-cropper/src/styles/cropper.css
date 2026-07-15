@@ -13,6 +13,8 @@
     --cr-muted: hsl(var(--muted, 210 40% 96.1%));
     --cr-muted-fg: hsl(var(--muted-foreground, 215.4 16.3% 46.9%));
     --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
+    --cr-primary: hsl(var(--primary, 222.2 47.4% 11.2%));
+    --cr-primary-fg: hsl(var(--primary-foreground, 210 40% 98%));
     --cr-accent: hsl(var(--accent, 210 40% 96.1%));
     --cr-accent-fg: hsl(var(--accent-foreground, 222.2 47.4% 11.2%));
     --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
@@ -32,8 +34,13 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
+    align-items: stretch;
+    width: 100%;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--cr-border) 70%, transparent);
+    border-radius: calc(var(--cr-radius) + 0.25rem);
+    background: var(--cr-bg);
     font-family: var(--cr-font);
     font-size: var(--cr-font-size);
     color: var(--cr-fg);
@@ -62,22 +69,25 @@
 .ottacropper-file-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.625rem;
+    min-width: 0;
 }
 
 .ottacropper-upload-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.875rem;
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
     font-family: var(--cr-font);
     font-size: var(--cr-font-size-sm);
     font-weight: 500;
     line-height: 1.25rem;
     border-radius: var(--cr-radius);
-    border: 1px solid var(--cr-border);
-    background: var(--cr-bg);
-    color: var(--cr-fg);
+    border: 1px solid var(--cr-primary);
+    background: var(--cr-primary);
+    color: var(--cr-primary-fg);
     cursor: pointer;
     transition:
         background var(--cr-transition),
@@ -86,9 +96,7 @@
 }
 
 .ottacropper-upload-btn:hover {
-    background: var(--cr-accent);
-    color: var(--cr-accent-fg);
-    border-color: var(--cr-ring);
+    filter: brightness(0.94);
 }
 
 .ottacropper-upload-btn:focus-visible {
@@ -107,7 +115,48 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 12rem;
+    max-width: min(16rem, 48vw);
+    text-align: right;
+}
+
+.ottacropper-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 9rem;
+    padding: 1.25rem;
+    border: 1px dashed var(--cr-border);
+    border-radius: var(--cr-radius);
+    background: color-mix(in srgb, var(--cr-muted) 55%, transparent);
+    color: var(--cr-muted-fg);
+    text-align: left;
+}
+
+.ottacropper-empty-state--hidden {
+    display: none;
+}
+
+.ottacropper-empty-state svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: 0 0 auto;
+}
+
+.ottacropper-empty-state div {
+    display: grid;
+    gap: 0.125rem;
+}
+
+.ottacropper-empty-state strong {
+    color: var(--cr-fg);
+    font-size: var(--cr-font-size-sm);
+    font-weight: 500;
+}
+
+.ottacropper-empty-state span {
+    font-size: var(--cr-font-size-sm);
+    line-height: 1.25rem;
 }
 
 /* ---------------------------------------------------------------------------
@@ -117,9 +166,22 @@
 .ottacropper-viewport {
     position: relative;
     overflow: hidden;
-    background: transparent;
-    border-radius: calc(var(--cr-radius) * 0.75);
-    box-shadow: 0 0 0 1px var(--cr-border);
+    align-self: center;
+    max-width: 100%;
+    border: 1px solid var(--cr-border);
+    border-radius: var(--cr-radius);
+    background-color: var(--cr-muted);
+    background-image:
+        linear-gradient(45deg, color-mix(in srgb, var(--cr-bg) 72%, transparent) 25%, transparent 25%),
+        linear-gradient(-45deg, color-mix(in srgb, var(--cr-bg) 72%, transparent) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 72%, transparent) 75%),
+        linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 72%, transparent) 75%);
+    background-position:
+        0 0,
+        0 0.5rem,
+        0.5rem -0.5rem,
+        -0.5rem 0;
+    background-size: 1rem 1rem;
     display: none;
 }
 
@@ -142,8 +204,12 @@
 .ottacropper-toolbar {
     display: none;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
     gap: 0.5rem;
     flex-wrap: wrap;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--cr-border) 70%, transparent);
 }
 
 .ottacropper-toolbar--visible {
@@ -156,7 +222,7 @@
     gap: 0.125rem;
     padding: 0.1875rem;
     border-radius: var(--cr-radius);
-    background: var(--cr-muted);
+    background: color-mix(in srgb, var(--cr-muted) 72%, transparent);
 }
 
 .ottacropper-btn {
@@ -179,13 +245,14 @@
 
 .ottacropper-btn:hover {
     background: var(--cr-bg);
-    color: var(--cr-accent-fg);
-    box-shadow: inset 0 0 0 1px var(--cr-border);
+    color: var(--cr-fg);
+    box-shadow: 0 0 0 1px var(--cr-border);
 }
 
-.ottacropper-btn:active {
+.ottacropper-btn--active {
     background: var(--cr-bg);
-    box-shadow: inset 0 0 0 1px var(--cr-ring);
+    color: var(--cr-fg);
+    box-shadow: 0 0 0 1px var(--cr-ring);
 }
 
 .ottacropper-btn:focus-visible {
@@ -208,7 +275,7 @@
     gap: 0.125rem;
     padding: 0.1875rem;
     border-radius: var(--cr-radius);
-    background: var(--cr-muted);
+    background: color-mix(in srgb, var(--cr-muted) 72%, transparent);
 }
 
 .ottacropper-presets--visible {
@@ -247,30 +314,24 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Dark mode support (auto-detected via prefers-color-scheme and .dark class)
+ * Responsive layout
  * --------------------------------------------------------------------------- */
 
-.dark .ottacropper,
-:root[class*='dark'] .ottacropper {
-    --cr-bg: hsl(var(--background, 222.2 84% 4.9%));
-    --cr-fg: hsl(var(--foreground, 210 40% 98%));
-    --cr-muted: hsl(var(--muted, 217.2 32.6% 17.5%));
-    --cr-muted-fg: hsl(var(--muted-foreground, 215 20.2% 65.1%));
-    --cr-accent: hsl(var(--accent, 217.2 32.6% 17.5%));
-    --cr-accent-fg: hsl(var(--accent-foreground, 210 40% 98%));
-    --cr-border: hsl(var(--border, 217.2 32.6% 17.5%));
-    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
-}
+@media (max-width: 32rem) {
+    .ottacropper-file-row,
+    .ottacropper-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
 
-@media (prefers-color-scheme: dark) {
-    .ottacropper:not(.ottacropper--light) {
-        --cr-bg: hsl(var(--background, 222.2 84% 4.9%));
-        --cr-fg: hsl(var(--foreground, 210 40% 98%));
-        --cr-muted: hsl(var(--muted, 217.2 32.6% 17.5%));
-        --cr-muted-fg: hsl(var(--muted-foreground, 215 20.2% 65.1%));
-        --cr-accent: hsl(var(--accent, 217.2 32.6% 17.5%));
-        --cr-accent-fg: hsl(var(--accent-foreground, 210 40% 98%));
-        --cr-border: hsl(var(--border, 217.2 32.6% 17.5%));
-        --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    .ottacropper-upload-btn,
+    .ottacropper-btn-group,
+    .ottacropper-presets {
+        justify-content: center;
+    }
+
+    .ottacropper-filename {
+        max-width: none;
+        text-align: left;
     }
 }

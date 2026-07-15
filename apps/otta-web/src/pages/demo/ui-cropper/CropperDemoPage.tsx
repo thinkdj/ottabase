@@ -42,6 +42,7 @@ export function CropperDemoPage() {
     const previewUrlRef = useRef<string | null>(null);
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewFormat, setPreviewFormat] = useState<'image/jpeg' | 'image/png'>('image/jpeg');
     const [shape, setShape] = useState<CropShape>('rect');
     const [aspectRatio, setAspectRatio] = useState<number | null>(1);
     const [presetsVisible, setPresetsVisible] = useState(true);
@@ -109,11 +110,13 @@ export function CropperDemoPage() {
     const handleExport = async () => {
         const cropper = cropperRef.current;
         if (!cropper) return;
+        const format = shape === 'circle' ? 'image/png' : 'image/jpeg';
         try {
-            const blob = await cropper.getBlob('image/jpeg', 0.92);
+            const blob = await cropper.getBlob(format, 0.92);
             const url = URL.createObjectURL(blob);
             if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
             previewUrlRef.current = url;
+            setPreviewFormat(format);
             setPreviewUrl(url);
         } catch (err) {
             console.error('Export failed:', err);
@@ -137,14 +140,10 @@ export function CropperDemoPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div
-                            ref={containerRef}
-                            className="rounded-lg bg-background p-4 ring-1 ring-border"
-                            style={{ minHeight: 120 }}
-                        />
+                        <div ref={containerRef} />
                         <Button onClick={handleExport} className="gap-2">
                             <IconDownload className="h-4 w-4" />
-                            Export JPEG
+                            Export {shape === 'circle' ? 'PNG' : 'JPEG'}
                         </Button>
                     </CardContent>
                 </Card>
@@ -262,7 +261,10 @@ export function CropperDemoPage() {
                 <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Preview</CardTitle>
-                        <CardDescription>Cropped output (JPEG, 92% quality)</CardDescription>
+                        <CardDescription>
+                            Cropped output (
+                            {previewFormat === 'image/png' ? 'PNG with transparency' : 'JPEG, 92% quality'})
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <img

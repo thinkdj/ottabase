@@ -22,6 +22,8 @@ describe('Cropper', () => {
         const nameLabel = el.querySelector('#cropper-file-name');
         expect(nameLabel).toBeTruthy();
         expect(nameLabel?.textContent).toBe('No file selected');
+        expect(el.querySelector('.ottacropper-empty-state')?.textContent).toContain('Start with an image');
+        expect(el.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Image crop adjustments');
         expect(el.querySelector('canvas')).toBeTruthy();
         c.destroy();
         document.body.removeChild(el);
@@ -159,6 +161,7 @@ describe('Cropper', () => {
         const replaceBtn = el.querySelector('button[title="Replace image"]') as HTMLButtonElement | null;
         expect(replaceBtn).toBeTruthy();
         expect(replaceBtn?.textContent).toContain('Replace image');
+        expect(el.querySelector('.ottacropper-empty-state--hidden')).toBeTruthy();
 
         c.destroy();
         document.body.removeChild(el);
@@ -175,6 +178,21 @@ describe('Cropper', () => {
         // Callback is not called until an image actually loads
         expect(called).toBe(false);
         expect(typeof c.loadFromUrl).toBe('function');
+        c.destroy();
+    });
+
+    it('exposes pressed state for aspect and flip controls', () => {
+        const el = document.createElement('div');
+        const c = new Cropper(el, { transitions: false });
+
+        expect(el.querySelector('.ottacropper-preset--active')?.getAttribute('aria-pressed')).toBe('true');
+        const flipHorizontal = el.querySelector('button[aria-label="Flip horizontal"]') as HTMLButtonElement;
+        expect(flipHorizontal.getAttribute('aria-pressed')).toBe('false');
+
+        c.flipHorizontal();
+
+        expect(flipHorizontal.getAttribute('aria-pressed')).toBe('true');
+        expect(flipHorizontal.classList.contains('ottacropper-btn--active')).toBe(true);
         c.destroy();
     });
 
