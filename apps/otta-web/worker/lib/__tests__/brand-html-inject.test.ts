@@ -1,19 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockBuildCriticalStyleTagDual, mockResolveBrandConfig } = vi.hoisted(() => ({
+const {
+    mockBuildCriticalStyleTagDual,
+    mockBuildInitialConfigScriptTag,
+    mockResolveConfigFromFull,
+    mockResolveFullBrandConfig,
+    mockGetOttabaseConfig,
+} = vi.hoisted(() => ({
     mockBuildCriticalStyleTagDual: vi.fn(),
-    mockResolveBrandConfig: vi.fn(),
+    mockBuildInitialConfigScriptTag: vi.fn(),
+    mockResolveConfigFromFull: vi.fn(),
+    mockResolveFullBrandConfig: vi.fn(),
+    mockGetOttabaseConfig: vi.fn(),
 }));
 
 vi.mock('@ottabase/brand-engine', () => ({
     buildCriticalStyleTagDual: mockBuildCriticalStyleTagDual,
+    buildInitialConfigScriptTag: mockBuildInitialConfigScriptTag,
 }));
 
 vi.mock('@ottabase/brand-engine/persistence', () => ({
-    resolveBrandConfig: mockResolveBrandConfig,
+    resolveConfigFromFull: mockResolveConfigFromFull,
+    resolveFullBrandConfig: mockResolveFullBrandConfig,
+}));
+
+vi.mock('../../../ottabase/config.loader', () => ({
+    getOttabaseConfig: mockGetOttabaseConfig,
 }));
 
 import { injectBrandCriticalCSS } from '../brand-html-inject';
+
+const FULL_CONFIG = {
+    brandKitsMap: { default: { brandName: 'Acme' } },
+    routeMappings: [],
+    layoutTemplatesMap: {},
+};
+
+function htmlResponse(body = '<html><head></head><body>Hello</body></html>', headers: Record<string, string> = {}) {
+    return new Response(body, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...headers },
+    });
+}
+
+function htmlRequest(url = 'https://demo.ottabase.com/blog/demo-content') {
+    return new Request(url, { headers: { Accept: 'text/html' } });
+}
 
 describe('injectBrandCriticalCSS', () => {
     const env = {
@@ -24,26 +55,95 @@ describe('injectBrandCriticalCSS', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mockResolveBrandConfig.mockResolvedValue({
-            theme: { colors: { primary: '#111111' } },
-            darkTheme: { colors: { primary: '#ffffff' } },
-        });
+        mockGetOttabaseConfig.mockReturnValue({ appId: 'otta-web' });
+        mockResolveFullBrandConfig.mockResolvedValue(FULL_CONFIG);
+        mockResolveConfigFromFull.mockImplementation((_full, _path, mode) => ({
+            theme: { colors: { primary: mode === 'dark' ? '#ffffff' : '#111111' } },
+        }));
         mockBuildCriticalStyleTagDual.mockReturnValue('<style id="brand-critical">:root{--x:1}</style>');
+        mockBuildInitialConfigScriptTag.mockReturnValue(
+            '<script type="application/json" id="brand-initial-config">{"brandKitsMap":{}}</script>',
+        );
     });
 
     it('injects critical CSS into HTML responses', async () => {
-        const response = new Response('<html><head></head><body>Hello</body></html>', {
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        });
-        const request = new Request('https://demo.ottabase.com/blog/demo-content', {
-            headers: { Accept: 'text/html' },
-        });
-
-        const injected = await injectBrandCriticalCSS(response, request, env);
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
         const html = await injected.text();
 
         expect(html).toContain('<style id="brand-critical">:root{--x:1}</style>');
         expect(html).toContain('</head>');
+    });
+
+    it('resolves once with the worker-configured app id; request ?appId/header hints are ignored', async () => {
+        const request = new Request('https://demo.ottabase.com/blog/demo-content?appId=tenant-b', {
+            headers: { Accept: 'text/html', 'X-App-Id': 'tenant-b' },
+        });
+
+        await injectBrandCriticalCSS(htmlResponse(), request, env);
+
+        expect(mockResolveFullBrandConfig).toHaveBeenCalledTimes(1);
+        expect(mockResolveFullBrandConfig).toHaveBeenCalledWith(env, { appId: 'otta-web' });
+        expect(mockResolveConfigFromFull).toHaveBeenCalledWith(FULL_CONFIG, '/blog/demo-content', 'light');
+        expect(mockResolveConfigFromFull).toHaveBeenCalledWith(FULL_CONFIG, '/blog/demo-content', 'dark');
+    });
+
+    it('embeds the full brand config plus the resolved appId as a hydration script tag', async () => {
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(mockBuildInitialConfigScriptTag).toHaveBeenCalledWith({ ...FULL_CONFIG, appId: 'otta-web' });
+        expect(html).toContain('<script type="application/json" id="brand-initial-config">');
+    });
+
+    it('inserts payloads containing $-sequences verbatim (no String.replace expansion)', async () => {
+        // $' in a replacement STRING would splice in everything after </head>;
+        // the injector must use a replacer function so it stays literal.
+        mockBuildInitialConfigScriptTag.mockReturnValue(
+            '<script type="application/json" id="brand-initial-config">{"tagline":"only $\' left, $$ and $&"}</script>',
+        );
+        const body = '<html><head></head><body>MARKER-BODY</body></html>';
+
+        const injected = await injectBrandCriticalCSS(htmlResponse(body), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(html).toContain('{"tagline":"only $\' left, $$ and $&"}');
+        // Body must appear exactly once — $' expansion would duplicate it into <head>.
+        expect(html.match(/MARKER-BODY/g)).toHaveLength(1);
+    });
+
+    it('strips validators and forbids caching on injected HTML so stale config can never be 304-revived', async () => {
+        const response = htmlResponse(undefined, {
+            ETag: '"abc123"',
+            'Last-Modified': 'Wed, 01 Jul 2026 00:00:00 GMT',
+            'Cache-Control': 'public, max-age=3600',
+        });
+
+        const injected = await injectBrandCriticalCSS(response, htmlRequest(), env);
+
+        expect(injected.headers.get('ETag')).toBeNull();
+        expect(injected.headers.get('Last-Modified')).toBeNull();
+        expect(injected.headers.get('Cache-Control')).toBe('no-store');
+        expect(injected.headers.get('Content-Type')).toContain('text/html');
+    });
+
+    it('leaves non-HTML and failed responses untouched', async () => {
+        const jsonResponse = new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+        expect(await injectBrandCriticalCSS(jsonResponse, htmlRequest(), env)).toBe(jsonResponse);
+
+        const notModified = new Response(null, { status: 304 });
+        expect(await injectBrandCriticalCSS(notModified, htmlRequest(), env)).toBe(notModified);
+    });
+
+    it('still injects critical CSS when the hydration payload fails to serialize', async () => {
+        mockBuildInitialConfigScriptTag.mockImplementation(() => {
+            throw new Error('circular structure');
+        });
+
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(html).toContain('<style id="brand-critical">:root{--x:1}</style>');
+        expect(html).not.toContain('brand-initial-config');
     });
 
     it('returns an intact fallback response when injection fails after reading the body', async () => {
@@ -52,14 +152,7 @@ describe('injectBrandCriticalCSS', () => {
         });
 
         const originalHtml = '<html><head></head><body>Original</body></html>';
-        const response = new Response(originalHtml, {
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        });
-        const request = new Request('https://demo.ottabase.com/blog/demo-content', {
-            headers: { Accept: 'text/html' },
-        });
-
-        const fallback = await injectBrandCriticalCSS(response, request, env);
+        const fallback = await injectBrandCriticalCSS(htmlResponse(originalHtml), htmlRequest(), env);
 
         await expect(fallback.text()).resolves.toBe(originalHtml);
     });

@@ -27,5 +27,8 @@ export async function warmBrandCache(env: BrandApiEnv, target: WarmBrandCacheTar
             : 'appId' in target
               ? target.appId
               : null;
-    await resolveFullBrandConfig(env, { appId: warmAppId, skipCache: true }); // FORCE skipCache
+    // skipCacheRead: avoid re-reading a KV blob that may still be stale right
+    // after invalidate() due to KV's eventual consistency. The fresh D1
+    // result is always written back, which is what actually re-warms the cache.
+    await resolveFullBrandConfig(env, { appId: warmAppId, skipCacheRead: true });
 }

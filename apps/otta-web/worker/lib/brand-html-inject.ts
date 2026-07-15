@@ -1,11 +1,13 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Critical CSS injection for HTML responses (Zero FOUC)
-// Injects :root + .dark CSS vars into <head> before first paint.
-// Dual mode ensures brand theme applies universally on first paint for both light/dark.
+// Injects :root + .dark CSS vars into <head> before first paint, plus the full
+// resolved brand config as a JSON script tag so the client hydrates without
+// re-fetching /api/brand.
 // ---------------------------------------------------------------------------
 
-import { buildCriticalStyleTagDual } from '@ottabase/brand-engine';
-import { resolveBrandConfig } from '@ottabase/brand-engine/persistence';
+import { buildCriticalStyleTagDual, buildInitialConfigScriptTag } from '@ottabase/brand-engine';
+import { resolveConfigFromFull, resolveFullBrandConfig } from '@ottabase/brand-engine/persistence';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface BrandHtmlInjectEnv {
@@ -16,9 +18,9 @@ export interface BrandHtmlInjectEnv {
 }
 
 /**
- * If response is HTML, fetch brand config and inject critical CSS (light + dark) into <head>.
- * Returns original response if not HTML or on error.
- * Dual theme ensures correct palette on first paint regardless of user color scheme.
+ * If response is HTML, resolve the brand config once and inject into <head>:
+ * critical CSS (light + dark palettes) and the full config as a hydration
+ * payload. Returns original response if not HTML or on error.
  */
 export async function injectBrandCriticalCSS(
     response: Response,
@@ -31,16 +33,25 @@ export async function injectBrandCriticalCSS(
     try {
         const url = new URL(request.url);
         const path = url.pathname || '/';
-        const config = await resolveBrandConfig(env, {
-            appId: url.searchParams.get('appId') ?? request.headers.get('x-app-id') ?? null,
-            path,
-            mode: 'light', // Used for initial load; both palettes injected below
-        });
-        if (!config?.theme) return response;
+        // The worker's configured app id — the same source the client bundle
+        // resolves APP_ID from. Request-derived hints (?appId=, X-App-Id) are
+        // deliberately NOT consulted: a normal document navigation never
+        // carries them, and getOttabaseConfig guarantees a non-empty appId,
+        // so any fallback would be dead code.
+        const appId = getOttabaseConfig(env as unknown as Record<string, unknown>).appId;
 
-        // Use pre-resolved themes from server (already merged preset + tenant overrides)
-        const lightTheme = config.theme;
-        const darkTheme = config.darkTheme ?? config.theme;
+        // Single resolution serves both the critical CSS and the hydration
+        // payload — no duplicate KV reads, no version skew between the two.
+        const fullConfig = await resolveFullBrandConfig(env, { appId });
+        if (!fullConfig) return response;
+
+        // Path-scoped themes (route token overrides applied) for first paint;
+        // mirrors exactly what the client derives from the same full config.
+        const lightConfig = resolveConfigFromFull(fullConfig, path, 'light');
+        if (!lightConfig?.theme) return response;
+        const darkConfig = resolveConfigFromFull(fullConfig, path, 'dark');
+        const lightTheme = lightConfig.theme;
+        const darkTheme = darkConfig?.theme ?? lightTheme;
 
         // FIX: Clone before consuming body to prevent "Body has already been used" errors.
         // Problem: If we call response.text() and then something throws (e.g., theme
@@ -50,12 +61,37 @@ export async function injectBrandCriticalCSS(
         // Solution: Clone first — read from clone, keep original intact for fallback.
         const [forRead, fallback] = [response.clone(), response];
         const html = await forRead.text();
-        const criticalTag = buildCriticalStyleTagDual(lightTheme, darkTheme);
-        const injectedHtml = html.replace('</head>', `${criticalTag}\n    </head>`);
+        let headInjection = buildCriticalStyleTagDual(lightTheme, darkTheme);
+
+        // Hydration handoff: embed the resolved config (+ the appId it was
+        // resolved for) so BrandProvider skips its /api/brand mount fetch.
+        // Best effort — if serialization fails, critical CSS still lands and
+        // the client falls back to its normal fetch.
+        try {
+            headInjection += `\n    ${buildInitialConfigScriptTag({ ...fullConfig, appId })}`;
+        } catch {
+            // Hydration payload is a pure optimization — critical CSS above is unaffected.
+        }
+
+        // Replacer FUNCTION, not a replacement string: the payload carries
+        // tenant-authored free text (tagline, customCss, …) where sequences
+        // like $' or $$ would otherwise be expanded by String.replace and
+        // corrupt the document.
+        const injectedHtml = html.replace('</head>', () => `${headInjection}\n    </head>`);
+
+        // The injected HTML embeds per-request-resolved brand state, so it
+        // must never be served stale: strip the asset's validators (otherwise
+        // the browser 304-revalidates against the ORIGINAL asset and keeps
+        // old injected config forever) and forbid caching outright.
+        const headers = new Headers(fallback.headers);
+        headers.delete('ETag');
+        headers.delete('Last-Modified');
+        headers.set('Cache-Control', 'no-store');
+
         return new Response(injectedHtml, {
             status: fallback.status,
             statusText: fallback.statusText,
-            headers: fallback.headers,
+            headers,
         });
     } catch {
         // Safe: `response` (aliased as `fallback`) was never consumed — only the clone was.

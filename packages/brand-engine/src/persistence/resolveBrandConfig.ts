@@ -24,12 +24,13 @@ export interface ResolveBrandConfigEnv {
 export interface ResolveBrandConfigOptions {
     /** App ID – primary scope for brand resolution */
     appId?: string | null;
-    /** Current pathname – required for path-scoped resolution */
-    path: string;
-    /** Color scheme mode (light, dark, or custom scheme name) */
-    mode?: string;
-    /** Skip cache */
-    skipCache?: boolean;
+    /**
+     * Skip the cache READ, forcing a fresh D1 load (e.g. right after an
+     * invalidation, where KV's eventual consistency could still serve stale
+     * data). The freshly loaded result is always written back to cache
+     * afterward — there is no "resolve but don't cache" mode.
+     */
+    skipCacheRead?: boolean;
 }
 
 /** Full resolution data – all route mappings + all brand kits (both modes). Client resolves path locally. */
@@ -113,16 +114,16 @@ async function loadBrandKitsMap(brandKitIds: string[], r2Url: string): Promise<B
  */
 export async function resolveFullBrandConfig(
     env: ResolveBrandConfigEnv,
-    opts: Omit<ResolveBrandConfigOptions, 'path'> & { path?: string },
+    opts: ResolveBrandConfigOptions,
 ): Promise<FullBrandConfig | null> {
     const appId = opts.appId ?? null;
-    const skipCache = opts.skipCache ?? false;
+    const skipCacheRead = opts.skipCacheRead ?? false;
 
     const cache = createBrandCache(env.OBCF_KV);
     const r2Url = env.R2_PUBLIC_URL || '';
 
     // Dual-mode: cache is mode-neutral (both themes stored per kit)
-    if (!skipCache) {
+    if (!skipCacheRead) {
         const cached = await cache.getResolutionData(appId, 'all');
         if (cached)
             return {
@@ -147,100 +148,33 @@ export async function resolveFullBrandConfig(
         r2PublicUrl: r2Url,
     };
 
-    if (!skipCache) {
-        await cache.setResolutionData(appId, 'all', cacheData);
-    }
+    // Always cache a freshly loaded result — including when skipCacheRead
+    // forced this fresh load — so callers that intentionally bypassed a
+    // possibly-stale read (e.g. warmBrandCache after invalidation) actually
+    // leave the cache warm instead of a no-op.
+    await cache.setResolutionData(appId, 'all', cacheData);
     return fullConfig;
 }
 
 /**
- * Resolve brand config for an app at the given path.
- * Uses the mode-neutral cache (both themes stored per kit).
- * Picks the mode-appropriate theme from the kit's `theme`/`darkTheme`.
+ * Derive a path-scoped config from an already-resolved full config — pure CPU,
+ * no KV/D1 access. Mirrors the client's resolveConfigForPath (route match →
+ * kit lookup with deleted-kit fallback → mode merge → route token overrides),
+ * so edge-injected critical CSS and client hydration agree exactly.
  */
-export async function resolveBrandConfig(
-    env: ResolveBrandConfigEnv,
-    opts: ResolveBrandConfigOptions,
-): Promise<ResolvedBrandConfig | null> {
-    const appId = opts.appId ?? null;
-    const path = opts.path ?? '/';
-    const mode = opts.mode ?? 'light';
-    const skipCache = opts.skipCache ?? false;
-
-    const cache = createBrandCache(env.OBCF_KV);
-    const r2Url = env.R2_PUBLIC_URL || '';
-
-    // Try dual-mode cache first
-    if (!skipCache) {
-        const cached = await cache.getResolutionData(appId, 'all');
-        if (cached) {
-            const match = resolveRouteForPath(path, cached.routeMappings);
-            if (match) {
-                const kitData = cached.brandKitsMap[match.brandKitId];
-                if (kitData) {
-                    return buildConfigFromCache(cached, match, kitData, mode);
-                }
-            }
-        }
-    }
-
-    // Load fresh — loadBrandKitsMap resolves both modes
-    const layoutData = await getLayoutData(appId);
-    const match = resolveRouteForPath(path, layoutData.routeMappings);
-    if (!match) return null;
-
-    const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
-    const [brandKitsMap, menuSlots] = await Promise.all([loadBrandKitsMap(brandKitIds, r2Url), getMenuSlotData(appId)]);
-
-    const kitData = brandKitsMap[match.brandKitId];
-    if (!kitData) return null;
-
-    // Pick mode-appropriate theme
-    const baseTheme =
-        mode === 'dark' && kitData.darkTheme
-            ? (deepMerge(
-                  kitData.theme as unknown as Record<string, unknown>,
-                  kitData.darkTheme as Record<string, unknown>,
-              ) as unknown as typeof kitData.theme)
-            : kitData.theme;
-
-    // Apply per-route token overrides when present
-    let resolvedTheme = baseTheme;
-    if (match.tokenOverridesJson) {
-        try {
-            const overrides = JSON.parse(match.tokenOverridesJson) as Record<string, unknown>;
-            if (overrides && typeof overrides === 'object' && Object.keys(overrides).length > 0) {
-                resolvedTheme = deepMerge(
-                    resolvedTheme as unknown as Record<string, unknown>,
-                    overrides,
-                ) as unknown as typeof resolvedTheme;
-            }
-        } catch {
-            /* ignore malformed JSON */
-        }
-    }
-
-    const config: ResolvedBrandConfig = {
-        ...kitData,
-        theme: resolvedTheme,
-        defaultColorScheme: kitData.defaultColorScheme as 'light' | 'dark' | 'system',
-        layoutTemplateId: match.layoutTemplateId,
-        layoutTemplatesMap: layoutData.layoutTemplatesMap,
-        routeMappings: layoutData.routeMappings,
-        menuSlots,
+export function resolveConfigFromFull(
+    full: BrandResolutionCache,
+    path: string,
+    mode: string,
+): ResolvedBrandConfig | null {
+    const match = resolveRouteForPath(path, full.routeMappings) ?? {
+        layoutTemplateId: 'homepage',
+        brandKitId: Object.keys(full.brandKitsMap)[0],
+        tokenOverridesJson: undefined,
     };
-
-    if (!skipCache) {
-        const cacheData: BrandResolutionCache = {
-            routeMappings: layoutData.routeMappings,
-            layoutTemplatesMap: layoutData.layoutTemplatesMap,
-            menuSlots,
-            brandKitsMap,
-        };
-        await cache.setResolutionData(appId, 'all', cacheData);
-    }
-
-    return config;
+    const kitData = full.brandKitsMap[match.brandKitId] ?? Object.values(full.brandKitsMap)[0];
+    if (!kitData) return null;
+    return buildConfigFromCache(full, match, kitData, mode);
 }
 
 function buildConfigFromCache(

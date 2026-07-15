@@ -18,7 +18,7 @@ export { getMenuBySlug } from './menuData';
 export { MenuItem } from './MenuItem.model';
 export { MenuSlotAssignment } from './MenuSlotAssignment.model';
 export { getMenuSlotData } from './menuSlotData';
-export { resolveBrandConfig, resolveFullBrandConfig } from './resolveBrandConfig';
+export { resolveConfigFromFull, resolveFullBrandConfig } from './resolveBrandConfig';
 export type { FullBrandConfig, ResolveBrandConfigEnv, ResolveBrandConfigOptions } from './resolveBrandConfig';
 export {
     brandKitsTable,

@@ -217,6 +217,8 @@ export type ResolvedMenuSlotData = {
 };
 
 export interface FullBrandConfig {
+    /** App id the config was resolved for (present in edge-injected hydration payloads) */
+    appId?: string | null;
     routeMappings?: RouteMapping[];
     kit?: string;
     routes?: [string, string, number][];

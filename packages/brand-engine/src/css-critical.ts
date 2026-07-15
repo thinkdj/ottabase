@@ -10,6 +10,7 @@ import type { ResolvedBrandTheme } from './resolver';
 import { buildCSSVarMap } from './css-runtime';
 
 const CRITICAL_STYLE_ID = 'brand-critical';
+const INITIAL_CONFIG_ELEMENT_ID = 'brand-initial-config';
 
 /**
  * Builds a CSS string for :root with all theme variables.
@@ -56,4 +57,37 @@ export function buildCriticalStyleTagDual(lightTheme: ResolvedBrandTheme, darkTh
     return `<style id="${CRITICAL_STYLE_ID}">${css}</style>`;
 }
 
-export { CRITICAL_STYLE_ID };
+// Matches '<', '>', '&', and the two JSON-legal-but-JS-string-illegal line
+// terminators (U+2028, U+2029), referenced by code point to avoid embedding
+// invisible characters in this source file.
+const UNSAFE_INLINE_SCRIPT_CHARS = new RegExp(`[<>&${String.fromCharCode(0x2028)}${String.fromCharCode(0x2029)}]`, 'g');
+
+const INLINE_SCRIPT_ESCAPES: Record<string, string> = {
+    '<': '\\u003c',
+    '>': '\\u003e',
+    '&': '\\u0026',
+    [String.fromCharCode(0x2028)]: '\\u2028',
+    [String.fromCharCode(0x2029)]: '\\u2029',
+};
+
+/**
+ * Escapes a JSON string for safe embedding inside an inline <script> tag:
+ * prevents premature tag closure (and script injection) if a string value
+ * contains "</script>", and escapes U+2028/U+2029 which are valid in JSON
+ * but illegal unescaped in JS string literals in some engines.
+ */
+function escapeJsonForInlineScript(json: string): string {
+    return json.replace(UNSAFE_INLINE_SCRIPT_CHARS, (ch) => INLINE_SCRIPT_ESCAPES[ch] ?? ch);
+}
+
+/**
+ * Wraps the resolved brand config in a JSON <script> tag so the client can
+ * hydrate synchronously from what the edge already resolved, instead of
+ * re-fetching /api/brand on mount (zero-FOUC handoff, no redundant round-trip).
+ */
+export function buildInitialConfigScriptTag(config: unknown): string {
+    const json = escapeJsonForInlineScript(JSON.stringify(config));
+    return `<script type="application/json" id="${INITIAL_CONFIG_ELEMENT_ID}">${json}</script>`;
+}
+
+export { CRITICAL_STYLE_ID, INITIAL_CONFIG_ELEMENT_ID };

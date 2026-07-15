@@ -21,6 +21,8 @@ import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
 import { globalStore } from '@/ottabase/state/appState';
 import { ApiError } from '@ottabase/api';
+import { INITIAL_CONFIG_ELEMENT_ID } from '@ottabase/brand-engine';
+import type { FullBrandConfig } from '@ottabase/brand-engine-react';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
@@ -36,6 +38,26 @@ const appResources = {
         common: enApp,
     },
 };
+
+/**
+ * Reads the brand config the edge Worker already resolved and embedded in the
+ * HTML (see worker/lib/brand-html-inject.ts), so BrandProvider can hydrate
+ * synchronously instead of re-fetching /api/brand on mount. Read once at
+ * module load — this is a one-shot handoff, not a live data source.
+ * Exported for tests.
+ */
+export function readInjectedBrandConfig(): FullBrandConfig | undefined {
+    if (typeof document === 'undefined') return undefined;
+    const el = document.getElementById(INITIAL_CONFIG_ELEMENT_ID);
+    if (!el?.textContent) return undefined;
+    try {
+        return JSON.parse(el.textContent) as FullBrandConfig;
+    } catch {
+        return undefined;
+    }
+}
+
+const injectedBrandConfig = readInjectedBrandConfig();
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
@@ -117,7 +139,14 @@ function ProvidersInner({
     queryConfig: { defaultOptions: { queries: { retry: (n: number, err: unknown) => boolean } } };
 }) {
     return (
-        <BrandProvider apiEndpoint="/api/brand" appId={APP_ID}>
+        <BrandProvider
+            apiEndpoint="/api/brand"
+            // Prefer the appId the edge resolved the injected config for, so a
+            // deployment-time APP_ID env override can't make refresh()/fetch
+            // swap in a different app's brand mid-session.
+            appId={injectedBrandConfig?.appId ?? APP_ID}
+            initialConfig={injectedBrandConfig}
+        >
             <ProvidersCore fontFamilies={fontFamilies} queryConfig={queryConfig}>
                 {children}
             </ProvidersCore>

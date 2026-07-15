@@ -90,7 +90,8 @@ function hasDarkSplit(val: unknown): boolean {
  * Dark mode:   returns a DELTA (Partial<ResolvedBrandTheme>) containing only the tokens
  *              that have an explicit `{ light, dark }` ModeValue split in the source data.
  *              Colors and shadows are ALWAYS included in the dark delta (their dark defaults differ from light).
- *              The consumer (resolveBrandConfig) deep-merges lightTheme + darkDelta at request time.
+ *              Consumers (resolveConfigFromFull server-side, resolveConfigForPath client-side)
+ *              deep-merge lightTheme + darkDelta at request time.
  */
 export async function brandKitToTheme(kit: BrandKit, mode: 'light'): Promise<ResolvedBrandTheme>;
 export async function brandKitToTheme(kit: BrandKit, mode: 'dark'): Promise<Partial<ResolvedBrandTheme>>;

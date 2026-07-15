@@ -59,10 +59,12 @@ export {
 export type { SemanticPalette } from './colors';
 export {
     CRITICAL_STYLE_ID,
+    INITIAL_CONFIG_ELEMENT_ID,
     buildCriticalCSS,
     buildCriticalCSSDual,
     buildCriticalStyleTag,
     buildCriticalStyleTagDual,
+    buildInitialConfigScriptTag,
 } from './css-critical';
 export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './css-runtime';
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
