@@ -206,7 +206,7 @@ describe('Shortlink Page Renderers', () => {
             });
             const html = await response.text();
 
-            expect(html).toContain('<div class="count" id="countdown">');
+            expect(html).toContain('<span id="countdown">');
         });
 
         it('should include theme detection script', async () => {
@@ -258,13 +258,13 @@ describe('Shortlink Page Renderers', () => {
             expect(html).toContain('rel="noopener noreferrer"');
         });
 
-        it('should have title "Redirecting…"', async () => {
+        it('should have title "Opening link…"', async () => {
             const response = renderShortlinkInterstitialPage({
                 url: 'https://example.com',
             });
             const html = await response.text();
 
-            expect(html).toContain('<title>Redirecting…</title>');
+            expect(html).toContain('<title>Opening link…</title>');
         });
 
         it('should include proper content structure', async () => {
@@ -285,7 +285,7 @@ describe('Shortlink Page Renderers', () => {
             });
             const html = await response.text();
 
-            expect(html).toContain('<div class="count" id="countdown">15</div>');
+            expect(html).toContain('<span id="countdown">15</span>');
         });
 
         it('should have valid HTML structure', async () => {
