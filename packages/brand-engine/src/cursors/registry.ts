@@ -57,6 +57,7 @@ const COLORWAYS: Record<string, { fill: string; edge: string; halo?: string }> =
     emerald: { fill: '#10b981', edge: '#047857' }, // jewel emerald; pairs with funky/verdant greens
     violet: { fill: '#6d54cf', edge: '#4f38a8' }, // midnight hsl(252 56% 57%)
     azure: { fill: '#2563eb', edge: '#1d4ed8' }, // default  hsl(221.2 83.2% 53.3%)
+    fauscia: { fill: '#d82042', edge: '#bb1c39' }, // upp      hsl(348.9 74.2% 48.6%)
 };
 
 const colorwayEntries: Record<string, CursorDef> = {};

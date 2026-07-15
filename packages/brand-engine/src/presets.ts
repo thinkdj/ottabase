@@ -10,6 +10,7 @@ import funkyTheme from './themes/funky.json';
 import midnightTheme from './themes/midnight.json';
 import neoTheme from './themes/neo.json';
 import roseTheme from './themes/rose.json';
+import uppTheme from './themes/upp.json';
 import verdantTheme from './themes/verdant.json';
 
 export type PresetTheme = {
@@ -35,6 +36,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     midnightTheme as PresetTheme,
     roseTheme as PresetTheme,
     verdantTheme as PresetTheme,
+    uppTheme as PresetTheme,
 ];
 
 /** Map of theme presets by name (for lookup during expansion) */
@@ -47,4 +49,5 @@ export const PRESET_MAP: Record<string, PresetTheme> = {
     midnight: midnightTheme as PresetTheme,
     rose: roseTheme as PresetTheme,
     verdant: verdantTheme as PresetTheme,
+    upp: uppTheme as PresetTheme,
 };

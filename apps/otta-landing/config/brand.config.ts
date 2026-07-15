@@ -15,6 +15,6 @@ export const brandConfig: Partial<BrandTheme> = {
 
 /**
  * Theme preset to use
- * Available presets: 'default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'
+ * Available presets: 'default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant', 'upp'
  */
 export const themePreset = 'crisp';

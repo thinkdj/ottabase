@@ -31,6 +31,7 @@ export const GOOGLE_FONTS: GoogleFontMeta[] = [
     { family: 'Lexend', category: 'sans-serif', weights: [400, 500, 600, 700] },
     { family: 'Sora', category: 'sans-serif', weights: [400, 500, 600, 700] },
     { family: 'Figtree', category: 'sans-serif', weights: [400, 500, 600, 700] },
+    { family: 'Archivo', category: 'sans-serif', weights: [400, 500, 600, 700, 800, 900] },
     // Serif (headings, body)
     { family: 'Playfair Display', category: 'serif', weights: [400, 500, 600, 700] },
     { family: 'Merriweather', category: 'serif', weights: [400, 700] },
@@ -63,6 +64,7 @@ export const GOOGLE_FONTS: GoogleFontMeta[] = [
     { family: 'JetBrains Mono', category: 'monospace', weights: [400, 500, 600, 700] },
     { family: 'Fira Code', category: 'monospace', weights: [400, 500, 600, 700] },
     { family: 'Source Code Pro', category: 'monospace', weights: [400, 500, 600, 700] },
+    { family: 'Spline Sans Mono', category: 'monospace', weights: [400, 500, 600] },
 ];
 
 /** Build Google Fonts URL for a single font family and weights */
