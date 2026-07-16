@@ -102,12 +102,7 @@ const TOKEN_USAGE: Record<string, string> = {
     'popover-foreground': 'Text inside dropdowns & tooltips',
 };
 
-/**
- * Reusable color swatch – smooth edges (avoids jagged borders).
- * Uses an inset ring instead of border (renders cleaner on small elements),
- * and translateZ(0) to promote to GPU layer for better anti-aliasing.
- */
-export const colorSwatchClass = 'shrink-0 rounded ring-1 ring-inset ring-border/60 [transform:translateZ(0)]';
+export const colorSwatchClass = 'shrink-0 rounded border border-border/60';
 
 /** Custom renderer for theme preset items in OttaSelect dropdown (render function, not a component) */
 const themePresetRenderer = ({ item }: ItemRendererProps) => (
@@ -633,11 +628,11 @@ export function BrandKitThemeTab({
                         <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Primary scale (50–950)
                         </p>
-                        <div className="flex rounded-md overflow-hidden ring-1 ring-inset ring-border/60 [transform:translateZ(0)]">
+                        <div className="flex rounded-md overflow-hidden border border-border/60">
                             {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => (
                                 <div
                                     key={step}
-                                    className="flex-1 h-8 relative group [transform:translateZ(0)]"
+                                    className="flex-1 h-8 relative group"
                                     style={{ backgroundColor: primaryGradient[step] }}
                                     title={`${step}: ${primaryGradient[step]}`}
                                 >

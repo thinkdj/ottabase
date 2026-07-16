@@ -130,11 +130,8 @@ function KitSpecimen({ kit, logoBaseUrl }: { kit: BrandKitItem; logoBaseUrl: str
                     {['secondary', 'accent', 'muted', 'destructive'].map((token) => (
                         <span
                             key={token}
-                            className="h-3.5 w-3.5 rounded-full"
-                            style={{
-                                backgroundColor: `hsl(var(--${token}))`,
-                                boxShadow: 'inset 0 0 0 1px hsl(var(--border))',
-                            }}
+                            className="h-3.5 w-3.5 rounded-full border border-border"
+                            style={{ backgroundColor: `hsl(var(--${token}))` }}
                             title={token}
                         />
                     ))}
