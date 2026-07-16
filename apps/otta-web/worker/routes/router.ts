@@ -39,7 +39,7 @@ import {
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
 } from './admin-organization-members';
-import { handleAdminPromoteOwner } from './admin-owner';
+import { handleAdminPromotePlatformOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
     handleAdminQueuesDLQList,
@@ -271,7 +271,7 @@ apiRouter.post('/api/analytics/track', (c) =>
 apiRouter.get('/api/audit/logs', h(handleAuditLogs));
 
 // -------------------------------------------------------
-// Admin: users, roles, owner, organizations
+// Admin: users, roles, platform owner, organizations
 // -------------------------------------------------------
 apiRouter.get('/api/admin/users', h(handleAdminUsers));
 apiRouter.get('/api/admin/users/search', h(handleAdminUserSearch));
@@ -280,7 +280,7 @@ apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
 apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
 apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
 apiRouter.delete('/api/admin/roles/:roleId', (c) => handleAdminRoleDelete(ctxOf(c), c.params.roleId));
-apiRouter.post('/api/admin/owner/promote', h(handleAdminPromoteOwner));
+apiRouter.post('/api/admin/platform-owner/promote', h(handleAdminPromotePlatformOwner));
 apiRouter.get('/api/admin/organizations/:organizationId/members', (c) =>
     handleAdminOrganizationMembersList(ctxOf(c), c.params.organizationId),
 );

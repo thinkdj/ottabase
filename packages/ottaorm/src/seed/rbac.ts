@@ -9,9 +9,18 @@ import { Permission, Role } from '../models';
  */
 export const DEFAULT_ROLES = [
     {
+        // Bootstrapped app owner — granted at SYSTEM scope to the first user only.
+        // Distinct from 'owner', which is granted org-scoped (mirrors organization_members.role).
+        id: '00000000-0000-0000-0000-000000000006',
+        name: 'platform_owner',
+        description: 'Platform owner (bootstrapped app owner) with full privileges',
+        permissions: ['*:*'],
+        isSystem: true,
+    },
+    {
         id: '00000000-0000-0000-0000-000000000000',
         name: 'owner',
-        description: 'System owner with full privileges',
+        description: 'Organization owner with full privileges (org-scoped)',
         permissions: ['*:*'],
         isSystem: true,
     },

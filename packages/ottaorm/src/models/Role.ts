@@ -210,8 +210,15 @@ export class Role extends BaseModel {
     static async ensureDefaultRoles() {
         const defaultRoles = [
             {
+                // Bootstrapped app owner — granted at SYSTEM scope to the first user only
+                name: 'platform_owner',
+                description: 'Platform owner (bootstrapped app owner) with full privileges',
+                permissions: JSON.stringify(['*:*']),
+                isSystem: true,
+            },
+            {
                 name: 'owner',
-                description: 'System owner (all permissions)',
+                description: 'Organization owner with full privileges (org-scoped)',
                 permissions: JSON.stringify(['*:*']),
                 isSystem: true,
             },

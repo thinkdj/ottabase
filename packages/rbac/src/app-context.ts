@@ -310,10 +310,10 @@ export function hasAllRoles(context: AppContext, roles: string[]): boolean {
 }
 
 /**
- * Check if user is owner or admin in the organization
+ * Check if user is owner or admin in the organization (or the platform owner)
  */
 export function isOwnerOrAdmin(context: AppContext): boolean {
-    return hasAnyRole(context, ['owner', 'admin']);
+    return hasAnyRole(context, ['platform_owner', 'owner', 'admin']);
 }
 
 /**

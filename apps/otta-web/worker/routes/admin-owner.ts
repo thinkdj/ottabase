@@ -13,7 +13,7 @@ function clean(value: string | null): string | null {
     return trimmed;
 }
 
-export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise<Response> {
+export async function handleAdminPromotePlatformOwner(context: ApiRouteContext): Promise<Response> {
     const { env, request } = context;
     initDbConnection(env);
 
@@ -53,17 +53,17 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
     }
 
     await Role.ensureDefaultRoles();
-    const ownerRole = await Role.findByName('owner');
-    if (!ownerRole) {
-        return errorResponse('Owner role is missing', 500, { code: 'ROLE_MISSING' });
+    const platformOwnerRole = await Role.findByName('platform_owner');
+    if (!platformOwnerRole) {
+        return errorResponse('Platform owner role is missing', 500, { code: 'ROLE_MISSING' });
     }
 
-    await user.assignRole(ownerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
+    await user.assignRole(platformOwnerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
 
     return jsonResponse({
         success: true,
         userId: user.get('id'),
-        role: ownerRole.get('name'),
+        role: platformOwnerRole.get('name'),
         organizationId: SYSTEM_ORGANIZATION_ID,
     });
 }

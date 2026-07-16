@@ -80,7 +80,7 @@ describe('requireAdminAccess', () => {
         expect((result as Response).status).toBe(403);
     });
 
-    it('allows system owner', async () => {
+    it('allows platform owner (system scope)', async () => {
         const { getRequestContext } = await import('@ottabase/rbac/request-context');
         const { assertAdmin, SYSTEM_ORGANIZATION_ID } = await import('@ottabase/rbac/admin-guard');
         (getRequestContext as any).mockResolvedValue({
@@ -88,7 +88,7 @@ describe('requireAdminAccess', () => {
             user: mockUser,
             organizationId: SYSTEM_ORGANIZATION_ID,
             appId: 'web',
-            roles: ['owner'],
+            roles: ['platform_owner'],
             permissions: ['*:*'],
             isAuthenticated: true,
             isSystemScope: true,

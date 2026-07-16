@@ -153,7 +153,7 @@ export const RLSPolicies = {
      */
     AdminOnly: (): RLSPolicy => ({
         level: 'custom',
-        requiredRoles: ['admin', 'owner'],
+        requiredRoles: ['admin', 'owner', 'platform_owner'],
     }),
 
     /**

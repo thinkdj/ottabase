@@ -1,7 +1,11 @@
 import type { ModelRLSConfig, SecurityContext } from '@ottabase/ottaorm';
 
 function hasManageAllAccess(context: SecurityContext): boolean {
-    if (context.roles?.includes('admin') || context.roles?.includes('owner')) {
+    if (
+        context.roles?.includes('admin') ||
+        context.roles?.includes('owner') ||
+        context.roles?.includes('platform_owner')
+    ) {
         return true;
     }
 

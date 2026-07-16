@@ -36,7 +36,14 @@ export function hasPermission(context: RequestContext, permission: string): bool
 }
 
 function hasAdminRole(context: RequestContext): boolean {
-    return context.roles.includes('owner') || context.roles.includes('admin') || context.permissions.includes('*:*');
+    // 'platform_owner' is the bootstrapped app owner (system-scope grant);
+    // 'owner'/'admin' are org-scoped grants for the active organization.
+    return (
+        context.roles.includes('platform_owner') ||
+        context.roles.includes('owner') ||
+        context.roles.includes('admin') ||
+        context.permissions.includes('*:*')
+    );
 }
 
 export function assertAdmin(
