@@ -78,7 +78,7 @@ export function ThemingDemoPage() {
     const previewResolved = useMemo(
         () =>
             resolveTheme({
-                base: getThemeOrDefault(localThemeName || 'default'),
+                base: getThemeOrDefault(localThemeName || 'verdant'),
                 mode: previewMode,
             }),
         [localThemeName, previewMode],

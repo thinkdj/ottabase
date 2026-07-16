@@ -6,23 +6,25 @@ import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-e
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconActivity,
     IconArrowLeft,
     IconArrowRight,
     IconBadge,
     IconDownload,
+    IconMoon,
     IconPalette,
     IconPhoto,
     IconPointer,
     IconSettings,
+    IconSun,
     IconTrash,
     IconTypography,
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
@@ -34,6 +36,48 @@ import { BrandKitMotionTab } from './brand/BrandKitMotionTab';
 import { BrandKitThemeTab, colorSwatchClass } from './brand/BrandKitThemeTab';
 
 const VALID_TABS = ['brand', 'logo', 'theme', 'fonts', 'motion', 'cursors', 'advanced'] as const;
+
+/** Editor sections, in tab order */
+const TAB_DEFS: Array<{ value: (typeof VALID_TABS)[number]; label: string; icon: typeof IconBadge }> = [
+    { value: 'brand', label: 'Brand', icon: IconBadge },
+    { value: 'logo', label: 'Logo', icon: IconPhoto },
+    { value: 'theme', label: 'Theme', icon: IconPalette },
+    { value: 'fonts', label: 'Fonts', icon: IconTypography },
+    { value: 'motion', label: 'Motion', icon: IconActivity },
+    { value: 'cursors', label: 'Cursors', icon: IconPointer },
+    { value: 'advanced', label: 'Advanced', icon: IconSettings },
+];
+
+/**
+ * Serializes exactly the fields the Save button persists, so unsaved-change
+ * detection can't false-positive on logo uploads (those persist immediately
+ * and are intentionally excluded from the Save payload).
+ */
+function savableSnapshot(src: {
+    name?: string | null;
+    brandName?: string | null;
+    tagline?: string | null;
+    parentBrandKitId?: string | null;
+    tokensJson?: string | null;
+    themePresetId?: string | null;
+    defaultColorScheme?: string | null;
+    allowDarkModeToggle?: boolean | null;
+    customCss?: string | null;
+    hideOttabaseBranding?: boolean | null;
+}): string {
+    return JSON.stringify({
+        name: src.name ?? '',
+        brandName: src.brandName ?? 'My App',
+        tagline: src.tagline ?? '',
+        parentBrandKitId: src.parentBrandKitId ?? null,
+        tokensJson: src.tokensJson ?? '{}',
+        themePresetId: src.themePresetId ?? null,
+        defaultColorScheme: src.defaultColorScheme ?? 'system',
+        allowDarkModeToggle: src.allowDarkModeToggle ?? true,
+        customCss: src.customCss ?? '',
+        hideOttabaseBranding: src.hideOttabaseBranding ?? false,
+    });
+}
 
 /** Preview panel – reflects current draft (colors, fonts, motion, shadows) in realtime */
 function BrandKitPreviewPanel({
@@ -250,10 +294,13 @@ export function AdminBrandKitDetailPage() {
         emailLogoKey: null as string | null,
     });
     const [tab, setTab] = useState<(typeof VALID_TABS)[number]>('brand');
+    const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('light');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     useEffect(() => {
         if (kit) {
+            // Preview in the scheme the brand actually ships with
+            setPreviewMode(kit.defaultColorScheme === 'dark' ? 'dark' : 'light');
             setDraft({
                 name: kit.name ?? '',
                 brandName: kit.brandName ?? 'My App',
@@ -309,7 +356,14 @@ export function AdminBrandKitDetailPage() {
         onError: () => toast.error('Failed to delete'),
     });
 
+    const saving = isNew ? createMutation.isPending : updateMutation.isPending;
+
+    // Unsaved-change detection over exactly the fields Save persists
+    const baseline = useMemo(() => (kit ? savableSnapshot(kit) : null), [kit]);
+    const isDirty = isNew ? true : baseline !== null && savableSnapshot(draft) !== baseline;
+
     const handleSave = () => {
+        if (saving || (!isNew && !isDirty)) return;
         const payload = {
             name: draft.name?.trim() || draft.brandName || 'New Brand Kit',
             brandName: draft.brandName || 'My App',
@@ -329,6 +383,21 @@ export function AdminBrandKitDetailPage() {
             updateMutation.mutate(payload);
         }
     };
+
+    // Cmd/Ctrl+S saves – matches the "editor" mental model of this page.
+    // Ref indirection keeps the listener mounted once while always calling the latest closure.
+    const saveRef = useRef(handleSave);
+    saveRef.current = handleSave;
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveRef.current();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
 
     const handleDelete = () => {
         if (deleteMutation.isPending || !kit) return;
@@ -425,7 +494,7 @@ export function AdminBrandKitDetailPage() {
                     <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
                     <div className="h-9 w-48 animate-pulse rounded-xl bg-muted/40" />
                 </div>
-                <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
+                <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
                     <div className="h-96 animate-pulse rounded-xl bg-muted/40" />
                     <div className="space-y-4">
                         <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
@@ -461,26 +530,29 @@ export function AdminBrandKitDetailPage() {
     const logoBaseUrl = config?.r2PublicUrl ?? '';
     const logoUrls = getLogoUrls({ ...kitForView, ...draft } as BrandKitItem, logoBaseUrl);
     const isDefaultKit = Boolean(kitForView.isDefault);
-    const saving = isNew ? createMutation.isPending : updateMutation.isPending;
 
     return (
         <div className="space-y-8">
             <div className="space-y-4">
-                <Link to="/admin/appearance/brand-kits">
-                    <button
-                        type="button"
-                        className="-ml-2 inline-flex h-9 w-fit items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
+                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
+                    <Link to="/admin/appearance/brand-kits">
                         <IconArrowLeft className="h-4 w-4" />
                         Back to Kits
-                    </button>
-                </Link>
+                    </Link>
+                </Button>
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                            {draft.name || kitForView.name}
-                        </h1>
+                    <div className="min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <h1 className="truncate text-2xl font-bold tracking-tight md:text-3xl">
+                                {draft.name || kitForView.name}
+                            </h1>
+                            {isDefaultKit && (
+                                <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Default
+                                </span>
+                            )}
+                        </div>
                         {!isNew ? (
                             <Link
                                 to="/admin/appearance/layouts"
@@ -492,69 +564,60 @@ export function AdminBrandKitDetailPage() {
                         ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                        <button
-                            type="button"
-                            className="inline-flex h-9 items-center rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors duration-normal hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        {!isNew && isDirty && !saving ? (
+                            <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex">
+                                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                                Unsaved changes
+                            </span>
+                        ) : null}
+                        <Button
+                            variant="outline"
                             onClick={handleDownloadKit}
                             title="Download kit as JSON backup (ottabase_&lt;name&gt;_YYYYMMDD.json)"
                         >
                             <IconDownload className="mr-2 h-4 w-4" />
                             Download
-                        </button>
+                        </Button>
                         {isNew || isDefaultKit ? null : (
-                            <button
-                                type="button"
-                                className="inline-flex h-9 items-center rounded-md border border-destructive/40 px-4 text-sm font-medium text-destructive transition-colors duration-normal hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                            <Button
+                                variant="outline"
+                                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 onClick={handleDelete}
                                 disabled={deleteMutation.isPending}
                             >
                                 <IconTrash className="mr-2 h-4 w-4" />
                                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                            </button>
+                            </Button>
                         )}
-                        <button
-                            type="button"
-                            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-normal hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            {saving ? (isNew ? 'Creating...' : 'Saving...') : isNew ? 'Create Brand Kit' : 'Save'}
-                        </button>
+                        <Button onClick={handleSave} disabled={saving || (!isNew && !isDirty)} title="Save (Ctrl+S)">
+                            {saving
+                                ? isNew
+                                    ? 'Creating...'
+                                    : 'Saving...'
+                                : isNew
+                                  ? 'Create Brand Kit'
+                                  : isDirty
+                                    ? 'Save changes'
+                                    : 'Saved'}
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
+            <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof VALID_TABS)[number])} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:w-auto lg:inline-flex lg:flex-wrap">
-                        <TabsTrigger value="brand">
-                            <IconBadge className="h-4 w-4 mr-2" />
-                            Brand
-                        </TabsTrigger>
-                        <TabsTrigger value="logo">
-                            <IconPhoto className="h-4 w-4 mr-2" />
-                            Logo
-                        </TabsTrigger>
-                        <TabsTrigger value="theme">
-                            <IconPalette className="h-4 w-4 mr-2" />
-                            Theme
-                        </TabsTrigger>
-                        <TabsTrigger value="fonts">
-                            <IconTypography className="h-4 w-4 mr-2" />
-                            Fonts
-                        </TabsTrigger>
-                        <TabsTrigger value="motion">
-                            <IconActivity className="h-4 w-4 mr-2" />
-                            Motion
-                        </TabsTrigger>
-                        <TabsTrigger value="cursors">
-                            <IconPointer className="h-4 w-4 mr-2" />
-                            Cursors
-                        </TabsTrigger>
-                        <TabsTrigger value="advanced">
-                            <IconSettings className="h-4 w-4 mr-2" />
-                            Advanced
-                        </TabsTrigger>
+                    {/* Underline tabs: scroll horizontally instead of wrapping into a grid */}
+                    <TabsList className="mb-2 h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
+                        {TAB_DEFS.map(({ value, label, icon: TabIcon }) => (
+                            <TabsTrigger
+                                key={value}
+                                value={value}
+                                className="-mb-px min-w-0 shrink-0 gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 pb-2.5 pt-2 text-muted-foreground shadow-none transition-colors duration-normal hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                            >
+                                <TabIcon className="h-4 w-4" />
+                                {label}
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
 
                     <TabsContent value="brand">
@@ -624,42 +687,49 @@ export function AdminBrandKitDetailPage() {
                     </TabsContent>
                 </Tabs>
 
-                {/* Realtime preview – light and dark stacked */}
-                <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-                    <div>
+                {/* Realtime preview – one panel, light/dark toggle */}
+                <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+                    <div className="flex items-center justify-between gap-2">
                         <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Live preview
                         </p>
-                        {hasColorOverrides ? (
-                            <p className="mt-1 text-xs text-warning">Showing custom token colors (overrides preset).</p>
-                        ) : null}
+                        <div className="flex rounded-lg bg-muted p-0.5" role="group" aria-label="Preview color scheme">
+                            {(['light', 'dark'] as const).map((m) => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => setPreviewMode(m)}
+                                    aria-pressed={previewMode === m}
+                                    className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium capitalize transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                        previewMode === m
+                                            ? 'bg-background text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    {m === 'light' ? (
+                                        <IconSun className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <IconMoon className="h-3.5 w-3.5" />
+                                    )}
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Light
-                        </p>
-                        <BrandKitPreviewPanel
-                            kitData={{
-                                tokensJson: draft.tokensJson,
-                                themePresetId: draft.themePresetId,
-                            }}
-                            mode="light"
-                            logos={logoUrls}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Dark
-                        </p>
-                        <BrandKitPreviewPanel
-                            kitData={{
-                                tokensJson: draft.tokensJson,
-                                themePresetId: draft.themePresetId,
-                            }}
-                            mode="dark"
-                            logos={logoUrls}
-                        />
-                    </div>
+                    {hasColorOverrides ? (
+                        <p className="text-xs text-warning">Showing custom token colors (overrides preset).</p>
+                    ) : null}
+                    <BrandKitPreviewPanel
+                        kitData={{
+                            tokensJson: draft.tokensJson,
+                            themePresetId: draft.themePresetId,
+                        }}
+                        mode={previewMode}
+                        logos={logoUrls}
+                    />
+                    <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
+                        Edits preview instantly — save to publish them.
+                    </p>
                 </div>
             </div>
 

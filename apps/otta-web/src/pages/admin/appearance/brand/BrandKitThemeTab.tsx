@@ -198,7 +198,7 @@ export function BrandKitThemeTab({
         });
     }, [apiPresets]);
 
-    const selectedId = themePresetId ?? 'default';
+    const selectedId = themePresetId ?? 'verdant';
     const selectedItem = themePresetItems.find((t) => t.id === selectedId) ?? themePresetItems[0];
 
     // Get full preset data for color expansion

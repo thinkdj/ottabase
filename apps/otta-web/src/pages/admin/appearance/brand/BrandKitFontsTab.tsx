@@ -179,7 +179,7 @@ interface BrandKitFontsTabProps {
 }
 
 export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange, hasParent }: BrandKitFontsTabProps) {
-    const presetTypo = getThemeOrDefault(themePresetId || 'default').tokens?.typography;
+    const presetTypo = getThemeOrDefault(themePresetId || 'verdant').tokens?.typography;
 
     const parsed = useMemo(() => {
         try {

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
-import { useBrandComponent } from '../../providers/brand-components';
+import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 

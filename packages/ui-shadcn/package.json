@@ -287,6 +287,11 @@
             "import": "./dist/providers.mjs",
             "require": "./dist/providers.js"
         },
+        "./brand-components": {
+            "types": "./dist/brand-components.d.ts",
+            "import": "./dist/brand-components.mjs",
+            "require": "./dist/brand-components.js"
+        },
         "./styles.css": "./styles/shadcn.css"
     },
     "files": [

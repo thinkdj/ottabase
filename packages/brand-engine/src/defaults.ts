@@ -5,95 +5,95 @@
 import type { BrandTheme } from './theme';
 import type { ResolvedMotion, TokenColors, TokenCursors, TokenSpacing, TokenTypographyRoles } from './tokens';
 
-/** Default light-mode colour palette */
+/** Default light-mode colour palette (verdant) */
 export const DEFAULT_COLORS_LIGHT: TokenColors = {
-    background: '0 0% 100%',
-    foreground: '222.2 84% 4.9%',
-    primary: '221.2 83.2% 53.3%',
-    'primary-foreground': '210 40% 98%',
-    secondary: '210 40% 96.1%',
-    'secondary-foreground': '222.2 47.4% 11.2%',
-    muted: '210 40% 96.1%',
-    'muted-foreground': '215.4 16.3% 46.9%',
-    accent: '210 40% 96.1%',
-    'accent-foreground': '222.2 47.4% 11.2%',
-    destructive: '0 84.2% 60.2%',
-    'destructive-foreground': '210 40% 98%',
-    border: '214.3 31.8% 91.4%',
-    input: '214.3 31.8% 91.4%',
-    ring: '221.2 83.2% 53.3%',
+    background: '138 18% 97%',
+    foreground: '148 22% 10%',
+    primary: '156 52% 34%',
+    'primary-foreground': '0 0% 100%',
+    secondary: '140 16% 92%',
+    'secondary-foreground': '148 22% 14%',
+    muted: '140 14% 93%',
+    'muted-foreground': '142 8% 46%',
+    accent: '156 52% 34%',
+    'accent-foreground': '0 0% 100%',
+    destructive: '4 74% 52%',
+    'destructive-foreground': '0 0% 100%',
+    border: '140 12% 88%',
+    input: '140 12% 88%',
+    ring: '156 52% 34%',
     card: '0 0% 100%',
-    'card-foreground': '222.2 84% 4.9%',
+    'card-foreground': '148 22% 10%',
     popover: '0 0% 100%',
-    'popover-foreground': '222.2 84% 4.9%',
-    'sidebar-background': '210 40% 97%',
-    'sidebar-foreground': '222.2 47.4% 11.2%',
-    'sidebar-border': '214.3 31.8% 91.4%',
-    'sidebar-accent': '221.2 83.2% 53.3%',
-    'sidebar-accent-foreground': '221.2 83.2% 53.3%',
-    'sidebar-ring': '221.2 83.2% 53.3%',
-    success: '150 60% 40%',
+    'popover-foreground': '148 22% 10%',
+    'sidebar-background': '138 16% 95%',
+    'sidebar-foreground': '148 18% 18%',
+    'sidebar-border': '140 12% 88%',
+    'sidebar-accent': '156 52% 34%',
+    'sidebar-accent-foreground': '0 0% 100%',
+    'sidebar-ring': '156 52% 34%',
+    success: '162 60% 36%',
     'success-foreground': '0 0% 100%',
-    warning: '36 86% 50%',
-    'warning-foreground': '26 54% 14%',
-    info: '206 78% 52%',
+    warning: '42 82% 46%',
+    'warning-foreground': '32 48% 14%',
+    info: '202 74% 48%',
     'info-foreground': '0 0% 100%',
-    'chart-1': '221.2 83.2% 53.3%',
-    'chart-2': '150 60% 40%',
-    'chart-3': '36 86% 50%',
-    'chart-4': '280 56% 52%',
-    'chart-5': '14 78% 54%',
+    'chart-1': '156 52% 34%',
+    'chart-2': '202 74% 48%',
+    'chart-3': '42 82% 46%',
+    'chart-4': '286 42% 50%',
+    'chart-5': '18 70% 52%',
     overlay: '0 0% 0%',
 };
 
-/** Default dark-mode colour palette */
+/** Default dark-mode colour palette (verdant) */
 export const DEFAULT_COLORS_DARK: TokenColors = {
-    background: '222.2 84% 4.9%',
-    foreground: '210 40% 98%',
-    primary: '217.2 91.2% 59.8%',
-    'primary-foreground': '222.2 47.4% 11.2%',
-    secondary: '217.2 32.6% 17.5%',
-    'secondary-foreground': '210 40% 98%',
-    muted: '217.2 32.6% 17.5%',
-    'muted-foreground': '215 20.2% 65.1%',
-    accent: '217.2 32.6% 17.5%',
-    'accent-foreground': '210 40% 98%',
-    destructive: '0 62.8% 30.6%',
-    'destructive-foreground': '210 40% 98%',
-    border: '217.2 32.6% 17.5%',
-    input: '217.2 32.6% 17.5%',
-    ring: '224.3 76.3% 48%',
-    card: '222.2 84% 4.9%',
-    'card-foreground': '210 40% 98%',
-    popover: '222.2 84% 4.9%',
-    'popover-foreground': '210 40% 98%',
-    'sidebar-background': '222.2 70% 7%',
-    'sidebar-foreground': '215 20.2% 65.1%',
-    'sidebar-border': '217.2 32.6% 17.5%',
-    'sidebar-accent': '217.2 91.2% 59.8%',
-    'sidebar-accent-foreground': '217.2 91.2% 59.8%',
-    'sidebar-ring': '217.2 91.2% 59.8%',
-    success: '154 56% 48%',
-    'success-foreground': '222.2 84% 4.9%',
-    warning: '40 82% 56%',
-    'warning-foreground': '222.2 84% 4.9%',
-    info: '210 74% 58%',
-    'info-foreground': '222.2 84% 4.9%',
-    'chart-1': '217.2 91.2% 59.8%',
-    'chart-2': '154 56% 48%',
-    'chart-3': '40 82% 56%',
-    'chart-4': '284 52% 58%',
-    'chart-5': '18 74% 60%',
+    background: '148 24% 6%',
+    foreground: '138 14% 86%',
+    primary: '156 48% 46%',
+    'primary-foreground': '148 24% 6%',
+    secondary: '146 16% 13%',
+    'secondary-foreground': '138 14% 86%',
+    muted: '146 16% 13%',
+    'muted-foreground': '140 10% 54%',
+    accent: '156 48% 46% / 0.12',
+    'accent-foreground': '156 48% 52%',
+    destructive: '4 66% 42%',
+    'destructive-foreground': '138 14% 90%',
+    border: '146 14% 12%',
+    input: '146 14% 12%',
+    ring: '156 48% 46%',
+    card: '148 20% 9%',
+    'card-foreground': '138 14% 86%',
+    popover: '148 20% 9%',
+    'popover-foreground': '138 14% 86%',
+    'sidebar-background': '148 22% 7%',
+    'sidebar-foreground': '140 10% 66%',
+    'sidebar-border': '146 14% 10%',
+    'sidebar-accent': '156 48% 46% / 0.1',
+    'sidebar-accent-foreground': '156 48% 52%',
+    'sidebar-ring': '156 48% 46%',
+    success: '162 54% 44%',
+    'success-foreground': '148 24% 6%',
+    warning: '44 78% 52%',
+    'warning-foreground': '148 24% 6%',
+    info: '206 70% 54%',
+    'info-foreground': '148 24% 6%',
+    'chart-1': '156 48% 46%',
+    'chart-2': '206 70% 54%',
+    'chart-3': '44 78% 52%',
+    'chart-4': '290 38% 56%',
+    'chart-5': '22 66% 58%',
     overlay: '0 0% 0%',
 };
 
-/** Default shadow elevation scale (light surfaces) – must match shadcn.css :root */
+/** Default shadow elevation scale (light surfaces, verdant) */
 export const DEFAULT_SHADOWS: Record<string, string> = {
-    xs: '0 1px 2px 0 rgb(0 0 0 / 0.04)',
-    sm: '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
-    md: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
-    lg: '0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)',
-    xl: '0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09)',
+    xs: '0 1px 2px rgb(20 60 30 / 0.05)',
+    sm: '0 2px 4px rgb(20 60 30 / 0.06)',
+    md: '0 4px 8px -1px rgb(20 60 30 / 0.08)',
+    lg: '0 8px 18px -3px rgb(20 60 30 / 0.1)',
+    xl: '0 18px 32px -5px rgb(20 60 30 / 0.12)',
 };
 
 /** Default shadow elevation scale (dark surfaces) – must match shadcn.css .dark */
@@ -105,14 +105,14 @@ export const DEFAULT_SHADOWS_DARK: Record<string, string> = {
     xl: '0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55)',
 };
 
-/** Default motion / transition presets */
+/** Default motion / transition presets (verdant) */
 export const DEFAULT_MOTION: ResolvedMotion = {
-    durationFast: '100ms',
+    durationFast: '105ms',
     durationNormal: '200ms',
-    durationSlow: '400ms',
-    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    easingEnter: 'cubic-bezier(0, 0, 0.2, 1)',
-    easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
+    durationSlow: '380ms',
+    easing: 'cubic-bezier(0.35, 0.65, 0.05, 1)',
+    easingEnter: 'cubic-bezier(0.05, 0.6, 0.15, 1)',
+    easingExit: 'cubic-bezier(0.4, 0, 0.85, 0.2)',
     // Previously hardcoded as --motion-ease-bouncy in css-runtime; now themeable
     easingSpring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
     disableAnimations: false,
@@ -125,22 +125,31 @@ export const DEFAULT_CURSORS: TokenCursors = {
     text: 'text',
 };
 
-/** Default spacing tokens */
+/** Default spacing tokens (verdant) */
 export const DEFAULT_SPACING: TokenSpacing = {
-    section: '2rem',
-    card: '1.5rem',
+    section: '2.25rem',
+    card: '1.375rem',
     element: '0.5rem',
 };
 
 /**
- * Default typography roles for base theme.
+ * Default typography roles for base theme (verdant).
  * heading/body/handwriting/mono are ALWAYS present after resolution; themes
  * may add arbitrary extra roles (display, ticker, …) → --font-{role}.
  */
 export const DEFAULT_TYPOGRAPHY: TokenTypographyRoles = {
-    heading: { fontFamily: 'Inter' },
-    body: { fontFamily: 'Inter' },
-    handwriting: { fontFamily: 'cursive' },
+    heading: {
+        fontFamily: 'Sora',
+        url: 'https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap',
+    },
+    body: {
+        fontFamily: 'Source Sans 3',
+        url: 'https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap',
+    },
+    handwriting: {
+        fontFamily: 'Indie Flower',
+        url: 'https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap',
+    },
     mono: { fontFamily: 'JetBrains Mono' },
 };
 
@@ -149,7 +158,7 @@ export const DEFAULT_TYPOGRAPHY: TokenTypographyRoles = {
  * Used by brandSettingsToConfig for resolveTheme base.
  */
 export const DEFAULT_BRAND_THEME: BrandTheme = {
-    name: 'default',
+    name: 'verdant',
     tokens: {
         color: {
             light: DEFAULT_COLORS_LIGHT,

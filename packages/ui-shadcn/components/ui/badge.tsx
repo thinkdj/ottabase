@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
-import { useBrandComponent } from '../../providers/brand-components';
+import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 
 /*
  * Theming hooks (BrandEngine): data-slot="badge" + data-variant stamps let

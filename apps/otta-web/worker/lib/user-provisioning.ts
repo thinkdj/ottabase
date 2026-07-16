@@ -32,7 +32,7 @@ export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: s
             isDefault: true,
             name: 'Default',
             brandName: fallbackBrandName || 'My App',
-            themePresetId: 'default',
+            themePresetId: 'verdant',
             defaultColorScheme: 'system',
             allowDarkModeToggle: true,
         })) as BrandKit;

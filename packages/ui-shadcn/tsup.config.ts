@@ -7,6 +7,9 @@ const componentEntries = [
     'src/providers.ts',
     // Internal libs (need explicit entries when bundle:false)
     'src/lib/utils.ts',
+    // Flattened like components/ui/* below so relative imports from those
+    // files (which are also flattened) can reach it via a matching depth.
+    'providers/brand-components.tsx',
     // Individual components for tree-shaking
     'components/ui/accordion.tsx',
     'components/ui/alert-dialog.tsx',

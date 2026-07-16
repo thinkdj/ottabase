@@ -27,7 +27,7 @@ export function getThemeByName(name: string): BrandTheme | undefined {
 }
 
 /** Retrieve a theme by name with fallback to a named default (or first registered). */
-export function getThemeOrDefault(name: string, fallbackName = 'default'): BrandTheme {
+export function getThemeOrDefault(name: string, fallbackName = 'verdant'): BrandTheme {
     const theme = registry.get(name) ?? registry.get(fallbackName) ?? [...registry.values()][0];
     if (!theme) {
         throw new Error(

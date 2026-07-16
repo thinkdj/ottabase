@@ -30,7 +30,7 @@ import {
     SelectValue,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconAdjustments, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAdjustments, IconChevronDown, IconEdit, IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -58,7 +58,14 @@ function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
     return mergeLayoutConfig(template.config, fallback);
 }
 
-const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
+const LayoutMiniPreview = memo(function LayoutMiniPreview({
+    config,
+    compact = false,
+}: {
+    config: LayoutConfig;
+    /** Compact = single meta line instead of config chips (for dense picker grids) */
+    compact?: boolean;
+}) {
     const densityGap = config.density === 'compact' ? 'gap-1' : config.density === 'spacious' ? 'gap-2' : 'gap-1.5';
 
     const contentMaxWidth =
@@ -74,19 +81,23 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: 
     const hasHeader = config.header !== 'none';
     const hasNav = config.navigation !== 'none';
 
+    // Structural bars use a muted-foreground tint – reads clearly on light AND dark
+    const bar = 'bg-muted-foreground/25';
+    const summary = `header ${config.header} · nav ${config.navigation} · width ${config.contentWidth} · ${config.density}${config.footer ? ' · footer' : ''}`;
+
     return (
         <div className="space-y-2">
-            <div className="aspect-[16/10] rounded-lg bg-background p-2 ring-1 ring-border/60">
+            <div className="aspect-[16/10] rounded-lg bg-background p-2 ring-1 ring-border">
                 <div className="flex h-full gap-1.5">
-                    {config.header === 'sidebar' ? <div className="w-2.5 rounded bg-muted" /> : null}
+                    {config.header === 'sidebar' ? <div className={`w-2.5 rounded ${bar}`} /> : null}
                     <div className="flex flex-1 flex-col gap-1">
                         {hasHeader && config.header !== 'sidebar' ? (
-                            <div className={`${headerHeight} rounded bg-muted`} />
+                            <div className={`${headerHeight} rounded ${bar}`} />
                         ) : null}
-                        {config.navigation === 'topbar' ? <div className="h-2.5 rounded bg-muted/90" /> : null}
+                        {config.navigation === 'topbar' ? <div className={`h-2.5 rounded ${bar}`} /> : null}
                         <div className="flex min-h-0 flex-1 gap-1">
                             {hasNav && config.navigation !== 'topbar' ? (
-                                <div className={`${navWidth} relative rounded bg-muted`}>
+                                <div className={`${navWidth} relative rounded ${bar}`}>
                                     {config.navigation === 'drawer' ? (
                                         <div className="absolute left-1.5 top-2 flex flex-col gap-0.5">
                                             <span className="h-0.5 w-3 rounded-full bg-background" />
@@ -96,35 +107,42 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: 
                                     ) : null}
                                 </div>
                             ) : null}
-                            <div className="flex min-h-0 flex-1 justify-center rounded bg-muted/40 p-1.5">
+                            <div className="flex min-h-0 flex-1 justify-center rounded bg-muted/70 p-1.5">
                                 <div className={`flex h-full w-full ${contentMaxWidth} flex-col ${densityGap}`}>
                                     <div className="grid flex-1 grid-cols-1 gap-1">
-                                        <div className="rounded bg-background/90" />
+                                        <div className="rounded bg-background ring-1 ring-border/60" />
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {config.footer ? <div className="h-2 rounded bg-muted" /> : null}
+                        {config.footer ? <div className={`h-2 rounded ${bar}`} /> : null}
                     </div>
                 </div>
             </div>
-            <div className="flex flex-wrap gap-1 text-[0.625rem] text-muted-foreground">
-                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
-                    width: {config.contentWidth}
-                </span>
-                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
-                    density: {config.density}
-                </span>
-                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
-                    footer: {config.footer ? 'on' : 'off'}
-                </span>
-                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
-                    header: {config.header}
-                </span>
-                <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
-                    nav: {config.navigation}
-                </span>
-            </div>
+            {compact ? (
+                <p className="truncate text-[0.625rem] leading-tight text-muted-foreground" title={summary}>
+                    {config.navigation} nav · {config.contentWidth} · {config.density}
+                    {config.footer ? ' · footer' : ''}
+                </p>
+            ) : (
+                <div className="flex flex-wrap gap-1 text-[0.625rem] text-muted-foreground">
+                    <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                        width: {config.contentWidth}
+                    </span>
+                    <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                        density: {config.density}
+                    </span>
+                    <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                        footer: {config.footer ? 'on' : 'off'}
+                    </span>
+                    <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                        header: {config.header}
+                    </span>
+                    <span className="rounded-full bg-background px-1.5 py-0.5 ring-1 ring-border">
+                        nav: {config.navigation}
+                    </span>
+                </div>
+            )}
         </div>
     );
 });
@@ -336,36 +354,33 @@ export function LayoutEditorTab() {
 
     return (
         <div className="space-y-6">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">How layout routing works</CardTitle>
-                    <CardDescription className="leading-relaxed">
-                        Route mappings are the primary control; layout templates simply describe the structures you
-                        attach to those routes.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    <ol className="space-y-1 list-decimal pl-5">
+            {/* Compact, collapsible primer – didactic copy shouldn't own prime space forever */}
+            <details className="group rounded-xl bg-muted/40 open:pb-4">
+                <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                    <IconInfoCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    How layout routing works
+                    <IconChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-normal group-open:rotate-180" />
+                </summary>
+                <div className="space-y-2 px-4 text-sm leading-relaxed text-muted-foreground">
+                    <ol className="list-decimal space-y-1 pl-5">
                         <li>Define a path pattern &amp; assign the Brand Kit that should own it.</li>
                         <li>Select a layout preset or custom template that matches the desired structure.</li>
                         <li>Save mappings (higher priority wins) to apply the layout at runtime.</li>
                     </ol>
-                </CardContent>
-            </Card>
+                    <p className="text-xs">
+                        <strong>*</strong> matches one segment (<code>/docs/*</code> → <code>/docs/config</code>, not{' '}
+                        <code>/docs/packages/config</code>); <strong>**</strong> matches any depth (
+                        <code>/docs/**</code> → all docs routes).
+                    </p>
+                </div>
+            </details>
 
             <Card className="space-y-0 rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Route mappings</CardTitle>
                     <CardDescription className="leading-relaxed">
-                        Higher priorities win. This form builds the list of patterns that the router evaluates every
-                        request against.
+                        Every request is matched against these patterns — the highest priority wins.
                     </CardDescription>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        <strong className="pl-1.5">*</strong> = one segment (e.g. <code>/docs/*</code> matches{' '}
-                        <code>/docs/config</code> but not <code>/docs/packages/config</code>).
-                        <br />
-                        <strong>**</strong> = any depth (e.g. <code>/docs/**</code> matches all docs routes).
-                    </p>
                 </CardHeader>
                 <CardContent>
                     <MappingsEditor
@@ -406,13 +421,13 @@ export function LayoutEditorTab() {
                                 No custom templates yet. Use the built-in presets when creating mappings.
                             </p>
                         ) : (
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(13.75rem,1fr))]">
                                 {templates.map((t) => {
                                     const config = getTemplateConfig(t);
                                     return (
                                         <div key={t.id} className="rounded-lg bg-background p-4 ring-1 ring-border">
                                             <div className="mb-3 flex items-center justify-between gap-2">
-                                                <p className="font-medium">{t.name}</p>
+                                                <p className="truncate font-medium">{t.name}</p>
                                                 <EditTemplateDialog template={t} />
                                             </div>
                                             <LayoutMiniPreview config={config} />
@@ -491,9 +506,10 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                                     key={id}
                                     type="button"
                                     onClick={() => setBasePreset(id)}
-                                    className={`rounded-lg border p-2 text-center text-xs transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    aria-pressed={basePreset === id}
+                                    className={`rounded-lg border p-2 text-center text-xs transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                         basePreset === id
-                                            ? 'border-transparent bg-background font-medium ring-1 ring-border'
+                                            ? 'border-transparent bg-primary/5 font-medium ring-2 ring-primary'
                                             : 'border-transparent bg-muted/40 hover:bg-muted/70'
                                     }`}
                                 >
@@ -713,23 +729,24 @@ function MappingsEditor({
                 {saving ? 'Saving...' : 'Save mappings'}
             </Button>
 
-            {/* Add new mapping (below save button) */}
-            <div className="space-y-3 rounded-lg bg-background p-4 ring-1 ring-border">
+            {/* Add new mapping (below save button): pattern & kit → layout → add */}
+            <div className="space-y-4 rounded-lg bg-background p-4 ring-1 ring-border">
                 <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     Add new mapping
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-start gap-2">
                     <div>
                         <Input
                             value={pathPattern}
                             onChange={(e) => handlePathPatternChange(e.target.value)}
                             placeholder="/* or /admin/**"
-                            className={`max-w-[180px] ${patternError ? 'border-destructive' : ''}`}
+                            aria-label="Path pattern"
+                            className={`w-[200px] font-mono ${patternError ? 'border-destructive' : ''}`}
                         />
                         {patternError ? <p className="mt-1 text-xs text-destructive">{patternError}</p> : null}
                     </div>
                     <Select value={brandKitId} onValueChange={setBrandKitId}>
-                        <SelectTrigger className="w-[220px]">
+                        <SelectTrigger className="w-[220px]" aria-label="Brand Kit">
                             <SelectValue placeholder="Brand Kit" />
                         </SelectTrigger>
                         <SelectContent>
@@ -745,11 +762,66 @@ function MappingsEditor({
                         value={priority}
                         onChange={(e) => setPriority(Number(e.target.value) || 0)}
                         placeholder="Priority"
+                        aria-label="Priority"
+                        title="Priority — higher wins when multiple patterns match"
                         className="w-20"
                     />
+                </div>
+                <div>
+                    <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Layout
+                    </p>
+                    {/* auto-fill keeps tiles ~11rem on any viewport – no giant previews on wide screens */}
+                    <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))]">
+                        {layoutOptions.map((option) => {
+                            const selected = layoutTemplateId === option.id;
+                            const config = getTemplateConfig(option);
+                            const isPreset = BUILT_IN_PRESETS.some((p) => p.id === option.id);
+                            return (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => setLayoutTemplateId(selected ? '' : option.id)}
+                                    aria-pressed={selected}
+                                    className={`rounded-lg p-2 text-left transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                        selected
+                                            ? 'bg-primary/5 ring-2 ring-primary'
+                                            : 'ring-1 ring-border/60 hover:bg-muted/40 hover:ring-border'
+                                    }`}
+                                >
+                                    <div className="mb-1.5 flex items-center justify-between gap-1.5">
+                                        <p className="truncate text-xs font-medium">{option.name}</p>
+                                        {!isPreset ? (
+                                            <Badge
+                                                variant="secondary"
+                                                className="shrink-0 bg-background px-1.5 text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
+                                            >
+                                                Custom
+                                            </Badge>
+                                        ) : null}
+                                    </div>
+                                    <LayoutMiniPreview config={config} compact />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+                    <p className="text-xs text-muted-foreground">
+                        {kits.length === 0
+                            ? 'Create a Brand Kit first.'
+                            : !pathPattern.trim()
+                              ? 'Enter a path pattern to get started.'
+                              : patternError
+                                ? 'Fix the path pattern.'
+                                : !brandKitId
+                                  ? 'Choose a Brand Kit.'
+                                  : !layoutTemplateId
+                                    ? 'Pick a layout above.'
+                                    : 'Ready — remember to save mappings after adding.'}
+                    </p>
                     <Button
                         size="sm"
-                        variant="outline"
                         onClick={add}
                         disabled={
                             !pathPattern.trim() ||
@@ -759,45 +831,9 @@ function MappingsEditor({
                             kits.length === 0
                         }
                     >
+                        <IconPlus className="mr-1.5 h-3.5 w-3.5" />
                         Add mapping
                     </Button>
-                </div>
-                <div>
-                    <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Select layout
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {layoutOptions.map((option) => {
-                            const selected = layoutTemplateId === option.id;
-                            const config = getTemplateConfig(option);
-                            const isPreset = BUILT_IN_PRESETS.some((p) => p.id === option.id);
-                            return (
-                                <button
-                                    key={option.id}
-                                    type="button"
-                                    onClick={() => setLayoutTemplateId(option.id)}
-                                    className={`rounded-lg border p-2 text-left transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                                        selected
-                                            ? 'border-transparent bg-background ring-1 ring-border'
-                                            : 'border-transparent bg-muted/40 hover:bg-muted/70'
-                                    }`}
-                                >
-                                    <div className="mb-1 flex items-center gap-2">
-                                        <p className="truncate text-sm font-medium">{option.name}</p>
-                                        {isPreset ? (
-                                            <Badge
-                                                variant="secondary"
-                                                className="bg-background text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border"
-                                            >
-                                                Preset
-                                            </Badge>
-                                        ) : null}
-                                    </div>
-                                    <LayoutMiniPreview config={config} />
-                                </button>
-                            );
-                        })}
-                    </div>
                 </div>
             </div>
         </div>

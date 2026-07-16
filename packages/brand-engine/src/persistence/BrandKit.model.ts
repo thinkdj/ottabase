@@ -175,7 +175,7 @@ export class BrandKit extends BaseModel {
             isDefault: true,
             name: 'Default',
             brandName: 'Ottabase',
-            themePresetId: 'default',
+            themePresetId: 'verdant',
             defaultColorScheme: 'system',
             allowDarkModeToggle: true,
         }) as Promise<BrandKit>;

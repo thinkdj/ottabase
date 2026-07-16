@@ -335,8 +335,11 @@ apps/otta-web/
 - `/dashboard` - Protected route
 - `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
   image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
-- `/admin/brand-engine` - Brand kit list (admin only)
-- `/admin/brand-engine/kits/:id` - Brand kit editor (Theme, Brand, Logo, Fonts, Motion, Cursors, Advanced tabs)
+- `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
+  own theme: real colors, fonts, radius, and shadows.
+- `/admin/appearance/brand-kits/:kitId` - Brand Kit editor (Brand, Logo, Theme, Fonts, Motion, Cursors, Advanced tabs)
+  with a light/dark toggleable live preview, unsaved-change detection, and Ctrl+S to save.
+- `/admin/appearance/layouts` - Layout templates & route mappings (map path patterns to layouts + Brand Kits)
 - `/demo/mantine` - Mantine UI components demo
 - `/demo/shadcn` - shadcn/ui components demo
 - `/demo/ottaeditor` - Rich text editor demo

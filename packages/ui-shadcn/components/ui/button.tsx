@@ -3,7 +3,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
-import { useBrandComponent } from '../../providers/brand-components';
+import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 
 /*
  * Theming hooks (BrandEngine):

@@ -1,75 +1,293 @@
 // ---------------------------------------------------------------------------
-// Brand Kits list – Create, Clone, navigate to detail
+// Brand Kits list – live theme-specimen gallery. Each card renders inside the
+// kit's own resolved theme (background, fonts, radius, shadows, colors) so the
+// gallery reads like a brand board, not a data table. Create, clone, delete,
+// navigate to detail.
 // ---------------------------------------------------------------------------
 
+import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
+import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
 import {
     IconAlertTriangle,
-    IconArrowRight,
     IconCopy,
     IconDotsVertical,
     IconGitBranch,
     IconPalette,
     IconPlus,
-    IconSettings2,
+    IconRoute,
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 
-/** Tokens sampled for the kit-card color preview, in display order */
-const SWATCH_TOKENS = ['primary', 'secondary', 'accent', 'muted', 'background'];
+/**
+ * Mini brand specimen rendered in the kit's OWN theme. The wrapper carries the
+ * kit's resolved CSS variables, so every var() below (colors, fonts, radius,
+ * shadows) resolves against the kit – the truthful preview is the design.
+ */
+function KitSpecimen({ kit, logoBaseUrl }: { kit: BrandKitItem; logoBaseUrl: string }) {
+    // Honor the kit's default scheme so dark-first kits show as they ship
+    const mode = kit.defaultColorScheme === 'dark' ? 'dark' : 'light';
+    const theme = useMemo(
+        () => buildPreviewTheme({ tokensJson: kit.tokensJson, themePresetId: kit.themePresetId }, mode),
+        [kit.tokensJson, kit.themePresetId, mode],
+    );
+    const varMap = useMemo(() => buildCSSVarMap(theme), [theme]);
 
-/** Convert HSL channel string "221 83% 53%" to CSS hsl(); null when unparseable */
-function hslToCss(hsl: string): string | null {
-    const base = hsl.split('/')[0].trim();
-    const parts = base
-        .split(/\s+/)
-        .map((v) => parseFloat(v))
-        .filter((n) => !Number.isNaN(n));
-    if (parts.length < 3) return null;
-    return `hsl(${parts[0]}, ${parts[1]}%, ${parts[2]}%)`;
+    // Load the kit's real fonts so the specimen is typographically honest
+    useEffect(() => {
+        const urls = [theme.typography?.heading?.url, theme.typography?.body?.url].filter((u): u is string =>
+            Boolean(u),
+        );
+        urls.forEach((url) => injectFont(url));
+    }, [theme.typography]);
+
+    const base = logoBaseUrl.replace(/\/$/, '');
+    const logoKey = mode === 'dark' ? (kit.logoDarkKey ?? kit.logoKey) : kit.logoKey;
+    const logoUrl = base && logoKey ? `${base}/${logoKey}` : undefined;
+
+    return (
+        <div
+            className="relative flex h-44 flex-col justify-between overflow-hidden p-4"
+            style={
+                {
+                    ...varMap,
+                    backgroundColor: 'hsl(var(--background))',
+                    color: 'hsl(var(--foreground))',
+                } as React.CSSProperties
+            }
+        >
+            {/* Soft primary wash – gives flat palettes some depth without lying */}
+            <div
+                className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl"
+                style={{ backgroundColor: 'hsl(var(--primary) / 0.14)' }}
+            />
+
+            {/* Identity row: logo when uploaded, otherwise brand name in the heading face */}
+            <div className="relative flex min-w-0 items-center">
+                {logoUrl ? (
+                    <img src={logoUrl} alt="" className="h-6 max-w-[70%] object-contain object-left" />
+                ) : (
+                    <span
+                        className="truncate text-sm font-semibold"
+                        style={{
+                            fontFamily: 'var(--font-heading)',
+                            fontWeight: 'var(--typography-heading-weight, 600)' as React.CSSProperties['fontWeight'],
+                        }}
+                    >
+                        {kit.brandName}
+                    </span>
+                )}
+            </div>
+
+            {/* Type specimen: heading + body faces */}
+            <div className="relative min-w-0">
+                <p
+                    className="text-[1.75rem] leading-none"
+                    style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontWeight: 'var(--typography-heading-weight, 700)' as React.CSSProperties['fontWeight'],
+                        letterSpacing: 'var(--typography-heading-spacing, normal)',
+                    }}
+                >
+                    Ag
+                </p>
+                <p
+                    className="mt-1.5 truncate text-xs"
+                    style={{ fontFamily: 'var(--font-body)', color: 'hsl(var(--muted-foreground))' }}
+                >
+                    {kit.tagline || 'The quick brown fox jumps over the lazy dog'}
+                </p>
+            </div>
+
+            {/* Component row: real primary button chip + palette dots, kit radius & shadow */}
+            <div className="relative flex items-center justify-between gap-2">
+                <span
+                    className="inline-flex items-center px-2.5 py-1 text-[0.6875rem] font-medium"
+                    style={{
+                        backgroundColor: 'hsl(var(--primary))',
+                        color: 'hsl(var(--primary-foreground))',
+                        borderRadius: 'calc(var(--radius) - 2px)',
+                        boxShadow: 'var(--shadow-sm)',
+                        fontFamily: 'var(--font-body)',
+                    }}
+                >
+                    Button
+                </span>
+                <div className="flex items-center gap-1.5">
+                    {['secondary', 'accent', 'muted', 'destructive'].map((token) => (
+                        <span
+                            key={token}
+                            className="h-3.5 w-3.5 rounded-full"
+                            style={{
+                                backgroundColor: `hsl(var(--${token}))`,
+                                boxShadow: 'inset 0 0 0 1px hsl(var(--border))',
+                            }}
+                            title={token}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 }
 
-/** Extract preview swatch colors from a kit's tokensJson (light palette) */
-function kitSwatches(tokensJson?: string | null): string[] {
-    if (!tokensJson) return [];
-    try {
-        const parsed = JSON.parse(tokensJson) as { color?: { light?: Record<string, string> } };
-        const light = parsed.color?.light ?? {};
-        return SWATCH_TOKENS.map((token) => light[token])
-            .filter((v): v is string => Boolean(v))
-            .map(hslToCss)
-            .filter((v): v is string => v !== null);
-    } catch {
-        return [];
-    }
+function KitCard({
+    kit,
+    logoBaseUrl,
+    onClone,
+    onDelete,
+    cloning,
+    deleting,
+}: {
+    kit: BrandKitItem;
+    logoBaseUrl: string;
+    onClone: () => void;
+    onDelete: () => void;
+    cloning: boolean;
+    deleting: boolean;
+}) {
+    const isDefaultKit = Boolean(kit.isDefault);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+
+    return (
+        <div className="group relative overflow-hidden rounded-xl ring-1 ring-border transition-shadow duration-normal hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
+            {/* Stretched link – the whole card navigates; menu sits above it */}
+            <Link
+                to="/admin/appearance/brand-kits/$kitId"
+                params={{ kitId: kit.id }}
+                aria-label={`Edit ${kit.name}`}
+                className="absolute inset-0 z-[1] rounded-[inherit] outline-none"
+            />
+
+            <KitSpecimen kit={kit} logoBaseUrl={logoBaseUrl} />
+
+            {/* Meta strip – rendered in the ADMIN theme, on purpose */}
+            <div className="flex items-center justify-between gap-2 border-t bg-card p-3">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                        <h3 className="truncate text-sm font-medium">{kit.name}</h3>
+                        {isDefaultKit && (
+                            <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Default
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                        {kit.parentBrandKitName ? (
+                            <>
+                                <IconGitBranch className="h-3 w-3 shrink-0" />
+                                <span className="truncate">Inherits {kit.parentBrandKitName}</span>
+                            </>
+                        ) : (
+                            <span className="truncate capitalize">{kit.themePresetId || 'default'} preset</span>
+                        )}
+                        {!kit.appId && (
+                            <span
+                                className="ml-1 inline-flex shrink-0 items-center gap-0.5 text-warning"
+                                title="This Brand Kit is not linked to any app (appId is null)"
+                            >
+                                <IconAlertTriangle className="h-3 w-3" />
+                                No app
+                            </span>
+                        )}
+                    </p>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative z-[2] h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-normal focus-visible:opacity-100 group-hover:opacity-100"
+                            aria-label={`Actions for ${kit.name}`}
+                        >
+                            <IconDotsVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="z-[3]">
+                        <DropdownMenuItem onClick={onClone} disabled={cloning}>
+                            <IconCopy className="mr-2 h-4 w-4" />
+                            Clone
+                        </DropdownMenuItem>
+                        {!isDefaultKit && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() => setDeleteOpen(true)}
+                                    disabled={deleting}
+                                    className="text-destructive focus:text-destructive"
+                                >
+                                    Delete
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                title="Delete Brand Kit?"
+                description={`This cannot be undone. The Brand Kit "${kit.name}" will be permanently deleted.`}
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText={deleting ? 'Deleting…' : 'Delete'}
+                onConfirm={() => {
+                    onDelete();
+                    setDeleteOpen(false);
+                }}
+                confirmProps={{ disabled: deleting }}
+                cancelProps={{ disabled: deleting }}
+            />
+        </div>
+    );
+}
+
+/** Dashed tile at the end of the gallery – spatial "add" affordance */
+function NewKitTile() {
+    return (
+        <Link
+            to="/admin/appearance/brand-kits/new"
+            className="group flex min-h-[13.75rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-muted-foreground outline-none transition-colors duration-normal hover:border-foreground/25 hover:bg-muted/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted transition-colors duration-normal group-hover:bg-background group-hover:ring-1 group-hover:ring-border">
+                <IconPlus className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-medium">New Brand Kit</span>
+        </Link>
+    );
 }
 
 export function AdminBrandKitsListPage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { config } = useBrand();
+    const logoBaseUrl = config?.r2PublicUrl ?? '';
 
     const { data: kits = [], isLoading } = useApiQuery<BrandKitItem[]>({
         entity: 'brand_kits',
         queryKey: ['list'],
         endpoint: '/api/brand/kits',
     });
+
+    // Default kit leads the gallery; everything else keeps API order
+    const sortedKits = useMemo(
+        () => [...kits].sort((a, b) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault))),
+        [kits],
+    );
 
     const cloneMutation = useMutation({
         meta: { entity: 'brand_kits' },
@@ -93,10 +311,13 @@ export function AdminBrandKitsListPage() {
         return (
             <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading Brand Kits...</span>
-                <div className="h-20 animate-pulse rounded-xl bg-muted/40" />
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex items-center justify-between">
+                    <div className="h-16 w-72 animate-pulse rounded-xl bg-muted/40" />
+                    <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
+                </div>
+                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr))]">
                     {Array.from({ length: 6 }, (_, index) => (
-                        <div key={index} className="h-36 animate-pulse rounded-xl bg-muted/40" />
+                        <div key={index} className="h-[13.75rem] animate-pulse rounded-xl bg-muted/40" />
                     ))}
                 </div>
             </div>
@@ -105,207 +326,56 @@ export function AdminBrandKitsListPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1.5">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Brand Kits</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Self-contained identity, logos, colors, fonts, and theme. Create and clone for variants.
+                        Each kit is a complete identity — logo, colors, type, and motion. Click a kit to edit it, or
+                        clone one for variants.
                     </p>
                 </div>
-                <Button onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
-                    <IconPlus className="h-4 w-4 mr-2" />
-                    Create Brand Kit
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                    <Button asChild variant="outline">
+                        <Link to="/admin/appearance/layouts">
+                            <IconRoute className="mr-2 h-4 w-4" />
+                            Layouts &amp; routes
+                        </Link>
+                    </Button>
+                    <Button onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
+                        <IconPlus className="mr-2 h-4 w-4" />
+                        New Brand Kit
+                    </Button>
+                </div>
             </div>
 
-            <Link
-                to="/admin/appearance/layouts"
-                className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
-                    <CardHeader className="gap-2">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border transition-colors group-hover:text-foreground">
-                            <IconSettings2 className="h-[1.125rem] w-[1.125rem]" />
-                        </span>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Route mappings</CardTitle>
-                        <CardDescription className="leading-relaxed">
-                            Map paths to layouts and Brand Kits. Configure which layout and brand apply per route.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                            Edit layouts &amp; mappings
-                            <IconArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                        </span>
-                    </CardContent>
-                </Card>
-            </Link>
-
-            <section className="space-y-4">
-                <div className="space-y-1">
-                    <h2 className="text-[0.9375rem] font-semibold">Your Brand Kits</h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                        {kits.length === 0
-                            ? 'No Brand Kits yet. Create one to get started.'
-                            : 'Click a kit to edit. Clone to create variants (e.g. seasonal).'}
+            {kits.length === 0 ? (
+                <div className="rounded-xl bg-muted/40 py-16 text-center">
+                    <IconPalette className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                    <p className="mt-4 text-sm font-medium">No Brand Kits yet</p>
+                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                        A Brand Kit holds everything a look needs. Create one and it previews live as you design.
                     </p>
+                    <Button className="mt-5" onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
+                        <IconPlus className="mr-2 h-4 w-4" />
+                        Create your first Brand Kit
+                    </Button>
                 </div>
-                {kits.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <IconPalette className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                        <p className="mt-4 text-sm text-muted-foreground">No Brand Kits</p>
-                        <Button className="mt-4" onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
-                            <IconPlus className="h-4 w-4 mr-2" />
-                            Create your first Brand Kit
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {kits.map((kit) => (
-                            <KitCard
-                                key={kit.id}
-                                kit={kit}
-                                onClone={() => cloneMutation.mutate({ id: kit.id, name: `${kit.name} – Copy` })}
-                                onDelete={() => deleteMutation.mutate(kit.id)}
-                                cloning={cloneMutation.isPending}
-                                deleting={deleteMutation.isPending}
-                                isDefault={Boolean(kit.isDefault)}
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
-        </div>
-    );
-}
-
-function KitCard({
-    kit,
-    onClone,
-    onDelete,
-    cloning,
-    deleting,
-    isDefault,
-}: {
-    kit: BrandKitItem;
-    onClone: () => void;
-    onDelete: () => void;
-    cloning: boolean;
-    deleting: boolean;
-    isDefault?: boolean;
-}) {
-    const isDefaultKit = Boolean(isDefault ?? kit.isDefault);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const swatches = kitSwatches(kit.tokensJson);
-
-    return (
-        <Link
-            to="/admin/appearance/brand-kits/$kitId"
-            params={{ kitId: kit.id }}
-            className="group flex h-full flex-col rounded-xl bg-muted/40 p-4 outline-none transition-colors duration-normal hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-            <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                        <h3 className="truncate text-[0.9375rem] font-semibold">{kit.name}</h3>
-                        {isDefaultKit && (
-                            <span className="inline-flex shrink-0 items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                                Default
-                            </span>
-                        )}
-                        {!kit.appId && (
-                            <span
-                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-warning ring-1 ring-border"
-                                title="This Brand Kit is not linked to any app (appId is null)"
-                            >
-                                <IconAlertTriangle className="h-3 w-3" />
-                                No App
-                            </span>
-                        )}
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground">{kit.brandName}</p>
-                    {kit.parentBrandKitName && (
-                        <p className="flex items-center gap-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            <IconGitBranch className="h-3 w-3" />
-                            Inherits from {kit.parentBrandKitName}
-                        </p>
-                    )}
-                </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 opacity-0 transition-colors group-hover:opacity-100 focus-visible:opacity-100"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }}
-                        >
-                            <IconDotsVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault();
-                                onClone();
-                            }}
-                            disabled={cloning}
-                        >
-                            <IconCopy className="h-4 w-4 mr-2" />
-                            Clone
-                        </DropdownMenuItem>
-                        {!isDefaultKit && (
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setDeleteOpen(true);
-                                }}
-                                disabled={deleting}
-                                className="text-destructive focus:text-destructive"
-                            >
-                                Delete
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            {swatches.length > 0 && (
-                <div className="mt-3 flex gap-1.5">
-                    {swatches.map((color, i) => (
-                        <span
-                            key={i}
-                            className="h-4 w-4 rounded-full ring-1 ring-border"
-                            style={{ backgroundColor: color }}
+            ) : (
+                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr))]">
+                    {sortedKits.map((kit) => (
+                        <KitCard
+                            key={kit.id}
+                            kit={kit}
+                            logoBaseUrl={logoBaseUrl}
+                            onClone={() => cloneMutation.mutate({ id: kit.id, name: `${kit.name} – Copy` })}
+                            onDelete={() => deleteMutation.mutate(kit.id)}
+                            cloning={cloneMutation.isPending}
+                            deleting={deleteMutation.isPending}
                         />
                     ))}
+                    <NewKitTile />
                 </div>
             )}
-
-            <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="truncate text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    Preset: {kit.themePresetId || 'default'}
-                </span>
-                <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </div>
-
-            <ConfirmDialog
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                title="Delete Brand Kit?"
-                description={`This cannot be undone. The Brand Kit "${kit.name}" will be permanently deleted.`}
-                tone="destructive"
-                secondaryActionText="Cancel"
-                primaryActionText={deleting ? 'Deleting…' : 'Delete'}
-                onConfirm={() => {
-                    onDelete();
-                    setDeleteOpen(false);
-                }}
-                confirmProps={{ disabled: deleting }}
-                cancelProps={{ disabled: deleting }}
-            />
-        </Link>
+        </div>
     );
 }
