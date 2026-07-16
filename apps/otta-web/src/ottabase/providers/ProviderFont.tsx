@@ -21,8 +21,10 @@ export const headingFontFamily: FontFamily = {
 
 export const monospaceFontFamily: FontFamily = {
     style: {
+        // --font-mono comes from the brand engine (typography.mono role);
+        // the literal stack is the fallback for var-less contexts.
         fontFamily:
-            '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            'var(--font-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
     },
     className: 'font-family-monospace',
 };

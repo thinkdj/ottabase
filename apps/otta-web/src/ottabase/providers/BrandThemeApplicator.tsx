@@ -1,30 +1,29 @@
 // ---------------------------------------------------------------------------
-// Applies Brand theme to document. Consumes the resolved theme from
-// ThemeProviderContext (already computed by ThemeProvider) and applies CSS vars.
-// Must be rendered INSIDE ThemeProvider.
+// Applies the brand theme to the document. Writes/replaces the SAME
+// <style id="brand-critical"> / <style id="brand-effects"> elements the edge
+// injects (dual light+dark blocks), so:
+//   • mode toggling is pure CSS cascade (html.dark) — no JS re-application
+//   • theme/effects/custom CSS never fight inline-style specificity
+// Re-runs only when the path-scoped theme pair actually changes (admin edits,
+// route token overrides, SPA navigation across differently-themed routes).
 // ---------------------------------------------------------------------------
 
-import { applyBrandTheme, CRITICAL_STYLE_ID } from '@ottabase/brand-engine';
+import { applyBrandTheme } from '@ottabase/brand-engine';
+import { useBrand } from '@ottabase/brand-engine-react';
 import { useEffect } from 'react';
-import { useTheme } from './ThemeContext';
 
 export function BrandThemeApplicator() {
-    const { resolved } = useTheme();
+    const { config } = useBrand();
+    const themeLight = config?.themeLight;
+    const themeDark = config?.themeDark;
 
     useEffect(() => {
-        if (!resolved) {
+        if (!themeLight) {
             console.warn('[BrandThemeApplicator] No resolved theme available');
             return;
         }
-
-        applyBrandTheme(resolved);
-
-        // Remove SSR critical CSS after applying – keeps single source of truth
-        if (typeof document !== 'undefined') {
-            const critical = document.getElementById(CRITICAL_STYLE_ID);
-            if (critical) critical.remove();
-        }
-    }, [resolved]);
+        applyBrandTheme(themeLight, themeDark ?? themeLight);
+    }, [themeLight, themeDark]);
 
     return null;
 }

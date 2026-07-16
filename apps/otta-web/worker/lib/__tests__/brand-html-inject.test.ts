@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
     mockBuildCriticalStyleTagDual,
+    mockBuildCustomCssStyleTag,
+    mockBuildEffectsStyleTag,
     mockBuildInitialConfigScriptTag,
     mockResolveConfigFromFull,
     mockResolveFullBrandConfig,
     mockGetOttabaseConfig,
 } = vi.hoisted(() => ({
     mockBuildCriticalStyleTagDual: vi.fn(),
+    mockBuildCustomCssStyleTag: vi.fn(),
+    mockBuildEffectsStyleTag: vi.fn(),
     mockBuildInitialConfigScriptTag: vi.fn(),
     mockResolveConfigFromFull: vi.fn(),
     mockResolveFullBrandConfig: vi.fn(),
@@ -16,6 +20,8 @@ const {
 
 vi.mock('@ottabase/brand-engine', () => ({
     buildCriticalStyleTagDual: mockBuildCriticalStyleTagDual,
+    buildCustomCssStyleTag: mockBuildCustomCssStyleTag,
+    buildEffectsStyleTag: mockBuildEffectsStyleTag,
     buildInitialConfigScriptTag: mockBuildInitialConfigScriptTag,
 }));
 
@@ -61,6 +67,10 @@ describe('injectBrandCriticalCSS', () => {
             theme: { colors: { primary: mode === 'dark' ? '#ffffff' : '#111111' } },
         }));
         mockBuildCriticalStyleTagDual.mockReturnValue('<style id="brand-critical">:root{--x:1}</style>');
+        mockBuildEffectsStyleTag.mockReturnValue('');
+        mockBuildCustomCssStyleTag.mockImplementation((css: string) =>
+            css && css.trim() ? `<style id="brand-custom-css">${css}</style>` : '',
+        );
         mockBuildInitialConfigScriptTag.mockReturnValue(
             '<script type="application/json" id="brand-initial-config">{"brandKitsMap":{}}</script>',
         );
@@ -144,6 +154,54 @@ describe('injectBrandCriticalCSS', () => {
 
         expect(html).toContain('<style id="brand-critical">:root{--x:1}</style>');
         expect(html).not.toContain('brand-initial-config');
+    });
+
+    it('injects the generated effects stylesheet when the theme produces one', async () => {
+        mockBuildEffectsStyleTag.mockReturnValue('<style id="brand-effects">@keyframes blink{}</style>');
+
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(html).toContain('<style id="brand-effects">@keyframes blink{}</style>');
+    });
+
+    it('edge-injects sanitized custom CSS (no client-side FOUC for the escape hatch)', async () => {
+        mockResolveConfigFromFull.mockImplementation((_full: unknown, _path: string, mode: string) => ({
+            theme: { colors: { primary: mode === 'dark' ? '#ffffff' : '#111111' } },
+            customCss: '.hero { background: red; }</style><script>alert(1)</script>',
+        }));
+
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(html).toContain('<style id="brand-custom-css">');
+        expect(html).toContain('.hero { background: red; }');
+        // sanitizeCssForStyleTag neutralizes style-tag breakout + script tags
+        expect(html).not.toContain('<script>alert(1)</script>');
+    });
+
+    it('injects font <link> tags for typography role URLs from both palettes', async () => {
+        mockResolveConfigFromFull.mockImplementation((_full: unknown, _path: string, mode: string) => ({
+            theme: {
+                colors: {},
+                typography: {
+                    heading: { fontFamily: 'Righteous', url: 'https://fonts.googleapis.com/css2?family=Righteous' },
+                    body: { fontFamily: 'Inter' },
+                    ticker:
+                        mode === 'dark'
+                            ? { fontFamily: 'Archivo', url: 'https://fonts.googleapis.com/css2?family=Archivo' }
+                            : { fontFamily: 'Archivo' },
+                },
+            },
+        }));
+
+        const injected = await injectBrandCriticalCSS(htmlResponse(), htmlRequest(), env);
+        const html = await injected.text();
+
+        expect(html).toContain('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Righteous">');
+        // dark-only URL is also preloaded; deduped, https-only
+        expect(html).toContain('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo">');
+        expect(html.match(/family=Righteous/g)).toHaveLength(1);
     });
 
     it('returns an intact fallback response when injection fails after reading the body', async () => {

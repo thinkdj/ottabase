@@ -15,6 +15,9 @@
     h5,
     h6 {
         font-family: var(--font-heading, ui-sans-serif, system-ui, sans-serif);
+        /* Sparse typography extras — identity when the theme doesn't set them */
+        letter-spacing: var(--typography-heading-spacing, normal);
+        text-transform: var(--typography-heading-transform, none);
     }
 }
 

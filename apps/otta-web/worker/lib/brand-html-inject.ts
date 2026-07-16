@@ -5,10 +5,34 @@
 // re-fetching /api/brand.
 // ---------------------------------------------------------------------------
 
-import { buildCriticalStyleTagDual, buildInitialConfigScriptTag } from '@ottabase/brand-engine';
+import {
+    buildCriticalStyleTagDual,
+    buildCustomCssStyleTag,
+    buildEffectsStyleTag,
+    buildInitialConfigScriptTag,
+} from '@ottabase/brand-engine';
 import { resolveConfigFromFull, resolveFullBrandConfig } from '@ottabase/brand-engine/persistence';
+import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+/**
+ * Font stylesheet <link> tags for every typography-role URL (both palettes) so
+ * brand fonts load with the document instead of after client hydration (FOUT
+ * fix). Deduplicated; URLs are escaped for the href attribute.
+ */
+function buildFontLinkTags(themes: Array<Record<string, unknown> | undefined>): string {
+    const urls = new Set<string>();
+    for (const theme of themes) {
+        const typography = theme?.typography as Record<string, { url?: string }> | undefined;
+        if (!typography) continue;
+        for (const settings of Object.values(typography)) {
+            const url = settings?.url;
+            if (url && /^https:\/\//.test(url)) urls.add(url);
+        }
+    }
+    return [...urls].map((url) => `<link rel="stylesheet" href="${url.replace(/"/g, '&quot;')}">`).join('\n    ');
+}
 
 export interface BrandHtmlInjectEnv {
     OBCF_D1: CloudflareEnv['OBCF_D1'];
@@ -61,7 +85,30 @@ export async function injectBrandCriticalCSS(
         // Solution: Clone first — read from clone, keep original intact for fallback.
         const [forRead, fallback] = [response.clone(), response];
         const html = await forRead.text();
-        let headInjection = buildCriticalStyleTagDual(lightTheme, darkTheme);
+        // Sanitized: v2 token values (palette, shadow strings, …) are
+        // admin-authored free-form CSS values.
+        let headInjection = buildCriticalStyleTagDual(lightTheme, darkTheme, sanitizeCssForStyleTag);
+
+        // Brand font stylesheets — load with the document, not after hydration
+        const fontLinks = buildFontLinkTags([
+            lightTheme as unknown as Record<string, unknown>,
+            darkTheme as unknown as Record<string, unknown>,
+        ]);
+        if (fontLinks) headInjection += `\n    ${fontLinks}`;
+
+        // Generated effects stylesheet (@font-face, @keyframes, text styles,
+        // link contract, effect utilities, theme css) — '' for themes that use
+        // none. Sanitized: effects.css is theme-authored.
+        const effectsTag = buildEffectsStyleTag(lightTheme, sanitizeCssForStyleTag);
+        if (effectsTag) headInjection += `\n    ${effectsTag}`;
+
+        // Per-kit custom CSS — previously client-only behind a 300ms debounce
+        // (visible FOUC for radically themed kits). Tenant-authored, so it is
+        // sanitized before entering the document.
+        if (lightConfig.customCss) {
+            const customTag = buildCustomCssStyleTag(sanitizeCssForStyleTag(lightConfig.customCss));
+            if (customTag) headInjection += `\n    ${customTag}`;
+        }
 
         // Hydration handoff: embed the resolved config (+ the appId it was
         // resolved for) so BrandProvider skips its /api/brand mount fetch.
