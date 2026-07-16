@@ -416,7 +416,7 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 ├── csrf.ts                Double-submit CSRF cookie pair + verification
 ├── session-store.ts      Session creation/verification, KV revocation registry
 ├── session.ts             Pure Session helpers (isAuthenticated, requireAuth, ...)
-├── bootstrap.ts           First-user owner-role + personal-organization bootstrap
+├── bootstrap.ts           First-user platform_owner-role + personal-organization bootstrap
 ├── backend-handler.ts     handleAuthRequest router + credentials/OAuth/magic-link handlers
 ├── providers/
 │   ├── oauth-client.ts    Generic Authorization-Code + PKCE client

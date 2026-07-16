@@ -25,9 +25,10 @@ Ottabase includes a complete multi-tenant RBAC (Role-Based Access Control) syste
 
 ```
 System Roles (Global)
-    ├─ owner   - Full control
-    ├─ admin   - Manage members and settings
-    └─ member  - Basic access
+    ├─ platform_owner - Bootstrapped app owner (system-scoped, first user)
+    ├─ owner          - Full organization control
+    ├─ admin          - Manage members and settings
+    └─ member         - Basic access
 
 Organization (Tenant)           organizationId OR null
     ├─ Custom Roles (Org-scoped)
@@ -80,7 +81,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
-Creates default system roles: `owner`, `admin`, `member`
+Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `member`
 
 ### 3. Enable Row-Level Security in Worker
 

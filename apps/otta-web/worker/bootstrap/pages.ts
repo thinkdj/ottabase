@@ -266,7 +266,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
   <div class="step-panel" id="panel-1">
     <div class="card">
       <h2>RBAC &amp; Permissions</h2>
-      <p>Seed the default roles (owner, admin, editor, viewer, member) and the default organization used for system-level operations.</p>
+      <p>Seed the default roles (platform_owner, owner, admin, editor, viewer, member) and the default organization used for system-level operations.</p>
       <div class="log-area" id="log-seed"></div>
       <button class="btn btn-primary" id="btn-seed">Seed Roles &amp; Permissions</button>
 
@@ -281,7 +281,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
   <!-- STEP 2: Create Owner -->
   <div class="step-panel" id="panel-2">
     <div class="card">
-      <h2>Create Owner Account</h2>
+      <h2>Create Platform Owner Account</h2>
       <p>This will be the platform owner with full administrative privileges. A personal workspace organization will be created automatically.</p>
       <div class="form-group">
         <label class="form-label" for="owner-name">Name</label>
@@ -327,7 +327,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <h3 style="margin-top:0.75rem">Security (Recommended)</h3>
       <table class="env-table">
         <tr><td>MIGRATION_SECRET</td><td>Protects the <code>/api/ottaorm/init</code> endpoint in production</td></tr>
-        <tr><td>BOOTSTRAP_OWNER_SECRET</td><td>Protects the <code>/api/admin/promote-owner</code> endpoint</td></tr>
+        <tr><td>BOOTSTRAP_OWNER_SECRET</td><td>Protects the <code>/api/admin/platform-owner/promote</code> endpoint</td></tr>
       </table>
       <div class="alert alert-warning" style="margin-top:0.75rem">
         For <strong>local development</strong>, these are optional. In <strong>production</strong>, at minimum set <code>AUTH_SECRET</code>.

@@ -7,7 +7,7 @@
 //   GET  /__bootstrap__/api/status       → Current platform state + binding probe
 //   POST /__bootstrap__/api/init         → Clear KV, then run schema creation + migrations
 //   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
-//   POST /__bootstrap__/api/create-owner → Create first admin/owner account
+//   POST /__bootstrap__/api/create-owner → Create first platform owner account
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
@@ -57,6 +57,7 @@ function jsonResp(data: unknown, status = 200): Response {
 }
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
+    platform_owner: ['*:*'],
     owner: ['*:*'],
     admin: ['*:*'],
     editor: ['*:read', '*:create', '*:update'],
@@ -415,7 +416,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (owner, admin, editor, viewer, member)
+        // Seed default roles (platform_owner, owner, admin, editor, viewer, member)
         const createdRoles = await Role.ensureDefaultRoles();
         const roleNames = createdRoles.map((r: any) => r.get('name') as string);
         const normalizedRoles = await enforceDefaultRolePermissions(env);
@@ -436,7 +437,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
 
 /**
  * POST /__bootstrap__/api/create-owner
- * Step 3: Create the first admin/owner account.
+ * Step 3: Create the first platform owner account.
  * Body: { email: string, password: string, name?: string }
  */
 async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
@@ -564,10 +565,11 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             );
         }
 
-        // Claim the SYSTEM-scope owner grant for this account. provisionDefaultOrganizationForUser
-        // only assigns the owner role at the personal-organization scope; without this the
-        // system-scope owner slot stays unclaimed, so the first person to sign in afterwards
-        // would seize global ownership via bootstrapFirstUser. This is idempotent.
+        // Claim the SYSTEM-scope platform_owner grant for this account.
+        // provisionDefaultOrganizationForUser only assigns the org-scoped 'owner' role at the
+        // personal-organization scope; without this the platform_owner slot stays unclaimed,
+        // so the first person to sign in afterwards would seize global ownership via
+        // bootstrapFirstUser. This is idempotent.
         await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.

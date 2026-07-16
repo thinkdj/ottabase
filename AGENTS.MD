@@ -732,8 +732,8 @@ Key caveats for Cloud agents:
 
 ### First-run bootstrap
 
-After both servers are running, the platform requires bootstrap (creates DB tables + seeds roles + creates owner
-account). Use the `/__bootstrap__` API:
+After both servers are running, the platform requires bootstrap (creates DB tables + seeds roles + creates the
+platform owner account, which holds the system-scoped `platform_owner` role). Use the `/__bootstrap__` API:
 
 `POST /__bootstrap__/api/init` clears the entire **OBCF_KV** namespace first (platform state cache, RBAC, queue, rate
 limits), then runs migrations — use this for a clean fresh install when KV may contain stale keys.

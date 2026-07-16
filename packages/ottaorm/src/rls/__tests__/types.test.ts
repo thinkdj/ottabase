@@ -36,7 +36,7 @@ describe('RLSPolicies', () => {
     it('AdminOnly returns custom policy with requiredRoles', () => {
         const policy = RLSPolicies.AdminOnly();
         expect(policy.level).toBe('custom');
-        expect(policy.requiredRoles).toEqual(['admin', 'owner']);
+        expect(policy.requiredRoles).toEqual(['admin', 'owner', 'platform_owner']);
     });
 
     it('PermissionBased returns custom policy with requiredPermissions (RLS engine supports wildcards: *:*, brand:*)', () => {

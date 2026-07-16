@@ -30,7 +30,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`
+Creates tables: `roles`, `permissions`, `user_roles` Default roles: `platform_owner`, `owner`, `admin`, `member`
 
 ### 2. Initialize Cache
 
@@ -96,7 +96,7 @@ const roles = await user.roles({
 
 ```
 System (Global)
-├─ Roles: owner, admin, member
+├─ Roles: platform_owner, owner, admin, member
 └─ Organization (Tenant)
    ├─ Custom Roles (org-scoped)
    ├─ Members with Roles
@@ -297,11 +297,12 @@ if (isOwnerOrAdmin(context)) {
 
 ## Default Roles
 
-| Role     | Permissions        | Description                     |
-| -------- | ------------------ | ------------------------------- |
-| `owner`  | `*:*`              | Full organization control       |
-| `admin`  | `*:*` (org-scoped) | Manage org members and settings |
-| `member` | `*:read`           | Basic read access               |
+| Role             | Permissions        | Description                                        |
+| ---------------- | ------------------ | -------------------------------------------------- |
+| `platform_owner` | `*:*`              | Bootstrapped app owner (system-scoped, first user) |
+| `owner`          | `*:*`              | Full organization control                          |
+| `admin`          | `*:*` (org-scoped) | Manage org members and settings                    |
+| `member`         | `*:read`           | Basic read access                                  |
 
 Create custom roles:
 
