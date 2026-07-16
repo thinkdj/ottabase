@@ -16,6 +16,17 @@ function createHomeLandingEditorData(appName: string) {
                 type: 'header',
                 data: { text: appName, level: 1 },
             },
+            // ── Thesis ───────────────────────────────────────────────────────
+            {
+                id: 'thesis-quote',
+                type: 'quote',
+                data: {
+                    text: 'No boilerplate. No assembly of infrastructure. Just ship the product.',
+                    caption: '',
+                    alignment: 'left',
+                },
+            },
+            // ── Desc ───────────────────────────────────────────────────────
             {
                 id: 'home-lead',
                 type: 'paragraph',
@@ -119,24 +130,13 @@ function createHomeLandingEditorData(appName: string) {
                 },
             },
 
-            // ── Thesis ───────────────────────────────────────────────────────
-            {
-                id: 'thesis-quote',
-                type: 'quote',
-                data: {
-                    text: 'Stop assembling infrastructure. Start shipping product.',
-                    caption: 'The Ottabase thesis',
-                    alignment: 'center',
-                },
-            },
-
             // ── Checklist ────────────────────────────────────────────────────
             { id: 'batteries-h', type: 'header', data: { text: 'Batteries included', level: 2 } },
             {
                 id: 'batteries-lead',
                 type: 'paragraph',
                 data: {
-                    text: 'Forty-five packages, <mark class="cdx-marker">one pnpm install</mark>. Everything below ships wired together — auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
+                    text: 'Forty-five packages, <mark class="cdx-marker"><strong>one</strong> pnpm install</mark>. Everything below ships wired together — auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
                 },
             },
             {

@@ -20,7 +20,7 @@ describe('HomePage (block content smoke)', () => {
         expect(text).toContain('Production-grade');
 
         // quote
-        expect(text).toContain('Stop assembling infrastructure. Start shipping product.');
+        expect(text).toContain('No boilerplate. No assembly of infrastructure. Just ship the product.');
 
         // checklists (split across a two-column layout)
         expect(text).toContain('fat models, RLS, hooks');

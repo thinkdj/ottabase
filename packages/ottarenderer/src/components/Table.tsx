@@ -10,14 +10,14 @@ const Table: RenderFn<{ withHeadings?: boolean; content: string[][] }> = ({ data
 
     return (
         <div className="cdc-content-table overflow-x-auto my-4 rounded-xl border border-border/60">
-            <table className="min-w-full divide-y divide-border/60">
+            <table className="min-w-full divide-y divide-border/60 not-prose">
                 {withHeadings && (
                     <thead className="bg-muted/40">
                         <tr>
                             {headers.map((header: string, index: number) => (
                                 <th
                                     key={index}
-                                    className="px-4 py-3 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
+                                    className="px-4 py-4 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
                                 >
                                     {header}
                                 </th>
