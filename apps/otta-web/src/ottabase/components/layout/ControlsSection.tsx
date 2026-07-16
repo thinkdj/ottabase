@@ -11,15 +11,19 @@ import { useSetAtom } from 'jotai';
 function useOrganizationSelection() {
     const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('ottabase.current-org-id');
     const setOrganizationId = useSetAtom(organizationIdAtom);
+    const { refreshSession } = useSession();
 
     const setOrganization = (orgId: string) => {
         // Apply locally for instant UI feedback...
         setCurrentOrgId(orgId);
         setOrganizationId(orgId);
         // ...and persist server-side (membership-validated) so the choice survives across
-        // sessions and devices. Fire-and-forget: the local selection already applies, and the
-        // api client surfaces any error toast.
-        void api('/api/users/me', { method: 'PATCH', body: { activeOrganizationId: orgId } }).catch(() => {});
+        // sessions and devices. Once the server has accepted the switch, refresh the cached
+        // session snapshot: org-dependent UI (e.g. the Admin link, rendered from session
+        // permissions) must track the new org without requiring a /admin visit or reload.
+        void api('/api/users/me', { method: 'PATCH', body: { activeOrganizationId: orgId } })
+            .then(() => refreshSession())
+            .catch(() => {});
     };
 
     return { currentOrgId, setOrganization };

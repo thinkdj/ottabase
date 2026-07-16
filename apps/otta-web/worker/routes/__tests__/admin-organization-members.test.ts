@@ -278,3 +278,54 @@ describe('handleAdminOrganizationInviteMember', () => {
         expect(body.code).toBe('LAST_ACTIVE_OWNER_GUARD');
     });
 });
+
+describe('system-scope roster access boundary', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const systemAuth = {
+        user: { id: 'platform-owner-1' },
+        organizationId: 'system',
+        appId: 'web',
+        rbac: { organizationId: 'system' } as any,
+        session: {},
+    };
+
+    it('denies a system-scope admin who is not a member of the target org', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
+        const firstSpy = vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null);
+
+        const response = await handleAdminOrganizationMembersList(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members'),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(403);
+        expect(firstSpy).toHaveBeenCalledWith({
+            userId: 'platform-owner-1',
+            organizationId: 'org-9',
+            status: 'active',
+        });
+    });
+
+    it('allows a system-scope admin who is an active member of the target org', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ id: 'membership-1' } as any);
+        vi.spyOn(OrganizationMember, 'countOrganizationMembers').mockResolvedValue(0);
+        vi.spyOn(OrganizationMember, 'getOrganizationMembers').mockResolvedValue([]);
+
+        const response = await handleAdminOrganizationMembersList(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members'),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(200);
+    });
+});

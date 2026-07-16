@@ -4,7 +4,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { isEmail } from '@ottabase/utils/string';
-import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
+import { requireAdminAccess, SYSTEM_ORGANIZATION_ID, type AdminContext } from '../lib/admin-guard';
 import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
 import { normalizeEmail } from '../lib/utils';
 import { registerAppEmailTemplates } from '../../src/email/templates';
@@ -36,6 +36,27 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
     );
 }
 
+/**
+ * Tenant-data boundary for roster access. Org-scope admins may only touch the org their
+ * admin context was granted in (context comparison). System-scope admins (platform owner)
+ * may only touch organizations they are an active member of — platform scope administers
+ * the platform, it does not grant a view into arbitrary tenants' membership data.
+ */
+async function assertRosterAccess(auth: AdminContext, organizationId: string): Promise<Response | null> {
+    if (auth.organizationId === organizationId || auth.rbac.organizationId === organizationId) {
+        return null;
+    }
+    if (auth.organizationId === SYSTEM_ORGANIZATION_ID && auth.user?.id) {
+        const membership = await OrganizationMember.first({
+            userId: auth.user.id,
+            organizationId,
+            status: 'active',
+        });
+        if (membership) return null;
+    }
+    return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
+}
+
 /** Escape a string for safe interpolation into an HTML email body. */
 function escapeHtml(value: string): string {
     return value
@@ -53,13 +74,8 @@ export async function handleAdminOrganizationMembersList(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
-        return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
-    }
+    const denied = await assertRosterAccess(auth, organizationId);
+    if (denied) return denied;
 
     const url = new URL(context.request.url);
     const { page, perPage } = parsePaginationParams(url.searchParams, {
@@ -140,13 +156,8 @@ export async function handleAdminOrganizationInviteMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
-        return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
-    }
+    const denied = await assertRosterAccess(auth, organizationId);
+    if (denied) return denied;
 
     let body: InviteMemberRequestBody;
     try {
@@ -264,13 +275,8 @@ export async function handleAdminOrganizationUpdateMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
-        return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
-    }
+    const denied = await assertRosterAccess(auth, organizationId);
+    if (denied) return denied;
 
     let body: UpdateMemberRequestBody;
     try {
@@ -349,13 +355,8 @@ export async function handleAdminOrganizationRemoveMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
-        return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
-    }
+    const denied = await assertRosterAccess(auth, organizationId);
+    if (denied) return denied;
 
     const existingMember = await OrganizationMember.first({ userId, organizationId });
     if (!existingMember) {

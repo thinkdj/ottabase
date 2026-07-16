@@ -71,6 +71,18 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    if (crudRequest.model === 'scheduled_tasks') {
+        // Same name-only RLS role-check gap as shortlinks above: every self-registered user
+        // holds role NAME 'owner' in their personal org, so the AdminOnly policy on this
+        // global (non-tenant) table doesn't restrict anything — any authenticated user could
+        // read or mutate every row. Force management through /api/admin/cron, which gates on
+        // requireAdminAccess({ scope: 'system' }).
+        return errorResponse('Scheduled tasks CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/admin/cron endpoints (correctly scoped to system admins)',
+        });
+    }
+
     if (
         crudRequest.model === 'posts' &&
         crudRequest.body &&
