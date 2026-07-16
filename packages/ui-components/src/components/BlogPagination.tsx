@@ -44,15 +44,15 @@ export default function BlogPagination({
     };
 
     return (
-        <nav className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 px-4 sm:px-0">
+        <nav className="flex items-center justify-between border-t border-border px-4 sm:px-0">
             <div className="-mt-px flex w-0 flex-1">
                 {showNextPrev && (
                     <button
                         onClick={() => page > 1 && onPageChange(page - 1)}
                         disabled={isLoading || page === 1}
-                        className="inline-flex items-center border-t-2 border-transparent pr-1 pt-4 text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
+                        className="inline-flex items-center border-t-2 border-transparent pr-1 pt-4 text-sm font-medium text-muted-foreground hover:border-border hover:text-foreground disabled:opacity-50"
                     >
-                        <IconArrowLeft aria-hidden="true" className="mr-3 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                        <IconArrowLeft aria-hidden="true" className="mr-3 h-5 w-5 text-muted-foreground" />
                         Previous
                     </button>
                 )}
@@ -64,7 +64,7 @@ export default function BlogPagination({
                         pageNum === '...' ? (
                             <span
                                 key={`ellipsis-${index}`}
-                                className="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 dark:text-gray-400"
+                                className="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-muted-foreground"
                             >
                                 ...
                             </span>
@@ -75,8 +75,8 @@ export default function BlogPagination({
                                 disabled={isLoading}
                                 className={`inline-flex items-center border-t-2 px-4 pt-4 text-sm font-medium ${
                                     pageNum === page
-                                        ? 'border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-300'
-                                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
                                 }`}
                             >
                                 {pageNum}
@@ -90,10 +90,10 @@ export default function BlogPagination({
                     <button
                         onClick={() => page < lastPage && onPageChange(page + 1)}
                         disabled={isLoading || page === lastPage}
-                        className="inline-flex items-center border-t-2 border-transparent pl-1 pt-4 text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
+                        className="inline-flex items-center border-t-2 border-transparent pl-1 pt-4 text-sm font-medium text-muted-foreground hover:border-border hover:text-foreground disabled:opacity-50"
                     >
                         Next
-                        <IconArrowRight aria-hidden="true" className="ml-3 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                        <IconArrowRight aria-hidden="true" className="ml-3 h-5 w-5 text-muted-foreground" />
                     </button>
                 )}
             </div>

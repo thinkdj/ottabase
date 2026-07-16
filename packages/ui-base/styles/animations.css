@@ -1,44 +1,46 @@
+/* --highlight-bg-color holds an HSL triplet (same format as the brand tokens),
+   so alpha tints stay token-driven via hsl(var(...) / alpha). */
 @keyframes highlightBgFadeOut {
     0% {
-        background-color: rgba(var(--highlight-bg-color), 0.05);
+        background-color: hsl(var(--highlight-bg-color) / 0.05);
     }
 
     20% {
-        background-color: rgba(var(--highlight-bg-color), 0.75);
+        background-color: hsl(var(--highlight-bg-color) / 0.75);
     }
 
     40% {
-        background-color: rgba(255, 255, 255, 0);
+        background-color: hsl(var(--highlight-bg-color) / 0);
     }
 
     60% {
-        background-color: rgba(var(--highlight-bg-color), 0.75);
+        background-color: hsl(var(--highlight-bg-color) / 0.75);
     }
 
     80% {
-        background-color: rgba(var(--highlight-bg-color), 0.05);
+        background-color: hsl(var(--highlight-bg-color) / 0.05);
     }
 
     100% {
-        background-color: rgba(255, 255, 255, 0);
+        background-color: hsl(var(--highlight-bg-color) / 0);
     }
 }
 
 .highlight-and-fade-out-bg {
-    --highlight-bg-color: 248, 224, 174;
-    /* Default color */
-    animation: highlightBgFadeOut 2s ease;
+    /* Default: warning-tinted flash (fallback matches the old amber #f8e0ae) */
+    --highlight-bg-color: var(--warning, 41 84% 83%);
+    animation: highlightBgFadeOut var(--duration-highlight, 2s) ease;
     animation-iteration-count: 1;
 }
 
 .highlight-red {
-    --highlight-bg-color: 255, 99, 71;
+    --highlight-bg-color: var(--destructive, 9 100% 64%);
 }
 
 .highlight-green {
-    --highlight-bg-color: 144, 238, 144;
+    --highlight-bg-color: var(--success, 120 73% 75%);
 }
 
 .highlight-blue {
-    --highlight-bg-color: 173, 216, 230;
+    --highlight-bg-color: var(--info, 195 53% 79%);
 }

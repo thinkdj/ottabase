@@ -22,8 +22,14 @@ function ItemSeparator({ className, ...props }: React.ComponentProps<typeof Sepa
     );
 }
 
+/*
+ * Theming hooks (BrandEngine): `transition` (not transition-colors) so
+ * --hover-transform/--press-* interaction tokens animate. Focus-visible
+ * styling comes from the GLOBAL --focus-ring-* rule in shadcn.css
+ * (no per-component ring recipe).
+ */
 const itemVariants = cva(
-    'group/item flex items-center border border-transparent text-sm rounded-md transition-colors duration-fast ease-theme [a]:hover:bg-accent/50 [a]:transition-colors [a]:duration-fast flex-wrap outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
+    'group/item flex items-center border border-transparent text-sm rounded-md transition duration-fast ease-theme [&:is(a)]:hover:bg-accent/50 [&:is(a)]:transition [&:is(a)]:duration-fast flex-wrap outline-none',
     {
         variants: {
             variant: {

@@ -274,14 +274,14 @@ export function Spotlight({
             <DialogPrimitive.Portal>
                 <DialogOverlay
                     className={cn(
-                        'bg-black/40 backdrop-blur-sm supports-[backdrop-filter]:bg-black/30',
+                        'bg-overlay/40 backdrop-blur-sm supports-[backdrop-filter]:bg-overlay/30',
                         overlayClassName,
                     )}
                 />
                 <DialogPrimitive.Content
                     className={cn(
                         'fixed left-[50%] top-[10%] z-50 w-full max-w-2xl translate-x-[-50%] translate-y-0 p-0 gap-0 overflow-hidden',
-                        'bg-white dark:bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-white dark:supports-[backdrop-filter]:bg-background/80',
+                        'bg-popover text-popover-foreground backdrop-blur-md dark:bg-popover/95 dark:supports-[backdrop-filter]:bg-popover/80',
                         'border shadow-lg rounded-lg',
                         'data-[state=open]:animate-in data-[state=closed]:animate-out',
                         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',

@@ -119,29 +119,40 @@ The component automatically detects your application's theme using:
 The surface colors (`--code-bg`, `--code-fg`) follow the shadcn design tokens (`--card`, `--foreground`) when present,
 with standalone fallbacks baked in.
 
-### CSS Variables
+### Syntax design tokens
 
-You can customize the syntax highlighting colors by overriding these CSS variables:
+The syntax palette is exposed as `--syntax-*` design tokens. The package defaults (GitHub Light/Dark) are declared at
+zero specificity via `:where(:root)`, so any declaration in your app (a plain `:root`/`.dark` block, a brand theme) wins
+without `!important`:
+
+```css
+:root {
+    --syntax-keyword: #cf222e;
+    --syntax-string: #0a3069;
+    --syntax-comment: #6e7781;
+    --syntax-number: #0550ae;
+    --syntax-title: #8250df; /* function/class names */
+    --syntax-attr: #953800; /* variables, properties, attribute keys */
+    --syntax-literal: #cf222e;
+    --syntax-meta: #6e7781;
+    --syntax-tag: #116329;
+    --syntax-attribute: #0550ae;
+    --syntax-deletion: #ff7b72; /* diff colors, mode-invariant */
+    --syntax-addition: #7ee787;
+}
+
+.dark {
+    --syntax-keyword: #ff7b72;
+    /* ... etc */
+}
+```
+
+The surface tokens can be overridden the same way:
 
 ```css
 :root {
     --code-bg: hsl(var(--card, 0 0% 100%));
     --code-fg: hsl(var(--foreground, 222.2 84% 4.9%));
-    --code-comment: #6e7781;
-    --code-keyword: #cf222e;
-    --code-string: #0a3069;
-    --code-number: #0550ae;
-    --code-function: #8250df;
-    --code-variable: #953800;
-    --code-tag: #116329;
-    --code-attribute: #0550ae;
-    --code-meta: #6e7781;
-}
-
-.dark {
-    --code-bg: hsl(var(--card, 222.2 84% 4.9%));
-    --code-fg: hsl(var(--foreground, 210 40% 98%));
-    /* ... etc */
 }
 ```
 

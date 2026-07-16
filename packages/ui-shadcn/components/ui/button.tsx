@@ -3,9 +3,20 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
+import { useBrandComponent } from '../../providers/brand-components';
 
+/*
+ * Theming hooks (BrandEngine):
+ *  - data-slot="button" + data-variant/data-size stamps let theme CSS restyle
+ *    any variant ([data-slot=button][data-variant=outline]:hover { … }).
+ *  - `transition` (not transition-colors) so --hover-transform/--press-*
+ *    interaction tokens animate. `relative` positions the [data-decor] span
+ *    themes can enable for shine/ornament effects.
+ *  - Focus-visible styling comes from the GLOBAL --focus-ring-* rule in
+ *    shadcn.css (no per-component ring recipe).
+ */
 const buttonVariants = cva(
-    'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-fast ease-theme focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+    'relative inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition duration-fast ease-theme disabled:pointer-events-none disabled:opacity-50',
     {
         variants: {
             variant: {
@@ -36,9 +47,40 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant, size, asChild = false, ...props }, ref) => {
-        const Comp = asChild ? Slot : 'button';
-        return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+        // Tier-2 escape hatch: a fork may register a wholly different button
+        const Override = useBrandComponent('button');
+        if (Override) {
+            return (
+                <Override ref={ref} className={className} variant={variant} size={size} asChild={asChild} {...props}>
+                    {children}
+                </Override>
+            );
+        }
+
+        const stamps = {
+            'data-slot': 'button',
+            'data-variant': variant ?? 'default',
+            'data-size': size ?? 'default',
+        } as const;
+
+        // Slot requires EXACTLY one child — no decor carrier on asChild
+        // (even a falsy conditional child breaks React.Children.only).
+        if (asChild) {
+            return (
+                <Slot {...stamps} className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+                    {children}
+                </Slot>
+            );
+        }
+
+        return (
+            <button {...stamps} className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+                {children}
+                {/* Effect carrier for themes (hidden by default via shadcn.css) */}
+                <span aria-hidden="true" data-decor />
+            </button>
+        );
     },
 );
 Button.displayName = 'Button';

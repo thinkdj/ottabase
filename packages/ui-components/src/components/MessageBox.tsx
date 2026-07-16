@@ -33,14 +33,14 @@ export interface MessageBoxProps {
 }
 
 const messageColorClass: Record<MessageTypes, string> = {
-    info: 'text-blue-500 dark:text-blue-400',
-    error: 'text-red-500 dark:text-red-400',
-    warning: 'text-amber-500 dark:text-amber-400',
-    success: 'text-emerald-500 dark:text-emerald-400',
-    help: 'text-indigo-500 dark:text-indigo-400',
-    loginRequired: 'text-slate-500 dark:text-slate-300',
-    disconnected: 'text-zinc-500 dark:text-zinc-300',
-    loading: 'text-blue-500 dark:text-blue-400',
+    info: 'text-info',
+    error: 'text-destructive',
+    warning: 'text-warning',
+    success: 'text-success',
+    help: 'text-primary',
+    loginRequired: 'text-muted-foreground',
+    disconnected: 'text-muted-foreground',
+    loading: 'text-primary',
 };
 
 const Loading = ({
@@ -82,36 +82,29 @@ const Loading = ({
         return (
             <div className={`flex flex-col items-center gap-4 ${containerWidth}`} role="status" aria-live="polite">
                 {/* Icon placeholder */}
-                <div className="h-12 w-12 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse flex-shrink-0" />
+                <div className="h-12 w-12 rounded-lg bg-muted animate-pulse flex-shrink-0" />
 
                 {/* Content area skeleton - uses full container width */}
                 <div className={`flex flex-col gap-3 w-full ${isFullWidth ? 'max-w-md' : ''}`}>
                     {/* Title/heading line */}
-                    <div className="h-5 w-4/5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                    <div className="h-5 w-4/5 rounded bg-muted animate-pulse" />
 
                     {/* Main content lines */}
                     <div className="flex flex-col gap-2 w-full">
-                        <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                        <div className="h-4 w-11/12 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                        <div className="h-4 w-4/5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                        <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                        <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-11/12 rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-4/5 rounded bg-muted animate-pulse" />
+                        <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
                     </div>
 
                     {/* Optional action/button area */}
-                    <div className="mt-2 h-8 w-32 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                    <div className="mt-2 h-8 w-32 rounded bg-muted animate-pulse" />
                 </div>
             </div>
         );
     }
 
-    return (
-        <IconLoader
-            size={54}
-            strokeWidth={1.5}
-            className="animate-spin text-blue-500 dark:text-blue-400"
-            aria-hidden="true"
-        />
-    );
+    return <IconLoader size={54} strokeWidth={1.5} className="animate-spin text-primary" aria-hidden="true" />;
 };
 
 const MessageIcon = ({ type }: { type: MessageTypes }): React.JSX.Element => {
@@ -186,7 +179,7 @@ const MessageBox = ({
             }`}
         >
             <MessageIcon type={resolvedType} />
-            <div className="text-base text-gray-700 dark:text-gray-200">{content}</div>
+            <div className="text-base text-foreground">{content}</div>
         </div>
     );
 };

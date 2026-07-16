@@ -14,17 +14,22 @@ const defaultTheme = require('tailwindcss/defaultTheme');
 /* helper – wraps an HSL variable with alpha support */
 const hslVar = (name) => `hsl(var(--${name}) / <alpha-value>)`;
 
+/* helper – font-size step backed by theme vars with stock-value fallbacks.
+ * letterSpacing falls back to `inherit` (= no declaration) so parent tracking
+ * utilities keep cascading when a theme doesn't define per-step tracking. */
+const textStep = (step, size, lineHeight) => [
+    `var(--text-${step}, ${size})`,
+    {
+        lineHeight: `var(--text-${step}-lh, ${lineHeight})`,
+        letterSpacing: `var(--text-${step}-ls, inherit)`,
+    },
+];
+
 module.exports = {
     darkMode: ['class'],
     theme: {
         extend: {
             colors: {
-                brand: {
-                    50: '#f5fbff',
-                    500: '#0ea5a5',
-                    700: '#0b7b7b',
-                },
-
                 /* core surfaces */
                 border: hslVar('border'),
                 input: hslVar('input'),
@@ -64,21 +69,66 @@ module.exports = {
                 'chart-3': hslVar('chart-3'),
                 'chart-4': hslVar('chart-4'),
                 'chart-5': hslVar('chart-5'),
+
+                /* dialog/sheet/drawer scrim (bg-overlay/80 replaces bg-black/80) */
+                overlay: hslVar('overlay'),
             },
 
+            /* Radius scale: themes may set per-size --radius-{size}; the calc
+             * chain over the scalar --radius stays as the fallback, so scalar-
+             * only themes render exactly as before. `full` becomes themeable
+             * (e.g. Visited sets --radius-full: 2px — no pills anywhere). */
             borderRadius: {
-                DEFAULT: 'calc(var(--radius) - 4px)',
-                sm: 'calc(var(--radius) - 4px)',
-                md: 'calc(var(--radius) - 2px)',
-                lg: 'var(--radius)',
-                xl: 'calc(var(--radius) + 4px)',
-                '2xl': 'calc(var(--radius) + 8px)',
+                DEFAULT: 'var(--radius-sm, calc(var(--radius) - 4px))',
+                sm: 'var(--radius-sm, calc(var(--radius) - 4px))',
+                md: 'var(--radius-md, calc(var(--radius) - 2px))',
+                lg: 'var(--radius-lg, var(--radius))',
+                xl: 'var(--radius-xl, calc(var(--radius) + 4px))',
+                '2xl': 'var(--radius-2xl, calc(var(--radius) + 8px))',
+                full: 'var(--radius-full, 9999px)',
             },
 
             fontFamily: {
                 sans: ['var(--font-body)', ...defaultTheme.fontFamily.sans],
                 heading: ['var(--font-heading)', ...defaultTheme.fontFamily.sans],
                 handwriting: ['var(--font-handwriting)', 'cursive'],
+                mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
+            },
+
+            /* Type scale: every text-{step} utility reads --text-{step} with the
+             * stock Tailwind value as fallback — themes redefine the whole app's
+             * type ramp (incl. fluid clamp() values) without touching call sites. */
+            fontSize: {
+                xs: textStep('xs', '0.75rem', '1rem'),
+                sm: textStep('sm', '0.875rem', '1.25rem'),
+                base: textStep('base', '1rem', '1.5rem'),
+                lg: textStep('lg', '1.125rem', '1.75rem'),
+                xl: textStep('xl', '1.25rem', '1.75rem'),
+                '2xl': textStep('2xl', '1.5rem', '2rem'),
+                '3xl': textStep('3xl', '1.875rem', '2.25rem'),
+                '4xl': textStep('4xl', '2.25rem', '2.5rem'),
+                '5xl': textStep('5xl', '3rem', '1'),
+                '6xl': textStep('6xl', '3.75rem', '1'),
+                '7xl': textStep('7xl', '4.5rem', '1'),
+                '8xl': textStep('8xl', '6rem', '1'),
+                '9xl': textStep('9xl', '8rem', '1'),
+            },
+
+            /* Border chrome: bare `border` (and divide-*) width becomes themeable */
+            borderWidth: {
+                DEFAULT: 'var(--border-width, 1px)',
+                strong: 'var(--border-width-strong, 2px)',
+            },
+
+            /* Z-index ladder (adopted by overlay components; themes may re-stack) */
+            zIndex: {
+                header: 'var(--z-header, 40)',
+                sticky: 'var(--z-sticky, 30)',
+                dropdown: 'var(--z-dropdown, 50)',
+                overlay: 'var(--z-overlay, 50)',
+                modal: 'var(--z-modal, 50)',
+                popover: 'var(--z-popover, 50)',
+                toast: 'var(--z-toast, 100)',
             },
 
             /* Prose (article) typography wired to design tokens instead of a
@@ -128,6 +178,8 @@ module.exports = {
             },
 
             boxShadow: {
+                /* bare `shadow` previously escaped the token system (stock value) */
+                DEFAULT: 'var(--shadow-sm)',
                 xs: 'var(--shadow-xs)',
                 sm: 'var(--shadow-sm)',
                 md: 'var(--shadow-md)',
@@ -146,12 +198,14 @@ module.exports = {
                 fast: 'var(--duration-fast)',
                 normal: 'var(--duration-normal)',
                 slow: 'var(--duration-slow)',
+                press: 'var(--duration-press, var(--duration-fast))',
             },
             transitionTimingFunction: {
                 DEFAULT: 'var(--ease)',
                 theme: 'var(--ease)',
                 'theme-enter': 'var(--ease-enter)',
                 'theme-exit': 'var(--ease-exit)',
+                spring: 'var(--ease-spring)',
             },
 
             keyframes: {
@@ -163,10 +217,16 @@ module.exports = {
                     from: { height: 'var(--radix-accordion-content-height)' },
                     to: { height: 0 },
                 },
+                /* input-otp caret (was referenced by animate-caret-blink with no keyframes) */
+                'caret-blink': {
+                    '0%,70%,100%': { opacity: '1' },
+                    '20%,50%': { opacity: '0' },
+                },
             },
             animation: {
                 'accordion-down': 'accordion-down var(--duration-normal) var(--ease)',
                 'accordion-up': 'accordion-up var(--duration-normal) var(--ease)',
+                'caret-blink': 'caret-blink 1.25s ease-out infinite',
             },
         },
     },

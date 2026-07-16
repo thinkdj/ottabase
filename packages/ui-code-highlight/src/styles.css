@@ -1,5 +1,40 @@
 /* GitHub-style syntax highlighting for light and dark modes */
 
+/*
+ * Syntax design tokens — package-level defaults (GitHub Light palette).
+ * :where() keeps specificity at zero so any app-level declaration
+ * (e.g. a brand theme's :root/.dark block) always wins.
+ */
+:where(:root) {
+    --syntax-keyword: #cf222e;
+    --syntax-string: #0a3069;
+    --syntax-comment: #6e7781;
+    --syntax-number: #0550ae;
+    --syntax-title: #8250df;
+    --syntax-attr: #953800;
+    --syntax-literal: #cf222e;
+    --syntax-meta: #6e7781;
+    --syntax-tag: #116329;
+    --syntax-attribute: #0550ae;
+    /* Diff colors are mode-invariant (same hues in light and dark) */
+    --syntax-deletion: #ff7b72;
+    --syntax-addition: #7ee787;
+}
+
+/* GitHub Dark palette */
+.dark {
+    --syntax-keyword: #ff7b72;
+    --syntax-string: #a5d6ff;
+    --syntax-comment: #8b949e;
+    --syntax-number: #79c0ff;
+    --syntax-title: #d2a8ff;
+    --syntax-attr: #ffa657;
+    --syntax-literal: #ff7b72;
+    --syntax-meta: #8b949e;
+    --syntax-tag: #7ee787;
+    --syntax-attribute: #79c0ff;
+}
+
 /* Base styles */
 .code-block-wrapper {
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
@@ -18,35 +53,16 @@
     padding: 0;
 }
 
-/* Light mode syntax highlighting (GitHub Light) */
+/* Surface colors follow the shadcn tokens with standalone fallbacks */
 :root,
 .light {
     --code-bg: hsl(var(--card, 0 0% 100%));
     --code-fg: hsl(var(--foreground, 222.2 84% 4.9%));
-    --code-comment: #6e7781;
-    --code-keyword: #cf222e;
-    --code-string: #0a3069;
-    --code-number: #0550ae;
-    --code-function: #8250df;
-    --code-variable: #953800;
-    --code-tag: #116329;
-    --code-attribute: #0550ae;
-    --code-meta: #6e7781;
 }
 
-/* Dark mode syntax highlighting (GitHub Dark) */
 .dark {
     --code-bg: hsl(var(--card, 222.2 84% 4.9%));
     --code-fg: hsl(var(--foreground, 210 40% 98%));
-    --code-comment: #8b949e;
-    --code-keyword: #ff7b72;
-    --code-string: #a5d6ff;
-    --code-number: #79c0ff;
-    --code-function: #d2a8ff;
-    --code-variable: #ffa657;
-    --code-tag: #7ee787;
-    --code-attribute: #79c0ff;
-    --code-meta: #8b949e;
 }
 
 /* Apply theme colors */
@@ -55,73 +71,82 @@
     color: var(--code-fg);
 }
 
-/* Syntax highlighting classes */
+/*
+ * Syntax highlighting classes.
+ * No !important needed here: highlight.js emits class-based spans (no inline
+ * styles) and we don't import any hljs theme stylesheet, so nothing competes
+ * with these rules. Keeping them un-!important lets consumers override.
+ */
 .hljs {
-    background: var(--code-bg) !important;
-    color: var(--code-fg) !important;
+    background: var(--code-bg);
+    color: var(--code-fg);
 }
 
 .hljs-comment,
 .hljs-quote {
-    color: var(--code-comment) !important;
+    color: var(--syntax-comment);
     font-style: italic;
 }
 
 .hljs-keyword,
 .hljs-selector-tag,
-.hljs-literal,
 .hljs-type,
 .hljs-built_in {
-    color: var(--code-keyword) !important;
+    color: var(--syntax-keyword);
+    font-weight: 600;
+}
+
+.hljs-literal {
+    color: var(--syntax-literal);
     font-weight: 600;
 }
 
 .hljs-string,
 .hljs-regexp,
 .hljs-template-string {
-    color: var(--code-string) !important;
+    color: var(--syntax-string);
 }
 
 .hljs-number,
 .hljs-boolean {
-    color: var(--code-number) !important;
+    color: var(--syntax-number);
 }
 
 .hljs-function,
 .hljs-title.function_,
 .hljs-title.class_,
 .hljs-class .hljs-title {
-    color: var(--code-function) !important;
+    color: var(--syntax-title);
     font-weight: 600;
 }
 
 .hljs-variable,
 .hljs-property,
 .hljs-attr {
-    color: var(--code-variable) !important;
+    color: var(--syntax-attr);
 }
 
 .hljs-tag,
 .hljs-name {
-    color: var(--code-tag) !important;
+    color: var(--syntax-tag);
 }
 
 .hljs-attribute {
-    color: var(--code-attribute) !important;
+    color: var(--syntax-attribute);
 }
 
 .hljs-meta,
 .hljs-meta .hljs-keyword {
-    color: var(--code-meta) !important;
+    color: var(--syntax-meta);
 }
 
 .hljs-deletion {
-    color: #ff7b72;
+    color: var(--syntax-deletion);
     background-color: rgba(255, 123, 114, 0.1);
 }
 
 .hljs-addition {
-    color: #7ee787;
+    color: var(--syntax-addition);
     background-color: rgba(126, 231, 135, 0.1);
 }
 
@@ -158,6 +183,7 @@
     min-width: 0;
 }
 
+/* !important stays: must beat the 3-class .code-block-with-lines .code-block-line-num rule above */
 .code-line-highlight {
     color: hsl(var(--primary, 222.2 47.4% 11.2%)) !important;
 }

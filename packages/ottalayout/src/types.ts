@@ -60,6 +60,15 @@ export interface LayoutConfig {
     containerPadding?: ContainerPadding;
     /** Center content vertically – for auth / splash pages (default: false) */
     centerContent?: boolean;
+
+    // ── Dimension tokens (optional CSS lengths, emitted as --layout-* vars) ──
+
+    /** Exact content max-width (e.g. '1160px') → --layout-container-max */
+    containerMaxWidth?: string;
+    /** Exact sidebar width (e.g. '16rem') → --layout-sidebar-w */
+    sidebarWidthCss?: string;
+    /** Exact collapsed/icon sidebar width (e.g. '3rem') → --layout-sidebar-w-icon */
+    sidebarIconWidthCss?: string;
 }
 
 // ── Defaults ───────────────────────────────────────────────────────────────

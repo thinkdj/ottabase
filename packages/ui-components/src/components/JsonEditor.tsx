@@ -187,23 +187,18 @@ export function JsonEditor({
     );
 
     return (
-        <div
-            className={cn(
-                'rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm',
-                className,
-            )}
-        >
+        <div className={cn('rounded-md border border-border bg-background text-sm', className)}>
             {/* Toolbar */}
-            <div className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 px-2 py-1.5">
-                <div className="inline-flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5">
+                <div className="inline-flex rounded-md border border-border overflow-hidden">
                     <button
                         type="button"
                         onClick={() => setMode('tree')}
                         className={cn(
                             'px-2.5 py-1 text-xs font-medium transition-colors',
                             mode === 'tree'
-                                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                                : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-transparent text-muted-foreground hover:bg-muted',
                         )}
                     >
                         Tree
@@ -212,10 +207,10 @@ export function JsonEditor({
                         type="button"
                         onClick={() => setMode('raw')}
                         className={cn(
-                            'px-2.5 py-1 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-700',
+                            'px-2.5 py-1 text-xs font-medium transition-colors border-l border-border',
                             mode === 'raw'
-                                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                                : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-transparent text-muted-foreground hover:bg-muted',
                         )}
                     >
                         Raw
@@ -266,7 +261,7 @@ function JsonSummary({ value }: { value: JsonValue }) {
     if (t === 'object') label = `${Object.keys(value as JsonObject).length} keys`;
     else if (t === 'array') label = `${(value as JsonArray).length} items`;
     else label = t;
-    return <span className="text-[11px] text-gray-500 dark:text-gray-400 px-1">{label}</span>;
+    return <span className="text-[11px] text-muted-foreground px-1">{label}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,10 +308,7 @@ function TreeNode({
     return (
         <div className="group/node">
             <div
-                className={cn(
-                    'flex items-start gap-1 px-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800/60',
-                    'transition-colors',
-                )}
+                className={cn('flex items-start gap-1 px-1 rounded hover:bg-muted', 'transition-colors')}
                 // eslint-disable-next-line react/forbid-dom-props
                 style={{ paddingLeft: `${depth * 14}px` }}
             >
@@ -326,7 +318,7 @@ function TreeNode({
                         type="button"
                         aria-label={collapsed ? 'Expand' : 'Collapse'}
                         onClick={() => setCollapsed((c) => !c)}
-                        className="mt-0.5 shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                        className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
                     >
                         {collapsed ? <IconChevronRight size={14} /> : <IconChevronDown size={14} />}
                     </button>
@@ -337,7 +329,7 @@ function TreeNode({
                 {/* Key */}
                 {!isRoot ? (
                     parentIsArray ? (
-                        <span className="text-gray-400 dark:text-gray-500 select-none">{nodeKey}:</span>
+                        <span className="text-muted-foreground select-none">{nodeKey}:</span>
                     ) : (
                         <KeyInput
                             value={String(nodeKey ?? '')}
@@ -346,7 +338,7 @@ function TreeNode({
                         />
                     )
                 ) : nodeKey ? (
-                    <span className="text-gray-500 dark:text-gray-400 select-none">{nodeKey}:</span>
+                    <span className="text-muted-foreground select-none">{nodeKey}:</span>
                 ) : null}
 
                 {/* Value (or container summary) */}
@@ -382,7 +374,7 @@ function TreeNode({
                                         setCollapsed(false);
                                     }
                                 }}
-                                className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                                 <IconPlus size={14} />
                             </button>
@@ -392,7 +384,7 @@ function TreeNode({
                                 type="button"
                                 title="Remove"
                                 onClick={onRemove}
-                                className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             >
                                 <IconTrash size={14} />
                             </button>
@@ -450,23 +442,23 @@ function TreeNode({
 function ContainerSummary({ type, value, collapsed }: { type: JsonType; value: JsonValue; collapsed: boolean }) {
     const icon =
         type === 'object' ? (
-            <IconBraces size={12} className="text-gray-400" />
+            <IconBraces size={12} className="text-muted-foreground" />
         ) : (
-            <IconBrackets size={12} className="text-gray-400" />
+            <IconBrackets size={12} className="text-muted-foreground" />
         );
     const count = type === 'object' ? Object.keys(value as JsonObject).length : (value as JsonArray).length;
     const open = type === 'object' ? '{' : '[';
     const close = type === 'object' ? '}' : ']';
     if (!collapsed) {
         return (
-            <span className="inline-flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+            <span className="inline-flex items-center gap-1 text-muted-foreground select-none">
                 {icon}
                 <span>{open}</span>
             </span>
         );
     }
     return (
-        <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 select-none">
+        <span className="inline-flex items-center gap-1 text-muted-foreground select-none">
             {icon}
             <span>{open}</span>
             <span className="text-[11px]">{count}</span>
@@ -500,12 +492,12 @@ function KeyInput({
                 type="button"
                 onClick={() => !readOnly && setEditing(true)}
                 className={cn(
-                    'text-left text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded px-1 -mx-0.5',
+                    'text-left text-primary hover:bg-primary/10 rounded px-1 -mx-0.5',
                     readOnly && 'cursor-default hover:bg-transparent',
                 )}
             >
                 <span>"{value}"</span>
-                <span className="text-gray-400 dark:text-gray-500">:</span>
+                <span className="text-muted-foreground">:</span>
             </button>
         );
     }
@@ -522,7 +514,7 @@ function KeyInput({
 
     return (
         <span className="inline-flex items-center">
-            <span className="text-gray-400 dark:text-gray-500">"</span>
+            <span className="text-muted-foreground">"</span>
             <input
                 aria-label="Edit key"
                 title="Edit key"
@@ -539,12 +531,12 @@ function KeyInput({
                         cancel();
                     }
                 }}
-                className="bg-transparent border-b border-sky-400 focus:outline-none text-sky-700 dark:text-sky-300 min-w-[2ch] px-0.5 h-6 leading-6 py-0 box-border"
+                className="bg-transparent border-b border-primary focus:outline-none text-primary min-w-[2ch] px-0.5 h-6 leading-6 py-0 box-border"
                 // eslint-disable-next-line react/forbid-dom-props
                 style={{ width: `${Math.max(draft.length, 2) + 1}ch` }}
                 spellCheck={false}
             />
-            <span className="text-gray-400 dark:text-gray-500">":</span>
+            <span className="text-muted-foreground">":</span>
         </span>
     );
 }
@@ -575,7 +567,7 @@ function ValueInput({
             <button
                 type="button"
                 onClick={() => !readOnly && onCommit('')}
-                className="italic text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 px-1 rounded"
+                className="italic text-muted-foreground hover:text-foreground px-1 rounded"
                 disabled={readOnly}
             >
                 null
@@ -591,9 +583,7 @@ function ValueInput({
                 onClick={() => !readOnly && onCommit(!v)}
                 className={cn(
                     'px-1.5 py-0.5 rounded text-xs font-medium',
-                    v
-                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                        : 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+                    v ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning',
                 )}
                 disabled={readOnly}
             >
@@ -609,9 +599,9 @@ function ValueInput({
                 onClick={() => !readOnly && setEditing(true)}
                 className={cn(
                     'text-left rounded px-1 -mx-0.5 truncate max-w-full',
-                    type === 'string' && 'text-emerald-700 dark:text-emerald-300',
-                    type === 'number' && 'text-indigo-700 dark:text-indigo-300',
-                    !readOnly && 'hover:bg-gray-100 dark:hover:bg-gray-800',
+                    type === 'string' && 'text-success',
+                    type === 'number' && 'text-info',
+                    !readOnly && 'hover:bg-muted',
                     readOnly && 'cursor-default',
                 )}
                 title={String(value)}
@@ -654,8 +644,8 @@ function ValueInput({
             }}
             className={cn(
                 'bg-transparent border-b focus:outline-none px-0.5 min-w-[4ch] h-6 leading-6 py-0 box-border',
-                type === 'string' && 'text-emerald-700 dark:text-emerald-300 border-emerald-400',
-                type === 'number' && 'text-indigo-700 dark:text-indigo-300 border-indigo-400',
+                type === 'string' && 'text-success border-success',
+                type === 'number' && 'text-info border-info',
             )}
             // eslint-disable-next-line react/forbid-dom-props
             style={{ width: `${Math.max(draft.length, 4) + 1}ch` }}
@@ -691,9 +681,9 @@ function TypeSelector({ type, onChange }: { type: JsonType; onChange: (t: JsonTy
             value={type}
             onChange={(e) => onChange(e.target.value as JsonType)}
             className={cn(
-                'text-[10px] uppercase tracking-wide rounded px-1 py-0 border bg-gray-50 dark:bg-gray-800',
-                'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400',
-                'focus:outline-none focus:ring-1 focus:ring-sky-400',
+                'text-[10px] uppercase tracking-wide rounded px-1 py-0 border bg-muted',
+                'border-border text-muted-foreground',
+                'focus:outline-none focus:ring-1 focus:ring-ring',
                 // Hidden until row hover for a cleaner default view
                 'opacity-0 group-hover/node:opacity-100 focus:opacity-100 transition-opacity',
             )}
@@ -770,12 +760,12 @@ function RawEditor({
 
     return (
         <div className="flex flex-col">
-            <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 px-2 py-1">
+            <div className="flex items-center gap-2 border-b border-border px-2 py-1">
                 <button
                     type="button"
                     onClick={format}
                     disabled={readOnly}
-                    className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                    className="text-xs px-2 py-0.5 rounded border border-border text-foreground hover:bg-muted disabled:opacity-50"
                 >
                     Format
                 </button>
@@ -783,12 +773,12 @@ function RawEditor({
                     type="button"
                     onClick={minify}
                     disabled={readOnly}
-                    className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                    className="text-xs px-2 py-0.5 rounded border border-border text-foreground hover:bg-muted disabled:opacity-50"
                 >
                     Minify
                 </button>
-                <div className="ml-auto text-[11px] text-gray-500 dark:text-gray-400">
-                    {error ? <span className="text-red-600 dark:text-red-400">Invalid JSON</span> : 'Valid JSON'}
+                <div className="ml-auto text-[11px] text-muted-foreground">
+                    {error ? <span className="text-destructive">Invalid JSON</span> : 'Valid JSON'}
                 </div>
             </div>
             <textarea
@@ -819,12 +809,12 @@ function RawEditor({
                 }}
                 className={cn(
                     'font-mono text-[13px] leading-5 p-3 w-full resize-y min-h-[180px]',
-                    'bg-transparent text-gray-800 dark:text-gray-100 focus:outline-none',
-                    error && 'text-gray-800 dark:text-gray-100',
+                    'bg-transparent text-foreground focus:outline-none',
+                    error && 'text-foreground',
                 )}
             />
             {error && (
-                <div className="px-3 py-1.5 border-t border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 text-xs text-red-700 dark:text-red-300 font-mono">
+                <div className="px-3 py-1.5 border-t border-destructive/30 bg-destructive/10 text-xs text-destructive font-mono">
                     {error}
                 </div>
             )}

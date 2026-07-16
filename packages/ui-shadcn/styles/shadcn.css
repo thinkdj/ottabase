@@ -104,6 +104,9 @@
         --spacing-section: 2rem;
         --spacing-card: 1.5rem;
         --spacing-element: 0.5rem;
+
+        /* ── Overlay scrim (dialog/sheet/drawer backdrops) ────────── */
+        --overlay: 0 0% 0%;
     }
 
     .dark {
@@ -161,6 +164,8 @@
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
         --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
         --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55);
+
+        --overlay: 0 0% 0%;
     }
 }
 
@@ -183,7 +188,83 @@
         @apply border-border;
     }
 
+    /* Global default border-style — themes may set e.g. `dashed`/`ridge`.
+       Utilities (border-dashed, …) still win: they live in the utilities layer. */
+    *,
+    ::before,
+    ::after {
+        border-style: var(--border-style, solid);
+    }
+
     body {
         @apply bg-background text-foreground;
+        /* Theme backdrop layer (gradients/textures behind all content) */
+        background-image: var(--bg-backdrop, none);
+        /* No fallback on purpose: unset var → invalid → UA default tap flash */
+        -webkit-tap-highlight-color: var(--tap-highlight);
     }
+
+    :root {
+        /* Native form-control tinting + scrollbars; `auto` = browser default.
+           scrollbar-color needs BOTH colors — define thumb AND track or neither. */
+        accent-color: var(--accent-color, auto);
+        scrollbar-width: var(--scrollbar-width, auto);
+        scrollbar-color: var(--scrollbar-thumb, auto) var(--scrollbar-track, auto);
+    }
+
+    input,
+    textarea,
+    select,
+    [contenteditable] {
+        caret-color: var(--caret-color, auto);
+    }
+
+    /* Text selection — system Highlight colors when the theme doesn't opt in */
+    ::selection {
+        background-color: var(--selection-bg, Highlight);
+        color: var(--selection-fg, HighlightText);
+    }
+}
+
+/* ── Unified focus ring ─────────────────────────────────────────────────────
+   One global focus-visible treatment driven by --focus-ring-* tokens. Zero
+   specificity (:where) so any component utility (focus-visible:ring-*,
+   focus-visible:outline-none) still wins — components migrating off their
+   per-component ring recipes simply drop those classes. */
+:where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex],
+    [role='button'],
+    [role='link'],
+    [contenteditable]
+):focus-visible {
+    outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
+    outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* ── Interaction physics (hover lift / press) ───────────────────────────────
+   Identity by default (`none`), so nothing moves until a theme defines
+   --hover-transform / --press-transform. Pressed elements inherit the hover
+   transform unless the theme sets a distinct press transform. Extra press
+   properties that have no safe static default (box-shadow, durations) are
+   emitted per-theme in the generated effects stylesheet. */
+:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):hover {
+    transform: var(--hover-transform, none);
+    filter: var(--hover-filter, none);
+}
+
+:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):active {
+    transform: var(--press-transform, var(--hover-transform, none));
+}
+
+/* ── Effect decor carriers ──────────────────────────────────────────────────
+   Empty aria-hidden spans components ship for theme effects (shine sweeps,
+   corner ornaments). Invisible until a theme's CSS turns them on. */
+[data-decor] {
+    display: none;
 }

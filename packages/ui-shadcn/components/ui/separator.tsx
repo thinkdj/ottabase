@@ -10,6 +10,7 @@ const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
     ({ className, orientation = 'horizontal', ...props }, ref) => (
         <div
             ref={ref}
+            data-slot="separator"
             role="separator"
             aria-orientation={orientation}
             className={cn(

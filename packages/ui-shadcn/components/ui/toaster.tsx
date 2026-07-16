@@ -9,11 +9,11 @@ export type ToasterProps = React.ComponentProps<typeof Sonner>;
 const TOAST_VARIANTS = {
     base: 'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
     success:
-        'data-[type=success]:!bg-green-50 data-[type=success]:!text-green-900 data-[type=success]:!border-green-200 dark:data-[type=success]:!bg-green-950 dark:data-[type=success]:!text-green-50 dark:data-[type=success]:!border-green-800',
-    error: 'data-[type=error]:!bg-red-50 data-[type=error]:!text-red-900 data-[type=error]:!border-red-200 dark:data-[type=error]:!bg-red-950 dark:data-[type=error]:!text-red-50 dark:data-[type=error]:!border-red-800',
+        'data-[type=success]:!bg-success/10 data-[type=success]:!text-success data-[type=success]:!border-success/30',
+    error: 'data-[type=error]:!bg-destructive/10 data-[type=error]:!text-destructive data-[type=error]:!border-destructive/30',
     warning:
-        'data-[type=warning]:!bg-yellow-50 data-[type=warning]:!text-yellow-900 data-[type=warning]:!border-yellow-200 dark:data-[type=warning]:!bg-yellow-950 dark:data-[type=warning]:!text-yellow-50 dark:data-[type=warning]:!border-yellow-800',
-    info: 'data-[type=info]:!bg-blue-50 data-[type=info]:!text-blue-900 data-[type=info]:!border-blue-200 dark:data-[type=info]:!bg-blue-950 dark:data-[type=info]:!text-blue-50 dark:data-[type=info]:!border-blue-800',
+        'data-[type=warning]:!bg-warning/10 data-[type=warning]:!text-warning data-[type=warning]:!border-warning/30',
+    info: 'data-[type=info]:!bg-info/10 data-[type=info]:!text-info data-[type=info]:!border-info/30',
 };
 
 export function Toaster({ style, ...props }: ToasterProps) {
@@ -26,7 +26,7 @@ export function Toaster({ style, ...props }: ToasterProps) {
             // (z-index: 999999999) but apps can accidentally override the
             // [data-sonner-toaster] rule, so we set it inline too. Callers can
             // still override via the `style` prop.
-            style={{ zIndex: 999999999, ...style }}
+            style={{ zIndex: 'var(--z-toast, 100)', ...style }}
             toastOptions={{
                 classNames: {
                     toast: Object.values(TOAST_VARIANTS).join(' '),

@@ -21,7 +21,13 @@ const emptyVariants = cva(
 export interface EmptyProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof emptyVariants> {}
 
 const Empty = React.forwardRef<HTMLDivElement, EmptyProps>(({ className, variant, ...props }, ref) => (
-    <div ref={ref} className={cn(emptyVariants({ variant }), className)} {...props} />
+    <div
+        ref={ref}
+        data-slot="empty"
+        data-variant={variant ?? 'default'}
+        className={cn(emptyVariants({ variant }), className)}
+        {...props}
+    />
 ));
 Empty.displayName = 'Empty';
 
@@ -29,6 +35,7 @@ const EmptyIcon = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
     ({ className, ...props }, ref) => (
         <div
             ref={ref}
+            data-slot="empty-icon"
             className={cn('mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted', className)}
             {...props}
         />
@@ -38,20 +45,27 @@ EmptyIcon.displayName = 'EmptyIcon';
 
 const EmptyTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
     ({ className, ...props }, ref) => (
-        <h3 ref={ref} className={cn('mt-4 text-lg font-semibold', className)} {...props} />
+        <h3 ref={ref} data-slot="empty-title" className={cn('mt-4 text-lg font-semibold', className)} {...props} />
     ),
 );
 EmptyTitle.displayName = 'EmptyTitle';
 
 const EmptyDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
     ({ className, ...props }, ref) => (
-        <p ref={ref} className={cn('mb-4 mt-2 text-sm text-muted-foreground', className)} {...props} />
+        <p
+            ref={ref}
+            data-slot="empty-description"
+            className={cn('mb-4 mt-2 text-sm text-muted-foreground', className)}
+            {...props}
+        />
     ),
 );
 EmptyDescription.displayName = 'EmptyDescription';
 
 const EmptyContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => <div ref={ref} className={cn('mt-4', className)} {...props} />,
+    ({ className, ...props }, ref) => (
+        <div ref={ref} data-slot="empty-content" className={cn('mt-4', className)} {...props} />
+    ),
 );
 EmptyContent.displayName = 'EmptyContent';
 
