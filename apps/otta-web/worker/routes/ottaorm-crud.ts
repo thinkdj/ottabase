@@ -71,6 +71,32 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    if (crudRequest.model === 'verification_tokens') {
+        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER — surfaced during the platform_owner audit.
+        // verification_tokens carries a PublicReadOnly RLS policy (packages/ottaorm rls/registry),
+        // which yields an empty filter and no role check, and this generic CRUD route has no auth
+        // gate — so anyone could `GET /api/ottaorm/verification_tokens` and read every live
+        // password-reset / magic-link / email-verification token (stored in plaintext) and take
+        // over accounts. Nothing legitimate reaches these through generic CRUD (they are consumed
+        // server-side by the auth flows), so hard-block the model here. The deeper fix is to give
+        // the model a non-public RLS policy; tracked separately.
+        return errorResponse('Verification tokens are not accessible via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+        });
+    }
+
+    if (crudRequest.model === 'referral_tracking') {
+        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER — surfaced during the platform_owner audit.
+        // referral_tracking uses an app-scoped RLS policy that filters on appId only (no user/org
+        // row filter), so any caller could read every user's referral rows (IP, user-agent,
+        // referrer graph) and forge/delete them via this unauthenticated generic CRUD route. These
+        // rows are written server-side by the referrals package, never by a browser, so hard-block
+        // the model here. The deeper fix is a userId/appId-scoped RLS policy; tracked separately.
+        return errorResponse('Referral tracking is not accessible via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+        });
+    }
+
     if (crudRequest.model === 'scheduled_tasks') {
         // Same name-only RLS role-check gap as shortlinks above: every self-registered user
         // holds role NAME 'owner' in their personal org, so the AdminOnly policy on this

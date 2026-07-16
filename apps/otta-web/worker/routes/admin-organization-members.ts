@@ -4,7 +4,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { isEmail } from '@ottabase/utils/string';
-import { requireAdminAccess, SYSTEM_ORGANIZATION_ID, type AdminContext } from '../lib/admin-guard';
+import { requireAdminAccess, type AdminContext } from '../lib/admin-guard';
 import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
 import { normalizeEmail } from '../lib/utils';
 import { registerAppEmailTemplates } from '../../src/email/templates';
@@ -37,22 +37,22 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
 }
 
 /**
- * Tenant-data boundary for roster access. Org-scope admins may only touch the org their
- * admin context was granted in (context comparison). System-scope admins (platform owner)
- * may only touch organizations they are an active member of — platform scope administers
- * the platform, it does not grant a view into arbitrary tenants' membership data.
+ * Tenant-data boundary for roster access. Active membership in the TARGET org is the sole
+ * authority: a caller may read or mutate an org's roster only if they hold an active
+ * organization_members row there. This covers legitimate org-scoped admins (who are members of
+ * the org they administer) and platform owners who belong to the org, and denies everyone else
+ * — including a platform owner acting on an org they are not part of.
+ *
+ * We deliberately do NOT trust `auth.organizationId` as proof of access. When the caller has no
+ * session org it is resolved from the client-supplied `x-org-id` header / `?organizationId`
+ * query with no membership validation (packages/rbac resolveOrganizationId), and a platform
+ * owner's system-scope `*:*` role satisfies assertAdmin for ANY org — so trusting that value
+ * would let a non-member inject the target org and pass. Mirrors the audit-log boundary, which
+ * likewise derives the allowed orgs from membership rather than the request-supplied org.
  */
 async function assertRosterAccess(auth: AdminContext, organizationId: string): Promise<Response | null> {
-    if (auth.organizationId === organizationId || auth.rbac.organizationId === organizationId) {
+    if (auth.user?.id && (await OrganizationMember.isMember(auth.user.id, organizationId))) {
         return null;
-    }
-    if (auth.organizationId === SYSTEM_ORGANIZATION_ID && auth.user?.id) {
-        const membership = await OrganizationMember.first({
-            userId: auth.user.id,
-            organizationId,
-            status: 'active',
-        });
-        if (membership) return null;
     }
     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
 }

@@ -18,6 +18,9 @@ describe('handleAdminOrganizationInviteMember', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValue(false);
+        // Roster access is gated on active membership in the target org; the org-admin happy
+        // paths below act on org-1, of which the admin is a member.
+        vi.spyOn(OrganizationMember, 'isMember').mockResolvedValue(true);
     });
 
     it('creates the membership with server-controlled invite fields', async () => {
@@ -294,7 +297,7 @@ describe('system-scope roster access boundary', () => {
 
     it('denies a system-scope admin who is not a member of the target org', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
-        const firstSpy = vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null);
+        const isMemberSpy = vi.spyOn(OrganizationMember, 'isMember').mockResolvedValue(false);
 
         const response = await handleAdminOrganizationMembersList(
             {
@@ -305,16 +308,34 @@ describe('system-scope roster access boundary', () => {
         );
 
         expect(response.status).toBe(403);
-        expect(firstSpy).toHaveBeenCalledWith({
-            userId: 'platform-owner-1',
-            organizationId: 'org-9',
-            status: 'active',
-        });
+        expect(isMemberSpy).toHaveBeenCalledWith('platform-owner-1', 'org-9');
+    });
+
+    it('denies a system-scope admin even when the target org is injected via header/query', async () => {
+        // Regression guard: auth.organizationId can be attacker-controlled (resolved from the
+        // x-org-id header / ?organizationId query when the session has no org), so equality
+        // between auth.organizationId and the target must NOT grant access. Only membership does.
+        vi.mocked(requireAdminAccess).mockResolvedValue({ ...systemAuth, organizationId: 'org-9' });
+        vi.spyOn(OrganizationMember, 'isMember').mockResolvedValue(false);
+
+        const response = await handleAdminOrganizationInviteMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members/invite', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ userId: 'victim', role: 'admin' }),
+                }),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(403);
     });
 
     it('allows a system-scope admin who is an active member of the target org', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
-        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ id: 'membership-1' } as any);
+        vi.spyOn(OrganizationMember, 'isMember').mockResolvedValue(true);
         vi.spyOn(OrganizationMember, 'countOrganizationMembers').mockResolvedValue(0);
         vi.spyOn(OrganizationMember, 'getOrganizationMembers').mockResolvedValue([]);
 
