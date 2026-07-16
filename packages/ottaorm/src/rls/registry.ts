@@ -141,8 +141,14 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     {
+        // Previously PublicReadOnly, which — with no auth gate on the generic CRUD route — let anyone
+        // read every email-verification / password-reset / magic-link token row. The auth flows read
+        // and consume these via direct model calls (VerificationToken.consumeByIdentifierAndToken,
+        // etc.) that bypass RLS, so nothing legitimate needs RLS/CRUD access: deny reads (custom
+        // filter returns null) and keep writes blocked (readOnly). Also hard-blocked in
+        // ottaorm-crud.ts as the primary gate.
         model: 'verification_tokens',
-        policy: RLSPolicies.PublicReadOnly(), // Token validation needs read access
+        policy: { level: 'custom', readOnly: true, filter: () => null },
         auditEnabled: false,
     },
 
@@ -214,10 +220,21 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: false,
     },
 
-    // Blog post versions - app-scoped
+    // Blog post versions - tenant + app scoped.
+    // Previously AppScoped (appId only), which let any caller read every organization's draft /
+    // version history through the generic CRUD route. organizationId is already injected on write
+    // via contextFields, so scope reads to the caller's organization (and app) as well. Including
+    // organizationId in the read filter also activates the engine's enforceOrgMembership check.
     {
         model: 'post_versions',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
+        policy: {
+            level: 'custom',
+            filter: (context) => {
+                const filter: Record<string, any> = { organizationId: context.organizationId ?? null };
+                if (context.appId) filter.appId = context.appId;
+                return filter;
+            },
+        },
         contextFields: ['organizationId', 'appId'],
         auditEnabled: true,
     },
@@ -247,10 +264,16 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Referral tracking - app-scoped
+    // Referral tracking - owner-scoped.
+    // Previously AppScoped (appId only), which exposed and allowed forgery of every user's referral
+    // rows (IP, user-agent, referrer graph) through the generic CRUD route. Reads are now scoped to
+    // the owning referrer (fails closed when unauthenticated), and writes pin userId. These rows are
+    // written server-side (bypassing RLS), so this only constrains the RLS/CRUD path — which is
+    // additionally hard-blocked in ottaorm-crud.ts as the primary gate.
     {
         model: 'referral_tracking',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
+        policy: RLSPolicies.OwnerOnly('userId'),
+        enforceOnWrite: { userId: 'userId' },
         auditEnabled: true,
     },
 
