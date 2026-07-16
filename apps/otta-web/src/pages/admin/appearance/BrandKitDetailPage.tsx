@@ -34,6 +34,7 @@ import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
 import { BrandKitLogoTab, LOGO_DRAFT_FIELDS } from './brand/BrandKitLogoTab';
 import { BrandKitMotionTab } from './brand/BrandKitMotionTab';
 import { BrandKitThemeTab, colorSwatchClass } from './brand/BrandKitThemeTab';
+import { TabDisableToggle } from './brand/TabDisableToggle';
 
 const VALID_TABS = ['brand', 'logo', 'theme', 'fonts', 'motion', 'cursors', 'advanced'] as const;
 
@@ -661,18 +662,42 @@ export function AdminBrandKitDetailPage() {
                         />
                     </TabsContent>
                     <TabsContent value="fonts">
-                        <BrandKitFontsTab
+                        <TabDisableToggle
+                            section="fonts"
+                            label="Disable fonts"
+                            description="Skip all web-font downloads — the app renders with system fonts."
                             tokensJson={draft.tokensJson}
-                            themePresetId={draft.themePresetId}
                             onTokensChange={handleTokensChange}
-                            hasParent={!!draft.parentBrandKitId}
-                        />
+                        >
+                            <BrandKitFontsTab
+                                tokensJson={draft.tokensJson}
+                                themePresetId={draft.themePresetId}
+                                onTokensChange={handleTokensChange}
+                                hasParent={!!draft.parentBrandKitId}
+                            />
+                        </TabDisableToggle>
                     </TabsContent>
                     <TabsContent value="motion">
-                        <BrandKitMotionTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                        <TabDisableToggle
+                            section="motion"
+                            label="Disable motion"
+                            description="Turn off all animations and transitions (durations become 0s)."
+                            tokensJson={draft.tokensJson}
+                            onTokensChange={handleTokensChange}
+                        >
+                            <BrandKitMotionTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                        </TabDisableToggle>
                     </TabsContent>
                     <TabsContent value="cursors">
-                        <BrandKitCursorsTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                        <TabDisableToggle
+                            section="cursors"
+                            label="Disable cursors"
+                            description="Ignore custom cursors — the browser's native cursors are used."
+                            tokensJson={draft.tokensJson}
+                            onTokensChange={handleTokensChange}
+                        >
+                            <BrandKitCursorsTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                        </TabDisableToggle>
                     </TabsContent>
                     <TabsContent value="advanced">
                         <BrandKitAdvancedTab

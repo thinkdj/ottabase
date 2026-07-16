@@ -7,10 +7,9 @@
 // ---------------------------------------------------------------------------
 
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
-import { DEFAULT_CURSORS } from './defaults';
-import { pickMode, resolveTokenSet } from './resolve-core';
+import { resolveCursors, resolveTokenSet } from './resolve-core';
 import type { ResolvedBrandTheme } from './resolver';
-import type { DesignTokens, ModeValue } from './tokens';
+import type { DesignTokens, ModeValue, TokenCursors } from './tokens';
 
 export interface PreviewKitData {
     tokensJson?: string | null;
@@ -53,10 +52,8 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
     // Resolve every token category for the requested mode (shared core)
     const tokenSet = resolveTokenSet(tokens, mode);
 
-    // Resolve cursors: prefer parsed cursors from tokensJson, resolving mode split if present
-    const resolvedCursors = parsedCursors
-        ? (pickMode(parsedCursors as ModeValue<Record<string, string>>, mode) ?? parsedCursors)
-        : DEFAULT_CURSORS;
+    // Resolve cursors from tokensJson root (mode split + disabled flag honored)
+    const resolvedCursors = resolveCursors(tokens, parsedCursors as ModeValue<TokenCursors> | undefined, mode);
 
     return {
         name: kitData.themePresetId || 'custom',

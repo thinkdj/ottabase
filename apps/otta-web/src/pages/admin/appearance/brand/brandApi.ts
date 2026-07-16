@@ -132,6 +132,8 @@ export const layoutApi = {
 
     putTemplate: (body: Record<string, unknown>) => api(`${BASE}/layouts`, { method: 'PUT', body }),
 
+    deleteTemplate: (id: string) => api<void>(`${BASE}/layouts/${id}`, { method: 'DELETE' }),
+
     getMappings: () => api<LayoutMappingItem[]>(`${BASE}/mappings`),
 
     putMappings: (body: {

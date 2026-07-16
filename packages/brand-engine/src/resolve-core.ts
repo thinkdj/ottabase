@@ -18,11 +18,13 @@
 import {
     DEFAULT_COLORS_DARK,
     DEFAULT_COLORS_LIGHT,
+    DEFAULT_CURSORS,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
     DEFAULT_SHADOWS_DARK,
     DEFAULT_SPACING,
     DEFAULT_TYPOGRAPHY,
+    SYSTEM_TYPOGRAPHY,
 } from './defaults';
 import type {
     ColorScheme,
@@ -32,6 +34,7 @@ import type {
     TokenAliases,
     TokenBorder,
     TokenColors,
+    TokenCursors,
     TokenEffects,
     TokenFocus,
     TokenFontFace,
@@ -106,12 +109,18 @@ export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): To
     return resolved;
 }
 
-/** Resolve typography roles: default roles merged per-field, extra roles passed through. */
+/**
+ * Resolve typography roles: default roles merged per-field, extra roles passed
+ * through. `disabled.fonts` swaps in system stacks and ignores theme values —
+ * no web-font URLs are emitted.
+ */
 export function resolveTypography(tokens: Partial<DesignTokens> | undefined, mode: ColorScheme): TokenTypographyRoles {
-    const raw = pickMode(tokens?.typography, mode);
+    const fontsDisabled = tokens?.disabled?.fonts === true;
+    const defaults = fontsDisabled ? SYSTEM_TYPOGRAPHY : DEFAULT_TYPOGRAPHY;
+    const raw = fontsDisabled ? undefined : pickMode(tokens?.typography, mode);
     const roles: TokenTypographyRoles = {};
     // Default roles (heading/body/handwriting/mono) merge field-wise with theme values
-    for (const [role, def] of Object.entries(DEFAULT_TYPOGRAPHY)) {
+    for (const [role, def] of Object.entries(defaults)) {
         roles[role] = { ...def, ...raw?.[role] };
     }
     // Theme-invented roles (display, ticker, …) pass through as-is
@@ -166,10 +175,15 @@ export function resolveShadows(tokens: Partial<DesignTokens> | undefined, mode: 
     return merged;
 }
 
-/** Resolve motion presets (base fields defaulted; named extras pass through). */
+/**
+ * Resolve motion presets (base fields defaulted; named extras pass through).
+ * `disabled.motion` forces disableAnimations — every duration var emits 0s.
+ */
 export function resolveMotion(tokens: Partial<DesignTokens> | undefined, mode: ColorScheme): ResolvedMotion {
     const raw = pickMode(tokens?.motion, mode);
-    return { ...DEFAULT_MOTION, ...(raw ?? {}) } as ResolvedMotion;
+    const motion = { ...DEFAULT_MOTION, ...(raw ?? {}) } as ResolvedMotion;
+    if (tokens?.disabled?.motion === true) motion.disableAnimations = true;
+    return motion;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,8 +285,23 @@ export function resolveSurface(tokens: Partial<DesignTokens> | undefined, mode: 
 
 /** fontFaces / effects / scopes are never mode-split — verbatim passthrough. */
 export function resolveFontFaces(tokens: Partial<DesignTokens> | undefined): TokenFontFace[] | undefined {
+    if (tokens?.disabled?.fonts === true) return undefined;
     const raw = tokens?.fontFaces;
     return Array.isArray(raw) && raw.length > 0 ? raw : undefined;
+}
+
+/**
+ * Resolve cursors (they live at the tokensJson/BrandTheme ROOT, not inside
+ * DesignTokens — `tokens` is passed only for the `disabled.cursors` flag).
+ * Disabled → empty map → no --cursor-* vars → native browser cursors.
+ */
+export function resolveCursors(
+    tokens: Partial<DesignTokens> | undefined,
+    rawCursors: ModeValue<TokenCursors> | undefined,
+    mode: ColorScheme,
+): TokenCursors {
+    if (tokens?.disabled?.cursors === true) return {};
+    return pickMode(rawCursors, mode) ?? DEFAULT_CURSORS;
 }
 
 export function resolveEffects(tokens: Partial<DesignTokens> | undefined): TokenEffects | undefined {

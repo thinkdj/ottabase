@@ -11,8 +11,7 @@
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
-import { DEFAULT_CURSORS } from './defaults';
-import { isPlainObject, pickMode, resolveAliases, resolveTokenSet } from './resolve-core';
+import { isPlainObject, pickMode, resolveAliases, resolveCursors, resolveTokenSet } from './resolve-core';
 import type { ResolvedTokenSet } from './resolve-core';
 import type { BrandTheme } from './theme';
 import type { ColorScheme, ModeValue, TokenCursors } from './tokens';
@@ -109,7 +108,7 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
     const tokenSet = resolveTokenSet(merged.tokens, mode);
 
     // 3. Cursors + layout live outside DesignTokens
-    const cursors = pickMode(merged.cursors, mode) ?? DEFAULT_CURSORS;
+    const cursors = resolveCursors(merged.tokens, merged.cursors, mode);
     const layout = { ...DEFAULT_LAYOUT, ...merged.layout };
 
     return {

@@ -10,6 +10,7 @@ import {
     handleCreateMenu,
     handleCreateMenuItem,
     handleDeleteBrandKit,
+    handleDeleteLayout,
     handleDeleteMenu,
     handleDeleteMenuItem,
     handleGetBrand,
@@ -115,6 +116,12 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
         return handlePutLayout(request, envBrand, appId);
+    }
+    const layoutByIdMatch = route.match(/^\/api\/brand\/layouts\/([^/]+)$/);
+    if (layoutByIdMatch && method === 'DELETE') {
+        const guard = await requireBrandEditAccess(context, null, appId);
+        if (guard instanceof Response) return guard;
+        return handleDeleteLayout(request, envBrand, layoutByIdMatch[1], appId);
     }
     if (route === '/api/brand/mappings' && method === 'GET') {
         return handleGetMappings(request, envBrand, appId);

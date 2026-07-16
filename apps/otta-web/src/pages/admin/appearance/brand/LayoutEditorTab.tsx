@@ -7,6 +7,7 @@ import {
     type LayoutPresetId,
 } from '@ottabase/ottalayout';
 import { useApiQuery } from '@ottabase/ottaorm/client';
+import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -424,11 +425,15 @@ export function LayoutEditorTab() {
                             <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(13.75rem,1fr))]">
                                 {templates.map((t) => {
                                     const config = getTemplateConfig(t);
+                                    const inUseCount = mappings.filter((m) => m.layoutTemplateId === t.id).length;
                                     return (
                                         <div key={t.id} className="rounded-lg bg-background p-4 ring-1 ring-border">
                                             <div className="mb-3 flex items-center justify-between gap-2">
                                                 <p className="truncate font-medium">{t.name}</p>
-                                                <EditTemplateDialog template={t} />
+                                                <div className="flex shrink-0 items-center gap-1">
+                                                    <EditTemplateDialog template={t} />
+                                                    <DeleteTemplateButton template={t} inUseCount={inUseCount} />
+                                                </div>
                                             </div>
                                             <LayoutMiniPreview config={config} />
                                         </div>
@@ -603,6 +608,61 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function DeleteTemplateButton({ template, inUseCount }: { template: LayoutTemplateItem; inUseCount: number }) {
+    const [open, setOpen] = useState(false);
+    const queryClient = useQueryClient();
+    const { refresh } = useBrand();
+
+    const deleteMutation = useMutation({
+        meta: { entity: 'layout_templates' },
+        mutationFn: () => layoutApi.deleteTemplate(template.id),
+        onSuccess: () => {
+            toast.success('Template deleted');
+            queryClient.invalidateQueries({ queryKey: ['layout_templates'] });
+            refresh();
+        },
+        // Failure toasts (incl. the server's 409 "in use" message) come from the global api error handler
+    });
+
+    return (
+        <>
+            <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                title="Delete template"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                    if (inUseCount > 0) {
+                        toast.warning(
+                            `"${template.name}" is used by ${inUseCount} route mapping${inUseCount === 1 ? '' : 's'}. Remove those mappings first.`,
+                        );
+                        return;
+                    }
+                    setOpen(true);
+                }}
+            >
+                <IconTrash className="h-4 w-4" />
+            </Button>
+            <ConfirmDialog
+                open={open}
+                onOpenChange={setOpen}
+                title="Delete layout template?"
+                description={`This cannot be undone. The template "${template.name}" will be permanently deleted.`}
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText={deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                onConfirm={() => {
+                    deleteMutation.mutate();
+                    setOpen(false);
+                }}
+                confirmProps={{ disabled: deleteMutation.isPending }}
+                cancelProps={{ disabled: deleteMutation.isPending }}
+            />
+        </>
     );
 }
 

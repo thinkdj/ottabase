@@ -59,6 +59,34 @@ export async function handlePutLayout(request: Request, env: BrandApiEnv, appId?
 }
 
 /**
+ * DELETE /api/brand/layouts/:id - Delete a custom layout template.
+ * Refuses (409) while any route mapping still references the template.
+ */
+export async function handleDeleteLayout(
+    _request: Request,
+    env: BrandApiEnv,
+    id: string,
+    appId?: string | null,
+): Promise<Response> {
+    const template = (await LayoutTemplate.find(id)) as LayoutTemplate | null;
+    if (!template || (template.get('appId') ?? null) !== (appId ?? null)) {
+        return errorResponse('Layout template not found', 404);
+    }
+
+    const inUse = await LayoutRouteMapping.where({ layoutTemplateId: id, appId: appId ?? null });
+    if (inUse.length > 0) {
+        return errorResponse(
+            `Layout template is used by ${inUse.length} route mapping${inUse.length === 1 ? '' : 's'}. Remove those mappings first.`,
+            409,
+        );
+    }
+
+    await template.destroy();
+    await warmBrandCache(env, { appId: appId ?? null });
+    return jsonResponse({ success: true }, 200);
+}
+
+/**
  * GET /api/brand/mappings - List route mappings for app.
  * When no DB mappings exist, returns effective defaults from getLayoutData so users can view and edit them.
  */

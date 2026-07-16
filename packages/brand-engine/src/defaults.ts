@@ -154,6 +154,17 @@ export const DEFAULT_TYPOGRAPHY: TokenTypographyRoles = {
 };
 
 /**
+ * System-font stacks used when a kit disables custom fonts (`disabled.fonts`).
+ * No `url` fields → zero web-font downloads, no FOUC.
+ */
+export const SYSTEM_TYPOGRAPHY: TokenTypographyRoles = {
+    heading: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    body: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    handwriting: { fontFamily: 'cursive' },
+    mono: { fontFamily: 'ui-monospace, "Cascadia Mono", Consolas, monospace' },
+};
+
+/**
  * Built-in default BrandTheme used when no theme is registered.
  * Used by brandSettingsToConfig for resolveTheme base.
  */

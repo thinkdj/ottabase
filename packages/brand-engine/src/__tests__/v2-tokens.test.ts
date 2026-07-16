@@ -110,8 +110,8 @@ describe('palette (raw/derived colors)', () => {
 describe('typography roles', () => {
     it('always emits the four default roles', () => {
         const vars = buildCSSVarMap(makeTheme({}));
-        expect(vars['--font-heading']).toContain('Inter');
-        expect(vars['--font-body']).toContain('Inter');
+        expect(vars['--font-heading']).toContain('Sora');
+        expect(vars['--font-body']).toContain('Source Sans 3');
         expect(vars['--font-mono']).toContain('JetBrains Mono');
         expect(vars['--font-handwriting']).toContain('cursive');
     });

@@ -363,6 +363,19 @@ export interface TokenSurface {
     backdrop?: string;
 }
 
+/**
+ * Kit-level kill switches. Values are KEPT in the kit JSON but not applied:
+ *   fonts   → typography resolves to system stacks (zero web-font downloads),
+ *             fontFaces are skipped
+ *   motion  → resolves with disableAnimations: true (all durations 0s)
+ *   cursors → no --cursor-* vars emitted (native browser cursors)
+ */
+export interface TokenDisabledFlags {
+    fonts?: boolean;
+    motion?: boolean;
+    cursors?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Token aliases – allow one token to reference another by name
 // ---------------------------------------------------------------------------
@@ -456,6 +469,8 @@ export interface DesignTokens {
     surface?: ModeValue<TokenSurface>;
     /** Token aliases – remap semantic names to other token keys */
     aliases?: TokenAliases;
+    /** Kit-level kill switches for fonts / motion / cursors (never mode-split) */
+    disabled?: TokenDisabledFlags;
 }
 
 /**
@@ -488,6 +503,7 @@ export const TOKEN_CATEGORY_KEYS = [
     'scopes',
     'surface',
     'aliases',
+    'disabled',
 ] as const satisfies readonly (keyof DesignTokens)[];
 
 export type TokenCategoryKey = (typeof TOKEN_CATEGORY_KEYS)[number];

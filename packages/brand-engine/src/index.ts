@@ -15,6 +15,7 @@ export type {
     TokenCategoryKey,
     TokenColors,
     TokenCursors,
+    TokenDisabledFlags,
     TokenEffects,
     TokenFocus,
     TokenFontFace,

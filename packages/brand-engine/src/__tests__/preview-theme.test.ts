@@ -4,6 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from 'vitest';
+import { buildCSSVarMap } from '../css-runtime';
 import { buildPreviewTheme } from '../previewTheme';
 
 describe('buildPreviewTheme', () => {
@@ -145,9 +146,48 @@ describe('buildPreviewTheme', () => {
         it('uses default typography when not provided', () => {
             const theme = buildPreviewTheme({}, 'light');
 
-            expect(theme.typography.heading.fontFamily).toBe('Inter');
-            expect(theme.typography.body.fontFamily).toBe('Inter');
-            expect(theme.typography.handwriting.fontFamily).toBe('cursive');
+            expect(theme.typography.heading.fontFamily).toBe('Sora');
+            expect(theme.typography.body.fontFamily).toBe('Source Sans 3');
+            expect(theme.typography.handwriting.fontFamily).toBe('Indie Flower');
+        });
+    });
+
+    describe('disabled flags (kit-level kill switches)', () => {
+        it('disabled.fonts resolves to system stacks with no web-font URLs', () => {
+            const tokensJson = JSON.stringify({
+                disabled: { fonts: true },
+                typography: { heading: { fontFamily: 'Righteous', url: 'https://fonts.example.com' } },
+                fontFaces: [{ family: 'Archivo', src: 'url(/a.woff2)' }],
+            });
+            const theme = buildPreviewTheme({ tokensJson }, 'light');
+
+            expect(theme.typography.heading.fontFamily).toContain('system-ui');
+            expect(theme.typography.heading.url).toBeUndefined();
+            expect(Object.values(theme.typography).every((t) => !t.url)).toBe(true);
+            expect(theme.fontFaces).toBeUndefined();
+        });
+
+        it('disabled.motion forces disableAnimations (0s durations in CSS vars)', () => {
+            const tokensJson = JSON.stringify({
+                disabled: { motion: true },
+                motion: { durationFast: '150ms', disableAnimations: false },
+            });
+            const theme = buildPreviewTheme({ tokensJson }, 'light');
+
+            expect(theme.motion.disableAnimations).toBe(true);
+            expect(buildCSSVarMap(theme)['--duration-fast']).toBe('0s');
+        });
+
+        it('disabled.cursors emits no cursor map (native cursors)', () => {
+            const tokensJson = JSON.stringify({
+                disabled: { cursors: true },
+                cursors: { pointer: 'registry:rocket' },
+            });
+            const theme = buildPreviewTheme({ tokensJson }, 'light');
+
+            expect(theme.cursors).toEqual({});
+            const vars = buildCSSVarMap(theme);
+            expect(Object.keys(vars).some((k) => k.startsWith('--cursor-'))).toBe(false);
         });
     });
 

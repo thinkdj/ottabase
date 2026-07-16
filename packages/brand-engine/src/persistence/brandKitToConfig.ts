@@ -10,6 +10,7 @@ import { DEFAULT_CURSORS } from '../defaults';
 import {
     darkSplitCategories,
     pickMode,
+    resolveCursors,
     resolveTokenSet,
     resolveBorder,
     resolveFocus,
@@ -156,7 +157,12 @@ export async function brandKitToTheme(
 
         // Cursors live at the BrandTheme root (not in DesignTokens)
         const rawCursors = tenantTheme.cursors;
-        if (typeof rawCursors === 'object' && rawCursors !== null && 'dark' in rawCursors) {
+        if (
+            tokens?.disabled?.cursors !== true &&
+            typeof rawCursors === 'object' &&
+            rawCursors !== null &&
+            'dark' in rawCursors
+        ) {
             delta.cursors = pickMode(rawCursors, mode) ?? DEFAULT_CURSORS;
         }
 
@@ -169,7 +175,7 @@ export async function brandKitToTheme(
     // LIGHT MODE (or any non-dark mode) → full resolved theme with defaults
     // -----------------------------------------------------------------------
     const tokenSet = resolveTokenSet(tokens, mode);
-    const cursors = pickMode(tenantTheme.cursors, mode) ?? DEFAULT_CURSORS;
+    const cursors = resolveCursors(tokens, tenantTheme.cursors, mode);
     const layout = { ...DEFAULT_LAYOUT, ...(tenantTheme.layout ?? {}) };
 
     return {
