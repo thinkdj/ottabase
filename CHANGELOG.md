@@ -9,6 +9,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- brand-engine v2 — full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +
+  radius/shadows/motion" to a complete design-system vocabulary so radical design systems port 1:1 as theme JSON:
+  `palette` (verbatim CSS color values incl. `color-mix()` derivation ramps — one brand knob retints the app live), open
+  typography roles (`mono` + arbitrary roles like `label`/`ticker`), `typeScale` (every Tailwind `text-*` step becomes
+  themeable, fluid `clamp()` included), radius scale (incl. `full` — set `2px` to ban pills), open shadow record (`none`
+  allowed), `border`, open motion vocabulary (named durations/easings, configurable spring, `@keyframes` registry),
+  `focus` (unified global focus-visible ring), `interaction` (hover/press physics), `links` (content-anchor contract
+  incl. real `:visited`), `selection`, `scrollbar`, `native` (color-scheme/accent-color/caret), `zIndex` ladder,
+  `textStyles` (generated `.ts-*` voice classes), `fontFaces` (self-hosted/variable fonts), `effects` (registry
+  utilities + preset-portable raw theme CSS), `scopes` (token "rooms" — `[data-brand-scope]` re-binds semantic vars per
+  subtree), and `surface` (body backdrop). All sparse: a theme that defines none of them renders pixel-identical to
+  before (fallback-chain law).
+- brand-engine: two complete 1:1 design-system ports as fidelity references. `themes/visited.json` — "Visited"
+  (the90s.page): Netscape triad with pinned `:visited` purple, one-knob `--link` derivation, 7-step type ramp, 2px
+  die-cut radius, zero shadows, dotted focus rect, membrane press physics, After Dark room, kicker/dateline/OSD voices.
+  `themes/marquee.json` — "Marquee" (uppcoming): one Fauscia pigment deriving six live `color-mix()` tints (soft/wash
+  re-derived per room), always-dark `screen` scope, Archivo width-axis voices (`.ts-stretch-wide`), Spline Sans Mono
+  ticker role, size-stepped radius ladder, spring hover-lift/press-scale physics, brand-glow shadow slot, and
+  ticket-stub notch + perforation effect utilities.
+- ui-shadcn: universal theming hooks — `data-slot` on every primitive (+ `data-variant`/`data-size` on CVA components),
+  `[data-decor]` effect-carrier spans on Button/Card, `BrandScope` room wrapper, and a Tier-2 `BrandComponentsProvider`
+  registry for forks whose components need genuinely different DOM (`overrides={{ button: UppButton }}` —
+  button/badge/card/input resolve overrides).
+- otta-web worker: edge injection now also emits the generated `#brand-effects` stylesheet, the (sanitized) per-kit
+  `#brand-custom-css` (killing the 300 ms client-only custom-CSS FOUC), and font `<link>` tags for every typography-role
+  URL (kills brand-font FOUT).
 - `@ottabase/ottarouter` package: zero-dependency Cloudflare Workers router with order-free precedence (static >
   `:param` > `*`, exact method > `ALL`), prefix-scoped onion middleware, gated sub-router mounts, and null-based
   fall-through for composing with custom routes, shortlinks, and static assets.
@@ -26,6 +52,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- brand-engine: the three drifting resolvers (`resolveTheme`, `brandKitToTheme`, `buildPreviewTheme`) now share one
+  per-category core (`resolve-core.ts`). Fixes latent bugs: flat `motion.disableAnimations` was silently dropped by the
+  kit pipeline; color `aliases` were dead in the kit pipeline (now active everywhere); `expandPresetToTokens` silently
+  destroyed unknown token categories on admin save (now passes through `TOKEN_CATEGORY_KEYS`).
+- brand-engine / otta-web: client theme application switched from inline CSS vars on `<html>` to replacing the same
+  `<style id="brand-critical">`/`#brand-effects` elements the edge injects (`applyBrandTheme(light, dark)`), so
+  dark-mode/room switching is pure CSS cascade and theme CSS never fights inline-style specificity. `BrandConfig` gains
+  `themeLight`/`themeDark`; kit `defaultColorScheme` now drives next-themes' default. The zero-FOUC handoff contract
+  (client derivation must be byte-identical to the edge-painted critical CSS, so first-load application is a no-op — no
+  re-fetch, no base-theme-then-retheme flash) is locked by `apps/otta-web/src/__tests__/brand-theme-parity.test.ts`. The
+  edge-injected critical style tag is now sanitized (`sanitizeCssForStyleTag`) like effects/custom CSS, since v2 token
+  values (palette, shadows) are admin-authored free-form strings.
+- ui-tailwind preset: `text-*` sizes, `rounded-*` (incl. `rounded-full`), `border` width, bare `shadow`, `font-mono`,
+  named z-index steps, and press/spring motion utilities are now token-backed with pixel-identical fallbacks; dead
+  `brand.{50,500,700}` hex ramp removed; `caret-blink` keyframes added.
+- ui-shadcn: Tailwind v4-only syntax (emitting no CSS under the workspace's v3.4 — `w-(--var)`, `in-data-*`,
+  `has-data-*`, trailing `!` importants) codemodded to working v3 equivalents across ~20 components; per-component
+  focus-ring recipes replaced by one global token-driven `:focus-visible` rule; interactive components use bare
+  `transition` so press/hover physics tokens animate; overlay scrims use the new `--overlay` token; toaster's raw
+  green/red/yellow/blue palette replaced with semantic status tokens.
+- spotlight, ui-components, ui-base, ui-code-highlight: token-blind hardcoded colors migrated to design tokens
+  (ui-code-highlight gains a `--syntax-*` token set defaulting to the current GitHub palette).
 - otta-web worker routing migrated from the hand-rolled `resolveApiRoute` if/regex chain to declarative
   `@ottabase/ottarouter` registrations (`worker/routes/router.ts`); route handlers, endpoint paths, and the
   `ottabase/config.routes.ts` custom-route contract are unchanged.

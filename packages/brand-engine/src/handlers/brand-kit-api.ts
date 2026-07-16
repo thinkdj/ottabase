@@ -10,7 +10,8 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { createBrandAssets, type LogoType } from '../persistence/assets';
 import { BrandKit } from '../persistence/BrandKit.model';
 import type { BrandKitItem } from '../persistence/types';
-import { PRESET_MAP } from '../presets';
+import { PRESET_MAP, type PresetTheme } from '../presets';
+import { TOKEN_CATEGORY_KEYS } from '../tokens';
 import { logBrandAudit } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
 import { warmBrandCache } from './warm-cache';
@@ -35,7 +36,7 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
         return JSON.stringify(existing);
     }
 
-    const preset = PRESET_MAP[presetId];
+    const preset = PRESET_MAP[presetId] as unknown as Record<string, unknown> & { colors: PresetTheme['colors'] };
 
     // Cursors: user overrides take precedence; fall back to preset cursors (e.g. artisan/funky have registry cursors)
     const effectiveCursors = existing.cursors ?? (preset as { cursors?: Record<string, string> }).cursors;
@@ -47,15 +48,19 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
             light: preset.colors.light,
             dark: preset.colors.dark,
         },
-        // Keep existing typography, spacing, etc. or use preset defaults
-        typography: existing.typography || preset.typography,
-        spacing: existing.spacing || preset.spacing,
-        radius: existing.radius || preset.radius,
-        shadow: existing.shadow || preset.shadows,
-        motion: existing.motion || preset.motion,
         // Cursors: user-configured or preset default (artisan/funky have registry cursors)
         ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
     };
+
+    // Every other token category passes through: user value wins, preset fills
+    // the gaps. Driven by TOKEN_CATEGORY_KEYS so new categories are never
+    // silently dropped on preset apply (theme JSONs use plural `shadows`).
+    for (const key of TOKEN_CATEGORY_KEYS) {
+        if (key === 'color') continue; // handled above
+        const presetVal = key === 'shadow' ? preset['shadows'] : preset[key];
+        const val = existing[key] ?? presetVal;
+        if (val !== undefined) expanded[key] = val;
+    }
 
     // Merge custom color overrides on top of preset
     if (existing.color && typeof existing.color === 'object') {

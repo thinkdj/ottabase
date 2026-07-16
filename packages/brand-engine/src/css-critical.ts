@@ -7,37 +7,29 @@
 // ---------------------------------------------------------------------------
 
 import type { ResolvedBrandTheme } from './resolver';
-import { buildCSSVarMap } from './css-runtime';
+import { buildBrandStylesheet } from './css-runtime';
+import { buildEffectsCSS } from './effects';
 
 const CRITICAL_STYLE_ID = 'brand-critical';
+const EFFECTS_STYLE_ID = 'brand-effects';
+const CUSTOM_CSS_STYLE_ID = 'brand-custom-css';
 const INITIAL_CONFIG_ELEMENT_ID = 'brand-initial-config';
 
 /**
- * Builds a CSS string for :root with all theme variables.
+ * Builds a CSS string for :root with all theme variables (+ scope rooms).
  * Safe for edge/SSR (no DOM). Use for HTML injection before first paint.
  */
 export function buildCriticalCSS(theme: ResolvedBrandTheme): string {
-    const varMap = buildCSSVarMap(theme);
-    const declarations = Object.entries(varMap)
-        .map(([prop, val]) => `  ${prop}: ${val};`)
-        .join('\n');
-    return `:root {\n${declarations}\n}`;
+    return buildBrandStylesheet(theme);
 }
 
 /**
  * Builds CSS with both light and dark palettes so theme applies universally
- * before client hydration. Uses :root for light, .dark for dark (matches next-themes).
+ * before client hydration. Uses :root for light, .dark for dark (matches
+ * next-themes), plus `[data-brand-scope]` room blocks.
  */
 export function buildCriticalCSSDual(lightTheme: ResolvedBrandTheme, darkTheme: ResolvedBrandTheme): string {
-    const lightMap = buildCSSVarMap(lightTheme);
-    const lightDecl = Object.entries(lightMap)
-        .map(([prop, val]) => `  ${prop}: ${val};`)
-        .join('\n');
-    const darkMap = buildCSSVarMap(darkTheme);
-    const darkDecl = Object.entries(darkMap)
-        .map(([prop, val]) => `  ${prop}: ${val};`)
-        .join('\n');
-    return `:root {\n${lightDecl}\n}\n.dark {\n${darkDecl}\n}`;
+    return buildBrandStylesheet(lightTheme, darkTheme);
 }
 
 /**
@@ -51,10 +43,42 @@ export function buildCriticalStyleTag(theme: ResolvedBrandTheme): string {
 /**
  * Wraps dual-mode critical CSS (light + dark) for universal theme application.
  * Ensures correct palette shows on first paint regardless of user's color scheme.
+ * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML —
+ * v2 token values (palette, shadows, links colors) are admin-authored free-form
+ * strings, so the tag must be breakout-proofed like effects/custom CSS.
+ * (The client path is immune: upsertStyleElement assigns textContent.)
  */
-export function buildCriticalStyleTagDual(lightTheme: ResolvedBrandTheme, darkTheme: ResolvedBrandTheme): string {
-    const css = buildCriticalCSSDual(lightTheme, darkTheme);
+export function buildCriticalStyleTagDual(
+    lightTheme: ResolvedBrandTheme,
+    darkTheme: ResolvedBrandTheme,
+    sanitize?: (css: string) => string,
+): string {
+    let css = buildCriticalCSSDual(lightTheme, darkTheme);
+    if (sanitize) css = sanitize(css);
     return `<style id="${CRITICAL_STYLE_ID}">${css}</style>`;
+}
+
+/**
+ * Wraps the generated effects stylesheet (@font-face, @keyframes, text-style
+ * voices, link contract, effect utilities, theme css) for edge injection.
+ * Returns '' when the theme uses none of the generative categories.
+ * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML —
+ * effects.css is theme-authored and could otherwise close the style tag.
+ */
+export function buildEffectsStyleTag(theme: ResolvedBrandTheme, sanitize?: (css: string) => string): string {
+    let css = buildEffectsCSS(theme);
+    if (css && sanitize) css = sanitize(css);
+    return css ? `<style id="${EFFECTS_STYLE_ID}">${css}</style>` : '';
+}
+
+/**
+ * Wraps per-kit custom CSS for edge injection (zero-FOUC path for the raw
+ * escape hatch). The caller is responsible for sanitizing tenant-authored CSS
+ * (sanitizeCssForStyleTag) BEFORE calling. Returns '' for empty CSS.
+ */
+export function buildCustomCssStyleTag(sanitizedCss: string | null | undefined): string {
+    if (!sanitizedCss || !sanitizedCss.trim()) return '';
+    return `<style id="${CUSTOM_CSS_STYLE_ID}">${sanitizedCss}</style>`;
 }
 
 // Matches '<', '>', '&', and the two JSON-legal-but-JS-string-illegal line
@@ -90,4 +114,4 @@ export function buildInitialConfigScriptTag(config: unknown): string {
     return `<script type="application/json" id="${INITIAL_CONFIG_ELEMENT_ID}">${json}</script>`;
 }
 
-export { CRITICAL_STYLE_ID, INITIAL_CONFIG_ELEMENT_ID };
+export { CRITICAL_STYLE_ID, CUSTOM_CSS_STYLE_ID, EFFECTS_STYLE_ID, INITIAL_CONFIG_ELEMENT_ID };

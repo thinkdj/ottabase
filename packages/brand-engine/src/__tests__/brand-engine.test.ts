@@ -941,7 +941,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                     body: { fontFamily: 'Roboto' },
                     handwriting: { fontFamily: 'Caveat' },
                 },
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         // Simulate inheritance chain merge: parent → child
@@ -980,7 +980,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                     light: { ...DEFAULT_COLORS_LIGHT, primary: '0 100% 50%' },
                     dark: DEFAULT_COLORS_DARK,
                 },
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         const merged = deepMerge(
@@ -1016,7 +1016,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
         // Child has empty tokens (equivalent to tokensJson = "{}")
         const childTheme: Partial<BrandTheme> = {
             name: 'child',
-            tokens: {} as BrandTheme['tokens'],
+            tokens: {} as unknown as BrandTheme['tokens'],
         };
 
         const merged = deepMerge(
@@ -1079,7 +1079,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                     body: { fontFamily: 'Roboto' },
                     handwriting: { fontFamily: 'Caveat' },
                 },
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         const mergedWithoutColor = deepMerge(
@@ -1119,7 +1119,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                     body: { fontFamily: 'Sans B' },
                     handwriting: { fontFamily: 'Caveat' },
                 },
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         // Child overrides only radius
@@ -1127,7 +1127,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
             name: 'child',
             tokens: {
                 radius: '1rem',
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         // Merge: grandparent → parent → child
@@ -1175,7 +1175,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                 color: {
                     light: { primary: '0 100% 50%' },
                 },
-            } as BrandTheme['tokens'],
+            } as unknown as BrandTheme['tokens'],
         };
 
         const merged = deepMerge(
@@ -1214,7 +1214,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
                         body: { fontFamily: 'Lato' },
                         handwriting: { fontFamily: 'Caveat' },
                     },
-                } as BrandTheme['tokens'],
+                } as unknown as BrandTheme['tokens'],
             },
             mode: 'light',
         });

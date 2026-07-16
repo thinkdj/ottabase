@@ -6,36 +6,27 @@
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { BrandTheme } from './theme';
-import type { TokenCursors } from './tokens';
+import type { DesignTokens, TokenCursors } from './tokens';
 
 /**
  * Shape of a theme JSON file.
  *
  * All theme-related config lives at the top level:
  *   name, typography, colors, spacing, radius, shadows, motion, layout, cursors
+ * plus any v2 token category (palette, typeScale, border, focus, interaction,
+ * links, selection, scrollbar, native, zIndex, textStyles, fontFaces, effects,
+ * scopes, surface, aliases) — those pass through verbatim.
  */
-export interface LegacyThemeConfig {
+export interface LegacyThemeConfig extends Partial<Omit<DesignTokens, 'color' | 'shadow'>> {
     name: string;
-    typography: {
-        heading: { fontFamily: string; url?: string };
-        body: { fontFamily: string; url?: string };
-        handwriting: { fontFamily: string; url?: string };
-    };
+    typography?: DesignTokens['typography'];
+    /** JSON files use the plural `colors` for what DesignTokens calls `color` */
     colors: {
         light: Record<string, string>;
         dark: Record<string, string>;
     };
-    spacing?: Record<string, string>;
-    radius?: string;
+    /** JSON files use the plural `shadows` for what DesignTokens calls `shadow` */
     shadows?: Record<string, string>;
-    motion?: {
-        durationFast?: string;
-        durationNormal?: string;
-        durationSlow?: string;
-        easing?: string;
-        easingEnter?: string;
-        easingExit?: string;
-    };
     layout?: {
         header?: string;
         navigation?: string;
@@ -49,20 +40,20 @@ export interface LegacyThemeConfig {
 
 /** Converts a theme JSON into a `BrandTheme`. */
 export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
+    // Everything that isn't a renamed/relocated field passes through as tokens
+    const { name, colors, shadows, layout, cursors, ...tokenRest } = legacy;
+
     return {
-        name: legacy.name,
+        name,
         tokens: {
+            ...(tokenRest as Partial<DesignTokens>),
             color: {
-                light: legacy.colors.light as BrandTheme['tokens']['color']['light'],
-                dark: legacy.colors.dark as BrandTheme['tokens']['color']['dark'],
+                light: colors.light as BrandTheme['tokens']['color']['light'],
+                dark: colors.dark as BrandTheme['tokens']['color']['dark'],
             },
-            typography: legacy.typography,
-            spacing: legacy.spacing,
-            radius: legacy.radius,
-            shadow: legacy.shadows as BrandTheme['tokens']['shadow'],
-            motion: legacy.motion,
+            shadow: shadows as BrandTheme['tokens']['shadow'],
         },
-        layout: legacy.layout as LayoutConfig | undefined,
-        cursors: legacy.cursors as TokenCursors | undefined,
+        layout: layout as LayoutConfig | undefined,
+        cursors: cursors as TokenCursors | undefined,
     };
 }

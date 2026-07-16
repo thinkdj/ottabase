@@ -4,45 +4,24 @@
 // Implements the merge layer:
 //   finalTheme = baseTheme + tenantOverrides + modeOverrides (dark/light)
 //
-// Features:
-//   • Deep merge with fallback defaults
-//   • Token alias resolution
-//   • White-label / multi-tenant support
+// Per-category resolution lives in resolve-core.ts (shared with the BrandKit
+// persistence pipeline and the admin preview builder — one implementation,
+// three entry points).
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
-import {
-    DEFAULT_COLORS_DARK,
-    DEFAULT_COLORS_LIGHT,
-    DEFAULT_CURSORS,
-    DEFAULT_MOTION,
-    DEFAULT_SHADOWS,
-    DEFAULT_SHADOWS_DARK,
-    DEFAULT_SPACING,
-    DEFAULT_TYPOGRAPHY,
-} from './defaults';
+import { DEFAULT_CURSORS } from './defaults';
+import { isPlainObject, pickMode, resolveAliases, resolveTokenSet } from './resolve-core';
+import type { ResolvedTokenSet } from './resolve-core';
 import type { BrandTheme } from './theme';
-import type {
-    ColorScheme,
-    ModeValue,
-    TokenAliases,
-    TokenColors,
-    TokenCursors,
-    TokenMotion,
-    TokenShadows,
-    TokenSpacing,
-    TokenTypography,
-} from './tokens';
+import type { ColorScheme, ModeValue, TokenCursors } from './tokens';
+
+export { resolveAliases };
 
 // ---------------------------------------------------------------------------
 // Deep-merge utility
 // ---------------------------------------------------------------------------
-
-/** Type guard – is `val` a plain object (not array, null, etc.)? */
-function isPlainObject(val: unknown): val is Record<string, unknown> {
-    return typeof val === 'object' && val !== null && !Array.isArray(val);
-}
 
 /**
  * Deep-merges `source` into `target`, returning a new object.
@@ -66,62 +45,34 @@ export function deepMerge<T extends Record<string, unknown>>(target: T, source: 
 }
 
 // ---------------------------------------------------------------------------
-// Token alias resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves aliases within a colour palette.
- * If a token alias key exists, it creates a new property with that key,
- * pointing to the value of the target token.
- */
-export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): TokenColors {
-    if (!aliases || Object.keys(aliases).length === 0) return palette;
-
-    const resolved = { ...palette };
-    for (const [alias, target] of Object.entries(aliases)) {
-        if (target in palette) {
-            resolved[alias] = palette[target]!;
-        }
-    }
-    return resolved;
-}
-
-// ---------------------------------------------------------------------------
-// Mode extraction utility
+// Mode extraction utility (kept for external callers; delegates to core)
 // ---------------------------------------------------------------------------
 
 /**
  * Safely extracts the value for the active mode from a ModeValue token.
+ * The `isBase` predicate is retained for signature compatibility but split
+ * detection now uses the robust light/dark-key check from resolve-core.
  */
 export function resolveModeValue<T>(
     val: ModeValue<T> | undefined,
     mode: ColorScheme,
-    isBase: (v: unknown) => boolean,
+    _isBase?: (v: unknown) => boolean,
 ): T | undefined {
-    if (val === undefined || val === null) return undefined;
-    if (isBase(val)) return val as T;
-
-    const modeVal = val as { [scheme: string]: T | undefined };
-    return modeVal[mode] ?? modeVal['light'] ?? modeVal['system'];
+    return pickMode(val, mode);
 }
 
 // ---------------------------------------------------------------------------
 // ResolvedBrandTheme – the fully-flattened output of the resolver
 // ---------------------------------------------------------------------------
 
-/** Resolved theme ready for CSS variable injection */
-export interface ResolvedBrandTheme {
+/**
+ * Resolved theme ready for CSS variable injection. This is the wire shape:
+ * it flows through the KV cache, the edge hydration payload and the client.
+ * Sparse v2 categories (palette, typeScale, focus, …) are present only when
+ * the theme defines them — see ResolvedTokenSet.
+ */
+export interface ResolvedBrandTheme extends ResolvedTokenSet {
     name: string;
-    colors: TokenColors;
-    typography: {
-        heading: TokenTypography;
-        body: TokenTypography;
-        handwriting: TokenTypography;
-    };
-    spacing: TokenSpacing;
-    radius: string;
-    shadows: Required<TokenShadows>;
-    motion: Required<TokenMotion>;
     cursors: TokenCursors;
     layout: LayoutConfig;
 }
@@ -154,56 +105,16 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
           ) as unknown as BrandTheme)
         : base;
 
-    // 2. Select mode-specific colour palette with fallback chain:
-    //    requested mode → light → defaults
-    const defaultPalette = mode === 'dark' ? DEFAULT_COLORS_DARK : DEFAULT_COLORS_LIGHT;
-    const rawPalette = merged.tokens?.color?.[mode] ?? merged.tokens?.color?.light ?? defaultPalette;
-    const palette: TokenColors = { ...defaultPalette, ...rawPalette };
+    // 2. Resolve every token category for the active mode (shared core)
+    const tokenSet = resolveTokenSet(merged.tokens, mode);
 
-    // 3. Resolve token aliases
-    const colors = resolveAliases(palette, merged.tokens?.aliases);
-
-    // 4. Merge remaining tokens with defaults, applying mode overrides
-    const rawTypo = resolveModeValue(
-        merged.tokens?.typography,
-        mode,
-        (v: any) => 'heading' in v || 'body' in v || 'handwriting' in v,
-    );
-    const typography = {
-        heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading } as TokenTypography,
-        body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body } as TokenTypography,
-        handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting } as TokenTypography,
-    };
-
-    const isStringMap = (v: any) =>
-        typeof v === 'object' && v !== null && Object.values(v).every((x) => typeof x === 'string');
-
-    const rawSpacing = resolveModeValue(merged.tokens?.spacing, mode, isStringMap);
-    const spacing = { ...DEFAULT_SPACING, ...rawSpacing };
-
-    const rawRadius = resolveModeValue(merged.tokens?.radius, mode, (v) => typeof v === 'string');
-    const radius = rawRadius ?? '0.5rem';
-
-    const rawShadows = resolveModeValue(merged.tokens?.shadow, mode, isStringMap);
-    const defaultShadows = mode === 'dark' ? DEFAULT_SHADOWS_DARK : DEFAULT_SHADOWS;
-    const shadows = { ...defaultShadows, ...(rawShadows ?? {}) };
-
-    const rawMotion = resolveModeValue(merged.tokens?.motion, mode, isStringMap);
-    const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };
-
-    const rawCursors = resolveModeValue(merged.cursors, mode, isStringMap);
-    const cursors = rawCursors ?? DEFAULT_CURSORS;
-
+    // 3. Cursors + layout live outside DesignTokens
+    const cursors = pickMode(merged.cursors, mode) ?? DEFAULT_CURSORS;
     const layout = { ...DEFAULT_LAYOUT, ...merged.layout };
 
     return {
         name: merged.name,
-        colors,
-        typography,
-        spacing,
-        radius,
-        shadows,
-        motion,
+        ...tokenSet,
         cursors,
         layout,
     };

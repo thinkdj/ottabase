@@ -1,0 +1,269 @@
+{
+    "name": "visited",
+    "typography": {
+        "heading": {
+            "fontFamily": "Georgia, 'Gelasio', 'Times New Roman', serif",
+            "fontWeight": 700,
+            "lineHeight": "1.15",
+            "letterSpacing": "-0.01em"
+        },
+        "body": {
+            "fontFamily": "Georgia, 'Gelasio', 'Times New Roman', serif",
+            "lineHeight": "1.65"
+        },
+        "handwriting": { "fontFamily": "cursive" },
+        "mono": {
+            "fontFamily": "'Courier Prime', 'Courier New', monospace",
+            "url": "https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap"
+        },
+        "label": {
+            "fontFamily": "Verdana, Geneva, Tahoma, sans-serif",
+            "fontWeight": 700
+        },
+        "pixel": {
+            "fontFamily": "'Silkscreen', monospace",
+            "url": "https://fonts.googleapis.com/css2?family=Silkscreen&display=swap"
+        }
+    },
+    "typeScale": {
+        "xs": { "size": "12px", "lineHeight": "1.5" },
+        "sm": { "size": "14px", "lineHeight": "1.55" },
+        "base": { "size": "16px", "lineHeight": "1.65" },
+        "lg": { "size": "19px", "lineHeight": "1.5" },
+        "xl": { "size": "24px", "lineHeight": "1.3" },
+        "2xl": { "size": "32px", "lineHeight": "1.2" },
+        "3xl": { "size": "44px", "lineHeight": "1.15" },
+        "4xl": { "size": "44px", "lineHeight": "1.15" },
+        "5xl": { "size": "clamp(56px, 9vw, 96px)", "lineHeight": "1.05" },
+        "6xl": { "size": "clamp(56px, 9vw, 96px)", "lineHeight": "1.05" }
+    },
+    "radius": {
+        "base": "2px",
+        "sm": "1px",
+        "md": "2px",
+        "lg": "2px",
+        "xl": "2px",
+        "2xl": "2px",
+        "full": "2px"
+    },
+    "shadows": {
+        "xs": "none",
+        "sm": "none",
+        "md": "none",
+        "lg": "none",
+        "xl": "none"
+    },
+    "border": { "width": "1px", "style": "solid" },
+    "motion": {
+        "durationFast": "180ms",
+        "durationNormal": "180ms",
+        "durationSlow": "600ms",
+        "easing": "cubic-bezier(0.2, 0, 0, 1)",
+        "easingEnter": "cubic-bezier(0.2, 0, 0, 1)",
+        "easingExit": "cubic-bezier(0.2, 0, 0, 1)",
+        "easingSpring": "cubic-bezier(0.2, 0, 0, 1)",
+        "durations": { "snap": "0ms", "settle": "180ms", "linger": "3000ms" }
+    },
+    "colors": {
+        "light": {
+            "background": "0 0% 100%",
+            "foreground": "60 4% 11%",
+            "card": "0 0% 100%",
+            "card-foreground": "60 4% 11%",
+            "popover": "0 0% 100%",
+            "popover-foreground": "60 4% 11%",
+            "primary": "240 81% 52%",
+            "primary-foreground": "0 0% 100%",
+            "secondary": "43 21% 93%",
+            "secondary-foreground": "60 4% 11%",
+            "muted": "43 21% 93%",
+            "muted-foreground": "42 7% 38%",
+            "accent": "240 78% 96%",
+            "accent-foreground": "240 81% 42%",
+            "destructive": "5 93% 39%",
+            "destructive-foreground": "0 0% 100%",
+            "border": "43 21% 87%",
+            "input": "43 19% 79%",
+            "ring": "240 81% 52%",
+            "sidebar-background": "43 21% 96%",
+            "sidebar-foreground": "60 4% 11%",
+            "sidebar-border": "43 21% 87%",
+            "sidebar-accent": "240 81% 52%",
+            "sidebar-accent-foreground": "240 81% 52%",
+            "sidebar-ring": "240 81% 52%",
+            "success": "240 81% 52%",
+            "success-foreground": "0 0% 100%",
+            "warning": "5 93% 45%",
+            "warning-foreground": "0 0% 100%",
+            "info": "233 82% 40%",
+            "info-foreground": "0 0% 100%",
+            "overlay": "240 11% 7%",
+            "chart-1": "240 81% 52%",
+            "chart-2": "271 69% 32%",
+            "chart-3": "5 93% 39%",
+            "chart-4": "42 7% 38%",
+            "chart-5": "233 82% 40%"
+        },
+        "dark": {
+            "background": "252 11% 9%",
+            "foreground": "47 22% 92%",
+            "card": "250 10% 12%",
+            "card-foreground": "47 22% 92%",
+            "popover": "250 10% 12%",
+            "popover-foreground": "47 22% 92%",
+            "primary": "240 85% 72%",
+            "primary-foreground": "240 11% 7%",
+            "secondary": "250 10% 15%",
+            "secondary-foreground": "47 22% 92%",
+            "muted": "250 10% 15%",
+            "muted-foreground": "262 6% 64%",
+            "accent": "240 60% 18%",
+            "accent-foreground": "240 85% 78%",
+            "destructive": "5 100% 68%",
+            "destructive-foreground": "240 11% 7%",
+            "border": "260 9% 20%",
+            "input": "255 9% 26%",
+            "ring": "240 85% 72%",
+            "sidebar-background": "252 11% 7%",
+            "sidebar-foreground": "262 6% 64%",
+            "sidebar-border": "260 9% 20%",
+            "sidebar-accent": "240 85% 72%",
+            "sidebar-accent-foreground": "240 85% 72%",
+            "sidebar-ring": "240 85% 72%",
+            "success": "240 85% 72%",
+            "success-foreground": "240 11% 7%",
+            "warning": "5 100% 68%",
+            "warning-foreground": "240 11% 7%",
+            "info": "233 82% 62%",
+            "info-foreground": "240 11% 7%",
+            "overlay": "240 12% 3%",
+            "chart-1": "240 85% 72%",
+            "chart-2": "276 48% 77%",
+            "chart-3": "5 100% 68%",
+            "chart-4": "262 6% 64%",
+            "chart-5": "233 82% 62%"
+        }
+    },
+    "palette": {
+        "light": {
+            "link": "#2323E8",
+            "link-lift": "color-mix(in oklab, var(--link) 42%, #fff)",
+            "link-deep": "color-mix(in oklab, var(--link) 76%, #000)",
+            "link-wash": "color-mix(in srgb, var(--link) 8%, hsl(var(--background)))",
+            "been": "#551A8B",
+            "been-lift": "#C9A7E0",
+            "hotpress": "#C21807",
+            "hotpress-lift": "#FF6A5C",
+            "blueback": "#1226B8",
+            "groove-hi": "#FFFFFF"
+        },
+        "dark": {
+            "link-wash": "color-mix(in srgb, var(--link) 16%, hsl(var(--background)))",
+            "groove-hi": "rgb(255 255 255 / 0.05)"
+        }
+    },
+    "links": {
+        "light": {
+            "color": "var(--link)",
+            "hoverColor": "var(--link-deep)",
+            "visitedColor": "var(--been)",
+            "activeColor": "var(--hotpress)",
+            "underline": true,
+            "thickness": "1px",
+            "offset": "2px"
+        },
+        "dark": {
+            "color": "var(--link-lift)",
+            "hoverColor": "color-mix(in oklab, var(--link) 55%, #fff)",
+            "visitedColor": "var(--been-lift)",
+            "activeColor": "var(--hotpress-lift)",
+            "underline": true,
+            "thickness": "1px",
+            "offset": "2px"
+        }
+    },
+    "focus": {
+        "width": "2px",
+        "style": "dotted",
+        "color": "var(--link)",
+        "offset": "2px"
+    },
+    "interaction": {
+        "activeTransform": "translateY(1px)",
+        "activeShadow": "inset 0 2px 0 rgb(0 0 0 / 0.12)",
+        "activeDuration": "0ms"
+    },
+    "selection": {
+        "background": "var(--link)",
+        "foreground": "#FFFFFF"
+    },
+    "native": {
+        "colorScheme": "auto",
+        "accentColor": "var(--link)",
+        "caretColor": "var(--link)"
+    },
+    "zIndex": {
+        "header": 50,
+        "sticky": 50,
+        "dropdown": 60,
+        "popover": 60,
+        "overlay": 70,
+        "modal": 70,
+        "toast": 80,
+        "status": 80,
+        "skip": 60
+    },
+    "scopes": {
+        "afterdark": {
+            "color": {
+                "background": "240 11% 7%",
+                "foreground": "240 9% 94%",
+                "card": "240 11% 10%",
+                "card-foreground": "240 9% 94%",
+                "popover": "240 11% 10%",
+                "popover-foreground": "240 9% 94%",
+                "muted": "247 8% 15%",
+                "muted-foreground": "258 6% 67%",
+                "border": "247 8% 21%",
+                "input": "247 8% 26%",
+                "ring": "240 85% 72%"
+            },
+            "palette": {
+                "groove-hi": "rgb(255 255 255 / 0.05)"
+            },
+            "links": { "hoverColor": "color-mix(in oklab, var(--link) 55%, #fff)" },
+            "focus": { "color": "var(--link-lift)" }
+        }
+    },
+    "textStyles": {
+        "kicker": {
+            "fontRole": "label",
+            "size": "11px",
+            "fontWeight": 700,
+            "letterSpacing": "0.14em",
+            "textTransform": "uppercase",
+            "color": "hsl(var(--muted-foreground))"
+        },
+        "dateline": {
+            "fontRole": "mono",
+            "size": "12.5px",
+            "fontWeight": 700,
+            "letterSpacing": "0.02em"
+        },
+        "osd": {
+            "fontRole": "mono",
+            "size": "12px",
+            "fontWeight": 700,
+            "letterSpacing": "0.12em",
+            "textTransform": "uppercase",
+            "color": "#FFFFFF"
+        }
+    },
+    "effects": {
+        "utilities": {
+            "groove": "border: 0; height: 0; border-top: 1px solid hsl(var(--input)); border-bottom: 1px solid var(--groove-hi);",
+            "blueback": "background-color: var(--blueback); color: #fff; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em;"
+        },
+        "css": ".membrane:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 2px 0 rgb(0 0 0 / 0.12); }\n.as-bracket { font-family: var(--font-label); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--link); text-decoration: none; padding: 2px 8px; }\n.as-bracket::before { content: '[ '; color: hsl(var(--muted-foreground)); }\n.as-bracket::after { content: ' ]'; color: hsl(var(--muted-foreground)); }\n.as-bracket:hover { color: var(--link-hover); }\n.ts-osd { text-shadow: 1px 1px 0 #000; }\n:where(code:not(pre code)) { background: var(--link-wash); border-radius: var(--radius); padding: 0.05em 0.35em; font-family: var(--font-mono); }"
+    }
+}

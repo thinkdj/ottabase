@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { BrandTheme } from './theme';
-import type { TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing, TokenTypography } from './tokens';
+import type { ResolvedMotion, TokenColors, TokenCursors, TokenSpacing, TokenTypographyRoles } from './tokens';
 
 /** Default light-mode colour palette */
 export const DEFAULT_COLORS_LIGHT: TokenColors = {
@@ -43,6 +43,7 @@ export const DEFAULT_COLORS_LIGHT: TokenColors = {
     'chart-3': '36 86% 50%',
     'chart-4': '280 56% 52%',
     'chart-5': '14 78% 54%',
+    overlay: '0 0% 0%',
 };
 
 /** Default dark-mode colour palette */
@@ -83,10 +84,11 @@ export const DEFAULT_COLORS_DARK: TokenColors = {
     'chart-3': '40 82% 56%',
     'chart-4': '284 52% 58%',
     'chart-5': '18 74% 60%',
+    overlay: '0 0% 0%',
 };
 
 /** Default shadow elevation scale (light surfaces) – must match shadcn.css :root */
-export const DEFAULT_SHADOWS: Required<TokenShadows> = {
+export const DEFAULT_SHADOWS: Record<string, string> = {
     xs: '0 1px 2px 0 rgb(0 0 0 / 0.04)',
     sm: '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
     md: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
@@ -95,7 +97,7 @@ export const DEFAULT_SHADOWS: Required<TokenShadows> = {
 };
 
 /** Default shadow elevation scale (dark surfaces) – must match shadcn.css .dark */
-export const DEFAULT_SHADOWS_DARK: Required<TokenShadows> = {
+export const DEFAULT_SHADOWS_DARK: Record<string, string> = {
     xs: '0 1px 2px 0 rgb(0 0 0 / 0.35)',
     sm: '0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45)',
     md: '0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45)',
@@ -104,13 +106,15 @@ export const DEFAULT_SHADOWS_DARK: Required<TokenShadows> = {
 };
 
 /** Default motion / transition presets */
-export const DEFAULT_MOTION: Required<TokenMotion> = {
+export const DEFAULT_MOTION: ResolvedMotion = {
     durationFast: '100ms',
     durationNormal: '200ms',
     durationSlow: '400ms',
     easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
     easingEnter: 'cubic-bezier(0, 0, 0.2, 1)',
     easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
+    // Previously hardcoded as --motion-ease-bouncy in css-runtime; now themeable
+    easingSpring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
     disableAnimations: false,
 };
 
@@ -128,11 +132,16 @@ export const DEFAULT_SPACING: TokenSpacing = {
     element: '0.5rem',
 };
 
-/** Default typography for base theme */
-export const DEFAULT_TYPOGRAPHY: { heading: TokenTypography; body: TokenTypography; handwriting: TokenTypography } = {
+/**
+ * Default typography roles for base theme.
+ * heading/body/handwriting/mono are ALWAYS present after resolution; themes
+ * may add arbitrary extra roles (display, ticker, …) → --font-{role}.
+ */
+export const DEFAULT_TYPOGRAPHY: TokenTypographyRoles = {
     heading: { fontFamily: 'Inter' },
     body: { fontFamily: 'Inter' },
     handwriting: { fontFamily: 'cursive' },
+    mono: { fontFamily: 'JetBrains Mono' },
 };
 
 /**

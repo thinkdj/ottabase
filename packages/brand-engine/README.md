@@ -5,14 +5,80 @@ and brand persistence via D1.
 
 ## Features
 
-- **Design Tokens** — Typed schema for colors, typography, spacing, shadows, motion, cursors
+- **Design Tokens** — Typed schema for colors, typography, spacing, shadows, motion, cursors — plus the v2 categories
+  below for full design-system fidelity
 - **Preset Templates** — Theme presets expanded and saved to database (no runtime resolution needed)
 - **CSS Runtime** — Inject design tokens as CSS custom properties; auto-load Google Fonts
 - **Critical CSS** — Server-rendered dual-mode (light + dark) style tags for zero-FOUC
+- **Effects Stylesheet** — Generated `@font-face`/`@keyframes`/text styles/link contract/theme CSS (`#brand-effects`)
 - **Email Branding** — Replace `{{brandName}}`, `{{logoUrl}}`, etc. in email HTML
 - **Favicon** — Resolve best favicon URL from brand config
-- **Built-in Presets** — Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant
+- **Built-in Presets** — Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant, plus two full 1:1 design-system
+  ports used as fidelity references: Visited (the90s.page) and Marquee (uppcoming)
 - **Fonts & Cursors** — Google Fonts catalog, custom cursor SVG registry
+
+## v2 Token Categories (design-system fidelity)
+
+Two families of categories:
+
+- **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`) — engine defaults are merged under
+  theme values; their vars are always emitted.
+- **Sparse** (everything below) — emitted **only when the theme defines them**. Fallbacks live in the consumers
+  (`tailwind.base.cjs` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
+  renders pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
+  `var(--specific, var(--global, <today's literal>))`.
+
+| Category      | Shape (in `tokensJson`)                                                     | Emission                                                                      |
+| ------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `palette`     | `{ "link": "#2323E8", "glow": "color-mix(in srgb, var(--link) 36%, …)" }`   | `--{name}` **verbatim** — one-knob `color-mix()` ramps live here              |
+| `typography`  | open roles: `heading/body/handwriting/mono` + any (`label`, `ticker`, …)    | `--font-{role}`, `--typography-{role}-{weight,line-height,spacing,transform}` |
+| `typeScale`   | `{ "sm": { "size": "14px", "lineHeight": "1.55" }, … }`                     | `--text-{step}(-lh/-ls/-weight)` → every Tailwind `text-{step}`               |
+| `radius`      | scalar **or** `{ base, sm, md, lg, xl, 2xl, full }`                         | `--radius`, `--radius-{size}` (set `full: 2px` to ban pills)                  |
+| `shadow`      | open record: `xs..xl` + named extras (`glow`, …); `"none"` allowed          | `--shadow-{name}`                                                             |
+| `border`      | `{ width, widthStrong, style }`                                             | `--border-width(-strong)`, `--border-style`                                   |
+| `motion`      | + `easingSpring`, `durations`/`easings` records, `keyframes` (registry: ok) | `--ease-spring`, `--duration-{name}`, `@keyframes` in effects                 |
+| `focus`       | `{ width, style, color, offset }`                                           | `--focus-ring-*` → ONE global `:focus-visible` rule                           |
+| `interaction` | `{ hoverTransform, hoverFilter, activeTransform, activeShadow, … }`         | `--hover-*` / `--press-*` — press physics on `[data-slot]`                    |
+| `links`       | `{ color, hoverColor, visitedColor, activeColor, underline, thickness, … }` | `--link-*` + generated anchor contract (incl. real `:visited`)                |
+| `selection`   | `{ background, foreground }`                                                | `::selection` via `--selection-bg/fg`                                         |
+| `scrollbar`   | `{ width, thumb, track }` (define thumb+track together)                     | `scrollbar-width/color` on `:root`                                            |
+| `native`      | `{ colorScheme: 'auto', accentColor, caretColor, tapHighlight }`            | native controls/scrollbars/autofill follow the theme                          |
+| `zIndex`      | `{ header: 40, modal: 50, toast: 100, … }`                                  | `--z-{name}` + Tailwind `z-{name}` utilities                                  |
+| `textStyles`  | `{ "kicker": { fontRole, size, tracking, transform, … } }`                  | generated `.ts-{name}` voice classes                                          |
+| `fontFaces`   | `[{ family, src, weight: '100 900', stretch, display }]`                    | generated `@font-face` (self-hosted/variable fonts)                           |
+| `effects`     | `{ utilities: { fx: 'registry:scanlines' }, css: '…raw theme css…' }`       | generated utility classes + verbatim theme CSS (sanitized)                    |
+| `scopes`      | `{ "afterdark": { color: {…}, palette: {…}, focus: {…} } }`                 | `[data-brand-scope="afterdark"] { --vars }` token **rooms**                   |
+| `surface`     | `{ backdrop: 'radial-gradient(…)' }`                                        | `--bg-backdrop` body background layer                                         |
+| `aliases`     | `{ "brand": "primary" }`                                                    | alias color entries (active in every pipeline)                                |
+
+Notes:
+
+- Every mode-aware category accepts the `{ light, dark }` `ModeValue` split; a flat value applies to both modes.
+- `TOKEN_CATEGORY_KEYS` (tokens.ts) is the single source of truth — preset expansion, the legacy adapter and preview all
+  iterate it, so **adding a category = type + default + resolver in `resolve-core.ts` + emitter**.
+- Resolution is shared: `resolve-core.ts` backs `resolveTheme`, `brandKitToTheme` and `buildPreviewTheme` (previously
+  three drifting copies).
+- **Three stylesheets**, all edge-injected and client-replaced by id: `#brand-critical` (vars + scope rooms),
+  `#brand-effects` (generated rules), `#brand-custom-css` (kit escape hatch). The client applies themes by replacing
+  stylesheet text (`applyBrandTheme(light, dark)`) — never inline styles — so `.dark`/scope re-binding is pure CSS
+  cascade.
+
+### Component hooks (ui-shadcn)
+
+Injected theme CSS comes after the bundled CSS, so equal-specificity selectors win: every ui-shadcn primitive stamps
+`data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
+`[data-slot='button'][data-variant='outline']:hover { … }` the component restyling API. Button/Card also ship an empty
+`[data-decor]` span (hidden by default) for shine/ornament layers. For components whose **DOM** must differ, register a
+React override: `<BrandComponentsProvider overrides={{ button: UppButton }}>` (Tier-2 escape hatch — prefer CSS).
+
+### Porting a design system (checklist)
+
+See `themes/visited.json` — a complete 1:1 port of "Visited" (the90s.page). Recipe: semantic HSL palettes per room →
+`colors` (+ `scopes` for in-page rooms like `afterdark`); brand-knob derivations → `palette` with `color-mix()`; type
+ramp → `typeScale`; chrome laws → `radius`/`shadow`/`border`/`focus`/`links`/`selection`/`native`; press feel →
+`interaction` (+ `motion.durations`); named voices → `textStyles`; bespoke recipes → `effects.utilities` +
+`effects.css`. Anything still missing belongs in kit `customCss` (now edge-injected, zero FOUC) or a Tier-2 component
+override.
 
 > **Architecture Note**: Presets are **templates**, not runtime themes. When a preset is selected, it's expanded to a
 > complete theme and saved to the database. This eliminates runtime resolution complexity and Cloudflare Workers isolate

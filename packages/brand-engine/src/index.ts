@@ -7,14 +7,39 @@ export type {
     ColorPalettes,
     ColorScheme,
     DesignTokens,
+    ModeValue,
+    ResolvedMotion,
+    ScopeTokens,
     TokenAliases,
+    TokenBorder,
+    TokenCategoryKey,
     TokenColors,
     TokenCursors,
+    TokenEffects,
+    TokenFocus,
+    TokenFontFace,
+    TokenInteraction,
+    TokenLinks,
     TokenMotion,
+    TokenNative,
+    TokenPalette,
+    TokenRadius,
+    TokenScopes,
+    TokenScrollbar,
+    TokenSelection,
     TokenShadows,
     TokenSpacing,
+    TokenSurface,
+    TokenTextStyle,
+    TokenTextStyles,
+    TokenTypeScale,
     TokenTypography,
+    TokenTypographyRoles,
+    TokenZIndex,
+    TypeScaleStep,
 } from './tokens';
+
+export { TOKEN_CATEGORY_KEYS, isReservedVarName } from './tokens';
 
 export type {
     BrandKitItem,
@@ -59,15 +84,31 @@ export {
 export type { SemanticPalette } from './colors';
 export {
     CRITICAL_STYLE_ID,
+    CUSTOM_CSS_STYLE_ID,
+    EFFECTS_STYLE_ID,
     INITIAL_CONFIG_ELEMENT_ID,
     buildCriticalCSS,
     buildCriticalCSSDual,
     buildCriticalStyleTag,
     buildCriticalStyleTagDual,
+    buildCustomCssStyleTag,
+    buildEffectsStyleTag,
     buildInitialConfigScriptTag,
 } from './css-critical';
-export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './css-runtime';
+export {
+    applyBrandTheme,
+    buildBrandStylesheet,
+    buildCSSVarMap,
+    injectCSSVars,
+    injectFont,
+    upsertStyleElement,
+} from './css-runtime';
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
+export { isModeSplit, pickMode, resolveTokenSet } from './resolve-core';
+export type { ResolvedTokenSet } from './resolve-core';
+
+// ── Effects (generated CSS + registries) ───────────────────────────────────
+export { EFFECT_REGISTRY, KEYFRAME_REGISTRY, buildEffectsCSS, buildScopesCSS, resolveRegistryValue } from './effects';
 
 // ── Validators ─────────────────────────────────────────────────────────────
 export { isValidBrandTheme, isValidJSON, isValidTokenColors, safeParseJSON } from './validators';

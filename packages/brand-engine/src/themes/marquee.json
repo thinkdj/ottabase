@@ -1,0 +1,251 @@
+{
+    "name": "marquee",
+    "typography": {
+        "heading": {
+            "fontFamily": "'Archivo', 'Archivo Variable', sans-serif",
+            "url": "https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap",
+            "fontWeight": 800,
+            "lineHeight": "1.1",
+            "letterSpacing": "-0.01em"
+        },
+        "body": {
+            "fontFamily": "'Archivo', 'Archivo Variable', sans-serif",
+            "lineHeight": "1.6"
+        },
+        "handwriting": { "fontFamily": "cursive" },
+        "mono": {
+            "fontFamily": "'Spline Sans Mono', ui-monospace, monospace",
+            "url": "https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap"
+        },
+        "ticker": {
+            "fontFamily": "'Spline Sans Mono', ui-monospace, monospace",
+            "fontWeight": 500,
+            "letterSpacing": "0.15em",
+            "textTransform": "uppercase"
+        }
+    },
+    "typeScale": {
+        "xs": { "size": "11px", "lineHeight": "1.45" },
+        "sm": { "size": "13.5px", "lineHeight": "1.45" },
+        "base": { "size": "14px", "lineHeight": "1.6" },
+        "lg": { "size": "15px", "lineHeight": "1.5" },
+        "xl": { "size": "17px", "lineHeight": "1.4" },
+        "2xl": { "size": "20px", "lineHeight": "1.3" },
+        "3xl": { "size": "24px", "lineHeight": "1.2" },
+        "4xl": { "size": "30px", "lineHeight": "1.1" },
+        "5xl": { "size": "46px", "lineHeight": "1" },
+        "6xl": { "size": "clamp(46px, 6vw, 64px)", "lineHeight": "1" }
+    },
+    "radius": {
+        "base": "8px",
+        "sm": "4px",
+        "md": "6px",
+        "lg": "8px",
+        "xl": "12px",
+        "2xl": "16px",
+        "full": "9999px"
+    },
+    "shadows": {
+        "xs": "none",
+        "sm": "none",
+        "md": "0 4px 12px -4px rgb(23 4 9 / 0.12)",
+        "lg": "0 12px 32px -12px rgb(23 4 9 / 0.25)",
+        "xl": "0 20px 48px -16px rgb(23 4 9 / 0.3)",
+        "glow": "0 0 0 3px var(--upp-glow)",
+        "hover": "0 10px 24px -10px rgb(23 4 9 / 0.28)"
+    },
+    "border": { "width": "1px", "style": "solid" },
+    "motion": {
+        "durationFast": "120ms",
+        "durationNormal": "200ms",
+        "durationSlow": "320ms",
+        "easing": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "easingEnter": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "easingExit": "cubic-bezier(0.4, 0, 1, 1)",
+        "easingSpring": "cubic-bezier(0.34, 1.4, 0.5, 1)",
+        "durations": { "press-fast": "120ms", "press-med": "200ms", "press-slow": "320ms" },
+        "keyframes": { "shimmer": "registry:shimmer", "dotpulse": "registry:dotpulse" }
+    },
+    "colors": {
+        "light": {
+            "background": "0 0% 100%",
+            "foreground": "264 9% 11%",
+            "card": "0 0% 100%",
+            "card-foreground": "264 9% 11%",
+            "popover": "0 0% 100%",
+            "popover-foreground": "264 9% 11%",
+            "primary": "349 74% 49%",
+            "primary-foreground": "0 0% 100%",
+            "secondary": "36 24% 96%",
+            "secondary-foreground": "264 9% 11%",
+            "muted": "36 24% 96%",
+            "muted-foreground": "267 5% 44%",
+            "accent": "349 60% 96%",
+            "accent-foreground": "349 74% 38%",
+            "destructive": "264 9% 11%",
+            "destructive-foreground": "36 24% 96%",
+            "border": "35 19% 88%",
+            "input": "35 19% 84%",
+            "ring": "349 74% 49%",
+            "sidebar-background": "36 24% 97%",
+            "sidebar-foreground": "264 9% 11%",
+            "sidebar-border": "35 19% 88%",
+            "sidebar-accent": "349 74% 49%",
+            "sidebar-accent-foreground": "349 74% 49%",
+            "sidebar-ring": "349 74% 49%",
+            "success": "349 74% 49%",
+            "warning": "349 74% 42%",
+            "warning-foreground": "0 0% 100%",
+            "success-foreground": "0 0% 100%",
+            "info": "267 5% 44%",
+            "info-foreground": "0 0% 100%",
+            "overlay": "240 16% 6%",
+            "chart-1": "349 74% 49%",
+            "chart-2": "264 9% 11%",
+            "chart-3": "267 5% 44%",
+            "chart-4": "349 60% 70%",
+            "chart-5": "35 19% 68%"
+        },
+        "dark": {
+            "background": "240 9% 7%",
+            "foreground": "30 13% 94%",
+            "card": "252 9% 12%",
+            "card-foreground": "30 13% 94%",
+            "popover": "252 9% 12%",
+            "popover-foreground": "30 13% 94%",
+            "primary": "349 74% 55%",
+            "primary-foreground": "0 0% 100%",
+            "secondary": "240 8% 10%",
+            "secondary-foreground": "30 13% 94%",
+            "muted": "240 8% 12%",
+            "muted-foreground": "270 6% 60%",
+            "accent": "349 40% 16%",
+            "accent-foreground": "349 80% 72%",
+            "destructive": "30 13% 94%",
+            "destructive-foreground": "240 9% 7%",
+            "border": "250 7% 18%",
+            "input": "250 7% 22%",
+            "ring": "349 74% 55%",
+            "sidebar-background": "240 9% 6%",
+            "sidebar-foreground": "270 6% 60%",
+            "sidebar-border": "250 7% 18%",
+            "sidebar-accent": "349 74% 55%",
+            "sidebar-accent-foreground": "349 74% 55%",
+            "sidebar-ring": "349 74% 55%",
+            "success": "349 74% 55%",
+            "success-foreground": "0 0% 100%",
+            "warning": "349 80% 62%",
+            "warning-foreground": "240 9% 7%",
+            "info": "270 6% 60%",
+            "info-foreground": "240 9% 7%",
+            "overlay": "240 16% 4%",
+            "chart-1": "349 74% 55%",
+            "chart-2": "30 13% 94%",
+            "chart-3": "270 6% 60%",
+            "chart-4": "349 60% 70%",
+            "chart-5": "250 7% 30%"
+        }
+    },
+    "palette": {
+        "light": {
+            "upp": "#D82042",
+            "upp-hot": "color-mix(in oklab, var(--upp) 85%, #170409)",
+            "upp-deep": "color-mix(in oklab, var(--upp) 58%, #170409)",
+            "upp-lift": "color-mix(in oklab, var(--upp) 70%, #fff)",
+            "upp-soft": "color-mix(in oklab, var(--upp) 13%, #fff)",
+            "upp-wash": "color-mix(in oklab, var(--upp) 6%, #F7F5F2)",
+            "upp-glow": "color-mix(in srgb, var(--upp) 36%, transparent)"
+        },
+        "dark": {
+            "upp-soft": "color-mix(in oklab, var(--upp) 24%, #101013)",
+            "upp-wash": "color-mix(in oklab, var(--upp) 16%, #101013)"
+        }
+    },
+    "links": {
+        "color": "var(--upp-deep)",
+        "hoverColor": "var(--upp-hot)",
+        "underline": false
+    },
+    "focus": {
+        "width": "2px",
+        "style": "solid",
+        "color": "var(--upp)",
+        "offset": "2px"
+    },
+    "interaction": {
+        "hoverTransform": "translateY(-1px)",
+        "activeTransform": "scale(0.97)",
+        "hoverDuration": "120ms",
+        "activeDuration": "120ms",
+        "easing": "var(--ease-spring)"
+    },
+    "selection": {
+        "background": "var(--upp)",
+        "foreground": "#FFFFFF"
+    },
+    "scrollbar": {
+        "width": "thin",
+        "thumb": "hsl(var(--border))",
+        "track": "transparent"
+    },
+    "native": {
+        "colorScheme": "auto",
+        "accentColor": "var(--upp)",
+        "caretColor": "var(--upp)"
+    },
+    "zIndex": {
+        "header": 50,
+        "dropdown": 60,
+        "popover": 60,
+        "overlay": 70,
+        "modal": 70,
+        "toast": 80
+    },
+    "scopes": {
+        "screen": {
+            "color": {
+                "background": "240 16% 6%",
+                "foreground": "0 0% 100%",
+                "card": "240 12% 10%",
+                "card-foreground": "0 0% 100%",
+                "popover": "240 12% 10%",
+                "popover-foreground": "0 0% 100%",
+                "muted": "240 12% 12%",
+                "muted-foreground": "267 5% 60%",
+                "border": "247 10% 18%",
+                "input": "247 10% 22%",
+                "ring": "349 74% 55%"
+            },
+            "palette": {
+                "upp-soft": "color-mix(in oklab, var(--upp) 24%, #101013)",
+                "upp-wash": "color-mix(in oklab, var(--upp) 16%, #101013)"
+            }
+        }
+    },
+    "textStyles": {
+        "ticker": {
+            "fontRole": "ticker",
+            "size": "11px",
+            "fontWeight": 500,
+            "letterSpacing": "0.15em",
+            "textTransform": "uppercase",
+            "color": "hsl(var(--muted-foreground))"
+        },
+        "stretch-wide": {
+            "stretch": "114%",
+            "fontWeight": 900
+        },
+        "stretch-tight": {
+            "stretch": "68%"
+        }
+    },
+    "effects": {
+        "utilities": {
+            "notch": "clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);",
+            "notch-sm": "clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);",
+            "perf": "registry:perforation",
+            "glow-upp": "box-shadow: 0 0 0 3px var(--upp-glow);"
+        },
+        "css": ".seg { border-radius: 2px; background: hsl(var(--border)); }\n.seg[data-filled] { background: var(--upp); }\n.skeleton-shimmer { position: relative; overflow: hidden; background: hsl(var(--border)); }\n.skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }\n.dark .skeleton-shimmer::after, [data-brand-scope='screen'] .skeleton-shimmer::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent); background-size: 200% 100%; }"
+    }
+}

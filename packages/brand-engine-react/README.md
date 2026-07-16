@@ -51,6 +51,34 @@ function MyContent() {
 `BrandProvider` automatically retries transient startup failures from `/api/brand` such as temporary `502`, `503`, and
 `504` responses so worker warmup does not immediately drop the app shell into an error state.
 
+### Theme fields on `BrandConfig` (v2)
+
+Besides the mode-picked `config.theme`, the config now carries **both** palettes for the current path:
+
+| Field        | Description                                                                 |
+| ------------ | --------------------------------------------------------------------------- |
+| `theme`      | Mode-appropriate resolved theme (existing consumers)                        |
+| `themeLight` | Full light theme, per-route token overrides applied                         |
+| `themeDark`  | Full dark theme (light + kit dark delta), per-route token overrides applied |
+
+The app's theme applicator passes both to `applyBrandTheme(themeLight, themeDark)`, which writes the same dual
+`:root/.dark` stylesheet the edge injects — dark-mode toggling is then pure CSS cascade, no JS re-application.
+
+**Zero-FOUC handoff contract:** `resolveConfigForPath` (exported for testing) must derive `themeLight`/`themeDark`
+exactly as the server-side `resolveConfigFromFull` derives the themes it paints into the edge-injected critical CSS.
+When they match, the client's first-load stylesheet replacement is a byte-identical no-op — no re-fetch, no
+base-theme-then-retheme flash. `apps/otta-web/src/__tests__/brand-theme-parity.test.ts` locks this contract.
+
+### Swapping components per design system (two tiers)
+
+Theming components lives in `@ottabase/ui-shadcn`, not this package, but forks land here first, so the pointer:
+
+1. **Tier 1 (CSS — covers ~90%):** every ui-shadcn primitive stamps `data-slot` (+ `data-variant`/`data-size`); theme
+   CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
+2. **Tier 2 (React — DOM-level differences):** register replacement implementations via
+   `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui-shadcn`. Reserve for components
+   whose DOM must genuinely differ; prefer Tier 1.
+
 ## LayoutResolver
 
 `LayoutResolver` reads route mappings from the brand config and renders the correct layout shell for the current path.

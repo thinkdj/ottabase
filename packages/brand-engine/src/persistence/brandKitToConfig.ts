@@ -1,23 +1,39 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Convert BrandKit to theme/identity for ResolvedBrandConfig
 // Supports parent kit inheritance: child tokens are deep-merged on top of parent's.
+// Per-category resolution delegates to resolve-core.ts (shared with resolver.ts
+// and previewTheme.ts).
 // ---------------------------------------------------------------------------
 
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
+import { DEFAULT_CURSORS } from '../defaults';
 import {
-    DEFAULT_COLORS_DARK,
-    DEFAULT_COLORS_LIGHT,
-    DEFAULT_CURSORS,
-    DEFAULT_MOTION,
-    DEFAULT_SHADOWS,
-    DEFAULT_SHADOWS_DARK,
-    DEFAULT_SPACING,
-    DEFAULT_TYPOGRAPHY,
-} from '../defaults';
+    darkSplitCategories,
+    pickMode,
+    resolveTokenSet,
+    resolveBorder,
+    resolveFocus,
+    resolveInteraction,
+    resolveLinks,
+    resolveMotion,
+    resolveNative,
+    resolvePalette,
+    resolveRadius,
+    resolveScrollbar,
+    resolveSelection,
+    resolveShadows,
+    resolveSpacing,
+    resolveSurface,
+    resolveTextStyles,
+    resolveTypeScale,
+    resolveTypography,
+    resolveZIndex,
+} from '../resolve-core';
+import { resolveColors, resolveAliases } from '../resolve-core';
 import type { ResolvedBrandTheme } from '../resolver';
-import { deepMerge, resolveModeValue } from '../resolver';
+import { deepMerge } from '../resolver';
 import type { BrandTheme } from '../theme';
-import type { TokenColors } from '../tokens';
+import type { DesignTokens } from '../tokens';
 import { BrandKit } from './BrandKit.model';
 
 /** Max depth for parent chain traversal (prevents infinite loops from circular refs) */
@@ -76,22 +92,16 @@ export async function resolveInheritanceChain(kit: BrandKit): Promise<BrandTheme
 }
 
 /**
- * Returns true when a raw token value has an explicit dark-mode split
- * (i.e. `{ dark: ... }` key present). Used to decide what goes in the dark delta.
- */
-function hasDarkSplit(val: unknown): boolean {
-    return typeof val === 'object' && val !== null && 'dark' in (val as object);
-}
-
-/**
  * Build ResolvedBrandTheme from BrandKit + mode.
  *
  * Light mode:  returns a FULL ResolvedBrandTheme (all tokens with defaults filled in).
  * Dark mode:   returns a DELTA (Partial<ResolvedBrandTheme>) containing only the tokens
  *              that have an explicit `{ light, dark }` ModeValue split in the source data.
- *              Colors and shadows are ALWAYS included in the dark delta (their dark defaults differ from light).
- *              Consumers (resolveConfigFromFull server-side, resolveConfigForPath client-side)
- *              deep-merge lightTheme + darkDelta at request time.
+ *              Colors and shadows are ALWAYS included in the dark delta (their dark
+ *              defaults differ from light). fontFaces/effects/scopes are never
+ *              mode-split — they ride the light theme and survive the deepMerge.
+ *              Consumers (resolveConfigFromFull server-side, resolveConfigForPath
+ *              client-side) deep-merge lightTheme + darkDelta at request time.
  */
 export async function brandKitToTheme(kit: BrandKit, mode: 'light'): Promise<ResolvedBrandTheme>;
 export async function brandKitToTheme(kit: BrandKit, mode: 'dark'): Promise<Partial<ResolvedBrandTheme>>;
@@ -107,56 +117,47 @@ export async function brandKitToTheme(
     const hasParent = !!(kit.get('parentBrandKitId') as string | null);
     const tenantTheme = hasParent ? await resolveInheritanceChain(kit) : kit.toBrandTheme();
 
-    const tokens = tenantTheme.tokens;
-
-    // Helpers for resolveModeValue isBase predicates
-    const isStringMap = (v: unknown): boolean =>
-        typeof v === 'object' && v !== null && Object.values(v as object).every((x) => typeof x === 'string');
-    const isTypoBase = (v: unknown): boolean =>
-        typeof v === 'object' && v !== null && ('heading' in (v as object) || 'body' in (v as object));
-
-    // Colors: always resolve for both modes (dark palette always differs from light)
-    const defaultPalette = mode === 'dark' ? DEFAULT_COLORS_DARK : DEFAULT_COLORS_LIGHT;
-    const rawPalette = tokens.color?.[mode] ?? tokens.color?.light ?? defaultPalette;
-    const colors = { ...defaultPalette, ...rawPalette } as TokenColors;
+    const tokens = tenantTheme.tokens as Partial<DesignTokens> | undefined;
 
     // -----------------------------------------------------------------------
     // DARK MODE → delta only (tokens explicitly split with { light, dark })
     // Consumer will deepMerge(lightTheme, darkDelta) at request time.
     // -----------------------------------------------------------------------
     if (mode !== 'light') {
-        const delta: Partial<ResolvedBrandTheme> = { colors };
+        const split = darkSplitCategories(tokens);
+        const delta: Partial<ResolvedBrandTheme> = {};
 
-        if (hasDarkSplit(tokens?.typography)) {
-            const rawTypo = resolveModeValue(tokens.typography, mode, isTypoBase);
-            delta.typography = {
-                heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading },
-                body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body },
-                handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting },
-            };
+        // Colors + shadows: ALWAYS in the delta — dark defaults differ from light
+        const colors = resolveAliases(resolveColors(tokens, mode), tokens?.aliases);
+        delta.colors = colors;
+        delta.shadows = resolveShadows(tokens, mode);
+
+        // Sparse + defaulted categories: included only when explicitly dark-split
+        if (split.has('palette')) delta.palette = resolvePalette(tokens, mode, colors);
+        if (split.has('typography')) delta.typography = resolveTypography(tokens, mode);
+        if (split.has('typeScale')) delta.typeScale = resolveTypeScale(tokens, mode);
+        if (split.has('spacing')) delta.spacing = resolveSpacing(tokens, mode);
+        if (split.has('radius')) {
+            const { radius, radiusScale } = resolveRadius(tokens, mode);
+            delta.radius = radius;
+            if (radiusScale) delta.radiusScale = radiusScale;
         }
+        if (split.has('border')) delta.border = resolveBorder(tokens, mode);
+        if (split.has('motion')) delta.motion = resolveMotion(tokens, mode);
+        if (split.has('focus')) delta.focus = resolveFocus(tokens, mode);
+        if (split.has('interaction')) delta.interaction = resolveInteraction(tokens, mode);
+        if (split.has('links')) delta.links = resolveLinks(tokens, mode);
+        if (split.has('selection')) delta.selection = resolveSelection(tokens, mode);
+        if (split.has('scrollbar')) delta.scrollbar = resolveScrollbar(tokens, mode);
+        if (split.has('native')) delta.native = resolveNative(tokens, mode);
+        if (split.has('zIndex')) delta.zIndex = resolveZIndex(tokens, mode);
+        if (split.has('textStyles')) delta.textStyles = resolveTextStyles(tokens, mode);
+        if (split.has('surface')) delta.surface = resolveSurface(tokens, mode);
 
-        if (hasDarkSplit(tokens?.spacing)) {
-            const rawSpacing = resolveModeValue(tokens.spacing, mode, isStringMap);
-            delta.spacing = { ...DEFAULT_SPACING, ...(rawSpacing ?? {}) };
-        }
-
-        if (hasDarkSplit(tokens?.radius)) {
-            delta.radius = resolveModeValue(tokens.radius, mode, (v) => typeof v === 'string') ?? '0.5rem';
-        }
-
-        // Shadows are ALWAYS included: dark elevation defaults differ from light (like colors)
-        const rawShadows = resolveModeValue(tokens?.shadow, mode, isStringMap);
-        delta.shadows = { ...DEFAULT_SHADOWS_DARK, ...(rawShadows ?? {}) };
-
-        if (hasDarkSplit(tokens?.motion)) {
-            const rawMotion = resolveModeValue(tokens.motion, mode, isStringMap);
-            delta.motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };
-        }
-
-        if (hasDarkSplit(tenantTheme.cursors)) {
-            const rawCursors = resolveModeValue(tenantTheme.cursors, mode, isStringMap);
-            delta.cursors = rawCursors ?? DEFAULT_CURSORS;
+        // Cursors live at the BrandTheme root (not in DesignTokens)
+        const rawCursors = tenantTheme.cursors;
+        if (typeof rawCursors === 'object' && rawCursors !== null && 'dark' in rawCursors) {
+            delta.cursors = pickMode(rawCursors, mode) ?? DEFAULT_CURSORS;
         }
 
         // layout is never mode-split; omit from dark delta — inherited from light via deepMerge
@@ -167,37 +168,13 @@ export async function brandKitToTheme(
     // -----------------------------------------------------------------------
     // LIGHT MODE (or any non-dark mode) → full resolved theme with defaults
     // -----------------------------------------------------------------------
-    const rawTypo = resolveModeValue(tokens?.typography, mode, isTypoBase);
-    const typography = {
-        heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading },
-        body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body },
-        handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting },
-    };
-
-    const rawSpacing = resolveModeValue(tokens?.spacing, mode, isStringMap);
-    const spacing = { ...DEFAULT_SPACING, ...(rawSpacing ?? {}) };
-
-    const rawRadius = resolveModeValue(tokens?.radius, mode, (v) => typeof v === 'string');
-    const radius = rawRadius ?? '0.5rem';
-
-    const rawShadows = resolveModeValue(tokens?.shadow, mode, isStringMap);
-    const shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
-
-    const rawMotion = resolveModeValue(tokens?.motion, mode, isStringMap);
-    const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };
-
-    const rawCursors = resolveModeValue(tenantTheme.cursors, mode, isStringMap);
-    const cursors = rawCursors ?? DEFAULT_CURSORS;
+    const tokenSet = resolveTokenSet(tokens, mode);
+    const cursors = pickMode(tenantTheme.cursors, mode) ?? DEFAULT_CURSORS;
     const layout = { ...DEFAULT_LAYOUT, ...(tenantTheme.layout ?? {}) };
 
     return {
         name: tenantTheme.name,
-        colors,
-        typography,
-        spacing,
-        radius,
-        shadows,
-        motion,
+        ...tokenSet,
         cursors,
         layout,
     };

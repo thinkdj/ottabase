@@ -2,48 +2,47 @@
 // BrandEngine – CSS Variable Runtime
 //
 // Converts resolved tokens into CSS custom properties and injects them into
-// the document root (or a supplied element).
+// the document as a stylesheet.
 //
 // Output variables follow the convention consumed by Tailwind + shadcn:
 //   --primary, --background, --font-heading, --shadow-lg, --duration-fast, …
+// v2 sparse categories add: --{palette-name}, --text-{step}, --radius-{size},
+//   --border-width, --focus-ring-*, --hover-*/--press-*, --link-*,
+//   --selection-*, --scrollbar-*, --accent-color, --z-{name}, --bg-backdrop.
 //
 // This module is intentionally side-effect-free in Node (no global DOM access).
-// The `injectCSSVars` function operates on a supplied `CSSStyleDeclaration`.
-// The `applyBrandTheme` convenience function targets `document.documentElement`.
+// `applyBrandTheme` (browser) writes/replaces <style id="brand-critical"> and
+// <style id="brand-effects"> — the same elements the edge injects — so the
+// `.dark` cascade keeps working (no inline-style specificity wars).
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { resolveCursor } from './cursors';
 import { DEFAULT_TYPOGRAPHY } from './defaults';
+import { buildEffectsCSS, buildScopesCSS } from './effects';
+import {
+    emitBorderVars,
+    emitColorVars,
+    emitFocusVars,
+    emitInteractionVars,
+    emitLinksVars,
+    emitNativeVars,
+    emitPaletteVars,
+    emitRadiusVars,
+    emitScrollbarVars,
+    emitSelectionVars,
+    emitShadowVars,
+    emitSurfaceVars,
+    emitTypeScaleVars,
+    emitZIndexVars,
+    fontGenericFallback,
+    toCssFontWeight,
+    varMapToDeclarations,
+} from './emit-vars';
 import type { ResolvedBrandTheme } from './resolver';
-import type { TokenColors } from './tokens';
+import type { ColorScheme, TokenTypographyRoles } from './tokens';
 
-// ---------------------------------------------------------------------------
-// Typography weight: semantic keywords → numeric CSS values
-// ---------------------------------------------------------------------------
-
-const FONT_WEIGHT_MAP: Record<string, string> = {
-    normal: '400',
-    bold: '700',
-    medium: '500',
-    semibold: '600',
-    black: '900',
-    '100': '100',
-    '200': '200',
-    '300': '300',
-    '400': '400',
-    '500': '500',
-    '600': '600',
-    '700': '700',
-    '800': '800',
-    '900': '900',
-};
-
-function toCssFontWeight(val: string | number | undefined): string {
-    if (val === undefined || val === null) return '400';
-    const s = String(val).toLowerCase();
-    return FONT_WEIGHT_MAP[s] ?? (Number.isNaN(Number(s)) ? '400' : s);
-}
+export { varMapToDeclarations } from './emit-vars';
 
 // ---------------------------------------------------------------------------
 // Pure token → CSS-var map builder (no DOM dependency)
@@ -53,48 +52,66 @@ function toCssFontWeight(val: string | number | undefined): string {
  * Builds a flat `Record<string, string>` mapping CSS custom-property names
  * to their values from a resolved theme.
  *
+ * `mode` matters only for mode-polar declarations (native color-scheme).
  * Useful for SSR, testing, or injecting into non-DOM targets.
  */
-export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string> {
+export function buildCSSVarMap(theme: ResolvedBrandTheme, mode: ColorScheme = 'light'): Record<string, string> {
     const vars: Record<string, string> = {};
 
-    // -- Typography (defensive: typography can be undefined after clean reset) ---
-    const typo = theme.typography ?? DEFAULT_TYPOGRAPHY;
-    vars['--font-heading'] = `"${typo.heading?.fontFamily ?? 'Inter'}", sans-serif`;
-    vars['--font-body'] = `"${typo.body?.fontFamily ?? 'Inter'}", sans-serif`;
-    vars['--font-handwriting'] = `"${typo.handwriting?.fontFamily ?? 'cursive'}", cursive`;
+    // -- Typography roles (defensive: typography can be undefined after clean reset) ---
+    const typo: TokenTypographyRoles = theme.typography ?? DEFAULT_TYPOGRAPHY;
+    for (const [role, settings] of Object.entries(typo)) {
+        if (!settings?.fontFamily) continue;
+        // A comma means the theme authored a full stack — emit verbatim;
+        // otherwise quote the single family and append a generic fallback.
+        vars[`--font-${role}`] = settings.fontFamily.includes(',')
+            ? settings.fontFamily
+            : `"${settings.fontFamily}", ${fontGenericFallback(role)}`;
+    }
+    // Guarantee the core roles even on malformed data
+    vars['--font-heading'] ??= '"Inter", sans-serif';
+    vars['--font-body'] ??= '"Inter", sans-serif';
+    vars['--font-handwriting'] ??= '"cursive", cursive';
+    vars['--font-mono'] ??= '"JetBrains Mono", monospace';
 
-    // -- Colour tokens -------------------------------------------------------
-    for (const [token, hslValue] of Object.entries(theme.colors as TokenColors)) {
-        if (hslValue !== undefined) {
-            vars[`--${token}`] = hslValue;
-        }
+    // -- Typography extended properties (weight, line-height, letter-spacing) ---
+    // heading/body keep their historical defaults; other roles default neutrally.
+    for (const [role, settings] of Object.entries(typo)) {
+        if (!settings) continue;
+        const defaultWeight = role === 'heading' ? '700' : '400';
+        const defaultLh = role === 'heading' ? '1.2' : role === 'body' ? '1.5' : 'normal';
+        vars[`--typography-${role}-weight`] = toCssFontWeight(settings.fontWeight, defaultWeight);
+        vars[`--typography-${role}-line-height`] = settings.lineHeight ?? defaultLh;
+        vars[`--typography-${role}-spacing`] = settings.letterSpacing ?? 'normal';
+        if (settings.textTransform) vars[`--typography-${role}-transform`] = settings.textTransform;
     }
 
-    // -- Border radius -------------------------------------------------------
-    vars['--radius'] = theme.radius;
+    // -- Colour tokens ---------------------------------------------------------
+    emitColorVars(vars, theme.colors);
 
-    // -- Spacing -------------------------------------------------------------
+    // -- Raw/derived palette (verbatim values) ----------------------------------
+    if (theme.palette) emitPaletteVars(vars, theme.palette);
+
+    // -- Border radius (scalar + optional per-size scale) -----------------------
+    emitRadiusVars(vars, theme.radius, theme.radiusScale);
+
+    // -- Type scale --------------------------------------------------------------
+    if (theme.typeScale) emitTypeScaleVars(vars, theme.typeScale);
+
+    // -- Spacing -----------------------------------------------------------------
     if (theme.spacing) {
         for (const [key, val] of Object.entries(theme.spacing)) {
             vars[`--spacing-${key}`] = val;
         }
     }
 
-    // -- Shadow elevation scale ----------------------------------------------
-    for (const [level, val] of Object.entries(theme.shadows)) {
-        vars[`--shadow-${level}`] = val;
-    }
+    // -- Shadow elevation scale (open record: xs..xl + named extras) --------------
+    emitShadowVars(vars, theme.shadows);
 
-    // -- Typography extended properties (weight, line-height, letter-spacing) ---
-    vars['--typography-heading-weight'] = toCssFontWeight(typo.heading?.fontWeight ?? 700);
-    vars['--typography-heading-line-height'] = typo.heading?.lineHeight ?? '1.2';
-    vars['--typography-heading-spacing'] = typo.heading?.letterSpacing ?? 'normal';
-    vars['--typography-body-weight'] = toCssFontWeight(typo.body?.fontWeight ?? 400);
-    vars['--typography-body-line-height'] = typo.body?.lineHeight ?? '1.5';
-    vars['--typography-body-spacing'] = typo.body?.letterSpacing ?? 'normal';
+    // -- Border chrome -------------------------------------------------------------
+    if (theme.border) emitBorderVars(vars, theme.border);
 
-    // -- Motion / transition presets -----------------------------------------
+    // -- Motion / transition presets -------------------------------------------------
     // When disableAnimations: true, set durations to 0s (simpler than data-attr + global CSS)
     const noMotion = theme.motion.disableAnimations;
     vars['--duration-fast'] = noMotion ? '0s' : theme.motion.durationFast;
@@ -103,6 +120,7 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
     vars['--ease'] = theme.motion.easing;
     vars['--ease-enter'] = theme.motion.easingEnter;
     vars['--ease-exit'] = theme.motion.easingExit;
+    vars['--ease-spring'] = theme.motion.easingSpring;
     // Semantic --motion-* aliases match the component-level convention
     vars['--motion-duration-fast'] = noMotion ? '0s' : theme.motion.durationFast;
     vars['--motion-duration-normal'] = noMotion ? '0s' : theme.motion.durationNormal;
@@ -110,8 +128,35 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
     vars['--motion-ease-default'] = theme.motion.easing;
     vars['--motion-ease-enter'] = theme.motion.easingEnter;
     vars['--motion-ease-exit'] = theme.motion.easingExit;
-    // Bouncy is a fixed preset easing curve (not brand-configurable)
-    vars['--motion-ease-bouncy'] = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+    // Alias kept for existing component-level consumers; themeable via easingSpring
+    vars['--motion-ease-bouncy'] = theme.motion.easingSpring;
+    // Named extras: --duration-{name} / --ease-{name}
+    if (theme.motion.durations) {
+        for (const [name, val] of Object.entries(theme.motion.durations)) {
+            vars[`--duration-${name}`] = noMotion ? '0s' : val;
+        }
+    }
+    if (theme.motion.easings) {
+        for (const [name, val] of Object.entries(theme.motion.easings)) {
+            vars[`--ease-${name}`] = val;
+        }
+    }
+
+    // -- Interaction physics / focus ring / link contract --------------------------
+    if (theme.interaction) emitInteractionVars(vars, theme.interaction);
+    if (theme.focus) emitFocusVars(vars, theme.focus);
+    if (theme.links) emitLinksVars(vars, theme.links);
+
+    // -- Selection / scrollbar / native appearance ----------------------------------
+    if (theme.selection) emitSelectionVars(vars, theme.selection);
+    if (theme.scrollbar) emitScrollbarVars(vars, theme.scrollbar);
+    if (theme.native) emitNativeVars(vars, theme.native, mode);
+
+    // -- Z-index ladder ----------------------------------------------------------------
+    if (theme.zIndex) emitZIndexVars(vars, theme.zIndex);
+
+    // -- Page surface hooks ---------------------------------------------------------------
+    if (theme.surface) emitSurfaceVars(vars, theme.surface);
 
     // -- Layout tokens (as CSS vars for component contracts) -----------------
     applyLayoutVars(vars, theme.layout);
@@ -137,6 +182,10 @@ function applyLayoutVars(vars: Record<string, string>, layout: LayoutConfig): vo
     vars['--layout-content-width'] = layout.contentWidth;
     vars['--layout-footer'] = layout.footer ? '1' : '0';
     vars['--layout-density'] = layout.density;
+    // Dimension tokens (sparse — only when the layout defines exact lengths)
+    if (layout.containerMaxWidth) vars['--layout-container-max'] = layout.containerMaxWidth;
+    if (layout.sidebarWidthCss) vars['--layout-sidebar-w'] = layout.sidebarWidthCss;
+    if (layout.sidebarIconWidthCss) vars['--layout-sidebar-w-icon'] = layout.sidebarIconWidthCss;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +194,8 @@ function applyLayoutVars(vars: Record<string, string>, layout: LayoutConfig): vo
 
 /**
  * Writes all CSS custom properties from `varMap` onto the supplied style target.
+ * Retained for tests/embedded targets — the main runtime path now writes a
+ * stylesheet (see applyBrandTheme).
  */
 export function injectCSSVars(
     style: { setProperty(prop: string, val: string): void },
@@ -182,22 +233,57 @@ export function injectFont(url: string): void {
     injectedFontUrls.add(url);
 }
 
+/** Create-or-update a <style> element by id and set its CSS text. */
+export function upsertStyleElement(id: string, css: string): void {
+    if (typeof document === 'undefined') return; // SSR guard
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) {
+        el = document.createElement('style');
+        el.id = id;
+        document.head.appendChild(el);
+    }
+    if (el.textContent !== css) el.textContent = css;
+}
+
+/** Assemble the full critical CSS (vars + scope rooms) for one or both modes. */
+export function buildBrandStylesheet(theme: ResolvedBrandTheme, darkTheme?: ResolvedBrandTheme): string {
+    let css = `:root {\n${varMapToDeclarations(buildCSSVarMap(theme, 'light'))}\n}`;
+    if (darkTheme) {
+        css += `\n.dark {\n${varMapToDeclarations(buildCSSVarMap(darkTheme, 'dark'))}\n}`;
+    }
+    if (theme.scopes) {
+        const scopesCSS = buildScopesCSS(theme.scopes);
+        if (scopesCSS) css += `\n${scopesCSS}`;
+    }
+    return css;
+}
+
 /**
- * Convenience function: resolves a theme and applies all CSS vars + fonts
- * to `document.documentElement`.
+ * Convenience function: applies a resolved theme's CSS vars + fonts + effects.
  *
- * This is the main runtime entry point for browser environments.
- * When motion.disableAnimations is true, duration vars are set to 0s in buildCSSVarMap.
+ * This is the main runtime entry point for browser environments. It REPLACES
+ * the text of <style id="brand-critical"> / <style id="brand-effects"> (the
+ * same elements the edge injects) instead of writing inline styles on <html>,
+ * so `.dark` re-binding cascades naturally and theme/effects/custom CSS never
+ * fight inline-style specificity.
+ *
+ * Pass both palettes for full dual-mode emission — mode toggling then needs
+ * no JS re-application at all. With only `theme`, a single :root block is
+ * written (current-mode-only, e.g. admin preview iframes).
  */
-export function applyBrandTheme(theme: ResolvedBrandTheme): void {
+export function applyBrandTheme(theme: ResolvedBrandTheme, darkTheme?: ResolvedBrandTheme): void {
     if (typeof document === 'undefined') return; // SSR guard
 
-    // Inject fonts (typography can be undefined after clean reset)
-    const typo = theme.typography ?? DEFAULT_TYPOGRAPHY;
-    const fontUrls = new Set([typo.heading?.url, typo.body?.url, typo.handwriting?.url].filter(Boolean) as string[]);
+    // Inject font stylesheets for every typography role URL (both modes)
+    const fontUrls = new Set<string>();
+    for (const t of [theme, darkTheme]) {
+        if (!t?.typography) continue;
+        for (const settings of Object.values(t.typography)) {
+            if (settings?.url) fontUrls.add(settings.url);
+        }
+    }
     fontUrls.forEach(injectFont);
 
-    // Build & inject CSS vars (disableAnimations → duration vars become 0s)
-    const varMap = buildCSSVarMap(theme);
-    injectCSSVars(document.documentElement.style, varMap);
+    upsertStyleElement('brand-critical', buildBrandStylesheet(theme, darkTheme));
+    upsertStyleElement('brand-effects', buildEffectsCSS(theme));
 }

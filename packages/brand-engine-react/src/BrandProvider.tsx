@@ -166,9 +166,11 @@ function applyRouteTokenOverrides(
     kitTheme: ResolvedBrandTheme,
     tokenOverridesJson: string,
     brandKitId: string,
+    mode: string,
 ): ResolvedBrandTheme {
-    // Cache key: brandKitId + token overrides JSON
-    const cacheKey = `${brandKitId}:${tokenOverridesJson}`;
+    // Cache key: brandKitId + mode + token overrides JSON (light and dark
+    // themes are distinct merge results for the same overrides)
+    const cacheKey = `${brandKitId}:${mode}:${tokenOverridesJson}`;
 
     // LRU: Move to end if exists
     if (tokenOverrideCache.has(cacheKey)) {
@@ -266,6 +268,10 @@ export interface BrandConfig {
     tagline?: string;
     logos: { primary?: string; dark?: string; icon?: string; ogImage?: string; emailLogo?: string };
     theme: ResolvedBrandTheme;
+    /** Full light theme for the current path (route overrides applied) */
+    themeLight: ResolvedBrandTheme;
+    /** Full dark theme for the current path (light + dark delta, route overrides applied) */
+    themeDark: ResolvedBrandTheme;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
@@ -308,7 +314,14 @@ export interface BrandProviderProps {
 
 type RouteMatcherFn = (pathname: string) => RouteMatchResult | null;
 
-function resolveConfigForPath(
+/**
+ * Exported for parity testing ONLY: the app test-suite asserts that the
+ * themeLight/themeDark this derives are deep-equal to what the server-side
+ * resolveConfigFromFull injects at the edge — the zero-FOUC handoff contract
+ * (edge-painted critical CSS must be byte-identical to what the client would
+ * re-derive, so the client's stylesheet replacement is a no-op on first load).
+ */
+export function resolveConfigForPath(
     full: FullBrandConfig,
     pathname: string,
     routeMatcher: RouteMatcherFn,
@@ -325,23 +338,29 @@ function resolveConfigForPath(
         Object.values(full.brandKitsMap)[0];
     if (!kit) return null;
 
-    // Pick mode-appropriate theme (dark-mode theme if available, else fall back to light)
-    let theme =
-        mode === 'dark' && kit.darkTheme
-            ? (deepMerge(
-                  kit.theme as unknown as Record<string, unknown>,
-                  kit.darkTheme as Record<string, unknown>,
-              ) as unknown as ResolvedBrandTheme)
-            : kit.theme;
+    // Build BOTH palettes for the path: the dark theme is the light theme with
+    // the kit's dark delta merged on top. Both get per-route token overrides.
+    let themeLight = kit.theme;
+    let themeDark = kit.darkTheme
+        ? (deepMerge(
+              kit.theme as unknown as Record<string, unknown>,
+              kit.darkTheme as Record<string, unknown>,
+          ) as unknown as ResolvedBrandTheme)
+        : kit.theme;
 
-    // Apply per-route token overrides if present
     if (match?.tokenOverridesJson) {
-        theme = applyRouteTokenOverrides(theme, match.tokenOverridesJson, kitId);
+        themeLight = applyRouteTokenOverrides(themeLight, match.tokenOverridesJson, kitId, 'light');
+        themeDark = applyRouteTokenOverrides(themeDark, match.tokenOverridesJson, kitId, 'dark');
     }
+
+    // Mode-appropriate theme for consumers that want "the current look"
+    const theme = mode === 'dark' ? themeDark : themeLight;
 
     return {
         ...kit,
         theme,
+        themeLight,
+        themeDark,
         defaultColorScheme: kit.defaultColorScheme as 'light' | 'dark' | 'system',
         layoutTemplateId: layoutId,
         layoutTemplatesMap: full.layoutTemplatesMap,
@@ -360,6 +379,8 @@ function buildFallbackConfig(theme: ResolvedBrandTheme): BrandConfig {
         brandName: 'Default',
         logos: {},
         theme,
+        themeLight: theme,
+        themeDark: theme,
         defaultColorScheme: 'light',
         allowDarkModeToggle: true,
         customCss: undefined,
@@ -496,6 +517,8 @@ export function BrandProvider({
         return {
             ...firstKit,
             theme: fallbackTheme,
+            themeLight: fallbackTheme,
+            themeDark: fallbackTheme,
             layoutTemplateId: 'homepage',
             layoutTemplatesMap: fullConfig.layoutTemplatesMap,
             routeMappings: expandedRouteMappings,
