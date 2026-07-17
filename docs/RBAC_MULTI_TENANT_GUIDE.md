@@ -25,9 +25,9 @@ Ottabase includes a complete multi-tenant RBAC (Role-Based Access Control) syste
 
 ```
 System Roles (Global)
-    ├─ platform_owner - Bootstrapped app owner (system-scoped, first user)
-    ├─ owner          - Full organization control
-    ├─ admin          - Manage members and settings
+    ├─ platform_owner - Bootstrapped app owner (system-scoped, *:* permissions)
+    ├─ owner          - Organization owner (org-scoped, scoped permissions — no *:*)
+    ├─ admin          - Full system access (*:* permissions, explicitly granted)
     └─ member         - Basic access
 
 Organization (Tenant)           organizationId OR null

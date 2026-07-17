@@ -20,7 +20,7 @@ import {
 
 import { type ComponentType, type ReactNode } from 'react';
 
-const ADMIN_REQUIRED_PERMISSIONS = ['admin'];
+const ADMIN_REQUIRED_ROLES = ['platform_owner', 'owner', 'admin'];
 
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
@@ -50,7 +50,7 @@ function AdminPrivilegeFallback() {
 /** Wraps an admin page in: ProtectedRoute(admin) → AdminLayout(sidebar) → page. */
 function renderAdminRoute(children: ReactNode) {
     return (
-        <ProtectedRoute requiredPermissions={ADMIN_REQUIRED_PERMISSIONS} fallback={<AdminPrivilegeFallback />}>
+        <ProtectedRoute requiredRoles={ADMIN_REQUIRED_ROLES} fallback={<AdminPrivilegeFallback />}>
             <AdminLayout>{children}</AdminLayout>
         </ProtectedRoute>
     );

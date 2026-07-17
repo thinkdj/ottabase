@@ -22,7 +22,7 @@ import {
     runMigrations,
     User,
 } from '@ottabase/ottaorm';
-import { PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
+import { ORG_OWNER_PERMISSIONS, PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
@@ -59,7 +59,7 @@ function jsonResp(data: unknown, status = 200): Response {
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     [PLATFORM_OWNER_ROLE_NAME]: ['*:*'],
-    owner: ['*:*'],
+    owner: ORG_OWNER_PERMISSIONS,
     admin: ['*:*'],
     editor: ['*:read', '*:create', '*:update'],
     viewer: ['*:read'],
@@ -574,6 +574,9 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
+        // The bootstrap user holds both org-scoped 'owner' AND system-scoped 'platform_owner'.
+        // Grant '*:*' here because they are the platform owner — the org-scoped owner role
+        // itself only carries ORG_OWNER_PERMISSIONS (no system-level wildcard).
         const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
         const { cookie, session } = await createSessionCookieForUser(
             {

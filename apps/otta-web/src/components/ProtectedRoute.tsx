@@ -5,6 +5,14 @@ import { Spinner } from '@ottabase/ui-shadcn';
 import { useNavigate } from '@tanstack/react-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
+function matchesPermission(held: string, required: string): boolean {
+    if (held === required) return true;
+    const [hRes, hAct] = held.split(':');
+    const [rRes, rAct] = required.split(':');
+    if (hRes === '*' && hAct === '*') return true;
+    return (hRes === '*' || hRes === rRes) && (hAct === '*' || hAct === rAct);
+}
+
 interface ProtectedRouteProps {
     children: ReactNode;
     redirectTo?: string;
@@ -97,7 +105,7 @@ export function ProtectedRoute({
     const hasRequiredPermissions =
         !requiredPermissions ||
         requiredPermissions.length === 0 ||
-        requiredPermissions.every((perm) => user?.permissions?.includes('*:*') || user?.permissions?.includes(perm));
+        requiredPermissions.every((perm) => user?.permissions?.some((held) => matchesPermission(held, perm)));
 
     const authorized = hasRequiredRoles && hasRequiredPermissions;
 

@@ -10,6 +10,25 @@ export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
 export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
 
 /**
+ * Scoped permission set for the org-level 'owner' role.
+ *
+ * Full CRUD on all resources within the org, plus feature-specific grants.
+ * Deliberately excludes '*:*' — the superadmin wildcard — so the permission
+ * system itself enforces the boundary between org-scoped owners and
+ * system-scoped admins (platform_owner / admin).
+ */
+export const ORG_OWNER_PERMISSIONS: string[] = [
+    '*:read',
+    '*:create',
+    '*:update',
+    '*:delete',
+    'media:*',
+    'brand:*',
+    'comments:moderate',
+    'audit:read',
+];
+
+/**
  * Role model for RBAC
  *
  * @example
@@ -219,8 +238,8 @@ export class Role extends BaseModel {
             },
             {
                 name: 'owner',
-                description: 'Organization owner with full privileges (org-scoped)',
-                permissions: JSON.stringify(['*:*']),
+                description: 'Organization owner — full org-level access (no system-level wildcard)',
+                permissions: JSON.stringify(ORG_OWNER_PERMISSIONS),
                 isSystem: true,
             },
             {

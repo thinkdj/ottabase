@@ -1,4 +1,4 @@
-import { useSession } from '@/lib/auth';
+import { isAdminUser, useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
@@ -16,7 +16,7 @@ export function DrawerNav() {
     const { config } = useBrand();
     const [open, setOpen] = useState(false);
 
-    const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
+    const isAdmin = isAdminUser(user);
     const links = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = links.map((link) => {
         const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));

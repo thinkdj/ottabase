@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - RBAC Seed Script
 // ============================================================
 
-import { Permission, PLATFORM_OWNER_ROLE_NAME, Role } from '../models';
+import { ORG_OWNER_PERMISSIONS, Permission, PLATFORM_OWNER_ROLE_NAME, Role } from '../models';
 
 /**
  * Default system roles
@@ -17,8 +17,8 @@ export const DEFAULT_ROLES = [
     {
         id: '00000000-0000-0000-0000-000000000000',
         name: 'owner',
-        description: 'Organization owner with full privileges (org-scoped)',
-        permissions: ['*:*'],
+        description: 'Organization owner — full org-level access (no system-level wildcard)',
+        permissions: ORG_OWNER_PERMISSIONS,
         isSystem: true,
     },
     {

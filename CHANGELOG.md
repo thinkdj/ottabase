@@ -7,6 +7,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed (Unreleased)
+
+- **RBAC: Scoped org-owner permissions.** The org-scoped `owner` role no longer carries `*:*` (the superadmin wildcard).
+  It now receives
+  `['*:read', '*:create', '*:update', '*:delete', 'media:*', 'brand:*', 'comments:moderate', 'audit:read']` — full CRUD
+  within the org plus feature-specific grants, but no system-level bypass. This means the permission system itself
+  enforces the boundary between org-scoped owners and system-scoped admins (`platform_owner`/`admin`), rather than
+  relying solely on route-level scope checks. `platform_owner` and `admin` retain `*:*`. **Why:** every self-registered
+  user receives `owner` on their personal organization, so the previous `*:*` grant made the wildcard permission
+  meaningless as a distinguishing signal — a random user held the same permission as the platform superadmin. The scoped
+  set restores the permission layer as a real security boundary.
+
+    **Migration note for existing deployments:** the `enforceDefaultRolePermissions` function (called during bootstrap
+    init) will update the `owner` role's permissions in the database. For already-bootstrapped platforms, either re-run
+    the init/seed step or manually update the `owner` role's permissions via the admin UI.
+
+- **Session: system-scope roles loaded.** `loadUserContext` (session-store) now also loads system-scope roles (e.g.
+  `platform_owner`) alongside org-scope roles, so the session snapshot reflects the full role/permission set — matching
+  what `getRequestContext` already does on the backend.
+
+- **Frontend: role-based admin checks.** Admin UI visibility (nav links, admin panel gate) now checks role names
+  (`platform_owner`, `owner`, `admin`) via a shared `isAdminUser()` helper, instead of relying solely on
+  `permissions.includes('*:*')`. `ProtectedRoute` now supports wildcard permission matching (e.g. `*:read` satisfies a
+  `users:read` requirement).
+
+- **`isAdmin` (rbac/utils)** now checks role names in addition to `*:*`, matching the logic in `hasAdminRole`
+  (admin-guard).
+
 ### Added (Unreleased)
 
 - brand-engine v2 — full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +

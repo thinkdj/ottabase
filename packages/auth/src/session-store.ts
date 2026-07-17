@@ -241,19 +241,32 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
                     : Number.isFinite(Number(emailVerifiedRaw))
                       ? Number(emailVerifiedRaw)
                       : null;
-            if (organizationId) {
-                // Fetch role records once and derive both role names and permissions from them.
-                // (user.getPermissions() would re-run the same role queries internally, doubling
-                // the D1 round trips on this hot-ish path.)
-                const roleRecords = await user.roles({ organizationId });
-                roles = roleRecords.map((role: { get: (key: string) => unknown }) => String(role.get('name')));
-                const permissionSet = new Set<string>();
-                for (const role of roleRecords) {
+
+            const roleNameSet = new Set<string>();
+            const permissionSet = new Set<string>();
+            const collectRoles = (records: any[]) => {
+                for (const role of records) {
+                    roleNameSet.add(String(role.get('name')));
                     const rolePerms = (role as { getPermissions?: () => string[] }).getPermissions?.() ?? [];
                     for (const perm of rolePerms) permissionSet.add(perm);
                 }
-                permissions = [...permissionSet];
+            };
+
+            if (organizationId) {
+                const orgRoleRecords = await user.roles({ organizationId });
+                collectRoles(orgRoleRecords);
             }
+
+            // Also load system-scope roles (e.g. platform_owner) so that users
+            // who hold a system-level grant see the correct permissions in their
+            // session — mirrors what getRequestContext does on the backend.
+            if (organizationId !== SYSTEM_ORGANIZATION_ID) {
+                const systemRoleRecords = await user.roles({ organizationId: SYSTEM_ORGANIZATION_ID });
+                collectRoles(systemRoleRecords);
+            }
+
+            roles = [...roleNameSet];
+            permissions = [...permissionSet];
             const createdAtRaw = user.get('createdAt');
             if (createdAtRaw) {
                 const parsed =

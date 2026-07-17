@@ -37,10 +37,14 @@ export function hasPermission(context: RequestContext, permission: string): bool
 }
 
 function hasAdminRole(context: RequestContext): boolean {
-    // Intentional: permissions.includes('*:*') makes ANY role with the wildcard
-    // permission admin-equivalent. This is a deliberate design choice — the
-    // wildcard is the single source of truth for "full access", so custom roles
-    // granted '*:*' are treated identically to the built-in admin roles.
+    // Three role names are checked explicitly:
+    //   platform_owner — system-scoped superadmin (has '*:*')
+    //   admin          — explicitly granted admin (has '*:*')
+    //   owner          — org-scoped owner (has scoped permissions, NOT '*:*')
+    // The 'owner' check lets org owners pass admin-route gates, but the scope
+    // guard in assertAdmin() still restricts them to their org — they cannot
+    // reach system-scope-only routes. The '*:*' fallback covers any custom role
+    // granted the superadmin wildcard.
     return (
         context.roles.includes(PLATFORM_OWNER_ROLE_NAME) ||
         context.roles.includes('owner') ||

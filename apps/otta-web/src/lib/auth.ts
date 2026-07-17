@@ -26,6 +26,14 @@ function getStoredOrganizationId(): string | null {
 // Re-export types
 export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
 
+const ADMIN_ROLES = ['platform_owner', 'owner', 'admin'];
+
+/** True when the user holds an admin-level role or the '*:*' superadmin permission. */
+export function isAdminUser(user: { roles?: string[]; permissions?: string[] } | null | undefined): boolean {
+    if (!user) return false;
+    return user.roles?.some((r) => ADMIN_ROLES.includes(r)) || user.permissions?.includes('*:*') || false;
+}
+
 /**
  * Custom useSession hook that syncs with global app state
  */

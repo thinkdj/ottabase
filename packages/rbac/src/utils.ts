@@ -2,7 +2,7 @@
 // @ottabase/rbac - Utilities
 // ============================================================
 
-import { User } from '@ottabase/ottaorm/models';
+import { PLATFORM_OWNER_ROLE_NAME, User } from '@ottabase/ottaorm/models';
 import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 
 /**
@@ -200,10 +200,17 @@ function checkPermissionMatch(userPermissions: string[], requiredPermission: str
 }
 
 /**
- * Check if user is admin
+ * Check if user is admin (by role name or '*:*' permission).
+ * Matches the logic in hasAdminRole (admin-guard) — any of the three
+ * built-in admin roles or the superadmin wildcard grants admin status.
  */
 export function isAdmin(context: RBACContext): boolean {
-    return context.roles.includes('admin') || context.permissions.includes('*:*');
+    return (
+        context.roles.includes(PLATFORM_OWNER_ROLE_NAME) ||
+        context.roles.includes('owner') ||
+        context.roles.includes('admin') ||
+        context.permissions.includes('*:*')
+    );
 }
 
 /**
