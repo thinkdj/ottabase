@@ -285,7 +285,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                         {
                             title: 'Bootstrap & ship',
                             content:
-                                'GUI Bootstrapping, create owner, configure Cloudflare API, <code class="inline-code">wrangler deploy</code>. Github CI/CD included.',
+                                'GUI Bootstrapping, create platform owner, configure Cloudflare API, <code class="inline-code">wrangler deploy</code>. Github CI/CD included.',
                         },
                     ],
                 },

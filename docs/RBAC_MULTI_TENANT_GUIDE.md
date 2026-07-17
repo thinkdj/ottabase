@@ -991,7 +991,7 @@ RLSPolicies.AppScoped();
 // Public read-only: No filtering, but no writes
 RLSPolicies.PublicReadOnly();
 
-// Admin-only: Requires admin/owner role
+// Admin-only: Requires admin/owner/platform_owner role
 RLSPolicies.AdminOnly();
 
 // Permission-based: Requires specific permissions

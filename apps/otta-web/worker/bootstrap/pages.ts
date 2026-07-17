@@ -278,7 +278,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
     </div>
   </div>
 
-  <!-- STEP 2: Create Owner -->
+  <!-- STEP 2: Create Platform Owner -->
   <div class="step-panel" id="panel-2">
     <div class="card">
       <h2>Create Platform Owner Account</h2>
@@ -299,7 +299,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
         <div class="form-error" id="err-password" style="display:none"></div>
       </div>
       <div class="log-area" id="log-owner"></div>
-      <button class="btn btn-primary" id="btn-owner">Create Owner Account</button>
+      <button class="btn btn-primary" id="btn-owner">Create Platform Owner Account</button>
 
       <div class="timer-area" id="timer-2"></div>
       <div class="nav-buttons">
@@ -361,7 +361,7 @@ wrangler secret put MIGRATION_SECRET</pre>
         <div class="alert alert-success" style="margin-bottom:0.75rem">
           <strong>Setup complete!</strong> Your platform is live and ready to go.
         </div>
-        <p style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:0.75rem">Sign in with the owner account you just created to get started.</p>
+        <p style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:0.75rem">Sign in with the platform owner account you just created to get started.</p>
         <a href="/login" class="btn btn-primary" style="text-decoration:none">Go to Login</a>
       </div>
     </div>
@@ -582,7 +582,7 @@ wrangler secret put MIGRATION_SECRET</pre>
         });
     });
 
-    // --- Step 2: Create Owner ---
+    // --- Step 2: Create Platform Owner ---
     var btnOwner = document.getElementById('btn-owner');
     var btnNext2 = document.getElementById('btn-next-2');
     var nameInput = document.getElementById('owner-name');
@@ -612,7 +612,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       }
 
       setBtn(btnOwner, true, 'Creating...');
-      log('log-owner', 'Creating owner account: ' + email, 'info');
+      log('log-owner', 'Creating platform owner account: ' + email, 'info');
 
       /* Clear ottabase.* from localStorage before autologin (fresh owner = clean client state) */
       try {
@@ -640,10 +640,10 @@ wrangler secret put MIGRATION_SECRET</pre>
             throw new Error(data.error || 'Account creation failed');
           }
 
-          log('log-owner', 'Owner account created: ' + data.user.email + ' (role: ' + data.user.role + ')', 'success');
+          log('log-owner', 'Platform owner account created: ' + data.user.email + ' (role: ' + data.user.role + ')', 'success');
           if (data.organizationId) log('log-owner', 'Workspace created: ' + data.organizationId, 'success');
 
-          /* Always clear stale auth/org bootstrap storage after owner creation */
+          /* Always clear stale auth/org bootstrap storage after platform owner creation */
           try {
             localStorage.removeItem('ottabase.auth-session');
             localStorage.removeItem('ottabase.current-org-id');

@@ -479,7 +479,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
     }
 
-    // Tracks the owner row once created, so any failure after that point can roll it back.
+    // Tracks the platform owner row once created, so any failure after that point can roll it back.
     let createdUserId: string | null = null;
     try {
         ensureOrmConnection(env);
@@ -488,10 +488,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         await Role.ensureDefaultRoles();
         await enforceDefaultRolePermissions(env);
 
-        // Atomically claim the right to create the owner account. Unlike a
-        // SELECT COUNT(*) check, this INSERT is guarded by the `key` PRIMARY
-        // KEY on _ottabase_meta, so if two requests race, only one of them
-        // can win the insert — the other fails immediately and never
+        // Atomically claim the right to create the platform owner account.
+        // Unlike a SELECT COUNT(*) check, this INSERT is guarded by the `key`
+        // PRIMARY KEY on _ottabase_meta, so if two requests race, only one of
+        // them can win the insert — the other fails immediately and never
         // proceeds to create a user, closing the TOCTOU window.
         try {
             await env.OBCF_D1.prepare(`INSERT INTO ${META_TABLE} (key, value, updated_at) VALUES (?, ?, ?)`)
@@ -501,23 +501,23 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
                     code: 'OWNER_EXISTS',
                 },
                 409,
             );
         }
 
-        // Belt-and-braces: if an owner somehow already exists (e.g. a user
-        // was provisioned out-of-band while the claim was held), don't
-        // silently create a second one.
+        // Belt-and-braces: if a user somehow already exists (e.g. provisioned
+        // out-of-band while the claim was held), don't silently create a
+        // second account.
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
         if (userCount > 0) {
             return jsonResp(
                 {
                     success: false,
-                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
                     code: 'OWNER_EXISTS',
                 },
                 409,
@@ -529,7 +529,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const newUser = await User.create({
             email,
             name: name || null,
-            emailVerified: Date.now(), // Auto-verify owner
+            emailVerified: Date.now(), // Auto-verify platform owner
             passwordHash,
         });
 
@@ -559,7 +559,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'Failed to provision default organization for owner account',
+                    error: 'Failed to provision default organization for platform owner account',
                     code: 'ORG_PROVISION_FAILED',
                 },
                 500,
@@ -611,7 +611,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             },
         });
     } catch (error: any) {
-        // Roll back any partially-created owner (orphan user row + held claim) so the
+        // Roll back any partially-created platform owner (orphan user row + held claim) so the
         // OWNER_EXISTS / userCount guards don't permanently block a legitimate retry.
         await rollbackOwnerCreation(env, createdUserId);
 
@@ -622,7 +622,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     }
 }
 
-/** Best-effort release of the owner-creation claim (used when owner creation fails before a user row is committed). */
+/** Best-effort release of the platform-owner-creation claim (used when creation fails before a user row is committed). */
 async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
     if (!env.OBCF_D1) return;
     try {
@@ -633,8 +633,8 @@ async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
 }
 
 /**
- * Best-effort rollback of a failed owner-creation attempt: delete the just-created owner row (if
- * any) and release the claim. Both must be undone together — a leftover user trips the
+ * Best-effort rollback of a failed platform-owner-creation attempt: delete the just-created user
+ * row (if any) and release the claim. Both must be undone together — a leftover user trips the
  * `userCount > 0` guard and a held claim trips OWNER_EXISTS, either of which would otherwise
  * permanently brick a legitimate retry of first-time setup.
  */
@@ -685,7 +685,7 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'No admin account found — create an owner account first',
+                    error: 'No admin account found — create a platform owner account first',
                     code: 'NO_OWNER',
                 },
                 400,

@@ -424,7 +424,7 @@ export function buildClearSessionCookie(env: AuthEnv, request: Request): string 
 /**
  * Create a session and return the ready-to-use `Set-Cookie` header value.
  * Used both by the normal sign-in handlers and by system-initiated logins
- * (e.g. the first-run owner-account bootstrap wizard).
+ * (e.g. the first-run platform-owner bootstrap wizard).
  */
 export async function createSessionCookieForUser(
     input: CreateSessionInput,
