@@ -26,7 +26,7 @@ import {
     menuSlotAssignmentsTable,
     menusTable,
 } from '@ottabase/brand-engine/persistence';
-import { commentsTable } from '@ottabase/comments';
+import { commentReactionsTable, commentsTable } from '@ottabase/comments';
 import type { BuiltInPackageName } from '@ottabase/config';
 import {
     categoriesTable,
@@ -64,7 +64,7 @@ const PACKAGE_REGISTRY = {
         migrations: [] as Migration[],
     },
     comments: {
-        tables: { commentsTable },
+        tables: { commentsTable, commentReactionsTable },
         migrations: [] as Migration[],
     },
     shortlinks: {

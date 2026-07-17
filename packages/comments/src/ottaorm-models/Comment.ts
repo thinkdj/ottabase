@@ -1,5 +1,6 @@
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { commentsTable, type ReactionsMap } from './Comment.schema';
+import { commentsTable } from './Comment.schema';
+import { CommentReaction } from './CommentReaction';
 
 // Re-export schema types for consumers
 export { commentsTable, type CommentRecord, type NewCommentRecord, type ReactionsMap } from './Comment.schema';
@@ -17,20 +18,15 @@ export class Comment extends BaseModel {
     static defaultSortDirection = 'desc' as const;
 
     static casts = {
-        reactions: 'json' as const,
         depth: 'number' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
 
-    // User-supplied fields plus server-injected context fields (userId, organizationId).
-    // The route handler MUST overwrite userId and organizationId from session/context
-    // to prevent client impersonation — they are listed here only so the sanitizer
-    // doesn't strip them after server-side injection.
-    //
-    // 'reactions' is intentionally absent from update — reaction toggling is handled
-    // exclusively server-side via the _reaction field to prevent a user from overwriting
-    // other users' reactions via a crafted PATCH request.
+    // User-supplied fields plus server-injected context fields (userId, organizationId, depth).
+    // The route handler MUST overwrite userId, organizationId, and depth from session/server-side
+    // computation to prevent client impersonation and forged nesting depth — they are listed here
+    // only so the sanitizer doesn't strip them after server-side injection.
     static writable = {
         create: ['body', 'targetType', 'targetId', 'parentId', 'depth', 'userId', 'organizationId'],
         update: ['body', 'status'],
@@ -39,7 +35,6 @@ export class Comment extends BaseModel {
     protected static defaults = {
         status: 'active',
         depth: 0,
-        reactions: {},
     };
 
     protected static fields: ModelFields = {
@@ -57,7 +52,10 @@ export class Comment extends BaseModel {
             uiConfig: { label: 'Comment', description: 'The comment text' },
             formConfig: { visible: true, fieldType: 'textarea' },
             tableConfig: { visible: true, colWidth: 'auto' },
-            validation: { rules: 'required', messages: { required: 'Comment body is required' } },
+            validation: {
+                rules: 'required|max:10000',
+                messages: { required: 'Comment body is required', max: 'Comment must be 10,000 characters or fewer' },
+            },
         },
         targetType: {
             type: 'string',
@@ -105,13 +103,6 @@ export class Comment extends BaseModel {
                 ],
             },
             tableConfig: { visible: true, colWidth: 100 },
-        },
-        reactions: {
-            type: 'json',
-            editable: false,
-            sortable: false,
-            uiConfig: { label: 'Reactions' },
-            tableConfig: { visible: false },
         },
         depth: {
             type: 'number',
@@ -175,11 +166,12 @@ export class Comment extends BaseModel {
 
     // ─── Instance methods ──────────────────────────────────────
 
-    /** Soft-delete this comment (sets status to 'deleted', clears body and reactions) */
+    /** Soft-delete this comment (sets status to 'deleted', clears body and all reactions) */
     async softDelete() {
         this.set('status', 'deleted');
         this.set('body', '[deleted]');
-        this.set('reactions', {});
+        const id = this.get('id') as string;
+        if (id) await CommentReaction.deleteForComment(id);
         return this.save();
     }
 
@@ -201,40 +193,14 @@ export class Comment extends BaseModel {
         return this.save();
     }
 
-    /** Add a reaction emoji from a user; idempotent (no duplicate adds) */
-    async addReaction(emoji: string, userId: string) {
-        const reactions: ReactionsMap = this.get('reactions') || {};
-        if (!reactions[emoji]) {
-            reactions[emoji] = [];
-        }
-        if (!reactions[emoji].includes(userId)) {
-            reactions[emoji].push(userId);
-        }
-        this.set('reactions', reactions);
-        return this.save();
-    }
-
-    /** Remove a reaction emoji from a user; cleans up empty keys */
-    async removeReaction(emoji: string, userId: string) {
-        const reactions: ReactionsMap = this.get('reactions') || {};
-        if (reactions[emoji]) {
-            reactions[emoji] = reactions[emoji].filter((id: string) => id !== userId);
-            if (reactions[emoji].length === 0) {
-                delete reactions[emoji];
-            }
-        }
-        this.set('reactions', reactions);
-        return this.save();
-    }
-
-    /** Toggle a reaction — adds if absent, removes if present */
-    async toggleReaction(emoji: string, userId: string) {
-        const reactions: ReactionsMap = this.get('reactions') || {};
-        const hasReaction = reactions[emoji]?.includes(userId);
-        if (hasReaction) {
-            return this.removeReaction(emoji, userId);
-        }
-        return this.addReaction(emoji, userId);
+    /**
+     * Toggle a user's reaction on this comment — adds if absent, removes if present.
+     * Delegates to CommentReaction.toggle, which is a single atomic row DELETE-or-INSERT
+     * against the normalized comment_reactions table (no read-modify-write race).
+     */
+    async toggleReaction(emoji: string, userId: string): Promise<{ added: boolean }> {
+        const id = this.get('id') as string;
+        return CommentReaction.toggle(id, emoji, userId);
     }
 
     /** Check if this is a top-level comment (not a reply) */
@@ -269,5 +235,33 @@ export class Comment extends BaseModel {
         const parent = await Comment.find(parentId);
         if (!parent) return 0;
         return ((parent.get('depth') as number) ?? 0) + 1;
+    }
+
+    /**
+     * Validate a reply's parentId against the target it is being posted to, and compute its
+     * server-side depth in the same lookup. A parentId is only valid when the parent comment
+     * exists AND belongs to the exact same targetType/targetId/organizationId as the new reply
+     * — otherwise a caller could attach a reply to an unrelated (or cross-organization) comment,
+     * producing a nonsensical or tenant-crossing thread.
+     *
+     * Route handlers should call this instead of computeDepthForParent whenever parentId is
+     * present, and reject the request (400) when `ok` is false.
+     */
+    static async validateReplyParent(
+        parentId: string | null,
+        context: { targetType: string; targetId: string; organizationId: string | null },
+    ): Promise<{ ok: true; depth: number } | { ok: false }> {
+        if (!parentId) return { ok: true, depth: 0 };
+
+        const parent = await Comment.find(parentId);
+        if (!parent) return { ok: false };
+
+        const sameTarget =
+            parent.get('targetType') === context.targetType &&
+            parent.get('targetId') === context.targetId &&
+            (parent.get('organizationId') ?? null) === (context.organizationId ?? null);
+        if (!sameTarget) return { ok: false };
+
+        return { ok: true, depth: ((parent.get('depth') as number) ?? 0) + 1 };
     }
 }

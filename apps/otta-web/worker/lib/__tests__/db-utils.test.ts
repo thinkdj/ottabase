@@ -28,6 +28,7 @@ vi.mock('@ottabase/brand-engine/persistence', () => ({
 
 vi.mock('@ottabase/comments', () => ({
     Comment: class Comment {},
+    CommentReaction: class CommentReaction {},
 }));
 
 vi.mock('@ottabase/db/drizzle-d1', () => ({
