@@ -4,6 +4,8 @@
  * Defines security policies for automatic tenant isolation
  */
 
+import { PLATFORM_OWNER_ROLE_NAME } from '../models/Role';
+
 export type SecurityLevel = 'tenant' | 'user' | 'app' | 'public' | 'custom';
 
 export interface SecurityContext {
@@ -153,7 +155,7 @@ export const RLSPolicies = {
      */
     AdminOnly: (): RLSPolicy => ({
         level: 'custom',
-        requiredRoles: ['admin', 'owner', 'platform_owner'],
+        requiredRoles: ['admin', 'owner', PLATFORM_OWNER_ROLE_NAME],
     }),
 
     /**

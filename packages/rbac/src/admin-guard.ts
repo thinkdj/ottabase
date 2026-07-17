@@ -1,3 +1,4 @@
+import { PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
 import { SYSTEM_ORGANIZATION_ID, type RequestContext } from './request-context';
 
 export type AdminScope = 'system' | 'organization' | 'either';
@@ -36,10 +37,12 @@ export function hasPermission(context: RequestContext, permission: string): bool
 }
 
 function hasAdminRole(context: RequestContext): boolean {
-    // 'platform_owner' is the bootstrapped app owner (system-scope grant);
-    // 'owner'/'admin' are org-scoped grants for the active organization.
+    // Intentional: permissions.includes('*:*') makes ANY role with the wildcard
+    // permission admin-equivalent. This is a deliberate design choice — the
+    // wildcard is the single source of truth for "full access", so custom roles
+    // granted '*:*' are treated identically to the built-in admin roles.
     return (
-        context.roles.includes('platform_owner') ||
+        context.roles.includes(PLATFORM_OWNER_ROLE_NAME) ||
         context.roles.includes('owner') ||
         context.roles.includes('admin') ||
         context.permissions.includes('*:*')

@@ -1,4 +1,4 @@
-import { Role, User } from '@ottabase/ottaorm/models';
+import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
@@ -13,6 +13,18 @@ function clean(value: string | null): string | null {
     return trimmed;
 }
 
+function constantTimeEqual(a: string, b: string): boolean {
+    const encoder = new TextEncoder();
+    const bufA = encoder.encode(a);
+    const bufB = encoder.encode(b);
+    if (bufA.byteLength !== bufB.byteLength) return false;
+    let result = 0;
+    for (let i = 0; i < bufA.byteLength; i++) {
+        result |= bufA[i] ^ bufB[i];
+    }
+    return result === 0;
+}
+
 export async function handleAdminPromotePlatformOwner(context: ApiRouteContext): Promise<Response> {
     const { env, request } = context;
     initDbConnection(env);
@@ -23,7 +35,6 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     }
 
     const headerSecret = clean(request.headers.get('x-bootstrap-secret'));
-    const querySecret = clean(context.url.searchParams.get('secret'));
 
     let bodySecret: string | null = null;
     let userId: string | undefined;
@@ -38,8 +49,8 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
         // ignore malformed JSON
     }
 
-    const providedSecret = headerSecret || bodySecret || querySecret;
-    if (providedSecret !== secret) {
+    const providedSecret = headerSecret || bodySecret;
+    if (!providedSecret || !constantTimeEqual(providedSecret, secret)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -53,12 +64,25 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     }
 
     await Role.ensureDefaultRoles();
-    const platformOwnerRole = await Role.findByName('platform_owner');
+    const platformOwnerRole = await Role.findByName(PLATFORM_OWNER_ROLE_NAME);
     if (!platformOwnerRole) {
         return errorResponse('Platform owner role is missing', 500, { code: 'ROLE_MISSING' });
     }
 
-    await user.assignRole(platformOwnerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
+    const roleId = platformOwnerRole.get('id') as string;
+    const existingGrants = await UserRole.where({
+        roleId,
+        organizationId: SYSTEM_ORGANIZATION_ID,
+    });
+    if (existingGrants.length > 0) {
+        const existingIds = existingGrants.map((g: any) => g.get('userId'));
+        console.warn(
+            `[platform-owner] Promoting user ${user.get('id')} to platform_owner while ` +
+                `${existingGrants.length} existing grant(s) exist (user IDs: ${existingIds.join(', ')})`,
+        );
+    }
+
+    await user.assignRole(roleId, undefined, SYSTEM_ORGANIZATION_ID);
 
     return jsonResponse({
         success: true,

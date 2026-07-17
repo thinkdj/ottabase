@@ -22,6 +22,7 @@ import {
     runMigrations,
     User,
 } from '@ottabase/ottaorm';
+import { PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
@@ -57,7 +58,7 @@ function jsonResp(data: unknown, status = 200): Response {
 }
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    platform_owner: ['*:*'],
+    [PLATFORM_OWNER_ROLE_NAME]: ['*:*'],
     owner: ['*:*'],
     admin: ['*:*'],
     editor: ['*:read', '*:create', '*:update'],

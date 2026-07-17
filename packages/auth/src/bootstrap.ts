@@ -13,6 +13,8 @@ import { makeSlug } from '@ottabase/utils/url';
 import type { AuthEnv } from './types';
 
 export const SYSTEM_ORGANIZATION_ID = 'system';
+// Canonical source: @ottabase/ottaorm PLATFORM_OWNER_ROLE_NAME (duplicated here
+// to avoid a runtime dependency on ottaorm from the auth package).
 export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
 
 export function parseBooleanFlag(value: unknown): boolean {

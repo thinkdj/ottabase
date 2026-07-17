@@ -3,6 +3,7 @@
 // ============================================================
 
 import logger from '@ottabase/logger';
+import { PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
 import type { User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
 
@@ -313,7 +314,7 @@ export function hasAllRoles(context: AppContext, roles: string[]): boolean {
  * Check if user is owner or admin in the organization (or the platform owner)
  */
 export function isOwnerOrAdmin(context: AppContext): boolean {
-    return hasAnyRole(context, ['platform_owner', 'owner', 'admin']);
+    return hasAnyRole(context, [PLATFORM_OWNER_ROLE_NAME, 'owner', 'admin']);
 }
 
 /**

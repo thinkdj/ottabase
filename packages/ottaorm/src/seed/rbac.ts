@@ -2,17 +2,14 @@
 // @ottabase/ottaorm - RBAC Seed Script
 // ============================================================
 
-import { Permission, Role } from '../models';
+import { Permission, PLATFORM_OWNER_ROLE_NAME, Role } from '../models';
 
 /**
  * Default system roles
  */
 export const DEFAULT_ROLES = [
     {
-        // Bootstrapped app owner — granted at SYSTEM scope to the first user only.
-        // Distinct from 'owner', which is granted org-scoped (mirrors organization_members.role).
-        id: '00000000-0000-0000-0000-000000000006',
-        name: 'platform_owner',
+        name: PLATFORM_OWNER_ROLE_NAME,
         description: 'Platform owner (bootstrapped app owner) with full privileges',
         permissions: ['*:*'],
         isSystem: true,

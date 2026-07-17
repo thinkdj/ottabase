@@ -7,6 +7,8 @@ import { rolesTable } from './Role.schema';
 
 export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
 
+export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
+
 /**
  * Role model for RBAC
  *
@@ -210,8 +212,7 @@ export class Role extends BaseModel {
     static async ensureDefaultRoles() {
         const defaultRoles = [
             {
-                // Bootstrapped app owner — granted at SYSTEM scope to the first user only
-                name: 'platform_owner',
+                name: PLATFORM_OWNER_ROLE_NAME,
                 description: 'Platform owner (bootstrapped app owner) with full privileges',
                 permissions: JSON.stringify(['*:*']),
                 isSystem: true,
