@@ -260,7 +260,7 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // auth check of its own, unlike users/menus/organization_members which are blocked outright).
     {
         model: 'shortlinks',
-        policy: { ...RLSPolicies.AppScoped(), requiredRoles: RLSPolicies.AdminOnly().requiredRoles },
+        policy: { ...RLSPolicies.AppScoped(), requirePlatformAdmin: true },
         auditEnabled: true,
     },
 

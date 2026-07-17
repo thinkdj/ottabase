@@ -191,22 +191,35 @@ describe('RLS Engine', () => {
 
         it('requiredRoles: allows when user has role', () => {
             engine.register({
-                model: 'admin_only',
-                policy: RLSPolicies.AdminOnly(),
+                model: 'role_gated',
+                policy: { level: 'custom', requiredRoles: ['admin'] },
             });
             const ctx: SecurityContext = { userId: 'u1', roles: ['admin'] };
-            const filter = engine.applyReadFilter('admin_only', ctx);
+            const filter = engine.applyReadFilter('role_gated', ctx);
             expect(filter).toEqual({});
         });
 
         it('requiredRoles: throws when user lacks role', () => {
             engine.register({
-                model: 'admin_only',
-                policy: RLSPolicies.AdminOnly(),
+                model: 'role_gated',
+                policy: { level: 'custom', requiredRoles: ['admin'] },
             });
             const ctx: SecurityContext = { userId: 'u1', roles: ['member'] };
+            expect(() => engine.applyReadFilter('role_gated', ctx)).toThrow(RLSError);
+            expect(() => engine.applyReadFilter('role_gated', ctx)).toThrow(/requires one of roles/);
+        });
+
+        it('AdminOnly (requirePlatformAdmin): allows a platform admin', () => {
+            engine.register({ model: 'admin_only', policy: RLSPolicies.AdminOnly() });
+            const ctx: SecurityContext = { userId: 'u1', platformAdmin: true };
+            expect(engine.applyReadFilter('admin_only', ctx)).toEqual({});
+        });
+
+        it('AdminOnly (requirePlatformAdmin): throws for a non-platform-admin, even a role NAMED admin/owner', () => {
+            engine.register({ model: 'admin_only', policy: RLSPolicies.AdminOnly() });
+            const ctx: SecurityContext = { userId: 'u1', roles: ['admin', 'owner'], platformAdmin: false };
             expect(() => engine.applyReadFilter('admin_only', ctx)).toThrow(RLSError);
-            expect(() => engine.applyReadFilter('admin_only', ctx)).toThrow(/requires one of roles/);
+            expect(() => engine.applyReadFilter('admin_only', ctx)).toThrow(/requires platform administrator/);
         });
 
         it('requiredPermissions: allows when user has exact permission', () => {

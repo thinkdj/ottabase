@@ -10,20 +10,37 @@ export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
 export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
 
 /**
- * Scoped permission set for the org-level 'owner' role.
+ * Permission that marks the holder as a PLATFORM administrator — the SaaS control plane
+ * (all users/orgs, RBAC role definitions, infrastructure, app-global appearance/content).
+ * Only ever meaningful when granted at SYSTEM scope; guards read it from the system-scoped
+ * grant set, never from an org-scoped one (see packages/rbac assertAdmin / session-store
+ * `platformAdmin`). `platform_owner`'s '*:*' satisfies it via the wildcard matcher.
+ */
+export const PLATFORM_ADMIN_PERMISSION = 'platform:admin';
+
+/**
+ * Permission that marks the holder as an ORGANIZATION administrator (their own tenant:
+ * blog, media, members, org settings). Held org-scoped by the 'owner' and 'admin' roles.
+ */
+export const ORG_ADMIN_PERMISSION = 'org:admin';
+
+/**
+ * Scoped permission set for the org-level 'owner' / 'admin' roles.
  *
- * Full CRUD on all resources within the org, plus feature-specific grants.
- * Deliberately excludes '*:*' — the superadmin wildcard — so the permission
- * system itself enforces the boundary between org-scoped owners and
- * system-scoped admins (platform_owner / admin).
+ * Full CRUD on all resources within the org, plus the `org:admin` capability and
+ * feature-specific grants. Deliberately excludes '*:*' — the superadmin wildcard — and
+ * app-global grants like `brand:*` (appearance/menus are platform-owned, not tenant data),
+ * so the permission system itself enforces the boundary between org-scoped admins and the
+ * system-scoped platform owner. Authorization keys on THESE permissions at the right scope,
+ * never on the role's name (a role merely named 'owner'/'admin' grants nothing on its own).
  */
 export const ORG_OWNER_PERMISSIONS: string[] = [
     '*:read',
     '*:create',
     '*:update',
     '*:delete',
+    ORG_ADMIN_PERMISSION,
     'media:*',
-    'brand:*',
     'comments:moderate',
     'audit:read',
 ];
@@ -226,56 +243,91 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Get or create default roles
+     * Canonical definitions of the built-in system roles. Single source of truth — the seed
+     * script (packages/ottaorm/src/seed/rbac.ts) imports these so the two never drift.
+     *
+     * IMPORTANT: `admin` and `owner` are ORG-level roles (no '*:*'). Platform authority comes
+     * ONLY from a system-scoped grant carrying `platform:admin` (or '*:*'), which the bootstrap
+     * assigns exclusively to `platform_owner`. A role's NAME is never trusted for authorization.
+     */
+    static readonly DEFAULT_ROLE_DEFINITIONS: ReadonlyArray<{
+        name: string;
+        description: string;
+        permissions: string[];
+    }> = [
+        {
+            name: PLATFORM_OWNER_ROLE_NAME,
+            description: 'Platform owner (bootstrapped app owner) with full privileges',
+            permissions: ['*:*'],
+        },
+        {
+            name: 'owner',
+            description: 'Organization owner — full org-level access (no system-level wildcard)',
+            permissions: ORG_OWNER_PERMISSIONS,
+        },
+        {
+            name: 'admin',
+            description: 'Organization administrator — full org-level access (no system-level wildcard)',
+            permissions: ORG_OWNER_PERMISSIONS,
+        },
+        {
+            name: 'editor',
+            description: 'Can create and edit content',
+            permissions: ['*:read', '*:create', '*:update'],
+        },
+        {
+            name: 'viewer',
+            description: 'Read-only access',
+            permissions: ['*:read'],
+        },
+        {
+            name: 'member',
+            description: 'Default member access',
+            permissions: ['*:read'],
+        },
+    ];
+
+    /**
+     * Get or create the built-in system roles, and SELF-HEAL existing ones.
+     *
+     * System roles are framework-owned: on every run this reconciles each existing `isSystem`
+     * row's permissions/description back to {@link DEFAULT_ROLE_DEFINITIONS}. That is what
+     * corrects a role seeded under an older definition — e.g. a legacy `owner` = ['*:*'] row from
+     * before org/platform scoping — automatically on the next signup/seed, with no manual re-seed
+     * or DB wipe. Operators customize by creating NEW roles, never by editing system ones. Runs
+     * inside provisionDefaultOrganizationForUser, so healing happens on the next authenticated action.
      */
     static async ensureDefaultRoles() {
-        const defaultRoles = [
-            {
-                name: PLATFORM_OWNER_ROLE_NAME,
-                description: 'Platform owner (bootstrapped app owner) with full privileges',
-                permissions: JSON.stringify(['*:*']),
-                isSystem: true,
-            },
-            {
-                name: 'owner',
-                description: 'Organization owner — full org-level access (no system-level wildcard)',
-                permissions: JSON.stringify(ORG_OWNER_PERMISSIONS),
-                isSystem: true,
-            },
-            {
-                name: 'admin',
-                description: 'Full system access',
-                permissions: JSON.stringify(['*:*']),
-                isSystem: true,
-            },
-            {
-                name: 'editor',
-                description: 'Can create and edit content',
-                permissions: JSON.stringify(['*:read', '*:create', '*:update']),
-                isSystem: true,
-            },
-            {
-                name: 'viewer',
-                description: 'Read-only access',
-                permissions: JSON.stringify(['*:read']),
-                isSystem: true,
-            },
-            {
-                name: 'member',
-                description: 'Default member access',
-                permissions: JSON.stringify(['*:read']),
-                isSystem: true,
-            },
-        ];
+        const changed: InstanceType<typeof Role>[] = [];
 
-        const created = [];
-        for (const roleData of defaultRoles) {
-            const existing = await this.findByName(roleData.name);
+        for (const def of this.DEFAULT_ROLE_DEFINITIONS) {
+            const existing = await this.findByName(def.name);
             if (!existing) {
-                created.push(await this.create(roleData));
+                changed.push(
+                    await this.create({
+                        name: def.name,
+                        description: def.description,
+                        permissions: JSON.stringify(def.permissions),
+                        isSystem: true,
+                    }),
+                );
+                continue;
+            }
+
+            // Only reconcile framework-owned rows; never clobber operator-created roles.
+            if (!existing.get('isSystem')) continue;
+
+            const permsDiffer = JSON.stringify(existing.getPermissions()) !== JSON.stringify(def.permissions);
+            const descDiffers = existing.get('description') !== def.description;
+            if (permsDiffer || descDiffers) {
+                const healed = await this.update(existing.get('id') as string, {
+                    permissions: JSON.stringify(def.permissions),
+                    description: def.description,
+                });
+                changed.push(healed as InstanceType<typeof Role>);
             }
         }
 
-        return created;
+        return changed;
     }
 }

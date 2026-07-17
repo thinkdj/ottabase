@@ -1,7 +1,9 @@
+import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
 import { Card, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
+import { useMemo } from 'react';
 
 /**
  * Admin Console overview page.
@@ -11,7 +13,11 @@ import { ArrowRight } from 'lucide-react';
  * picks it up automatically too).
  */
 export function AdminIndexPage() {
-    const groups = getEnabledAdminNav();
+    const { user } = useSession();
+    const groups = useMemo(
+        () => getEnabledAdminNav({ isPlatformAdmin: isPlatformAdmin(user), isOrgAdmin: isOrgAdmin(user) }),
+        [user],
+    );
 
     return (
         <div className="space-y-8 pb-20">

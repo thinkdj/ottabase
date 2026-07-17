@@ -22,7 +22,6 @@ import {
     runMigrations,
     User,
 } from '@ottabase/ottaorm';
-import { ORG_OWNER_PERMISSIONS, PLATFORM_OWNER_ROLE_NAME } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
@@ -55,31 +54,6 @@ function jsonResp(data: unknown, status = 200): Response {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    [PLATFORM_OWNER_ROLE_NAME]: ['*:*'],
-    owner: ORG_OWNER_PERMISSIONS,
-    admin: ['*:*'],
-    editor: ['*:read', '*:create', '*:update'],
-    viewer: ['*:read'],
-    member: ['*:read'],
-};
-
-async function enforceDefaultRolePermissions(env: CloudflareEnv): Promise<string[]> {
-    if (!env.OBCF_D1) return [];
-
-    const normalized: string[] = [];
-    const now = Date.now();
-
-    for (const [name, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-        await env.OBCF_D1.prepare(`UPDATE roles SET permissions = ?, updated_at = ? WHERE name = ?`)
-            .bind(JSON.stringify(permissions), now, name)
-            .run();
-        normalized.push(name);
-    }
-
-    return normalized;
 }
 
 /**
@@ -417,10 +391,11 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (platform_owner, owner, admin, editor, viewer, member)
-        const createdRoles = await Role.ensureDefaultRoles();
-        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
-        const normalizedRoles = await enforceDefaultRolePermissions(env);
+        // Seed default roles (platform_owner, owner, admin, editor, viewer, member). This also
+        // self-heals existing system-role permission sets to match the canonical definitions —
+        // e.g. a legacy 'owner' = ['*:*'] row is corrected in place — so no separate normalize step.
+        const changedRoles = await Role.ensureDefaultRoles();
+        const roleNames = changedRoles.map((r: any) => r.get('name') as string);
 
         // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
@@ -428,7 +403,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
 
         return jsonResp({
             success: true,
-            roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
+            roles: { created: roleNames, existing: existingRoles },
             timestamp: Date.now(),
         });
     } catch (error: any) {
@@ -485,8 +460,9 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         ensureOrmConnection(env);
         await ensureMetaTable(env);
 
+        // ensureDefaultRoles both creates missing system roles and self-heals existing ones to the
+        // canonical permission sets, so no separate normalize step is needed here.
         await Role.ensureDefaultRoles();
-        await enforceDefaultRolePermissions(env);
 
         // Atomically claim the right to create the platform owner account.
         // Unlike a SELECT COUNT(*) check, this INSERT is guarded by the `key`
@@ -574,19 +550,16 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
-        // The bootstrap user holds both org-scoped 'owner' AND system-scoped 'platform_owner'.
-        // Grant '*:*' here because they are the platform owner — the org-scoped owner role
-        // itself only carries ORG_OWNER_PERMISSIONS (no system-level wildcard).
-        const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
+        // The bootstrap user now holds the SYSTEM-scoped 'platform_owner' grant (via
+        // bootstrapFirstUser above) AND the org-scoped 'owner'. Let loadUserContext derive the
+        // real context from those DB grants — it resolves platformAdmin=true and the '*:*'
+        // permission set from the system-scoped grant, so no fake wildcard is injected here.
         const { cookie, session } = await createSessionCookieForUser(
             {
                 id: userId,
                 email,
                 name: name || null,
                 emailVerified: Date.now(),
-                organizationId,
-                roles: assignedRole ? [assignedRole] : [],
-                permissions: ownerPermissions,
             },
             env as any,
             request,

@@ -208,6 +208,15 @@ export class RLSEngine {
      * Check role/permission requirements
      */
     private checkAccess(model: string, context: SecurityContext, policy: RLSPolicy): void {
+        // Platform-admin gate (scope-aware — set upstream from a system-scoped grant, never a role name)
+        if (policy.requirePlatformAdmin && !context.platformAdmin) {
+            throw new RLSError(`Access denied: ${model} requires platform administrator`, {
+                type: 'permission_denied',
+                model,
+                context,
+            });
+        }
+
         // Check required roles
         if (policy.requiredRoles && policy.requiredRoles.length > 0) {
             const hasRole = policy.requiredRoles.some((role) => context.roles?.includes(role));

@@ -165,12 +165,22 @@ describe('hasRole', () => {
     });
 });
 
-describe('isAdmin', () => {
-    it('returns true when user has admin role', () => {
+describe('isAdmin (permission-based, NOT role-name based)', () => {
+    it('returns true for org:admin permission', () => {
         const ctx: RBACContext = {
             user: {} as any,
-            roles: ['admin'],
-            permissions: [],
+            roles: ['owner'],
+            permissions: ['org:admin', '*:read'],
+            isAuthenticated: true,
+        };
+        expect(isAdmin(ctx)).toBe(true);
+    });
+
+    it('returns true for platform:admin permission', () => {
+        const ctx: RBACContext = {
+            user: {} as any,
+            roles: [],
+            permissions: ['platform:admin'],
             isAuthenticated: true,
         };
         expect(isAdmin(ctx)).toBe(true);
@@ -186,10 +196,10 @@ describe('isAdmin', () => {
         expect(isAdmin(ctx)).toBe(true);
     });
 
-    it('returns false when user has neither', () => {
+    it('returns false for a role merely NAMED admin/owner with no admin permission', () => {
         const ctx: RBACContext = {
             user: {} as any,
-            roles: ['member'],
+            roles: ['admin', 'owner'],
             permissions: ['posts:read'],
             isAuthenticated: true,
         };

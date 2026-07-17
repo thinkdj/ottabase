@@ -2,7 +2,7 @@
 // @ottabase/rbac - Utilities
 // ============================================================
 
-import { PLATFORM_OWNER_ROLE_NAME, User } from '@ottabase/ottaorm/models';
+import { User } from '@ottabase/ottaorm/models';
 import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 
 /**
@@ -200,16 +200,17 @@ function checkPermissionMatch(userPermissions: string[], requiredPermission: str
 }
 
 /**
- * Check if user is admin (by role name or '*:*' permission).
- * Matches the logic in hasAdminRole (admin-guard) — any of the three
- * built-in admin roles or the superadmin wildcard grants admin status.
+ * Check if the context holds any admin capability — PERMISSION-based, never role-NAME-based.
+ * True when the caller has `platform:admin` or `org:admin` (or the '*:*' superadmin wildcard).
+ * A role merely named 'owner'/'admin' with no such permission is NOT an admin.
+ *
+ * NOTE: RBACContext is scope-blind. For the platform-vs-org boundary on the server, use
+ * assertAdmin / isPlatformAdmin from admin-guard.ts (which read system-scoped grants).
  */
 export function isAdmin(context: RBACContext): boolean {
     return (
-        context.roles.includes(PLATFORM_OWNER_ROLE_NAME) ||
-        context.roles.includes('owner') ||
-        context.roles.includes('admin') ||
-        context.permissions.includes('*:*')
+        checkPermissionMatch(context.permissions, 'platform:admin') ||
+        checkPermissionMatch(context.permissions, 'org:admin')
     );
 }
 

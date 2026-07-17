@@ -215,6 +215,9 @@ export async function getSecurityContext(
     const appId = request.headers.get('x-app-id') || configAppId || 'web';
     const roles = session?.user?.roles as string[] | undefined;
     const permissions = session?.user?.permissions as string[] | undefined;
+    // Scope-aware platform-admin flag (derived server-side from a SYSTEM-scoped grant). RLS
+    // AdminOnly policies gate on this, NOT on role names — see packages/ottaorm rls/types.ts.
+    const platformAdmin = session?.user?.platformAdmin === true;
 
     // Collect all organization IDs the user can access (owned + active member).
     // Always keep the resolved list — INCLUDING when it is empty. An empty array is a positive
@@ -274,6 +277,7 @@ export async function getSecurityContext(
         appId,
         roles,
         permissions,
+        platformAdmin,
         memberOrganizationIds,
         memberGroupIds,
     };

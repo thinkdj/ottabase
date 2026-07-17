@@ -100,6 +100,44 @@ function isCommentOwnerOrModerator(
     return permissions.includes('*:*') || permissions.includes('comments:moderate');
 }
 
+/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
+function permissionMatches(perms: readonly string[] | undefined, required: string): boolean {
+    const list = perms ?? [];
+    if (list.includes(required)) return true;
+    const [reqResource, reqAction] = required.split(':');
+    for (const perm of list) {
+        const [permResource, permAction] = perm.split(':');
+        if (permResource === '*' && permAction === '*') return true;
+        if (
+            (permResource === '*' || permResource === reqResource) &&
+            (permAction === '*' || permAction === reqAction)
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * App-global blog taxonomy: one shared vocabulary per app (no organizationId column), referenced
+ * by every tenant's posts. Its RLS is AppScoped with NO role/permission requirement, so generic
+ * CRUD would let ANY caller — even unauthenticated — create/rename/delete every tenant's tags,
+ * categories, and series, and attach them to any post via the public-writable link tables.
+ * Reads stay open (the editor lists them); WRITES require org:admin, i.e. an authenticated content
+ * administrator (a platform owner satisfies this via '*:*'). Deeper per-post-ownership scoping of
+ * the junction links is a larger RLS change tracked separately.
+ */
+const APP_TAXONOMY_MODELS = new Set([
+    'series',
+    'categories',
+    'tags',
+    'post_tags',
+    'post_tag_links',
+    'post_category_links',
+]);
+
+const CRUD_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Response> {
     const { request, env, url } = context;
 
@@ -214,6 +252,31 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             code: 'CRUD_DISABLED',
             hint: 'Use /api/admin/cron endpoints (correctly scoped to system admins)',
         });
+    }
+
+    // App-global taxonomy writes require an authenticated content administrator — see
+    // APP_TAXONOMY_MODELS. Reads (GET) fall through unchanged so the blog editor can list them.
+    if (APP_TAXONOMY_MODELS.has(crudRequest.model) && CRUD_WRITE_METHODS.has(crudRequest.method)) {
+        if (!permissionMatches(securityContext.permissions as string[] | undefined, 'org:admin')) {
+            return errorResponse('Blog taxonomy changes require an organization administrator', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+    }
+
+    // Organization plan/status are billing/lifecycle fields owned by the PLATFORM, not self-service.
+    // The organizations RLS policy scopes rows to the caller's memberships but does not check the
+    // membership ROLE, so without this any member could self-upgrade `plan` or flip `status` on
+    // their own org. Strip both from non-platform-admin writes (a platform owner passes untouched).
+    if (
+        crudRequest.model === 'organizations' &&
+        crudRequest.body &&
+        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH') &&
+        !securityContext.platformAdmin
+    ) {
+        const body = crudRequest.body as Record<string, unknown>;
+        delete body.plan;
+        delete body.status;
     }
 
     if (

@@ -151,6 +151,10 @@ describe('createSessionForUser + getSession round-trip', () => {
         expect(session?.user.roles).toEqual(['owner']);
         expect(session?.user.permissions).toEqual(['*:*']);
         expect(session?.user.organizationId).toBe('org-1');
+        // Fast path (explicit roles/permissions) can't infer scope, so platformAdmin is false —
+        // a merged '*:*' here does NOT imply a system-scoped platform grant. Platform-admin
+        // sessions omit explicit roles/permissions and derive it via loadUserContext.
+        expect(session?.user.platformAdmin).toBe(false);
     });
 
     it('reflects a profile edit via the refreshed KV snapshot, not the stale JWT copy', async () => {

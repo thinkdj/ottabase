@@ -25,9 +25,9 @@ Ottabase includes a complete multi-tenant RBAC (Role-Based Access Control) syste
 
 ```
 System Roles (Global)
-    ├─ platform_owner - Bootstrapped app owner (system-scoped, *:* permissions)
-    ├─ owner          - Organization owner (org-scoped, scoped permissions — no *:*)
-    ├─ admin          - Full system access (*:* permissions, explicitly granted)
+    ├─ platform_owner - Bootstrapped app owner (system-scoped, *:* → holds platform:admin)
+    ├─ owner          - Organization owner (org-scoped bundle incl. org:admin — no *:*)
+    ├─ admin          - Organization administrator (same org-scoped bundle — no *:*)
     └─ member         - Basic access
 
 Organization (Tenant)           organizationId OR null
@@ -36,6 +36,27 @@ Organization (Tenant)           organizationId OR null
     └─ Apps (Optional)          appId: "web", "admin", "api"
         └─ Users + Permissions
 ```
+
+### Authorization is permission + scope, never role NAME
+
+A role is a **bundle of permissions**; its NAME is a label, never an authorization token. Every gate asks "does a grant
+**at the required scope** carry the required permission":
+
+- **Platform admin** (SaaS control plane): a **system-scoped** (`organization_id = 'system'`) grant carrying
+  `platform:admin` (or `*:*`). Only `platform_owner` gets this, via the bootstrap. Checked by
+  `assertAdmin(..., { scope: 'system' })`, `ProtectedRoute requirePlatformAdmin`, and RLS `requirePlatformAdmin` — all
+  reading the scope-aware `platformAdmin`/`systemPermissions`, never a name.
+- **Org admin** (own tenant: blog, media, members, settings): an **org-scoped** grant carrying `org:admin`. Held by
+  `owner`/`admin`. A platform owner also passes (their `*:*` matches `org:admin`).
+
+This is why a self-registered user — who receives the RBAC role _named_ `owner` in their personal org — can administer
+their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
+system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
+
+**Self-healing system roles:** `Role.ensureDefaultRoles()` reconciles existing `isSystem` role rows to the canonical
+permission sets on every run (it executes during user provisioning), so a role seeded under an older definition — e.g. a
+legacy `owner = ['*:*']` — is corrected automatically without a manual re-seed or DB wipe. Customize by creating NEW
+roles, never by editing system ones.
 
 ### Two Modes
 
@@ -991,7 +1012,8 @@ RLSPolicies.AppScoped();
 // Public read-only: No filtering, but no writes
 RLSPolicies.PublicReadOnly();
 
-// Admin-only: Requires admin/owner/platform_owner role
+// Platform-admin-only: requires a system-scoped platform admin (scope-aware `platformAdmin`
+// flag, NOT role names). Use for app-global / control-plane tables with no tenant column.
 RLSPolicies.AdminOnly();
 
 // Permission-based: Requires specific permissions

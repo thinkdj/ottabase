@@ -297,12 +297,19 @@ if (isOwnerOrAdmin(context)) {
 
 ## Default Roles
 
-| Role             | Permissions        | Description                                        |
-| ---------------- | ------------------ | -------------------------------------------------- |
-| `platform_owner` | `*:*`              | Bootstrapped app owner (system-scoped, first user) |
-| `owner`          | `*:*`              | Full organization control                          |
-| `admin`          | `*:*` (org-scoped) | Manage org members and settings                    |
-| `member`         | `*:read`           | Basic read access                                  |
+| Role             | Permissions                             | Description                                             |
+| ---------------- | --------------------------------------- | ------------------------------------------------------- |
+| `platform_owner` | `*:*`                                   | Bootstrapped app owner (system-scoped → platform:admin) |
+| `owner`          | org bundle incl. `org:admin` (no `*:*`) | Full org control (own tenant)                           |
+| `admin`          | org bundle incl. `org:admin` (no `*:*`) | Organization administrator (own tenant)                 |
+| `member`         | `*:read`                                | Basic read access                                       |
+
+> **Authorization is permission + scope, never role NAME.** Platform authority requires a **system-scoped** grant
+> carrying `platform:admin` (or `*:*`) — only `platform_owner` has it. Org admins hold `org:admin` **org-scoped**.
+> `assertAdmin(ctx, { scope: 'system' | 'organization' | 'either' })` reads `ctx.systemPermissions` for platform scope
+> and `ctx.permissions` for org scope; there is no role-name check. RLS `AdminOnly()` sets `requirePlatformAdmin`
+> (checked against the scope-aware `platformAdmin` flag). `Role.ensureDefaultRoles()` self-heals existing system-role
+> permission sets to the canonical values on every run.
 
 Create custom roles:
 

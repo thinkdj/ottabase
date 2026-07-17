@@ -60,9 +60,11 @@ export function initAdminCron(env: CloudflareEnv): Response | null {
 
 export async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
     // Deliberately narrower than isDevEnvironment(): this gates schema auto-migrations
-    // (including destructive ones), so only an explicit 'development' ENVIRONMENT or an
-    // unset one bypasses MIGRATION_SECRET — 'dev'/'test'/'local' still require the secret.
-    const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
+    // (including destructive ones), so ONLY an explicit 'development' ENVIRONMENT bypasses
+    // MIGRATION_SECRET. An UNSET ENVIRONMENT must fail closed — otherwise a production deploy
+    // that forgot to set ENVIRONMENT would let any anonymous caller run migrations. (Local dev
+    // sets ENVIRONMENT='development' in wrangler.jsonc, so the local flow is unaffected.)
+    const isDev = env.ENVIRONMENT === 'development';
     if (isDev) return true;
 
     if (!env.MIGRATION_SECRET) return false;

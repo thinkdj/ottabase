@@ -39,6 +39,13 @@ import {
 
 export type AdminNavIcon = LucideIcon | typeof IconMenu2;
 
+/**
+ * Which admin capability a page needs. `platform` = SaaS control plane (system-scoped platform
+ * admin only); `org` = own-tenant administration (org admins, and platform owners). Defaults to
+ * `platform` when omitted (fail-safe: hide from org admins unless explicitly opted in).
+ */
+export type AdminNavScope = 'platform' | 'org';
+
 export interface AdminNavItem {
     /** Display title in sidebar + cards. */
     title: string;
@@ -48,6 +55,8 @@ export interface AdminNavItem {
     href: string;
     /** Icon component (lucide or tabler). */
     icon: AdminNavIcon;
+    /** Capability required to see this item. Defaults to 'platform'. */
+    scope?: AdminNavScope;
     /** Set true for `/api/*` style links opened in a new tab. */
     external?: boolean;
     /** Visible only when this package is enabled (skip if undefined). */
@@ -104,6 +113,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Create and manage blog posts, changelogs, docs, and announcements.',
                 href: '/admin/content/blog',
                 icon: FileText,
+                scope: 'org',
                 requiresPackage: 'ottablog',
             },
             {
@@ -118,6 +128,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Browse uploads with previews, metadata, and direct links.',
                 href: '/admin/content/media',
                 icon: ImageIcon,
+                scope: 'org',
                 requiresMediaLibrary: true,
             },
         ],
@@ -138,6 +149,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Manage multi-tenant organizations, members, and settings.',
                 href: '/admin/access/organizations',
                 icon: Building2,
+                scope: 'org',
             },
             {
                 title: 'Roles & Permissions',
@@ -157,6 +169,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Search audit logs for security and compliance tracking.',
                 href: '/admin/security/audit',
                 icon: FileText,
+                scope: 'org',
             },
             {
                 title: 'Row-Level Security',
@@ -232,19 +245,35 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Referral statistics, usernames, and conversion tracking.',
                 href: '/admin/growth/referrals',
                 icon: UserPlus,
+                scope: 'org',
                 requiresPackage: 'referrals',
             },
         ],
     },
 ];
 
-/** Returns admin nav with package/feature gates applied; empty groups are dropped. */
-export function getEnabledAdminNav(): AdminNavGroup[] {
+export interface AdminNavCapabilities {
+    /** System-scoped platform admin — sees the control plane. */
+    isPlatformAdmin: boolean;
+    /** Org admin (includes platform owners) — sees own-tenant sections. */
+    isOrgAdmin: boolean;
+}
+
+/**
+ * Returns admin nav with package/feature AND capability gates applied; empty groups are dropped.
+ * A `platform` item shows only to platform admins; an `org` item shows to org admins (and platform
+ * owners, since `isOrgAdmin` is true for them). Pass the caller's capabilities so an org admin sees
+ * only their own sections instead of a wall of control-plane pages that would 403.
+ */
+export function getEnabledAdminNav(caps: AdminNavCapabilities): AdminNavGroup[] {
     return ADMIN_NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter((item) => {
             if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
             if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+            const scope = item.scope ?? 'platform';
+            if (scope === 'platform' && !caps.isPlatformAdmin) return false;
+            if (scope === 'org' && !caps.isOrgAdmin) return false;
             return true;
         }),
     })).filter((group) => group.items.length > 0);

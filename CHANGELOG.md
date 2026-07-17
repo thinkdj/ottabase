@@ -9,31 +9,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
-- **RBAC: Scoped org-owner permissions.** The org-scoped `owner` role no longer carries `*:*` (the superadmin wildcard).
-  It now receives
-  `['*:read', '*:create', '*:update', '*:delete', 'media:*', 'brand:*', 'comments:moderate', 'audit:read']` — full CRUD
-  within the org plus feature-specific grants, but no system-level bypass. This means the permission system itself
-  enforces the boundary between org-scoped owners and system-scoped admins (`platform_owner`/`admin`), rather than
-  relying solely on route-level scope checks. `platform_owner` and `admin` retain `*:*`. **Why:** every self-registered
-  user receives `owner` on their personal organization, so the previous `*:*` grant made the wildcard permission
-  meaningless as a distinguishing signal — a random user held the same permission as the platform superadmin. The scoped
-  set restores the permission layer as a real security boundary.
+- **RBAC: authorization is permission + scope, never role NAME.** Admin gates no longer trust the role names
+  `owner`/`admin`/`platform_owner`. A role is now purely a bundle of permissions; every gate asks "does a grant **at the
+  required scope** carry the required permission." Two capabilities:
+    - **Platform admin** (SaaS control plane) = a **system-scoped** (`organization_id = 'system'`) grant carrying
+      `platform:admin` (or `*:*`). Only `platform_owner` has it, via the bootstrap.
+    - **Org admin** (own tenant) = an **org-scoped** grant carrying `org:admin`, held by `owner`/`admin`.
 
-    **Migration note for existing deployments:** the `enforceDefaultRolePermissions` function (called during bootstrap
-    init) will update the `owner` role's permissions in the database. For already-bootstrapped platforms, either re-run
-    the init/seed step or manually update the `owner` role's permissions via the admin UI.
+    `assertAdmin` now derives `systemAllowed` from `context.systemPermissions` (`platform:admin`) and `orgAllowed` from
+    `org:admin`; the old `hasAdminRole` (name match) is deleted. RLS `RLSPolicies.AdminOnly()` now sets
+    `requirePlatformAdmin` and the engine checks the scope-aware `SecurityContext.platformAdmin` instead of role names.
+    **Why:** every self-registered user receives the RBAC role _named_ `owner` in their personal organization, so
+    name-based gates let any signup reach `/admin` (and, on a stale DB, the whole platform). Keying on a system-scoped
+    `platform:admin` grant makes the boundary real and immune to role renames or tenant-created role-name collisions.
 
-- **Session: system-scope roles loaded.** `loadUserContext` (session-store) now also loads system-scope roles (e.g.
-  `platform_owner`) alongside org-scope roles, so the session snapshot reflects the full role/permission set — matching
-  what `getRequestContext` already does on the backend.
+- **RBAC: role permission sets.** New namespaces `platform:admin`/`platform:*` and `org:admin`/`org:*`. The org-scoped
+  `owner`/`admin` roles now carry
+  `['*:read', '*:create', '*:update', '*:delete', 'org:admin', 'media:*', 'comments:moderate', 'audit:read']` — full
+  CRUD within the org, but **no `*:*`** and **no `brand:*`** (appearance/menus are app-global, hence platform-owned).
+  `platform_owner` retains `*:*`.
 
-- **Frontend: role-based admin checks.** Admin UI visibility (nav links, admin panel gate) now checks role names
-  (`platform_owner`, `owner`, `admin`) via a shared `isAdminUser()` helper, instead of relying solely on
-  `permissions.includes('*:*')`. `ProtectedRoute` now supports wildcard permission matching (e.g. `*:read` satisfies a
-  `users:read` requirement).
+- **RBAC: self-healing system roles.** `Role.ensureDefaultRoles()` now reconciles existing `isSystem` role rows to the
+  canonical permission sets on every run (it executes during user provisioning), correcting a role seeded under an older
+  definition — e.g. a legacy `owner = ['*:*']` — automatically, with no manual re-seed or DB wipe. The separate
+  bootstrap `enforceDefaultRolePermissions` step is removed as redundant. Customize by creating NEW roles, never by
+  editing system ones.
 
-- **`isAdmin` (rbac/utils)** now checks role names in addition to `*:*`, matching the logic in `hasAdminRole`
-  (admin-guard).
+- **Session: platform-admin flag.** `loadUserContext` (session-store) computes `platformAdmin` from **system-scoped**
+  grants only and exposes it on `session.user.platformAdmin`; it is threaded through the KV snapshot so the client and
+  RLS can gate the control plane on a scope-aware flag rather than a name.
+
+- **Admin surface split (shared platform + org).** `/admin` platform pages (users, RBAC, infrastructure, appearance,
+  blog studio, taxonomy, security) require platform admin; org pages (own blog, media, members, org settings, audit)
+  require `org:admin`. `ProtectedRoute` gains `requirePlatformAdmin`; the admin nav filters by capability so an org
+  admin sees only their own sections. `isAdminUser`/`isPlatformAdmin`/`isOrgAdmin` (frontend) and `isAdmin` (rbac/utils)
+  are permission-based, not role-name based.
+
+### Fixed (Unreleased)
+
+- **Security: closed several `/admin`-adjacent leaks** surfaced during the RBAC audit — app-global blog taxonomy
+  (`series`/`categories`/`tags`/`post_tags` + link tables) was writable unauthenticated (now requires `org:admin`);
+  brand kits/layouts/menus and the blog Studio were reachable by any org owner (now platform-scoped); organization
+  `plan`/`status` could be self-upgraded by any member (now stripped from non-platform-admin writes); the migration
+  endpoint failed **open** when `ENVIRONMENT` was unset (now requires an explicit `development` value); and
+  `GET /api/ottaorm/models-metadata` and `GET /api/system/kill-switches` were unauthenticated (now platform-scoped).
 
 ### Added (Unreleased)
 

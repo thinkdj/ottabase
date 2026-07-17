@@ -8,8 +8,18 @@ export interface RequestContext {
     user: any | null;
     organizationId: string | null;
     appId: string;
+    /** Merged role names (system-scope grants ∪ active-org grants). Display/convenience only. */
     roles: string[];
+    /** Merged permissions (system-scope ∪ active-org). Convenience; org gates use this. */
     permissions: string[];
+    /**
+     * Roles/permissions from SYSTEM-scoped grants only (organization_id = 'system'). These carry
+     * platform authority. Platform-admin gates read `systemPermissions` so an org-scoped grant of
+     * the same permission (or a role merely NAMED 'owner'/'admin' in a personal org) can never
+     * reach the control plane.
+     */
+    systemRoles: string[];
+    systemPermissions: string[];
     isAuthenticated: boolean;
     isSystemScope: boolean;
     cache?: RBACCache;
@@ -89,6 +99,8 @@ export async function getRequestContext(
             appId: resolveAppId(request),
             roles: [],
             permissions: [],
+            systemRoles: [],
+            systemPermissions: [],
             isAuthenticated: false,
             isSystemScope: false,
             cache: options?.cache,
@@ -105,6 +117,8 @@ export async function getRequestContext(
             appId: resolveAppId(request),
             roles: [],
             permissions: [],
+            systemRoles: [],
+            systemPermissions: [],
             isAuthenticated: false,
             isSystemScope: false,
             cache: options?.cache,
@@ -129,10 +143,10 @@ export async function getRequestContext(
         tenantId: organizationId ?? undefined,
     });
 
-    const roles = Array.from(new Set([...(systemContext.roles || []), ...(scopedContext.roles || [])]));
-    const permissions = Array.from(
-        new Set([...(systemContext.permissions || []), ...(scopedContext.permissions || [])]),
-    );
+    const systemRoles = systemContext.roles || [];
+    const systemPermissions = systemContext.permissions || [];
+    const roles = Array.from(new Set([...systemRoles, ...(scopedContext.roles || [])]));
+    const permissions = Array.from(new Set([...systemPermissions, ...(scopedContext.permissions || [])]));
 
     const finalOrganizationId = organizationId ?? (allowNullTenant ? SYSTEM_ORGANIZATION_ID : null);
 
@@ -143,6 +157,8 @@ export async function getRequestContext(
         appId,
         roles,
         permissions,
+        systemRoles,
+        systemPermissions,
         isAuthenticated: systemContext.isAuthenticated || scopedContext.isAuthenticated,
         isSystemScope: finalOrganizationId === SYSTEM_ORGANIZATION_ID,
         cache,

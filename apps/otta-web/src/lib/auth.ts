@@ -26,12 +26,44 @@ function getStoredOrganizationId(): string | null {
 // Re-export types
 export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
 
-const ADMIN_ROLES = ['platform_owner', 'owner', 'admin'];
+type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null | undefined;
 
-/** True when the user holds an admin-level role or the '*:*' superadmin permission. */
-export function isAdminUser(user: { roles?: string[]; permissions?: string[] } | null | undefined): boolean {
+/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
+function hasPermission(permissions: string[] | undefined, required: string): boolean {
+    const list = permissions ?? [];
+    if (list.includes(required)) return true;
+    const [reqResource, reqAction] = required.split(':');
+    return list.some((perm) => {
+        const [permResource, permAction] = perm.split(':');
+        if (permResource === '*' && permAction === '*') return true;
+        return (
+            (permResource === '*' || permResource === reqResource) && (permAction === '*' || permAction === reqAction)
+        );
+    });
+}
+
+/**
+ * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
+ * appearance/content). Derived server-side from a SYSTEM-scoped grant and surfaced as
+ * `user.platformAdmin`; we accept the '*:*' superadmin permission as a fallback. NOT role-name based.
+ */
+export function isPlatformAdmin(user: AdminUserLike): boolean {
     if (!user) return false;
-    return user.roles?.some((r) => ADMIN_ROLES.includes(r)) || user.permissions?.includes('*:*') || false;
+    return user.platformAdmin === true || hasPermission(user.permissions, '*:*');
+}
+
+/** ORGANIZATION administrator — can administer their own tenant (org:admin). Platform owners qualify too. */
+export function isOrgAdmin(user: AdminUserLike): boolean {
+    if (!user) return false;
+    return isPlatformAdmin(user) || hasPermission(user.permissions, 'org:admin');
+}
+
+/**
+ * True when the user has ANY admin surface (platform or org). Drives visibility of the top-nav
+ * "Admin" entry. The two distinct capabilities gate WHAT they see once inside /admin.
+ */
+export function isAdminUser(user: AdminUserLike): boolean {
+    return isOrgAdmin(user);
 }
 
 /**

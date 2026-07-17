@@ -4,8 +4,6 @@
  * Defines security policies for automatic tenant isolation
  */
 
-import { PLATFORM_OWNER_ROLE_NAME } from '../models/Role';
-
 export type SecurityLevel = 'tenant' | 'user' | 'app' | 'public' | 'custom';
 
 export interface SecurityContext {
@@ -14,6 +12,12 @@ export interface SecurityContext {
     appId?: string;
     roles?: string[];
     permissions?: string[];
+    /**
+     * True when the caller is a PLATFORM administrator (a system-scoped `platform:admin`/'*:*'
+     * grant). Populated upstream from the session snapshot — NEVER derived from a role name or an
+     * org-scoped grant. Gates `requirePlatformAdmin` policies (e.g. app-global control-plane tables).
+     */
+    platformAdmin?: boolean;
     /** Organization IDs where the user is an active member (populated upstream). */
     memberOrganizationIds?: string[];
     /**
@@ -63,9 +67,20 @@ export interface RLSPolicy {
     requiredPermissions?: string[];
 
     /**
-     * Required roles to access this model
+     * Required roles to access this model.
+     *
+     * DANGER: role-NAME matching is scope-blind — a role named 'owner'/'admin' granted in ANY
+     * org (every self-registered user gets one in their personal org) satisfies it. Do NOT use
+     * this to express platform-admin gating; use `requirePlatformAdmin` instead.
      */
     requiredRoles?: string[];
+
+    /**
+     * Require the caller to be a PLATFORM administrator (system-scoped `platform:admin`/'*:*').
+     * Checked against `SecurityContext.platformAdmin`, which is scope-aware — unlike role names.
+     * Use for app-global / control-plane tables that have no tenant column.
+     */
+    requirePlatformAdmin?: boolean;
 }
 
 export interface ModelRLSConfig {
@@ -151,11 +166,13 @@ export const RLSPolicies = {
     }),
 
     /**
-     * Admin-only: Requires admin role
+     * Platform-admin-only: control-plane / app-global tables with no tenant column.
+     * Gated on the scope-aware `platformAdmin` flag, NOT role names (a role named 'owner'/'admin'
+     * granted in a personal org must not pass).
      */
     AdminOnly: (): RLSPolicy => ({
         level: 'custom',
-        requiredRoles: ['admin', 'owner', PLATFORM_OWNER_ROLE_NAME],
+        requirePlatformAdmin: true,
     }),
 
     /**

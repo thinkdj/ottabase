@@ -30,6 +30,11 @@ const mockSession = {
 };
 vi.mock('@/lib/auth', () => ({
     useSession: () => mockSession,
+    // BrandHeaders / SidebarNav / DrawerNav gate the "Admin" nav entry on these. The public-layout
+    // tests here don't exercise an admin user, so return false.
+    isAdminUser: () => false,
+    isPlatformAdmin: () => false,
+    isOrgAdmin: () => false,
 }));
 
 // Mock theme context
