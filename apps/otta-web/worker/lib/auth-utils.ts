@@ -173,6 +173,36 @@ export async function bumpProfileVersion(env: CloudflareEnv, userId: string | un
     }
 }
 
+/**
+ * After a system-role RECONCILE (the `/__bootstrap__/seed` self-heal): drop RBAC caches and refresh
+ * the sessions whose authority could have changed, so a healed permission set — and the derived
+ * `platformAdmin` flag — takes effect without waiting out the ~30-day JWT.
+ *
+ * Bounded on purpose (Cloudflare Workers cap subrequests per invocation): it bumps only the
+ * SYSTEM-SCOPED platform_owner holder set, which is tiny (usually one), and which is exactly the
+ * security-critical, control-plane session. Org-scoped role holders (e.g. every user's personal
+ * `owner`) are far too many to bump in one request AND their stale grants are org-bounded (RLS keeps
+ * them to their own tenant), so they are intentionally left to refresh on next sign-in.
+ */
+export async function reconcileSystemRoleSessions(env: CloudflareEnv): Promise<void> {
+    if (!env.OBCF_KV) return;
+    try {
+        await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
+    } catch {
+        // Non-fatal — TTL bounds staleness.
+    }
+    try {
+        const { PLATFORM_OWNER_ROLE_NAME, Role, UserRole } = await import('@ottabase/ottaorm/models');
+        const platformOwnerRole = await Role.findByName(PLATFORM_OWNER_ROLE_NAME);
+        if (!platformOwnerRole) return;
+        const holders = await UserRole.where({ roleId: platformOwnerRole.get('id') as string });
+        const userIds = [...new Set(holders.map((h) => String(h.get('userId'))).filter(Boolean))];
+        await Promise.allSettled(userIds.map((userId) => bumpProfileVersion(env, userId)));
+    } catch (error) {
+        console.warn('Failed to refresh platform-owner sessions after role reconcile:', error);
+    }
+}
+
 export async function getSecurityContext(
     request: Request,
     session: any | null,
@@ -219,7 +249,8 @@ export async function getSecurityContext(
     // AdminOnly policies gate on this, NOT on role names — see packages/ottaorm rls/types.ts.
     const platformAdmin = session?.user?.platformAdmin === true;
 
-    // Collect all organization IDs the user can access (owned + active member).
+    // Collect the organization IDs the user can access — ACTIVE MEMBERSHIPS only (organizationIdsForUser
+    // no longer trusts the never-cleared Organization.ownerId; see that method for why).
     // Always keep the resolved list — INCLUDING when it is empty. An empty array is a positive
     // "this user belongs to zero organizations", which must fail closed below (and in the RLS
     // engine). Collapsing it to `undefined` would be read as "membership unknown" and skip

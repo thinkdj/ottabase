@@ -37,11 +37,16 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
 }
 
 /**
- * Tenant-data boundary for roster access. Active membership in the TARGET org is the sole
- * authority: a caller may read or mutate an org's roster only if they hold an active
- * organization_members row there. This covers legitimate org-scoped admins (who are members of
- * the org they administer) and platform owners who belong to the org, and denies everyone else
- * — including a platform owner acting on an org they are not part of.
+ * Tenant-data boundary for roster access. The caller must hold an OWNER/ADMIN organization_members
+ * row in the TARGET org — an active membership of ANY role is NOT enough. This is the authority for
+ * both reading and mutating an org's roster.
+ *
+ * Why owner/admin, not any-member: `requireAdminAccess({ scope: 'either' })` in the roster handlers
+ * resolves admin status against the CALLER'S OWN session org (where every self-registered user
+ * auto-holds `org:admin` in their personal workspace), not the URL's `:organizationId`. So it does
+ * not, on its own, prove admin standing in the target org. If this check accepted any active member,
+ * a rank-and-file collaborator invited into org O could self-promote to owner and evict the real
+ * owner. Requiring owner/admin membership in O is what actually binds authority to the target org.
  *
  * We deliberately do NOT trust `auth.organizationId` as proof of access. When the caller has no
  * session org it is resolved from the client-supplied `x-org-id` header / `?organizationId`
@@ -51,7 +56,7 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
  * likewise derives the allowed orgs from membership rather than the request-supplied org.
  */
 async function assertRosterAccess(auth: AdminContext, organizationId: string): Promise<Response | null> {
-    if (auth.user?.id && (await OrganizationMember.isMember(auth.user.id, organizationId))) {
+    if (auth.user?.id && (await OrganizationMember.isOwnerOrAdmin(auth.user.id, organizationId))) {
         return null;
     }
     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
@@ -194,6 +199,15 @@ export async function handleAdminOrganizationInviteMember(
         });
     }
 
+    // Role-hierarchy guard: only an OWNER may invite another OWNER (creating owners is owner-only).
+    if (
+        role === 'owner' &&
+        auth.user?.id &&
+        !(await OrganizationMember.hasRole(auth.user.id, organizationId, 'owner'))
+    ) {
+        return errorResponse('Only an owner can invite an owner', 403, { code: 'FORBIDDEN' });
+    }
+
     // Resolve to an existing user account either by explicit userId or by matching email.
     const user = userId ? await User.find(userId) : email ? await User.findByEmail(email) : undefined;
     if (userId && !user) {
@@ -313,6 +327,15 @@ export async function handleAdminOrganizationUpdateMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
+    // Role-hierarchy guard: only an OWNER may grant owner or modify an existing owner. assertRosterAccess
+    // above admits owner AND admin, but an admin must not be able to self-promote to owner (nothing else
+    // guards GRANTING owner) or demote/suspend an owner — either would let an admin take the org from its
+    // owner, the same end state as the original roster-takeover bug one tier up.
+    const touchesOwner = body.role === 'owner' || (existingMember.toJson() as { role?: string }).role === 'owner';
+    if (touchesOwner && auth.user?.id && !(await OrganizationMember.hasRole(auth.user.id, organizationId, 'owner'))) {
+        return errorResponse('Only an owner can grant or modify owner-level membership', 403, { code: 'FORBIDDEN' });
+    }
+
     if (updateMovesAwayFromActiveOwnerState(body)) {
         const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);
         if (isLastActiveOwner) {
@@ -361,6 +384,16 @@ export async function handleAdminOrganizationRemoveMember(
     const existingMember = await OrganizationMember.first({ userId, organizationId });
     if (!existingMember) {
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+    }
+
+    // Role-hierarchy guard: only an OWNER may remove an OWNER — an admin must not be able to evict an
+    // owner (which, combined with the last-owner guard, is how the roster-takeover attack completes).
+    if (
+        (existingMember.toJson() as { role?: string }).role === 'owner' &&
+        auth.user?.id &&
+        !(await OrganizationMember.hasRole(auth.user.id, organizationId, 'owner'))
+    ) {
+        return errorResponse('Only an owner can remove an owner', 403, { code: 'FORBIDDEN' });
     }
 
     const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);

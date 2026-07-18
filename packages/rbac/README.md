@@ -308,8 +308,9 @@ if (isOwnerOrAdmin(context)) {
 > carrying `platform:admin` (or `*:*`) — only `platform_owner` has it. Org admins hold `org:admin` **org-scoped**.
 > `assertAdmin(ctx, { scope: 'system' | 'organization' | 'either' })` reads `ctx.systemPermissions` for platform scope
 > and `ctx.permissions` for org scope; there is no role-name check. RLS `AdminOnly()` sets `requirePlatformAdmin`
-> (checked against the scope-aware `platformAdmin` flag). `Role.ensureDefaultRoles()` self-heals existing system-role
-> permission sets to the canonical values on every run.
+> (checked against the scope-aware `platformAdmin` flag). `Role.ensureDefaultRoles()` is create-if-missing by default;
+> `ensureDefaultRoles({ heal: true })` (run from `/__bootstrap__/seed`) additionally reconciles existing system-role
+> permission sets to the canonical values and refreshes affected sessions.
 
 Create custom roles:
 

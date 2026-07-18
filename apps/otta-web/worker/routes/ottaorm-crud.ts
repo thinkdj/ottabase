@@ -3,7 +3,7 @@ import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -138,6 +138,40 @@ const APP_TAXONOMY_MODELS = new Set([
 
 const CRUD_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/**
+ * DEFAULT-DENY allowlist for the generic `/api/ottaorm/*` route. ONLY these app-data models may be
+ * read/written through generic CRUD; every other model is refused. That deliberately closes:
+ *  - grant/auth/system tables (user_roles, user_group_members, sessions, accounts, authenticators,
+ *    audit_logs, kill switches, …) — accessed server-side or via dedicated admin endpoints, never here,
+ *  - app-global control-plane data (menus, menu_items, menu_slot_assignments, ottablog_themes/plugins,
+ *    shortlinks, scheduled_tasks, …) — managed through their own scope-gated routes.
+ *
+ * This replaces the old DENYLIST, which repeatedly missed sensitive tables (first `user_roles`, then
+ * `user_group_members`): a newly-added model is now closed by default until it is explicitly listed
+ * here. The specific hard-blocks above are kept ONLY for their more helpful "use X endpoint" hints.
+ * If you add a model that the frontend drives through generic CRUD, add it here (and give it a real
+ * RLS policy).
+ */
+const GENERIC_CRUD_ALLOWLIST = new Set([
+    // Blog / content
+    'posts',
+    'post_versions',
+    'series',
+    'categories',
+    'tags',
+    'post_tags',
+    'post_tag_links',
+    'post_category_links',
+    // Media library
+    'media',
+    // Comments (org is derived from the target entity, special-cased below)
+    'comments',
+    // Organizations (member-scoped reads; a create also provisions the owner membership below)
+    'organizations',
+    // Demo data-table
+    'todos',
+]);
+
 export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Response> {
     const { request, env, url } = context;
 
@@ -203,16 +237,33 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    // RBAC grant + definition tables. These GRANT the very roles/permissions the whole auth layer
+    // reads from, so generic CRUD on them is a privilege-escalation vector — `user_roles` in
+    // particular is org-scoped (its TenantScoped RLS FUNCTIONS but carries no permission gate), so
+    // without this block an anonymous `POST /api/ottaorm/user_roles {roleId:<platform_owner>,
+    // organizationId:'system'}` mints a real platform_owner grant, and `GET` dumps every grant.
+    // (`roles`/`permissions` are additionally fail-closed today only by an RLS-field/column mismatch
+    // — do NOT rely on that; this block is the real gate.) Manage roles via /api/admin/roles and
+    // grants via the org-members / promote endpoints, all of which are properly scope-gated.
+    //
+    // NOTE: this hard-block list is a DENYLIST — every sensitive model must be remembered here. That
+    // is fragile (this table was the miss that motivated the block). Treat any new grant-bearing or
+    // system table as internal until it has an explicit permission gate.
+    if (crudRequest.model === 'user_roles' || crudRequest.model === 'roles' || crudRequest.model === 'permissions') {
+        return errorResponse('RBAC role/permission CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/admin/roles (role definitions) and the org-members / platform-owner promote endpoints (grants) — all platform-admin scoped.',
+        });
+    }
+
     if (crudRequest.model === 'shortlinks') {
-        // RLS's requiredRoles check (packages/ottaorm/src/rls/registry.ts) tests role NAME
-        // membership only, not which organization the role was granted in — since every
-        // self-registered user gets RBAC role 'owner' scoped to their own personal org, that
-        // check alone doesn't actually restrict this to system admins. Force all shortlink
-        // management through the dedicated /api/shortlinks routes, which correctly gate on
-        // requireAdminAccess({ scope: 'system' }).
+        // The shortlinks RLS policy is platform-admin gated (requirePlatformAdmin, registry.ts), so
+        // generic CRUD is no longer open to org owners. This hard-block is retained as API design +
+        // defense-in-depth: all shortlink management goes through the dedicated /api/shortlinks
+        // routes (requireAdminAccess({ scope: 'system' })), which own analytics and slug handling.
         return errorResponse('Shortlinks CRUD is disabled via OttaORM', 403, {
             code: 'CRUD_DISABLED',
-            hint: 'Use /api/shortlinks endpoints (correctly scoped to system admins)',
+            hint: 'Use /api/shortlinks endpoints (platform-admin scoped)',
         });
     }
 
@@ -243,14 +294,25 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     if (crudRequest.model === 'scheduled_tasks') {
-        // Same name-only RLS role-check gap as shortlinks above: every self-registered user
-        // holds role NAME 'owner' in their personal org, so the AdminOnly policy on this
-        // global (non-tenant) table doesn't restrict anything — any authenticated user could
-        // read or mutate every row. Force management through /api/admin/cron, which gates on
-        // requireAdminAccess({ scope: 'system' }).
+        // scheduled_tasks carries RLSPolicies.AdminOnly(), which now gates on the scope-aware
+        // `platformAdmin` flag (requirePlatformAdmin) rather than a role NAME, so it correctly
+        // restricts to platform admins. This hard-block is retained as API design +
+        // defense-in-depth: management goes through /api/admin/cron (requireAdminAccess({ scope:
+        // 'system' })), which owns run history and scheduling semantics.
         return errorResponse('Scheduled tasks CRUD is disabled via OttaORM', 403, {
             code: 'CRUD_DISABLED',
-            hint: 'Use /api/admin/cron endpoints (correctly scoped to system admins)',
+            hint: 'Use /api/admin/cron endpoints (platform-admin scoped)',
+        });
+    }
+
+    // DEFAULT-DENY: anything not explicitly allow-listed for generic CRUD is refused. This closes
+    // grant/auth/system + app-global control-plane tables (e.g. user_group_members,
+    // menu_slot_assignments, ottablog_themes/plugins, audit_logs) by default, instead of relying on
+    // the denylist above to remember every one — see GENERIC_CRUD_ALLOWLIST.
+    if (!GENERIC_CRUD_ALLOWLIST.has(crudRequest.model)) {
+        return errorResponse(`Generic CRUD is not enabled for '${crudRequest.model}'`, 403, {
+            code: 'CRUD_NOT_ALLOWED',
+            hint: 'This model is not exposed via /api/ottaorm; use its dedicated endpoint.',
         });
     }
 
@@ -537,10 +599,23 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 // their new org until the cache TTL expires.
                 await invalidateMembershipCache(env.OBCF_KV, userId);
             } catch (err) {
-                return errorResponse('Failed to create organization membership', 500, {
-                    code: 'ORG_MEMBER_CREATE_FAILED',
-                    details: err instanceof Error ? err.message : 'Unknown error',
-                });
+                // The org row was inserted but its owner membership was not. Since the tenant
+                // boundary (organizationIdsForUser) is membership-only, that would ORPHAN the org —
+                // the creator couldn't even reach the org they just made. Compensating-delete the
+                // org so creation is all-or-nothing (best-effort atomicity without a cross-table txn).
+                try {
+                    await Organization.delete(orgId);
+                } catch (rollbackErr) {
+                    console.error('Failed to roll back orphaned organization', orgId, rollbackErr);
+                }
+                return errorResponse(
+                    'Failed to create organization; membership setup failed and was rolled back',
+                    500,
+                    {
+                        code: 'ORG_MEMBER_CREATE_FAILED',
+                        details: err instanceof Error ? err.message : 'Unknown error',
+                    },
+                );
             }
         }
     }

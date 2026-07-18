@@ -243,8 +243,11 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Canonical definitions of the built-in system roles. Single source of truth — the seed
-     * script (packages/ottaorm/src/seed/rbac.ts) imports these so the two never drift.
+     * Canonical definitions of the built-in system roles — the source of truth for
+     * ensureDefaultRoles() (runtime seeding + heal). NOTE: the standalone seed CLI
+     * (packages/ottaorm/src/seed/rbac.ts) keeps its OWN parallel list (fixed UUIDs + an extra
+     * 'user' role) and imports only ORG_OWNER_PERMISSIONS from here — if you change a role's
+     * permissions, update both by hand.
      *
      * IMPORTANT: `admin` and `owner` are ORG-level roles (no '*:*'). Platform authority comes
      * ONLY from a system-scoped grant carrying `platform:admin` (or '*:*'), which the bootstrap
@@ -288,16 +291,26 @@ export class Role extends BaseModel {
     ];
 
     /**
-     * Get or create the built-in system roles, and SELF-HEAL existing ones.
+     * Ensure the built-in system roles exist, and — only when `heal` is set — reconcile existing
+     * ones back to {@link DEFAULT_ROLE_DEFINITIONS}.
      *
-     * System roles are framework-owned: on every run this reconciles each existing `isSystem`
-     * row's permissions/description back to {@link DEFAULT_ROLE_DEFINITIONS}. That is what
-     * corrects a role seeded under an older definition — e.g. a legacy `owner` = ['*:*'] row from
-     * before org/platform scoping — automatically on the next signup/seed, with no manual re-seed
-     * or DB wipe. Operators customize by creating NEW roles, never by editing system ones. Runs
-     * inside provisionDefaultOrganizationForUser, so healing happens on the next authenticated action.
+     * Two modes, deliberately separated:
+     *  - default (`heal` false): CREATE-IF-MISSING only. Safe for the signup hot path — it never
+     *    rewrites an existing row, so it can't silently revert state or incur an unbounded
+     *    session-refresh obligation on every signup.
+     *  - `heal: true`: additionally reconcile each existing `isSystem` row's permissions/description
+     *    (e.g. heal a legacy `owner = ['*:*']` from before org/platform scoping). This is the
+     *    DELIBERATE maintenance path — run it from the bootstrap seed step (`/__bootstrap__/seed`),
+     *    which follows the reconcile with an RBAC-cache invalidation + session refresh so the healed
+     *    permissions take effect (see reconcileSystemRoleSessions). Do NOT heal from the signup path.
+     *
+     * System roles are framework-owned; customize by creating NEW roles, never by editing these
+     * (the admin API rejects edits to `isSystem` roles, and heal would revert them anyway).
+     *
+     * @returns the roles that were created or reconciled (empty when everything already matches).
      */
-    static async ensureDefaultRoles() {
+    static async ensureDefaultRoles(options?: { heal?: boolean }) {
+        const heal = options?.heal ?? false;
         const changed: InstanceType<typeof Role>[] = [];
 
         for (const def of this.DEFAULT_ROLE_DEFINITIONS) {
@@ -314,8 +327,8 @@ export class Role extends BaseModel {
                 continue;
             }
 
-            // Only reconcile framework-owned rows; never clobber operator-created roles.
-            if (!existing.get('isSystem')) continue;
+            // Reconcile only in heal mode, and only framework-owned rows — never clobber operator roles.
+            if (!heal || !existing.get('isSystem')) continue;
 
             const permsDiffer = JSON.stringify(existing.getPermissions()) !== JSON.stringify(def.permissions);
             const descDiffers = existing.get('description') !== def.description;

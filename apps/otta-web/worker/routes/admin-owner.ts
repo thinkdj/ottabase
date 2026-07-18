@@ -3,7 +3,8 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { initDbConnection } from '../lib/db-utils';
-import { readJson } from '../lib/utils';
+import { enforceRateLimit } from '../lib/rate-limiting';
+import { getClientIpAddress, normalizeEmail, readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 function clean(value: string | null): string | null {
@@ -29,6 +30,12 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     const { env, request } = context;
     initDbConnection(env);
 
+    // Rate-limit by IP before the secret compare, so this grant-of-ultimate-privilege endpoint can't
+    // be brute-forced — matching the throttling on register/reset. Throttled BEFORE reading the body.
+    const ip = getClientIpAddress(request);
+    const rateLimited = await enforceRateLimit(request, env, `admin:promote-owner:${ip}`);
+    if (rateLimited) return rateLimited;
+
     const secret = env.BOOTSTRAP_OWNER_SECRET;
     if (!secret) {
         return errorResponse('Promotion secret is not configured', 500, { code: 'CONFIG_ERROR' });
@@ -44,7 +51,9 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
         const body = await readJson<{ secret?: string; userId?: string; email?: string }>(request);
         bodySecret = clean(body.secret || null);
         userId = body.userId || undefined;
-        email = body.email || undefined;
+        // Normalize like every other account path (login/register/reset) — a plain unique email
+        // column is case-sensitive, so a correct-but-miscased address must not 404 this break-glass tool.
+        email = typeof body.email === 'string' && body.email.trim() ? normalizeEmail(body.email) : undefined;
     } catch {
         // ignore malformed JSON
     }

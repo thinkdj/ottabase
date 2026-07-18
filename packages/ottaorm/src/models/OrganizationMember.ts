@@ -505,9 +505,15 @@ export class OrganizationMember extends BaseModel {
     }
 
     /**
-     * All organization IDs a user can access: active memberships + organizations they own.
-     * This is the authoritative "accessible orgs" set — use it to validate a user's active
-     * org and to populate `SecurityContext.memberOrganizationIds`.
+     * All organization IDs a user can access, from ACTIVE MEMBERSHIPS only. This is the
+     * authoritative "accessible orgs" set — use it to validate a user's active org and to populate
+     * `SecurityContext.memberOrganizationIds` (the tenant-isolation boundary).
+     *
+     * Deliberately does NOT union `Organization.ownerId`: that field is stamped once at creation and
+     * never cleared on removal/demotion (there is no ownership-transfer code), so unioning it would
+     * let a user who was removed from an org they created retain access to it — a stale-ownership
+     * cross-tenant leak. The org creator is always also given an ACTIVE owner membership row (see
+     * user-provisioning / bootstrap), so active membership already covers every legitimate owner.
      */
     static async organizationIdsForUser(userId: string): Promise<string[]> {
         if (!userId) return [];
@@ -517,13 +523,6 @@ export class OrganizationMember extends BaseModel {
         for (const m of memberships) {
             const orgId = m.get('organizationId') as string | undefined;
             if (orgId) ids.add(orgId);
-        }
-
-        const { Organization } = await import('./Organization');
-        const owned = await Organization.where({ ownerId: userId });
-        for (const o of owned) {
-            const id = o.get('id') as string | undefined;
-            if (id) ids.add(id);
         }
 
         return Array.from(ids);

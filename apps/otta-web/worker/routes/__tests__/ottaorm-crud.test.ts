@@ -115,53 +115,66 @@ describe('handleOttaormCrud (posts concurrency)', () => {
         expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
     });
 
-    it('invalidates membership caches for the acting user and target on group-member POST', async () => {
-        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
-        const { getSecurityContext, invalidateMembershipCache } = await import('../../lib/auth-utils');
+    it.each(['user_roles', 'roles', 'permissions'])(
+        'blocks generic CRUD on the RBAC grant/definition table %s (privilege-escalation guard)',
+        async (model) => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
 
-        (getSecurityContext as any).mockResolvedValueOnce({
-            userId: 'user-9',
-            organizationId: 'org-1',
-            appId: 'otta-web',
-        });
-        (parseCrudRequest as any).mockResolvedValue({
-            model: 'user_group_members',
-            method: 'POST',
-            body: { userId: 'user-2', groupId: 'group-1' },
-        });
-        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'ugm-1' }, status: 201 });
+            // Anonymous-style POST that, unblocked, would mint a platform_owner grant on user_roles.
+            (parseCrudRequest as any).mockResolvedValue({
+                model,
+                method: 'POST',
+                body: { userId: 'attacker', roleId: 'platform-owner-role-id', organizationId: 'system' },
+            });
 
-        const response = await handleOttaormCrud(createContext());
-        expect(response.status).toBe(201);
+            const response = await handleOttaormCrud(createContext());
+            const body = (await response.json()) as any;
 
-        const invalidatedFor = (invalidateMembershipCache as any).mock.calls.map((c: any[]) => c[1]);
-        expect(invalidatedFor).toContain('user-2'); // target member
-        expect(invalidatedFor).toContain('user-9'); // acting user (created-groups set)
-    });
+            expect(response.status).toBe(403);
+            expect(body.code).toBe('CRUD_DISABLED');
+            expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+        },
+    );
 
-    it('resolves the affected user from the row before an id-based group-member DELETE', async () => {
-        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
-        const { invalidateMembershipCache } = await import('../../lib/auth-utils');
-        const { UserGroupMember } = await import('@ottabase/ottaorm/models');
+    it.each([
+        'user_group_members',
+        'user_groups',
+        'menu_slot_assignments',
+        'ottablog_themes',
+        'audit_logs',
+        'sessions',
+    ])(
+        'DEFAULT-DENIES generic CRUD for the non-allowlisted model %s (e.g. self-grant group ownership)',
+        async (model) => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
 
-        (parseCrudRequest as any).mockResolvedValue({
-            model: 'user_group_members',
-            method: 'DELETE',
-            id: 'ugm-7',
-        });
-        (UserGroupMember.find as any).mockResolvedValue({
-            get: (key: string) => (key === 'userId' ? 'user-5' : null),
-        });
-        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { deleted: true }, status: 200 });
+            (parseCrudRequest as any).mockResolvedValue({
+                model,
+                method: 'POST',
+                body: { userId: 'attacker', groupId: 'group-1', role: 'owner', status: 'active' },
+            });
 
-        const response = await handleOttaormCrud(createContext());
-        expect(response.status).toBe(200);
+            const response = await handleOttaormCrud(createContext());
+            const body = (await response.json()) as any;
 
-        // The row's owner is captured BEFORE the delete removes it.
-        expect(UserGroupMember.find as any).toHaveBeenCalledWith('ugm-7');
-        const invalidatedFor = (invalidateMembershipCache as any).mock.calls.map((c: any[]) => c[1]);
-        expect(invalidatedFor).toContain('user-5');
-    });
+            expect(response.status).toBe(403);
+            expect(body.code).toBe('CRUD_NOT_ALLOWED');
+            expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['posts', 'media', 'categories', 'series'])(
+        'ALLOWS generic CRUD for the allow-listed app-data model %s',
+        async (model) => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            (parseCrudRequest as any).mockResolvedValue({ model, method: 'GET' });
+            (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: [], status: 200 });
+
+            const response = await handleOttaormCrud(createContext());
+            expect(response.status).toBe(200);
+            expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+        },
+    );
 });
 
 describe('handleOttaormCrud (comments)', () => {
