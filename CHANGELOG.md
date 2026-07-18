@@ -29,11 +29,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   CRUD within the org, but **no `*:*`** and **no `brand:*`** (appearance/menus are app-global, hence platform-owned).
   `platform_owner` retains `*:*`.
 
-- **RBAC: self-healing system roles.** `Role.ensureDefaultRoles()` now reconciles existing `isSystem` role rows to the
-  canonical permission sets on every run (it executes during user provisioning), correcting a role seeded under an older
-  definition — e.g. a legacy `owner = ['*:*']` — automatically, with no manual re-seed or DB wipe. The separate
-  bootstrap `enforceDefaultRolePermissions` step is removed as redundant. Customize by creating NEW roles, never by
-  editing system ones.
+- **RBAC: self-healing system roles.** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role
+  rows to the canonical permission sets, correcting a role seeded under an older definition — e.g. a legacy
+  `owner = ['*:*']` — with no manual re-seed or DB wipe. The reconcile runs on the deliberate `/__bootstrap__/seed` path
+  (which also invalidates caches + refreshes platform-owner sessions); the signup path only creates-if-missing. The
+  separate bootstrap `enforceDefaultRolePermissions` step is removed as redundant. Customize by creating NEW roles,
+  never by editing system ones (the admin API rejects edits to `isSystem` roles).
 
 - **Session: platform-admin flag.** `loadUserContext` (session-store) computes `platformAdmin` from **system-scoped**
   grants only and exposes it on `session.user.platformAdmin`; it is threaded through the KV snapshot so the client and
@@ -42,10 +43,94 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Admin surface split (shared platform + org).** `/admin` platform pages (users, RBAC, infrastructure, appearance,
   blog studio, taxonomy, security) require platform admin; org pages (own blog, media, members, org settings, audit)
   require `org:admin`. `ProtectedRoute` gains `requirePlatformAdmin`; the admin nav filters by capability so an org
-  admin sees only their own sections. `isAdminUser`/`isPlatformAdmin`/`isOrgAdmin` (frontend) and `isAdmin` (rbac/utils)
-  are permission-based, not role-name based.
+  admin sees only their own sections. Every admin-ish helper is now permission-based, not role-name based:
+  `isAdminUser`/`isPlatformAdmin`/`isOrgAdmin` (frontend), `isAdmin` (rbac/utils), `isOwnerOrAdmin` (rbac/app-context),
+  and `User.isAdmin(organizationId)` (ottaorm) — the last checks `platform:admin`/`org:admin` scoped to a given org.
+
+- **Bootstrap: `GET /__bootstrap__/seed` maintenance page.** A focused, one-click "Reconcile roles & permissions" UI
+  over the existing `POST /__bootstrap__/api/seed` (secret-gated, non-destructive). Runs `ensureDefaultRoles()` to heal
+  the built-in system-role permission sets after a framework upgrade — e.g. a legacy `owner = ['*:*']` row — without
+  clearing the DB or hand-editing SQL. Reuses the wizard's layout; prefill the token via `?secret=`.
+
+- **Bootstrap: `GET /__bootstrap__/promote-owner` page.** A secret-gated UI over
+  `POST /api/admin/platform-owner/promote` to grant an existing account the system-scoped `platform_owner` role — for
+  ownership transfer or break-glass recovery when no owner can sign in. Previously curl-only.
+
+- **Admin → Infrastructure → Email.** A platform-admin page (`/admin/infrastructure/email`) over `/api/email/providers`
+  and `/api/email/test`: shows configured providers and sends a test email to verify delivery. The email demo is now
+  just the (non-privileged) template preview; the privileged test-send/provider status moved to the admin console.
 
 ### Fixed (Unreleased)
+
+- **Generic CRUD is now DEFAULT-DENY (allowlist).** `/api/ottaorm/*` previously allowed any registered model except an
+  explicit denylist — which repeatedly missed sensitive tables (`user_roles`, then `user_group_members`). It now serves
+  ONLY an allow-list of app-data models (posts/taxonomy/media/comments/organizations/todos); every other model —
+  grant/auth/system tables and app-global control-plane data (e.g. `user_group_members`, `menu_slot_assignments`,
+  `ottablog_themes`, `audit_logs`, `sessions`) — is refused with `CRUD_NOT_ALLOWED`. This closes the
+  `user_group_members` self-grant vector (an authenticated user could `POST` themselves group ownership) and any future
+  same-class model by default. `menu_slot_assignments` also gains `requirePlatformAdmin` in RLS as defense-in-depth.
+
+- **Roster takeover — admin tier closed.** The prior fix stopped a plain member, but an org **admin** could still
+  `PATCH self {role:'owner'}` (granting owner was unguarded) and then evict the founder. The update/remove/invite
+  handlers now enforce a role hierarchy: only an OWNER may grant, modify, or remove owner-level membership.
+
+- **Bootstrap secret brute-force oracle throttled.** Every `/__bootstrap__/*` endpoint (esp. the read-only
+  `GET /api/status`) returned 401-vs-200 on secret correctness with no rate limit — a free oracle that made the promote
+  endpoint's own limiter moot. Failed secret attempts are now IP-rate-limited at the shared `isValidSecret` choke point
+  (best-effort; only real 429s block, so a missing limiter never breaks bootstrap).
+
+- **Org creation is now all-or-nothing.** With the `ownerId` fallback removed (see stale-ownership fix), a partial
+  failure between the `organizations` and `organization_members` inserts would orphan the org (unreachable even by its
+  creator). Both org-creation paths (generic CRUD, `provisionDefaultOrganizationForUser`) now compensating-delete the
+  org if the owner membership can't be written.
+
+- **RBAC Permissions Matrix un-broken.** `useRBAC`'s role hooks now target `/api/admin/roles*` (platform-scoped) instead
+  of the now-blocked generic `/api/ottaorm/roles`, so the permissions matrix — linked from the RBAC Roles page — works.
+
+- **CRITICAL — unauthenticated privilege escalation via generic CRUD on RBAC grant tables.** `user_roles`, `roles`, and
+  `permissions` were registered OttaORM CRUD models with no permission gate, so `POST /api/ottaorm/user_roles` could
+  mint a `platform_owner` grant and `GET` could dump all grants — no session, secret, or rate limit. Hard-blocked all
+  three in `ottaorm-crud.ts` and added `requirePlatformAdmin` to their RLS as defense-in-depth. Use `/api/admin/roles`
+  and the org-members / promote endpoints (all platform-admin scoped). (`roles`/`permissions` were previously only
+  _accidentally_ fail-closed by an RLS-field/column mismatch — now intentionally gated.)
+
+- **CRITICAL — org roster takeover by a rank-and-file member.** `assertRosterAccess` accepted any active membership
+  (`isMember`), and `requireAdminAccess({scope:'either'})` resolves admin status against the caller's OWN org (where
+  every signup is `org:admin`), so an invited `member` of org O could self-promote to `owner` and evict the founder. The
+  roster guard now requires an OWNER/ADMIN membership in the TARGET org (`isOwnerOrAdmin`).
+
+- **HIGH — stale-ownership cross-tenant access.** `Organization.ownerId` is stamped at creation and never cleared, and
+  two paths trusted it: (a) `OrganizationMember.organizationIdsForUser` unioned owned orgs into `memberOrganizationIds`
+  — which `getSecurityContext` uses to decide whether a client-supplied `x-org-id` is honored as the caller's active
+  org, and which `enforceOrgMembership` uses as its defense-in-depth set. So a removed ex-owner (whose co-owner remains)
+  could set `x-org-id: O` and get O pinned as the tenant scope for `/api/ottaorm/*`, giving live read/write of O's
+  tenant data — e.g. read O's full `audit_logs`, inject `posts`/`media` — not just a metadata leak. (b) The
+  `organizations` RLS policy fell back to `{ ownerId }` when membership resolved to an empty set, letting the same
+  ex-owner read/write the org record. Fixed both: `organizationIdsForUser` uses ACTIVE MEMBERSHIPS only (owners always
+  have an active owner membership), and the `organizations` filter denies on a resolved-empty set (falls back to
+  ownership only when membership is genuinely unresolved/undefined).
+
+- **System-role edits + self-heal reconciled.** `PATCH /api/admin/roles/:id` now rejects edits to `isSystem` roles
+  (mirrors DELETE), and `Role.ensureDefaultRoles()` gained a `heal` flag: the signup hot path is create-if-missing only
+  (no silent revert, no unbounded session churn), and the reconcile runs only on the deliberate `/__bootstrap__/seed`
+  path — which now also invalidates the RBAC cache and refreshes platform-owner sessions so healed permissions take
+  effect. **Deploy note:** after deploying, run `/__bootstrap__/seed` once; existing non-platform sessions pick up
+  role/permission changes (and the `platformAdmin` flag) on their next sign-in.
+
+- **Promote-owner endpoint hardened.** `POST /api/admin/platform-owner/promote` now rate-limits by IP (like
+  register/reset) and normalizes the email (trim + lowercase) so a correct-but-miscased address on this break-glass tool
+  no longer 404s.
+
+- **`User.isAdmin()` requires an organization.** Removed the scope-blind "admin somewhere" default (it returned true for
+  nearly everyone); `isAdmin(organizationId)` now answers "admin in this org".
+
+- **RBAC Roles admin page was wired to a dead endpoint.** `RBACRolesPage` called the unregistered `/api/rbac/roles`
+  (404) instead of the real, platform-scoped `/api/admin/roles*`; role definition management now works from the UI.
+
+- **Removed the non-functional Notifications admin page.** It posted to `/api/admin/notifications/{send,system-alert}`,
+  which were never implemented (no notification model/delivery/history — the "history" and stats were hardcoded mocks).
+  Dropped the page, route, and nav entry rather than ship a fake admin surface. A real notifications subsystem can be
+  designed later as a proper feature.
 
 - **Security: closed several `/admin`-adjacent leaks** surfaced during the RBAC audit — app-global blog taxonomy
   (`series`/`categories`/`tags`/`post_tags` + link tables) was writable unauthenticated (now requires `org:admin`);
