@@ -786,8 +786,11 @@ The package includes these core models (in `@ottabase/ottaorm`):
 - **Session** - User sessions
 - **VerificationToken** - Email verification tokens
 - **Authenticator** - WebAuthn/Passkey credentials
-- **Permission**, **Role**, **UserRole** - RBAC primitives (permissions, roles, and the user↔role join table). Full
-  RBAC integration built on top of these lives in [@ottabase/rbac](../rbac/README.md).
+- **Permission**, **Role**, **UserRole** - RBAC primitives (permissions, roles, and the user↔role join table).
+  `Role.ensureDefaultRoles()` creates the built-in system roles (`platform_owner`, `owner`, `admin`, `editor`,
+  `viewer`, `member`) if missing; pass `{ heal: true }` to also reconcile existing system roles back to their
+  canonical permissions (e.g. a legacy `owner` row still carrying the old `*:*` wildcard). Full RBAC integration
+  built on top of these lives in [@ottabase/rbac](../rbac/README.md).
 - **ScheduledTask** - DB-driven cron scheduler ("like Laravel's scheduler"), consumed by
   [@ottabase/cron](../cron/README.md).
 - **Media** - Tracks all uploaded files (images, videos, audio, documents), consumed by
@@ -866,8 +869,10 @@ console.log(membership.get('role')); // 'admin', 'member', etc.
 await OrganizationMember.update(membership.id, { role: 'admin' });
 ```
 
-**Available Roles:** `platform_owner` (system-scoped, `*:*`), `owner` (org-scoped, scoped permissions), `admin`
-(system-scoped, `*:*`), `member` (read-only). **Available Statuses:** `active`, `invited`, `suspended`
+**Available Roles:** `owner`, `admin`, `member` — org-membership roles for this table's `role` field (validated
+`in:owner,admin,member`). These are distinct from the system RBAC roles on the `Role` model (which also include the
+system-scoped `platform_owner`); a `platform_owner` grant lives in `user_roles`, not here. **Available Statuses:**
+`active`, `invited`, `suspended`
 
 **Email-first invites.** A member is either a real user (`userId`) or a pending invite by email (`invitedEmail`, with
 `userId` null) — the same membership shape as `user_group_members`. Invites start `invited`; activate them when the
@@ -886,7 +891,9 @@ await OrganizationMember.addMember({
 // On sign-up / sign-in, claim any pending invites matching this email
 await OrganizationMember.activatePendingInvites(user.id, user.email);
 
-// Accessible org ids for the security context (active memberships + owned orgs)
+// Accessible org ids for the security context (active memberships only — owners get an active
+// owner membership row on org creation, so this already covers them; it does NOT fall back to
+// Organization.ownerId, which would leak access back to a removed owner)
 const orgIds = await OrganizationMember.organizationIdsForUser(user.id);
 ```
 
@@ -1116,9 +1123,15 @@ interface SecurityContext {
     appId?: string;
     roles?: string[];
     permissions?: string[];
+    platformAdmin?: boolean; // scope-aware: true only for a system-scoped platform:admin/*:* grant
     memberOrganizationIds?: string[]; // orgs the user can access
+    memberGroupIds?: string[]; // user_groups the user can access
 }
 ```
+
+`platformAdmin` is what `RLSPolicies.AdminOnly()` / `requirePlatformAdmin` policies check. It must be populated from
+a system-scoped `platform:admin` (or `*:*`) grant — never inferred from a role merely *named* `admin`/`owner`, since
+every self-registered user gets an org-scoped role like that in their own personal org.
 
 > **⚠️ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
 > from raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:

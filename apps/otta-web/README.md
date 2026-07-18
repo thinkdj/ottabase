@@ -152,7 +152,8 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm
 - If `MULTI_TENANT_ENABLED` is true (default), a personal org is created for that first user and linked as owner.
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
 - Manual recovery: `POST /api/admin/platform-owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET`
-  and body `{ "userId": "..." }` or `{ "email": "..." }` to grant the `platform_owner` role.
+  and body `{ "userId": "..." }` or `{ "email": "..." }` to grant the `platform_owner` role. A no-login browser UI over
+  this same endpoint is available at `/__bootstrap__/promote-owner` (secret-gated).
 - Admin APIs now require system-scope platform_owner/admin (org admins remain scoped to their orgs only).
 
 ## Database Setup
@@ -213,7 +214,7 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ### Admin UI
 
-Access brand customization at `/admin/brand-engine/kits/[id]`:
+Access brand customization at `/admin/appearance/brand-kits/:kitId`:
 
 1. **Theme Tab** - Select preset, generate palette, override colors
 2. **Brand Tab** - Name, tagline, parent kit
@@ -333,8 +334,8 @@ apps/otta-web/
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
 - `/dashboard` - Protected route
-- `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
-  image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
+- `/admin/content/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and
+  drag-and-drop image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
 - `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
   own theme: real colors, fonts, radius, and shadows.
 - `/admin/appearance/brand-kits/:kitId` - Brand Kit editor (Brand, Logo, Theme, Fonts, Motion, Cursors, Advanced tabs)

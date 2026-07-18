@@ -294,6 +294,7 @@ if (hasPermission(context, 'posts:edit')) {
 }
 if (hasAnyRole(context, ['admin', 'editor'])) {
 }
+// Permission-based (platform:admin or org:admin, or *:*) — NOT a role-name check like hasAnyRole above
 if (isOwnerOrAdmin(context)) {
 }
 ```
@@ -331,18 +332,22 @@ import { assertAdmin, assertBrandEditAccess } from '@ottabase/rbac/admin-guard';
 
 const context = await getRequestContext(request, env, { cache });
 
-// Require owner/admin role (or *:*) at system or org scope
+// Require org:admin for the org (or platform:admin/*:* for system scope) — permission + scope,
+// never a role NAME; see "Default Roles" below for the platform-admin vs org-admin distinction
 const admin = assertAdmin(context, { scope: 'organization' });
 if (admin instanceof Response) return admin; // 401/403
 const { user, organizationId } = admin;
 
-// Permission-only check (no admin role required) for scoped operations like brand editing
+// Permission check for scoped operations like brand editing — requires the permission from a
+// SYSTEM-scoped grant specifically, so an org admin holding it only org-scoped is still denied
 const access = assertBrandEditAccess(context, { permission: 'brand:edit', organizationId: context.organizationId });
 if (access instanceof Response) return access;
 ```
 
-`requireAdminAccess(buildContext, options)` wraps `getRequestContext` + `assertAdmin` in one call.
-`SYSTEM_ORGANIZATION_ID` marks the system (non-tenant) scope used by system-wide roles.
+`requireAdminAccess(buildContext, options)` wraps `getRequestContext` + `assertAdmin` in one call. For a plain
+boolean instead of a Response-returning gate, `isPlatformAdmin(context)` / `isOrgAdmin(context)` (also exported from
+`@ottabase/rbac`) expose the same two checks directly. `SYSTEM_ORGANIZATION_ID` marks the system (non-tenant) scope
+used by system-scoped grants.
 
 ## Default Roles
 

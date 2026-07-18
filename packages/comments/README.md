@@ -5,8 +5,10 @@ Threaded comment system for Ottabase apps with polymorphic targeting, reactions,
 ## Features
 
 - **Polymorphic targeting** — attach comments to any entity type (post, page, todo, etc.)
-- **Threaded replies** — self-referencing parent/child with depth tracking
-- **Emoji reactions** — per-user reaction map stored as JSON
+- **Threaded replies** — self-referencing parent/child with depth tracking, server-validated against the parent's
+  target and organization
+- **Emoji reactions** — per-user reactions in a dedicated `comment_reactions` table; toggling is an atomic
+  single-row insert/delete rather than a read-modify-write, so concurrent reactors never race
 - **Moderation** — flag, hide, soft-delete, and restore actions
 - **OttaORM fat model** — all logic lives in the `Comment` model class
 - **RLS-aware** — supports `organizationId` and `appId` for multi-tenant isolation
@@ -25,21 +27,36 @@ Use `workspace:*` for internal workspace packages:
 
 ## Schema
 
-| Column           | Type      | Description                                    |
-| ---------------- | --------- | ---------------------------------------------- |
-| `id`             | text (PK) | Auto-generated UUID                            |
-| `body`           | text      | Comment content                                |
-| `targetType`     | text      | Entity type being commented on (e.g. `'post'`) |
-| `targetId`       | text      | ID of the entity being commented on            |
-| `parentId`       | text      | Parent comment ID (null = top-level)           |
-| `userId`         | text      | Author's user ID (nullable for anonymous)      |
-| `status`         | text      | `active` \| `deleted` \| `flagged` \| `hidden` |
-| `reactions`      | json      | `{ "👍": ["userId1", "userId2"] }`             |
-| `depth`          | integer   | Nesting depth (0 = top-level, 1 = reply, etc.) |
-| `appId`          | text      | Multi-app support                              |
-| `organizationId` | text      | Multi-tenant support                           |
-| `createdAt`      | integer   | Unix epoch ms                                  |
-| `updatedAt`      | integer   | Unix epoch ms, auto-updated on save            |
+### `comments`
+
+| Column           | Type      | Description                                                                     |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| `id`             | text (PK) | Auto-generated UUID                                                             |
+| `body`           | text      | Comment content (max 10,000 characters)                                        |
+| `targetType`     | text      | Entity type being commented on (e.g. `'post'`)                                  |
+| `targetId`       | text      | ID of the entity being commented on                                             |
+| `parentId`       | text      | Parent comment ID (null = top-level)                                            |
+| `userId`         | text      | Author's user ID (nullable for anonymous)                                       |
+| `status`         | text      | `active` \| `deleted` \| `flagged` \| `hidden`                                  |
+| `depth`          | integer   | Nesting depth (0 = top-level, 1 = reply, etc.); always server-computed          |
+| `appId`          | text      | Multi-app support                                                               |
+| `organizationId` | text      | Multi-tenant support                                                            |
+| `createdAt`      | integer   | Unix epoch ms                                                                   |
+| `updatedAt`      | integer   | Unix epoch ms, auto-updated on save                                             |
+
+### `comment_reactions`
+
+| Column      | Type      | Description                           |
+| ----------- | --------- | -------------------------------------- |
+| `id`        | text (PK) | Auto-generated UUID                   |
+| `commentId` | text      | The comment this reaction belongs to  |
+| `emoji`     | text      | The emoji reacted with                |
+| `userId`    | text      | The reacting user's ID                |
+| `createdAt` | integer   | Unix epoch ms                         |
+
+One row per `(commentId, emoji, userId)` (unique constraint). This replaces the old `reactions` JSON column on
+`comments` — mutating a shared blob on every toggle could race under concurrent reactors, whereas a dedicated
+row per reaction makes each toggle an atomic single-row insert/delete.
 
 ## Usage
 
@@ -71,13 +88,22 @@ const reply = await Comment.create({
 
 ### Toggling reactions
 
-```typescript
-// Toggle — adds if absent, removes if present
-await comment.toggleReaction('👍', 'user-xyz');
+`toggleReaction` is the only reaction-mutating method on `Comment` — adds the reaction if the user hasn't used
+that emoji on this comment yet, removes it if they have. Under the hood it delegates to the `CommentReaction`
+model, which does a single atomic row delete-or-insert against `comment_reactions` (no read-modify-write on the
+comment itself).
 
-// Add/remove explicitly
-await comment.addReaction('❤️', 'user-xyz');
-await comment.removeReaction('❤️', 'user-xyz');
+```typescript
+const { added } = await comment.toggleReaction('👍', 'user-xyz');
+```
+
+For batch reads (e.g. rendering a list of comments), use `CommentReaction.reactionsFor`, which returns a
+`Map<commentId, ReactionsMap>` in the same `{ "👍": ["userId1", "userId2"] }` shape the old JSON column used:
+
+```typescript
+import { CommentReaction } from '@ottabase/comments';
+
+const reactionsByComment = await CommentReaction.reactionsFor(['comment-1', 'comment-2']);
 ```
 
 ### Moderation actions
@@ -97,13 +123,16 @@ GET /api/ottaorm/comments?where={"targetType":"post","targetId":"post-abc-123","
 GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
 ```
 
-> **Note:** The route handler in `worker/routes/ottaorm-crud.ts` enforces two security rules:
+> **Note:** The route handler in `worker/routes/ottaorm-crud.ts` enforces several security rules:
 >
-> 1. **`userId` / `organizationId`** are always overwritten from the session on POST — clients cannot impersonate other
->    users or cross tenants.
-> 2. **Reactions** are not directly writable via PATCH. Send `_reaction: "<emoji>"` instead; the server calls
->    `comment.toggleReaction(emoji, userId)`, scoping the change to the authenticated user only. Sending a raw
->    `reactions` map in a PATCH body is silently ignored by the OttaORM sanitizer.
+> 1. **`userId` / `organizationId` / `depth`** are always overwritten from the session and server-side computation
+>    on POST — clients cannot impersonate other users, cross tenants, or forge a nesting depth.
+> 2. **Replies validate their parent.** A `parentId` is only accepted when the parent comment exists and belongs
+>    to the exact same `targetType`/`targetId`/`organizationId` as the new comment; otherwise the request is
+>    rejected with 400. This stops a reply from being attached to an unrelated or cross-tenant comment.
+> 3. **Reactions** are not directly writable via PATCH, and the `comment_reactions` model is not exposed via the
+>    generic CRUD endpoint at all (403). Send `_reaction: "<emoji>"` in a comment PATCH instead; the server calls
+>    `comment.toggleReaction(emoji, userId)`, scoping the change to the authenticated user only.
 >
 > RLS uses `TenantScoped` policy to automatically scope reads to the current organization.
 
@@ -111,7 +140,7 @@ GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
 
 ```typescript
 // src/hooks/commentHooks.ts
-import { type CommentRecord } from '@ottabase/comments';
+import { type CommentRecord, type ReactionsMap } from '@ottabase/comments';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
 /** User data attached by the server-side enrichment in ottaorm-crud.ts */
@@ -122,8 +151,8 @@ export interface CommentUser {
     createdAt: number;
 }
 
-/** Comment row enriched with optional user data */
-export type CommentType = CommentRecord & { _user?: CommentUser | null };
+/** Comment row enriched with optional user data and aggregated reactions */
+export type CommentType = CommentRecord & { _user?: CommentUser | null; reactions?: ReactionsMap };
 
 export const {
     useList: useComments,
@@ -142,14 +171,19 @@ const { data: comments } = useComments({
 comments?.forEach((c) => console.log(c._user?.name));
 ```
 
-### User enrichment
+### User & reaction enrichment
 
-When fetching comments via `GET /api/ottaorm/comments`, the CRUD route handler automatically enriches each comment with
-the author's `name`, `image`, and `createdAt` from the User model. The enriched data is available under the `_user`
-property.
+When fetching comments via `GET /api/ottaorm/comments`, the CRUD route handler automatically enriches each comment
+with:
 
-This enables rendering user avatars and "member since" tooltips without extra API calls. The enrichment is a batch
-lookup (`User.whereIn`) — one query regardless of how many unique authors appear in the result set.
+- the author's `name`, `image`, and `createdAt` from the User model, under the `_user` property
+- a `reactions` map (`{ "👍": ["userId1", "userId2"] }`) aggregated from the `comment_reactions` table, under the
+  `reactions` property — note that `CommentRecord` itself no longer has a `reactions` field, since reactions live
+  in their own table now; this enrichment is what puts it back on the API response
+
+Both enrichments are batch lookups (`User.whereIn`, `CommentReaction.reactionsFor`) — one query each regardless of
+how many unique authors or reacted comments appear in the result set, so listing N comments doesn't cost N extra
+queries.
 
 If the User lookup fails, comments are returned normally with `_user: null`.
 
@@ -157,10 +191,14 @@ If the User lookup fails, comments are returned normally with `_user: null`.
 
 When integrating into an app, modify these files:
 
-1. **`ottabase/config.migrations.ts`** — add `commentsTable` to `PACKAGE_REGISTRY`
+1. **`ottabase/config.migrations.ts`** — add `commentsTable` and `commentReactionsTable` (both from
+   `@ottabase/comments`) to `PACKAGE_REGISTRY`
 2. **`ottabase/ottabase.config.ts`** — add `'comments'` to `customPackages`
-3. **`ottabase/db/schema.ts`** — `export { commentsTable } from '@ottabase/comments/schema'`
-4. **`worker/lib/db-utils.ts`** — add `Comment` to the `registerModels` array in `initDbConnection`
+3. **`ottabase/db/schema.ts`** — `export { commentsTable } from '@ottabase/comments/schema'`, plus
+   `export { commentReactionsTable } from '@ottabase/comments'` (the reactions table isn't re-exported from the
+   `/schema` subpath yet, so pull it from the package root instead)
+4. **`worker/lib/db-utils.ts`** — add `Comment` and `CommentReaction` to the `registerModels` array in
+   `initDbConnection`
 
 Then run migrations:
 
@@ -186,13 +224,15 @@ Both modes use the same `CommentThread` renderer which supports:
 
 ## Types
 
-| Type                  | Description                                      |
-| --------------------- | ------------------------------------------------ |
-| `CommentRecord`       | Full row type inferred from `commentsTable`      |
-| `NewCommentRecord`    | Insert type for creating new comments            |
-| `CommentStatus`       | `'active' \| 'deleted' \| 'flagged' \| 'hidden'` |
-| `ReactionsMap`        | `Record<string, string[]>` — emoji → user IDs    |
-| `DefaultReaction`     | Union of the 6 built-in emoji strings            |
-| `CreateCommentParams` | Parameters for creating a comment                |
-| `ListCommentsParams`  | Parameters for listing comments on a target      |
-| `DEFAULT_REACTIONS`   | `['👍', '👎', '❤️', '😂', '😮', '😢']`           |
+| Type                       | Description                                                 |
+| -------------------------- | ------------------------------------------------------------- |
+| `CommentRecord`            | Full row type inferred from `commentsTable` (no `reactions` field — see enrichment above) |
+| `NewCommentRecord`         | Insert type for creating new comments                       |
+| `CommentReactionRecord`    | Full row type inferred from `commentReactionsTable`          |
+| `NewCommentReactionRecord` | Insert type for creating new comment reactions               |
+| `CommentStatus`            | `'active' \| 'deleted' \| 'flagged' \| 'hidden'`             |
+| `ReactionsMap`             | `Record<string, string[]>` — emoji → user IDs                |
+| `DefaultReaction`          | Union of the 6 built-in emoji strings                        |
+| `CreateCommentParams`      | Parameters for creating a comment                             |
+| `ListCommentsParams`       | Parameters for listing comments on a target                   |
+| `DEFAULT_REACTIONS`        | `['👍', '👎', '❤️', '😂', '😮', '😢']`                       |

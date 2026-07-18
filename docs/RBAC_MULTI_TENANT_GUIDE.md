@@ -1,6 +1,6 @@
 # Multi-Tenant RBAC System - Complete Guide
 
-**Last Updated:** 2026-02-03 **Status:** Production Ready ✅ **Architecture:** Tenant > App > User (RBAC)
+**Last Updated:** 2026-07-18 **Status:** Production Ready ✅ **Architecture:** Tenant > App > User (RBAC)
 
 ---
 
@@ -53,10 +53,34 @@ This is why a self-registered user — who receives the RBAC role _named_ `owner
 their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
 system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
 
-**Self-healing system roles:** `Role.ensureDefaultRoles()` reconciles existing `isSystem` role rows to the canonical
-permission sets on every run (it executes during user provisioning), so a role seeded under an older definition — e.g. a
-legacy `owner = ['*:*']` — is corrected automatically without a manual re-seed or DB wipe. Customize by creating NEW
-roles, never by editing system ones.
+**Self-healing system roles:** `Role.ensureDefaultRoles()` takes an optional `heal` flag with two deliberately separate
+modes. By default (`heal` false — used on the user-provisioning/signup hot path) it only **creates roles that are
+missing**; it never rewrites an existing row, so a signup can't silently revert an operator's changes or force a
+session-refresh on every request. With `heal: true` it additionally **reconciles every existing `isSystem` role's
+permissions/description** back to the canonical definitions — e.g. correcting a legacy `owner = ['*:*']` row seeded
+under an older definition — with no manual re-seed or DB wipe. Healing only ever runs from the deliberate
+`/__bootstrap__/seed` maintenance page (below), never automatically on signup; that page also invalidates the RBAC
+cache and refreshes platform-owner sessions so healed permissions take effect immediately. Customize by creating NEW
+roles, never by editing system ones — the admin API (`PATCH /api/admin/roles/:id`) rejects edits to `isSystem` roles,
+and healing would revert an in-place edit anyway.
+
+### Admin Surface: Platform vs Org Pages
+
+The `/admin/*` UI is one shared app split into two capability tiers, driven by one nav config
+(`apps/otta-web/src/ottabase/config/admin-nav.ts`) and enforced by matching route guards
+(`apps/otta-web/src/router.tsx`):
+
+- **Platform pages** (default scope) — Users, Roles & Permissions, Infrastructure, Appearance (brand kits/layouts/
+  menus), Blog Studio/Content Theme, Kill Switches — require the system-scoped `platform:admin` capability
+  (`<ProtectedRoute requirePlatformAdmin>`). These act across every tenant, so only a `platform_owner` (or anyone else
+  holding a system-scoped `platform:admin`/`*:*` grant) can reach them.
+- **Org pages** (`scope: 'org'`) — own Posts/Changelog, Media Library, Organizations, Audit Logs — require `org:admin`
+  for the active organization (`<ProtectedRoute requiredPermissions={['org:admin']}>`). Any org `owner`/`admin` reaches
+  these for their own tenant; a platform owner also passes, since their `*:*` satisfies `org:admin` too.
+
+Each nav item declares its `scope`, defaulting to `'platform'` when omitted (fail-safe: hidden from org admins unless
+explicitly opted in). `getEnabledAdminNav()` filters the sidebar by the caller's capabilities so an org admin sees only
+their own tenant's sections instead of a wall of control-plane links that would 403.
 
 ### Two Modes
 
@@ -185,6 +209,27 @@ http://localhost:5173/admin/security/audit                                 # Aud
 http://localhost:5173/admin/security/rls                                   # RLS Demo Page
 ```
 
+> Pages default to requiring **platform** admin (`platform:admin`, system-scoped); a handful (org's own blog, media,
+> members, org settings, audit) require only **org** admin (`org:admin`) and are also reachable by ordinary org
+> owners/admins. See "Admin Surface: Platform vs Org Pages" above.
+
+### 5. Bootstrap & Recovery Pages
+
+Two secret-gated maintenance pages exist outside normal session auth, for use before any admin can sign in or after a
+framework upgrade:
+
+- **`GET /__bootstrap__/seed`** — a focused "reconcile roles & permissions" UI over `POST /__bootstrap__/api/seed`.
+  Runs `Role.ensureDefaultRoles({ heal: true })` (see Self-healing system roles above) to correct any system-role rows
+  that drifted from an older permission definition, then invalidates the RBAC cache and refreshes platform-owner
+  sessions. Non-destructive and safe to re-run at any time — it only touches the built-in `isSystem` roles, never
+  custom roles or data. Run it once after deploying an upgrade that changes role permissions.
+- **`GET /__bootstrap__/promote-owner`** — a UI over `POST /api/admin/platform-owner/promote` that grants an existing
+  account the system-scoped `platform_owner` role, given the bootstrap secret and a target `userId` or `email`. Use it
+  for ownership transfer, or break-glass recovery when no platform owner can sign in.
+
+Both require the `BOOTSTRAP_OWNER_SECRET` (compared in constant time) and are IP-rate-limited against brute-forcing
+that secret.
+
 ---
 
 ## 💡 Core Concepts
@@ -282,7 +327,8 @@ const roles = await user.roles({
 
 // Wildcards
 '*:read'; // Read all resources
-'*:*'; // Full access (admin)
+'*:*'; // Full access -- reserved for the system-scoped `platform_owner` role; org `owner`/`admin`
+// deliberately do NOT carry this (see "Authorization is permission + scope" above)
 ```
 
 ### Audit Logging
@@ -383,7 +429,24 @@ GET / api / ottaorm / organization_members / member - 123; // member-123 belongs
 // ✅ Either way, a security violation is logged to audit_logs
 ```
 
+### Generic CRUD Is Default-Deny (Allowlist)
+
+`/api/ottaorm/*` (the generic model CRUD route) is a second, independent layer in front of RLS: it only serves an
+explicit **allowlist** of app-data models — posts, media, comments, organizations, blog taxonomy (series/categories/
+tags + link tables), and a demo `todos` table. Every other registered model, including RBAC grant tables
+(`user_roles`, `roles`, `permissions`) and app-global control-plane data (`sessions`, `accounts`, `audit_logs`,
+`menu_slot_assignments`, `ottablog_themes`, …), is refused outright with `CRUD_NOT_ALLOWED` — RLS is never even
+consulted for a model that isn't allowlisted. This replaced an older **denylist** design that repeatedly missed
+sensitive tables as new ones were added (`user_roles`, then `user_group_members`); a newly registered model is now
+closed by default until someone deliberately adds it to the allowlist. Sensitive/system data is managed exclusively
+through dedicated, permission-gated admin routes (`/api/admin/roles`, the org-members/promote endpoints, etc.), never
+through generic CRUD. See `GENERIC_CRUD_ALLOWLIST` in `apps/otta-web/worker/routes/ottaorm-crud.ts`.
+
 ### Scoped Models
+
+The table below is each model's **RLS policy** — what filters apply if a request reaches it. It's independent of the
+allowlist above: `roles`/`permissions`/`user_roles` still carry real RLS policies (`requirePlatformAdmin`, as
+defense-in-depth), but generic CRUD never reaches them regardless, since they aren't on the allowlist.
 
 **Tenant-Scoped (automatic filtering):**
 
@@ -403,9 +466,22 @@ GET / api / ottaorm / organization_members / member - 123; // member-123 belongs
 
 - verification_tokens
 
-**Blocked from generic CRUD entirely:**
+**Blocked from generic CRUD entirely (allowlist, checked before RLS):**
 
 - users - CRUD is disabled outright (403 `CRUD_DISABLED`); use `/api/users/me` for profile access instead
+- roles, permissions, user_roles - RBAC grant tables; manage them via `/api/admin/roles*` and the org-member/promote
+  endpoints instead
+- organization_members - the admin roster endpoints (`/api/admin/organizations/:id/members`) are the only path
+- most other system/control-plane models not in `GENERIC_CRUD_ALLOWLIST` (sessions, accounts, audit_logs,
+  menu_slot_assignments, ottablog_themes, …)
+
+### Role Hierarchy in Org Rosters
+
+Within an organization's own membership management (invite/update-role/remove), only a member holding **OWNER**-level
+membership in that org may grant, modify, or remove another **owner**-level membership — an `admin` can manage
+ordinary members but cannot promote themselves (or anyone else) to `owner`, nor evict an owner. This closes a roster
+takeover where an admin — or, before an earlier fix, even a plain member — could self-promote and lock out the
+founder. See `apps/otta-web/worker/routes/admin-organization-members.ts` (`isOwnerOrAdmin` / role-hierarchy guards).
 
 ### Organization Extraction
 
@@ -1130,8 +1206,18 @@ All system models come with RLS policies out of the box:
 | `sessions`             | User-Scoped               | `userId`                      | No         |
 
 > `organizations` rows don't have an `organizationId` column -- they *are* the organization. Its policy filters by
-> `id` against the caller's resolved membership list (`context.memberOrganizationIds`, owned + member orgs), falling
-> back to `ownerId` when that list isn't available. See `packages/ottaorm/src/rls/registry.ts`.
+> `id` against the caller's resolved membership list (`context.memberOrganizationIds` -- ACTIVE memberships only;
+> owners always hold an active owner membership, so this already covers them without a separate "owned orgs" union).
+> When that list is resolved but empty, access is denied outright -- it does **not** fall back to `ownerId`, since
+> `Organization.ownerId` is stamped at creation and never cleared on removal, and falling back to it would let a
+> removed ex-owner keep reading/writing the org. The `ownerId` fallback only applies when membership is genuinely
+> UNRESOLVED (`undefined` -- e.g. an internal context that never populated it). See
+> `packages/ottaorm/src/rls/registry.ts`.
+
+> This table is the RLS policy layer only. `roles`, `permissions`, `user_roles`, `organization_members`, and `users`
+> are additionally excluded from the generic `/api/ottaorm/*` allowlist (see "Generic CRUD Is Default-Deny" above), so
+> their RLS policy here only matters as defense-in-depth for other call paths (e.g. admin routes reusing `secureCrud`)
+> -- it is never reachable through generic CRUD.
 
 ### Security Context
 

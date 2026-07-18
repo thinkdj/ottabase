@@ -48,7 +48,7 @@ Read the session anywhere else in the worker:
 import { getSession } from '@ottabase/auth/backend';
 
 const session = await getSession(request, env);
-// session: { user: { id, email, name, image, emailVerified, organizationId, roles, permissions, createdAt }, expires } | null
+// session: { user: { id, email, name, image, emailVerified, organizationId, roles, permissions, platformAdmin, createdAt }, expires } | null
 ```
 
 ## Route Table
@@ -90,10 +90,12 @@ These routes already didn't depend on Auth.js and are unaffected by this package
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
 JWT carrying only **identity** claims — `sub`, `jti`, `email`, `name`, `image`, `emailVerified`, `organizationId`,
 `createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`, `exp`. The potentially large / frequently-changing
-**authorization snapshot** (`roles`, `permissions`) is deliberately kept **out of the cookie** and stored in the
-per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no matter how many
-permissions a user has, and revoked roles don't linger in a signed token for the session's whole lifetime.
-`getSession()` merges the identity claims with the snapshot into the returned `user`.
+**authorization snapshot** (`roles`, `permissions`, `platformAdmin`) is deliberately kept **out of the cookie** and
+stored in the per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no
+matter how many permissions a user has, and revoked roles don't linger in a signed token for the session's whole
+lifetime. `getSession()` merges the identity claims with the snapshot into the returned `user`. `platformAdmin` is a
+boolean computed from the user's **system-scoped** grants only (`platform:admin`/`*:*`) — never from a role name or
+an org-scoped grant — so callers can gate platform-only behavior on it directly.
 
 In production the cookie is `Secure` and uses the `__Host-` name prefix (pinned to the host, `Path=/`, no `Domain`) so
 it can't be tossed/shadowed by a sibling subdomain; in an explicit dev environment over plain HTTP the prefix and
