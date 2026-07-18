@@ -10,6 +10,7 @@ Extensible logger for Ottabase with support for multiple transports and formatte
     - File (with rotation)
     - HTTP (buffered)
     - Sentry (error tracking)
+    - Audit (DB-backed, via `@ottabase/ottaorm`)
     - Memory (testing)
     - Multi, Filter, Buffered
 - **Configuration-based setup** for easy environment management
@@ -17,7 +18,8 @@ Extensible logger for Ottabase with support for multiple transports and formatte
 - **Child loggers** with inherited context
 - **TypeScript support** with full type definitions
 - **Multi-environment** - Works in Node.js, Cloudflare Workers, and browsers
-- **Zero runtime dependencies** (peer dependencies for Sentry integration)
+- **No required runtime dependencies for core logging** - Sentry SDKs are optional peer dependencies for the Sentry
+  transport, and `@ottabase/ottaorm` is a dependency used only by the optional `AuditDbTransport`
 
 ## Installation
 
@@ -309,6 +311,40 @@ import { FilterTransport, ConsoleTransport } from '@ottabase/logger/transports';
 
 const filtered = new FilterTransport(new ConsoleTransport(), (entry) => entry.level >= 2); // Only WARN and ERROR
 ```
+
+#### AuditDbTransport
+
+Writes log entries to the `AuditLog` model for persistent, DB-backed audit logging (e.g. tracking who did what, to
+which resource, and what changed). It buffers entries and flushes them in batches, similar to `BufferedTransport`.
+
+```typescript
+import { createLogger } from '@ottabase/logger';
+import { AuditDbTransport } from '@ottabase/logger/audit-transport';
+
+const auditTransport = new AuditDbTransport({
+    getUserContext: () => ({ userId: 'user-123', userEmail: 'user@example.com' }),
+    getRequestContext: () => ({ ipAddress: '127.0.0.1', userAgent: 'Mozilla/5.0' }),
+    minLevel: 1, // Only audit INFO and above (default)
+    bufferSize: 10,
+    flushInterval: 5000,
+});
+
+const logger = createLogger({
+    transports: [auditTransport],
+});
+
+logger.info('User updated', {
+    action: 'update',
+    resourceType: 'user',
+    resourceId: 'user-123',
+    changes: { name: { from: 'Old', to: 'New' } },
+});
+```
+
+**Note:** This transport dynamically imports `@ottabase/ottaorm` and writes through its `AuditLog` model, so it only
+works where ottaorm is set up and has registered a `'default'` connection on `globalThis.__OTTAORM_CONNECTIONS__`. If
+no connection is registered (e.g. in tests, or apps that don't use ottaorm), it silently skips writing instead of
+throwing.
 
 ### Formatters
 

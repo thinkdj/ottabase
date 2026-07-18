@@ -324,6 +324,8 @@ function MyDatePicker({ value, onChange }) {
 - **Preset mode is opt-in.** Pass `presets` to `createDateRangePicker` to enable the sidebar + Apply/Cancel footer.
   Without it, the picker auto-applies on selection (classic mode). This is fully backward-compatible.
 - **Inline mode disables close.** When `inline: true`, `open()` / `close()` are no-ops; the calendar is always rendered.
-- **Popover positioning.** The popover uses `position: absolute` relative to the picker root. Ensure the parent
+- **Popover positioning.** `DatePicker` and `DateTimePicker` popovers use `position: fixed` with viewport clamping, so
+  no relatively-positioned ancestor is needed for those two. `DateRangePicker`, `FuzzyDateTimePicker`, and
+  `FuzzyDateTimeCompact` use `position: absolute` relative to the picker root — for those, ensure the parent
   container has `position: relative` or uses normal flow.
 - **No keyboard navigation (yet).** Focus management and arrow-key navigation are planned for a future release.

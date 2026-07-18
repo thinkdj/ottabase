@@ -62,13 +62,13 @@ import { resolveLayoutForPath } from '@ottabase/ottalayout';
 import type { RouteMapping } from '@ottabase/ottalayout';
 
 const mappings: RouteMapping[] = [
-    { pathPattern: '/admin/**', layoutPresetId: 'app-shell', priority: 10 },
-    { pathPattern: '/docs/**', layoutPresetId: 'docs', priority: 10 },
-    { pathPattern: '/**', layoutPresetId: 'homepage', priority: 0 },
+    { pathPattern: '/admin/**', layoutTemplateId: 'app-shell', priority: 10 },
+    { pathPattern: '/docs/**', layoutTemplateId: 'docs', priority: 10 },
+    { pathPattern: '/**', layoutTemplateId: 'homepage', priority: 0 },
 ];
 
-const config = resolveLayoutForPath('/admin/users', mappings);
-// → APP_SHELL_LAYOUT.config
+const layoutTemplateId = resolveLayoutForPath('/admin/users', mappings);
+// → 'app-shell' (or null if nothing matches)
 ```
 
 ### Validators & Merge
@@ -92,9 +92,9 @@ Tailwind-friendly class helpers for layout dimensions:
 ```typescript
 import { contentWidthClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 
-contentWidthClass('lg'); // 'max-w-screen-lg'
-densityPadding('compact'); // 'p-2'
-sidebarWidthClass('wide'); // 'w-72'
+contentWidthClass('lg'); // 'max-w-7xl'
+densityPadding('compact'); // 'py-4'
+sidebarWidthClass('wide'); // 'w-80'
 ```
 
 ### React: Slots
@@ -131,23 +131,27 @@ function DashboardPage() {
 
 ### React: Layout Meta
 
-Pages can declare layout hints (title, breadcrumbs) via context:
+Pages can override structural layout config for their own route (e.g. hide navigation, center content, narrow the
+width) via context — this is not page metadata like a title or breadcrumbs, it's a partial `LayoutConfig`:
 
 ```tsx
-import { LayoutMetaProvider, useLayoutMeta } from '@ottabase/ottalayout/react';
+import { LayoutMetaProvider, useLayoutMeta, useResolvedLayoutMeta } from '@ottabase/ottalayout/react';
+import { mergeLayoutConfig } from '@ottabase/ottalayout';
 
 // Wrap your app:
 <LayoutMetaProvider>
     <App />
 </LayoutMetaProvider>;
 
-// In a page — set meta:
-const { setMeta } = useLayoutMeta();
-setMeta({ title: 'Settings', breadcrumbs: ['Home', 'Settings'] });
+// In a page — set overrides (applied on mount, cleared on unmount):
+function LoginPage() {
+    useLayoutMeta({ navigation: 'none', centerContent: true, contentWidth: 'xs' });
+    return <LoginForm />;
+}
 
-// In the layout shell — read meta:
-const { meta } = useLayoutMeta();
-// → { title: 'Settings', breadcrumbs: ['Home', 'Settings'] }
+// In the layout shell — read the current overrides and merge with the route config:
+const overrides = useResolvedLayoutMeta();
+const effective = mergeLayoutConfig(overrides, routeConfig);
 ```
 
 ### Menu Slots

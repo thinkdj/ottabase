@@ -7,7 +7,8 @@ applications with WebSocket support, offline message queuing, and TypeScript-fir
 
 - **Real-time WebSocket connections** with auto-reconnect
 - **Channel-based pub/sub** (subscribe to `org-1201`, `user-22`, `system`, etc.)
-- **Offline message queuing** — messages are delivered when clients reconnect
+- **Offline message queuing** — messages sent with `persistForOffline` are queued for clients that are subscribed
+  *at send time*; delivery on reconnect currently requires a stable `clientId` (see caveats below)
 - **TypeScript-first** with full type safety
 - **Powered by Cloudflare Durable Objects** for global scale
 - **Pusher-like API** for easy migration
@@ -155,7 +156,8 @@ import { RealtimeClient } from '@ottabase/cf-realtime';
 // Create client
 const client = new RealtimeClient({
     url: 'wss://your-worker.workers.dev/realtime',
-    clientId: 'user-123', // Optional, auto-generated if not provided
+    clientId: 'user-123', // Optional, but see "Offline Message Queuing" below — a stable clientId is required
+    // for offline delivery to work across a real disconnect (page reload, browser close, etc.)
     autoReconnect: true,
     debug: true,
 });
@@ -277,7 +279,8 @@ client.subscribe('chat:room:456', handler);
 
 ## Offline Message Queuing
 
-Messages can be queued for offline clients and delivered when they reconnect:
+Messages sent with `persistForOffline: true` are queued and redelivered when a client reconnects and
+re-subscribes to the channel:
 
 ```typescript
 // Server-side: Send message with offline persistence
@@ -307,6 +310,22 @@ client.subscribe('system-update', (event, data, metadata) => {
     }
 });
 ```
+
+> **Current limitations:**
+>
+> - **A stable `clientId` is required.** The default auto-generated `clientId` (`client-${Date.now()}-${random}`)
+>   is different on every new `RealtimeClient` instance, so it will not match across a page reload, browser
+>   restart, or app relaunch. If you want offline messages to have any chance of reaching a client again, generate
+>   a `clientId` yourself (e.g. from your user/session ID) and pass it in explicitly, so it stays the same across
+>   reconnects.
+> - **Messages are only queued for clients connected at send time.** `RealtimeActor` tracks offline recipients by
+>   walking its in-memory list of currently-known clients (`clientInfo`) and checking which of them were
+>   subscribed to the target channel — but a client's entry is removed from that list as soon as it disconnects.
+>   In practice this means a genuinely offline client (disconnected before the message is sent) will **not**
+>   receive the message on reconnect; only clients that are still connected (e.g. subscribed to a different tab,
+>   or briefly dropped and reconnected before cleanup) benefit today. The package's own source flags this as a
+>   simplified implementation that doesn't yet track per-user offline state. Treat this feature as
+>   best-effort/in-progress rather than a guaranteed delivery mechanism.
 
 ## API Reference
 
@@ -363,12 +382,16 @@ interface ClientConfig {
 
 ### Server Configuration
 
+`RealtimeActor` defines a `ServerConfig` shape internally, but it is **not currently configurable** — the
+constructor takes only `(state, env)` and always hardcodes these values; there is no constructor option, setter,
+or environment variable to override them today:
+
 ```typescript
 interface ServerConfig {
-    maxConnectionsPerChannel?: number; // Max connections per channel (default: 1000)
-    offlineMessageTTL?: number; // Default TTL for offline messages in seconds (default: 86400)
-    maxOfflineMessages?: number; // Max messages to queue per client (default: 100)
-    enablePersistence?: boolean; // Enable offline message persistence (default: true)
+    maxConnectionsPerChannel?: number; // Max connections per channel (fixed at: 1000)
+    offlineMessageTTL?: number; // Default TTL for offline messages in seconds (fixed at: 86400)
+    maxOfflineMessages?: number; // Max messages to queue per client (fixed at: 100)
+    enablePersistence?: boolean; // Enable offline message persistence (fixed at: true)
 }
 ```
 

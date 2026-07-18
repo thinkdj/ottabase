@@ -171,6 +171,44 @@ queue = "low-priority-queue"
 binding = "LOW_PRIORITY_QUEUE"
 ```
 
+## Adapters
+
+Queue backends are abstracted behind a `QueueAdapter` interface (`send` / `sendBatch`). When you configure a dispatcher
+with `queue` or `priorityQueues`, a `CloudflareAdapter` is created for you automatically—Cloudflare Queues is just the
+default backend, not the only one. To plug in a different backend (Redis, SQS, etc.), pass an `adapter` directly instead:
+
+```ts
+import { createDispatcher } from '@ottabase/queue';
+import { createCloudflareAdapter } from '@ottabase/queue/adapters';
+
+const dispatcher = createDispatcher({
+    adapter: createCloudflareAdapter({ queue: env.MY_QUEUE }), // equivalent to passing `queue` directly
+});
+```
+
+Implement `QueueAdapter` to support other backends:
+
+```ts
+import type { QueueAdapter } from '@ottabase/queue/adapters';
+
+class RedisAdapter implements QueueAdapter {
+    readonly name = 'redis';
+
+    async send(job, options) {
+        // push job onto a Redis/BullMQ queue
+    }
+
+    async sendBatch(messages) {
+        // bulk push
+    }
+}
+
+const dispatcher = createDispatcher({ adapter: new RedisAdapter() });
+```
+
+The `@ottabase/queue/adapters` entry point exports the `QueueAdapter` interface (and supporting types like
+`SendOptions`/`QueueMessage`) plus the built-in `CloudflareAdapter` / `createCloudflareAdapter`.
+
 ## Lifecycle Hooks
 
 ```ts

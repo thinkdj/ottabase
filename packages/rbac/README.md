@@ -9,6 +9,7 @@ Production-ready Role-Based Access Control with multi-tenant support and optimiz
 - **Two-level caching** - Request + Cloudflare KV
 - **Per-org cache versioning** - O(1) cache invalidation
 - **App context support** - Tenant > App > User hierarchy
+- **Route guards & middleware** - `withRBAC` for Next.js/Worker routes, plus request-context and admin-guard helpers for API handlers
 - **Type-safe** - Full TypeScript support
 - **Zero DB queries on cache hits**
 
@@ -25,12 +26,14 @@ pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
 ```bash
 # Run migration (auto-applied or manual)
 curl -X POST http://localhost:3004/api/ottaorm/init
-
-# Seed default roles
-pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
 Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`
+
+The default roles/permissions seed logic (`seedRoles`, `seedPermissions`, or the combined `seedRBAC`) lives in
+`packages/ottaorm/src/seed/rbac.ts`, but it isn't wired to a pnpm script or CLI yet. Until that's added, seed manually
+by running that module directly or by creating roles yourself via `Role.create()` (see
+[Default Roles](#default-roles) below).
 
 ### 2. Initialize Cache
 
@@ -193,11 +196,11 @@ await cache.invalidateOrganization('org-123');
 ### Manual Cache Control
 
 ```typescript
-// Invalidate specific user
-await cache.invalidateUser('user-id');
+// Invalidate specific user (org-scoped)
+await cache.invalidateUser('user-id', 'org-123');
 
-// Invalidate all users with role (after permission changes)
-await cache.invalidateRole('admin');
+// Invalidate all cached data for an org (e.g. after bulk role/permission changes) - O(1)
+await cache.invalidateOrganization('org-123');
 
 // Clear entire cache
 await cache.clear();
@@ -294,6 +297,52 @@ if (hasAnyRole(context, ['admin', 'editor'])) {
 if (isOwnerOrAdmin(context)) {
 }
 ```
+
+## Middleware & Route Guards
+
+Beyond the App Context helpers above, `@ottabase/rbac` ships a middleware layer for guarding Next.js/Worker API
+routes directly, plus request-context and admin-guard utilities for building custom handlers.
+
+### `withRBAC` (Next.js / Worker routes)
+
+```typescript
+import { withRBAC } from '@ottabase/rbac/middleware';
+
+export const GET = withRBAC(
+    async (request, context) => {
+        return Response.json({ success: true });
+    },
+    { permissions: ['users:read'] }, // or { roles: ['admin'] }
+);
+// Returns 401 if unauthenticated, 403 if the permission/role check fails
+```
+
+For ad-hoc checks (throws `RBACError` instead of returning a Response), use `checkPermission` / `checkRole`, or the
+`requirePermission` / `requireRole` method decorators — all exported from `@ottabase/rbac/middleware`.
+
+### Request Context & Admin Guards
+
+`getRequestContext` builds a full `RequestContext` (session user, resolved organization, merged system + org-scoped
+roles/permissions) straight from a `Request`/`env`, resolving the org from session, header, query param, or subdomain:
+
+```typescript
+import { getRequestContext, SYSTEM_ORGANIZATION_ID } from '@ottabase/rbac/request-context';
+import { assertAdmin, assertBrandEditAccess } from '@ottabase/rbac/admin-guard';
+
+const context = await getRequestContext(request, env, { cache });
+
+// Require owner/admin role (or *:*) at system or org scope
+const admin = assertAdmin(context, { scope: 'organization' });
+if (admin instanceof Response) return admin; // 401/403
+const { user, organizationId } = admin;
+
+// Permission-only check (no admin role required) for scoped operations like brand editing
+const access = assertBrandEditAccess(context, { permission: 'brand:edit', organizationId: context.organizationId });
+if (access instanceof Response) return access;
+```
+
+`requireAdminAccess(buildContext, options)` wraps `getRequestContext` + `assertAdmin` in one call.
+`SYSTEM_ORGANIZATION_ID` marks the system (non-tenant) scope used by system-wide roles.
 
 ## Default Roles
 

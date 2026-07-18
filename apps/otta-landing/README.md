@@ -65,11 +65,16 @@ components/
     │   ├── NavbarDefault.tsx   # Logo left, links right (default)
     │   ├── NavbarCentered.tsx  # Centred links
     │   └── NavbarMinimal.tsx   # Logo + dark-mode only
-    └── footer/
-        ├── types.ts            # FooterData contract
-        ├── FooterDefault.tsx   # Copyright + links row (default)
-        ├── FooterMinimal.tsx   # Single-line copyright
-        └── FooterColumns.tsx   # Multi-column with grouped links
+    ├── footer/
+    │   ├── types.ts            # FooterData contract
+    │   ├── FooterDefault.tsx   # Copyright + links row (default)
+    │   ├── FooterMinimal.tsx   # Single-line copyright
+    │   └── FooterColumns.tsx   # Multi-column with grouped links
+    └── about/
+        ├── types.ts            # AboutData contract
+        ├── AboutDefault.tsx    # Full-length content with features, steps, CTA (default)
+        ├── AboutMinimal.tsx    # Concise single-section overview
+        └── AboutDetailed.tsx   # Card-based layout with tech-stack badges
 lib/
 ├── brand-server.ts             # Server-side brand/theme utilities
 ├── homepage-config.ts          # Slot registry, types, localStorage persistence
@@ -81,20 +86,22 @@ __tests__/                      # Vitest test suite (77 tests)
 
 ## Slot Framework
 
-The homepage is built around an extensible **slot framework** that separates data from rendering. Each section of the
-page (hero, features, CTA, navbar, footer) is a **slot** with multiple **variant** components. All variants for a slot
-accept the same data props — you write your content data once and switch the visual presentation via config.
+The homepage (and the About page) is built around an extensible **slot framework** that separates data from
+rendering. Each section (hero, features, CTA, navbar, footer, about) is a **slot** with multiple **variant**
+components. All variants for a slot accept the same data props — you write your content data once and switch the
+visual presentation via config.
 
 ### Architecture
 
 ```text
                                 ┌──────────────────────┐
    lib/homepage-config.ts ─────▶│    SLOT_REGISTRY     │
-   (slot definitions,           │  navbar: 3 variants  │
-    variant metadata,           │  hero:   3 variants  │
+   (slot definitions,           │  navbar:   3 variants│
+    variant metadata,           │  hero:     3 variants│
     localStorage persist)       │  features: 3 variants│
-                                │  cta:    3 variants  │
-                                │  footer: 3 variants  │
+                                │  cta:      3 variants│
+                                │  footer:   3 variants│
+                                │  about:    3 variants│
                                 └──────────┬───────────┘
                                            │
    lib/homepage-config-context.tsx ────────▶│ React Context

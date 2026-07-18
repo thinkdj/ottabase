@@ -6,16 +6,21 @@ Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in rende
 > `@ottabase/brand-engine`. Ottamenu provides the shared types (`MenuItemDto`, `MenuRenderType`) and React renderers
 > that consume them.
 
+> **Peer dependencies**: `react` and `@tanstack/react-router`. Every renderer routes internal links through the
+> internal `MenuItemLink` component, which renders TanStack Router's `<Link>`. This means `renderMenu`,
+> `MenuRenderer`, every individual renderer, and `MenuSlotRenderer` must be mounted inside an active TanStack Router
+> context (e.g. within a `RouterProvider`/route tree) or they will error at runtime.
+
 ## Render Types
 
-| Type       | Description                                      | Use Case                                |
-| ---------- | ------------------------------------------------ | --------------------------------------- |
-| `sidebar`  | Vertical link list with nested indentation       | App sidebars, settings nav              |
-| `flyout`   | Compact popover-style dropdown                   | Context menus, quick actions            |
-| `mega`     | Multi-column dropdown with images & descriptions | Site headers (Anthropic / GitHub style) |
-| `navbar`   | Horizontal nav bar with single-column dropdowns  | Top navigation bars                     |
-| `dropdown` | Simple single-column list with optional images   | Action menus, compact dropdowns         |
-| `footer`   | Multi-column footer layout                       | Site footers                            |
+| Type       | Description                                                         | Use Case                                |
+| ---------- | -------------------------------------------------------------------- | --------------------------------------- |
+| `sidebar`  | Vertical link list with nested indentation                          | App sidebars, settings nav              |
+| `flyout`   | Compact popover-style dropdown                                      | Context menus, quick actions            |
+| `mega`     | Multi-column dropdown with images & descriptions                    | Site headers (Anthropic / GitHub style) |
+| `navbar`   | Horizontal nav bar with single-column dropdowns                     | Top navigation bars                     |
+| `dropdown` | Simple single-column list with optional images                      | Action menus, compact dropdowns         |
+| `footer`   | Flat, single-level wrapped row (top-level items only, no children)  | Site footers                            |
 
 ## Features
 
@@ -25,8 +30,13 @@ Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in rende
 - **Auth filtering**: `authRequired` items hidden when user is not authenticated
 - **Active state**: Automatic active-link highlighting via pathname matching
 - **Menu slots**: `MenuSlotRenderer` renders menus assigned to named layout slots via brand API data
+- **Styling**: Renderers use Tailwind utility classes built on shadcn/ui-style design tokens (`bg-accent`,
+  `text-accent-foreground`, `text-muted-foreground`, `bg-popover`, `border-muted`, etc.) — the consuming app's
+  Tailwind theme must define these tokens or menus will render unstyled
 
 ## Quick Start
+
+Renderers must be mounted inside an active TanStack Router context — internal links render via `@tanstack/react-router`'s `<Link>`.
 
 ```tsx
 import { renderMenu } from '@ottabase/ottamenu';

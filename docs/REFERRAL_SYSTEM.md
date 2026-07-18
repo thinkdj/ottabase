@@ -34,11 +34,12 @@ an OttaORM model, and template-app UI (tracker, dashboard, registration).
 
 - First-touch attribution (first valid referral code wins for the configured window)
 - Configurable expiry for stored referral codes (default: 90 days)
-- Click tracking with request metadata (IP, user agent, UTM, referer) when enabled
-- Conversion path from pending tracking to completed on signup
+- Click tracking to Cloudflare Analytics Engine (country, user agent, referer, UTM) when enabled, queryable via a
+  dedicated analytics endpoint and dashboard tab
+- Conversion tracking: on signup, a `referral_tracking` row is created directly in D1 as `completed`
 - User-managed referral usernames
 - Dashboard with stats and activity
-- REST API for tracking, stats, username updates, and listing records
+- REST API for tracking, stats, username updates, listing records, and click analytics
 
 ---
 
@@ -56,13 +57,15 @@ flowchart TD
     F --> G["POST credentials + referralCode from storage"]
     G --> H["worker/routes/auth.ts"]
     H --> I["processReferralAttribution"]
-    I --> J[Update user referredById and mark tracking completed]
+    I --> J["Update user referredById and create completed referral_tracking row"]
 
 ```
 
 **Storage model**
 
-- **D1**: users (referral fields), `referral_tracking` rows for clicks and conversions
+- **D1**: users (referral fields), `referral_tracking` rows for conversions (created at signup)
+- **Cloudflare Analytics Engine** (`OBCF_ANALYTICS_REFERRALS` binding): click events (country, user agent, referer,
+  UTM), queried via `GET /api/referrals/analytics`. Clicks are not written to D1.
 - **localStorage**: short-lived referral code and timestamp (no KV required for the default template)
 
 ---
@@ -81,6 +84,7 @@ flowchart TD
 | Layout mount                        | `ConfigurableLayout` / `BrandLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`) |
 | Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                              |
 | Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                               |
+| Click analytics UI                  | `apps/otta-web/src/pages/analytics/AnalyticsPage.tsx` (`ReferralAnalyticsTab`, at `/analytics?tab=referrals`, linked from `/referrals`) |
 | App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)           |
 | Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                     |
 | Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)          |
@@ -113,11 +117,17 @@ Conceptual fields:
 | `status`                            | `pending`, `completed`, or `invalid`       |
 | `ipAddress`, `userAgent`, `referer` | Request context                            |
 | `meta`                              | JSON (e.g. UTM payload)                    |
-| `createdAt`                         | Click time                                 |
+| `createdAt`                         | Row creation time                          |
 | `conversionAt`                      | Set on successful signup attribution       |
 
 Indexes should support lookups by `userId`, `referralCode`, `status`, and `referredUserId` (see package schema for exact
 definitions).
+
+In the current template, the only code path that creates a `referral_tracking` row is signup attribution
+(`processReferralAttribution`), which inserts a row directly with `status: 'completed'` — clicks themselves are not
+persisted to D1 (see [Storage model](#architecture)). The `pending` and `invalid` statuses, and the model's
+`findPendingByCode` / `markInvalid` helpers, are part of the schema and model API but are not exercised by any current
+route; they remain available if you wire up D1-backed click tracking yourself.
 
 ---
 
@@ -127,7 +137,10 @@ Handlers live under the template app worker; paths below are relative to the wor
 
 ### `POST /api/referrals/track`
 
-Records a click when click tracking is enabled.
+Records a click when click tracking is enabled. Validates the referral username against D1, then (if the
+`OBCF_ANALYTICS_REFERRALS` binding is configured) emits a click event to Cloudflare Analytics Engine — country, user
+agent, referer, referrer user id, and UTM fields. It does **not** write a `referral_tracking` row to D1; there is no
+D1 record for an individual click.
 
 **Request body (JSON)**
 
@@ -146,10 +159,16 @@ Records a click when click tracking is enabled.
 
 **Responses**
 
-- `200` — tracking row created
-- `404` — unknown referral username (no row created)
+- `200` — referral code validated; click event recorded to Analytics Engine (no D1 row)
+- `404` — unknown referral username
 
-Server enriches IP and user agent from the incoming request where applicable.
+### `GET /api/referrals/analytics?referralCode=&days=&groupBy=`
+
+Queries Cloudflare Analytics Engine for click-level data (dataset `referral_clicks`). Requires a session (or dev
+environment) plus `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_API_TOKEN` and the `OBCF_ANALYTICS_REFERRALS`
+binding; returns `503` if analytics isn't configured. `groupBy` is one of `country` (default), `referralCode`, or
+`day`; `days` is clamped to 1–90 (default 7). This is the source of click analytics — see [Client
+implementation](#client-implementation) for the corresponding dashboard tab.
 
 ### `GET /api/referrals/stats?userId={userId}`
 
@@ -240,7 +259,13 @@ You normally do **not** add the tracker to `router.tsx` manually unless you use 
 ### Dashboard
 
 Protected UI: `ReferralDashboard` on `ReferralsPage` (`/referrals`). Shows stats, username editor, share link, and
-recent activity.
+recent activity (from D1, via `GET /api/referrals/user` / `/tracking`).
+
+### Click analytics
+
+`ReferralAnalyticsTab`, one of the tabs on `AnalyticsPage` (`/analytics`, linked from `/referrals`), calls
+`GET /api/referrals/analytics` to show clicks by country, referral code, or day. This is Analytics Engine data — it
+reflects click volume, not the D1 conversion rows shown on the dashboard.
 
 ### Utilities (`src/lib/referrals.ts`)
 
@@ -264,7 +289,8 @@ Responsibilities:
 1. Ignore empty or invalid codes
 2. Resolve referrer by `referralUsername`
 3. Set `referredById` on the new user
-4. Create or update `ReferralTracking` as **completed** with full context
+4. Create a new `ReferralTracking` row directly as **completed**, with full context (ip/user agent/referer/meta) —
+   there is no prior `pending` row to update
 5. Reject self-referral
 
 ### `ReferralTracking` model (`@ottabase/referrals`)
@@ -331,8 +357,9 @@ Invalid codes do not persist; the track endpoint returns an error and nothing is
 
 ### Username changes
 
-Old links stop resolving to the user; pending rows tied to the old code may not convert. Completed rows keep historical
-data. The dashboard should warn when changing username.
+Old links stop resolving to the user, so referrals via the old code will fail attribution going forward. Completed
+`referral_tracking` rows and Analytics Engine click history keep the old `referralCode` snapshot and are not
+retroactively updated. The dashboard should warn when changing username.
 
 ---
 
@@ -343,8 +370,9 @@ data. The dashboard should warn when changing username.
 - [ ] Visit with `?ref=` valid username → code stored, URL cleaned
 - [ ] Second visit with different `?ref=` → first code still wins
 - [ ] Confirm localStorage keys and timestamps
-- [ ] With `trackClicks: true`, pending row in D1
-- [ ] Register → `referredById` set, tracking row completed
+- [ ] With `trackClicks: true`, `POST /api/referrals/track` returns `200` and a click event shows up in
+      `GET /api/referrals/analytics` (Analytics Engine only writes on the deployed edge, not `localhost`)
+- [ ] Register → `referredById` set, completed `referral_tracking` row created in D1
 - [ ] Dashboard stats and list match expectations
 - [ ] Username update validates and persists
 - [ ] Invalid code → no storage / API error as designed

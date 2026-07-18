@@ -4,19 +4,26 @@ Audit logging for multi-tenant applications with RBAC context integration.
 
 ## Features
 
-- **Multi-tenant support** - Organization + App context tracking
+- **Multi-tenant support** - Organization + App context tracking via `logAudit()`
 - **RBAC integration** - Automatic context from @ottabase/rbac
 - **Change tracking** - Before/after value capture
 - **Request metadata** - IP, user agent, URL, method
 - **Database persistence** - Auto-save to audit_logs table
 - **Structured logging** - Uses @ottabase/logger
 - **Compliance ready** - Queryable audit trail
+- **Route middleware** - Auto-log Next.js/Workers API handlers with `withAudit()`, or annotate class methods with the `@Audit` decorator
 
 ## Installation
 
 ```bash
 pnpm add @ottabase/audit @ottabase/ottaorm @ottabase/logger
 ```
+
+## Entry Points
+
+- `@ottabase/audit` - everything below (utils + middleware)
+- `@ottabase/audit/utils` - logging utilities only (`log`, `logAudit`, `logCreate`, etc.)
+- `@ottabase/audit/middleware` - `withAudit`, `createAuditMiddleware`, and the `@Audit` decorator for auto-logging API routes/handlers
 
 ## Quick Start
 
@@ -54,8 +61,6 @@ import { logCreate, logUpdate, logDelete } from '@ottabase/audit';
 await logCreate('post', postId, postData, {
     userId: currentUser.id,
     userEmail: currentUser.email,
-    organizationId: 'org-123', // Multi-tenant context
-    appId: 'web', // App context
     ipAddress: request.headers.get('cf-connecting-ip'),
     userAgent: request.headers.get('user-agent'),
 });
@@ -75,11 +80,13 @@ await logUpdate(
 await logDelete('post', postId, context);
 ```
 
+> **Note:** `logCreate`, `logUpdate`, `logDelete`, `logRead`, `logAuth`, `logRoleAssign`, `logRoleRemove`, and `logFailure` only forward `userId`, `userEmail`, `ipAddress`, `userAgent`, `url`, and `method` from the `context` you pass them — they do **not** persist `organizationId` or `appId`. For multi-tenant records, call `logAudit(data)` directly with a full `AuditLogData` object, as shown next.
+
 ### 3. RBAC Integration
 
 ```typescript
 import { buildAppContext, createAuditData } from '@ottabase/rbac';
-import { logCreate } from '@ottabase/audit';
+import { logAudit } from '@ottabase/audit';
 
 // Build RBAC context
 const context = await buildAppContext({
@@ -91,16 +98,18 @@ const context = await buildAppContext({
     userAgent: request.headers.get('user-agent'),
 });
 
-// Create audit data from RBAC context
+// Create audit data from RBAC context (includes organizationId + appId)
 const auditData = createAuditData(context, 'create', 'organization', orgId, { name: 'Acme Corp' });
 
-// Log with full context
-await logCreate('organization', orgId, orgData, auditData);
+// Log with full multi-tenant context
+await logAudit(auditData);
 ```
 
 ## Multi-Tenant Architecture
 
 ### Context Structure
+
+`AuditLogData` is the full record persisted by `logAudit()` — the low-level function used above for multi-tenant logging. It's also the shape returned by `@ottabase/rbac`'s `createAuditData()`.
 
 ```typescript
 interface AuditLogData {
@@ -131,7 +140,7 @@ const orgLogs = await AuditLog.where(
         organizationId: 'org-123',
     },
     {
-        orderBy: 'timestamp',
+        orderBy: 'createdAt',
         orderDirection: 'desc',
         limit: 100,
     },
@@ -182,6 +191,22 @@ const postChanges = await AuditLog.where({
 
 ### Core Functions
 
+#### `logAudit(data)`
+
+Low-level logging function — persists a complete `AuditLogData` object directly, including `organizationId` and `appId`. All other functions in this section are convenience wrappers around it; use `logAudit` directly whenever you need full multi-tenant context:
+
+```typescript
+await logAudit({
+    userId: user.id,
+    organizationId: 'org-123',
+    appId: 'web',
+    action: 'create',
+    resourceType: 'organization',
+    resourceId: orgId,
+    changes: { name: 'Acme Corp' },
+});
+```
+
 #### `log(userId, action, metadata?, userEmail?)`
 
 Simple audit logging:
@@ -204,8 +229,7 @@ await logCreate(
     },
     {
         userId: user.id,
-        organizationId: org.id,
-        appId: 'web',
+        userEmail: user.email,
     },
 );
 ```
@@ -325,13 +349,57 @@ const safe = sanitizeData({ name: 'John', password: 'secret123', apiKey: 'key' }
 // { name: 'John', password: '[REDACTED]', apiKey: '[REDACTED]' }
 ```
 
+### Middleware Functions
+
+Imported from `@ottabase/audit/middleware` (Next.js / Cloudflare Workers).
+
+#### `withAudit(handler, options)`
+
+Higher-order wrapper for API route handlers. Calls the handler, then logs the request as a success or failure (via `logAudit`/`logFailure`), inferring the action from the HTTP method unless `options.action` is set:
+
+```typescript
+import { withAudit } from '@ottabase/audit/middleware';
+
+export const POST = withAudit(
+    async (request) => {
+        // Your handler code
+        return Response.json({ success: true });
+    },
+    {
+        resourceType: 'user',
+        action: 'create',
+        getResourceId: async (req) => {
+            const body = await req.json();
+            return body.id;
+        },
+    },
+);
+```
+
+#### `createAuditMiddleware(defaultOptions)`
+
+Factory that returns a `withAudit`-like wrapper pre-configured with default options, useful for sharing `resourceType`/`action` defaults across routes.
+
+#### `Audit(options)`
+
+Method decorator that logs success/failure around a class method, assuming the first argument carries `user`/`resourceId` context:
+
+```typescript
+class OrganizationService {
+    @Audit({ resourceType: 'organization', action: 'update' })
+    async updateOrganization(context, orgId, data) {
+        // ...
+    }
+}
+```
+
 ## Integration Examples
 
 ### With RBAC Context
 
 ```typescript
 import { buildAppContext } from '@ottabase/rbac';
-import { logUpdate } from '@ottabase/audit';
+import { logAudit } from '@ottabase/audit';
 
 // Build context from request
 const context = await buildAppContext({
@@ -347,22 +415,21 @@ const context = await buildAppContext({
 const old = await Resource.find(resourceId);
 await Resource.update(resourceId, newData);
 
-// Log with full context
-await logUpdate(
-    'resource',
+// Log with full multi-tenant context (logUpdate would drop organizationId/appId)
+await logAudit({
+    userId: context.userId,
+    userEmail: context.userEmail,
+    organizationId: context.organizationId,
+    appId: context.appId,
+    ipAddress: context.ipAddress,
+    userAgent: context.userAgent,
+    action: 'update',
+    resourceType: 'resource',
     resourceId,
-    {
+    changes: {
         name: { from: old.name, to: newData.name },
     },
-    {
-        userId: context.userId,
-        userEmail: context.userEmail,
-        organizationId: context.organizationId,
-        appId: context.appId,
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-    },
-);
+});
 ```
 
 ### Worker Integration
@@ -388,13 +455,26 @@ export default {
             // Perform operation
             const result = await someOperation();
 
-            // Log success
-            await logCreate('resource', result.id, result, context);
+            // Log success (logAudit persists organizationId/appId directly)
+            await logAudit({
+                ...context,
+                action: 'create',
+                resourceType: 'resource',
+                resourceId: result.id,
+                changes: { created: result },
+                status: 'success',
+            });
 
             return Response.json({ success: true, result });
         } catch (error) {
             // Log failure
-            await logFailure('create', 'resource', error, context);
+            await logAudit({
+                ...context,
+                action: 'create',
+                resourceType: 'resource',
+                status: 'failure',
+                errorMessage: error instanceof Error ? error.message : String(error),
+            });
 
             return Response.json({ error: error.message }, { status: 500 });
         }
@@ -409,16 +489,16 @@ export default {
 const auditExport = await AuditLog.where(
     {
         organizationId: 'org-123',
-        timestamp: { $gte: startDate, $lte: endDate },
+        createdAt: { $gte: startDate, $lte: endDate },
     },
     {
-        orderBy: 'timestamp',
+        orderBy: 'createdAt',
         orderDirection: 'asc',
     },
 );
 
 const exportData = auditExport.map((log) => ({
-    timestamp: log.timestamp,
+    timestamp: log.createdAt,
     user: log.userEmail || log.userId,
     action: log.action,
     resource: `${log.resourceType}:${log.resourceId}`,

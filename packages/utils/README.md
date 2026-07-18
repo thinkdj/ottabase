@@ -78,6 +78,20 @@ import { verifySenderGmail, checkHeaderPass, getAuthenticationResults } from '@o
 // JSON utilities
 import { parseJsonFromString, safeStringify, deepClone, isValidJson } from '@ottabase/utils/json';
 
+// HTTP error utilities (standardized API error responses)
+import { ServiceError, errorResponse } from '@ottabase/utils/http-errors';
+
+// HTTP response utilities
+import { jsonResponse } from '@ottabase/utils/http-response';
+
+// Pagination utilities (standardized paginated list responses)
+import {
+    parsePaginationParams,
+    createPaginatedResponse,
+    toPaginatedResponse,
+    paginatedJsonResponse,
+} from '@ottabase/utils/pagination';
+
 // User utilities
 import { getInitials } from '@ottabase/utils/user';
 
@@ -207,6 +221,39 @@ Use the appropriate sanitizer helper for each untrusted renderer input type:
 - **`safeStringify(obj: any, space?: number): string`** - Safe JSON stringify with error handling
 - **`deepClone<T>(obj: T): T | null`** - Deep clone object using JSON
 - **`isValidJson(str: string): boolean`** - Check if string is valid JSON
+
+### HTTP Error Utilities (`@ottabase/utils/http-errors`)
+
+Standardized error handling for API route handlers. This is the primary way route handlers in
+`apps/otta-web/worker` and `packages/brand-engine` construct error responses.
+
+- **`ServiceError`** - Error class for service-level errors (`message`, `status`, `code`, `details`, `hint`,
+  `messages`, `fieldErrors`), intended to be thrown from services and caught by a global error handler; exposes
+  `toApiResponse(): ApiErrorResponse` to convert itself into the standardized error shape
+- **`errorResponse(message: string, status?: number, options?: Partial<ApiErrorResponse>): Response`** - Build a
+  structured JSON error `Response` directly, without needing to throw/catch a `ServiceError`
+
+### HTTP Response Utilities (`@ottabase/utils/http-response`)
+
+- **`jsonResponse<T>(data: T, status?: number, init?: ResponseInit): Response`** - Build a standardized JSON
+  `Response` with the correct `Content-Type` header
+
+### Pagination Utilities (`@ottabase/utils/pagination`)
+
+Standardized pagination types and helpers for consistent list/collection API responses across OttaBase. Alongside
+`http-errors`/`http-response`, this is the primary way route handlers construct paginated list responses.
+
+- **`Pagination`** / **`PaginatedResponse<T>`** - Types describing the standard `{ data, pagination }` response
+  shape returned by paginated endpoints
+- **`parsePaginationParams(source: URLSearchParams | Record<string, ...>, options?): ParsedPaginationParams`** -
+  Parse `page`/`perPage`/`orderBy`/`order`/`search` from query params (or a plain object), applying defaults and
+  bounds (`perPage` capped at 100)
+- **`createPaginatedResponse<T>(options): PaginatedResponse<T>`** - Build a `PaginatedResponse` (including
+  `next`/`prev` page URLs) from raw data, total count, page, and perPage
+- **`toPaginatedResponse<T>(result: SimplePaginationResult<T>, path: string): PaginatedResponse<T>`** - Convert an
+  OttaORM `SimplePaginationResult` into a `PaginatedResponse`
+- **`paginatedJsonResponse<T>(options, status?: number, init?: ResponseInit): Response`** - `createPaginatedResponse`
+  + `jsonResponse` in one call, for returning a paginated list directly from a route handler
 
 ### User Utilities (`@ottabase/utils/user`)
 

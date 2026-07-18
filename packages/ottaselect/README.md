@@ -17,7 +17,8 @@ applications with dynamic data sources and CrudHub integration.
 - **CrudHub Integration** - Built-in async collection fetching support
 - **Loading & Error states** - Beautiful loading indicators and error handling
 - **Keyboard navigation** - Full keyboard support (Arrow keys, Enter, Escape)
-- **Dark mode** - Full dark mode support with Tailwind CSS
+- **Theme-aware** - Styled entirely with shadcn/ui-style Tailwind design tokens (colors, radius, motion); full dark
+  mode support once that token theme is present in the consuming app (see Styling & Theming below)
 
 ## Installation
 
@@ -60,7 +61,9 @@ function MyComponent() {
 - `md` is the default and matches the existing control size.
 - Whitespace (paddings, min-height) follows the brand's `--spacing-element` at half strength, and corner rounding
   follows `--radius`, so controls breathe with the active theme. Font and icon sizes are fixed per variant and never
-  scale with spacing — a spacious theme widens a control's padding, not its text.
+  scale with spacing — a spacious theme widens a control's padding, not its text. Both variables have safe fallbacks
+  (`0.5rem` / `0.75rem`) if undefined, so sizing degrades gracefully — but see Styling & Theming below for the
+  colors/borders, which do not have fallbacks.
 
 ```tsx
 <OttaSelect size="xs" items={items} placeholder="Ultra compact" />
@@ -309,13 +312,30 @@ const items4 = [
 - **Escape**: Close dropdown
 - **Space/Enter** (on trigger): Open dropdown
 
-## Dark Mode
+## Styling & Theming
 
-The component fully supports dark mode via Tailwind's `dark:` variant:
+OttaSelect has no stylesheet of its own — the trigger, dropdown, chips, and focus states are built entirely from
+Tailwind utility classes bound to shadcn/ui-style semantic CSS custom properties: `bg-background`, `text-foreground`,
+`border-input`, `bg-popover`/`text-popover-foreground`, `border-border`, `hover:bg-accent`/`text-accent-foreground`,
+`bg-primary`/`text-primary`, `text-destructive`, `text-muted-foreground`, and `focus:ring-ring`, plus the theme
+tokens `--spacing-element`, `--radius`, `--duration-fast`, `--duration-normal`, and `--ease-theme`. None of these are
+defined by a plain Tailwind setup — `darkMode: 'class'` and a content glob alone are **not** enough to render the
+component correctly. The consuming app needs a full design-token theme (semantic colors + motion, not just dark-mode
+toggling) already in place, or the component's colors/borders will resolve to nothing.
+
+In this monorepo that theme is supplied by the shared preset `@ottabase/ui-tailwind`
+(`packages/ui-tailwind/tailwind.base.cjs`), which maps `background`, `accent`, `popover`, `primary`, `destructive`,
+spacing, `duration-fast`, etc. to the underlying CSS vars. Apps pull it in via `presets: [sharedPreset]` in their
+Tailwind config (see `apps/otta-web/tailwind.config.cjs`). Once that preset is present, dark mode itself works
+automatically through Tailwind's `dark:` variant, since the same tokens simply resolve to different values under the
+`.dark` class:
 
 ```javascript
 // tailwind.config.js
+const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
+
 module.exports = {
+    presets: [sharedPreset],
     darkMode: 'class',
     content: ['../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}'],
 };

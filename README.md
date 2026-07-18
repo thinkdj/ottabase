@@ -120,6 +120,7 @@ ottabase/
 │   ├── ottarouter/        # Cloudflare Workers router (order-free precedence, middleware)
 │   ├── db/               # Drizzle D1 driver
 │   ├── cf/               # Cloudflare bindings (D1, KV, R2, Queues, Cache Keys)
+│   ├── cf-ai/             # Cloudflare AI Gateway & Workers AI wrapper (multi-provider, fallback, streaming, caching)
 │   ├── cf-realtime/      # WebSocket pub/sub (Durable Objects)
 │   ├── queue/            # Job queue (dispatch, handlers, priority)
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
@@ -129,9 +130,11 @@ ottabase/
 │   ├── notifications/    # Multi-channel notifications (email, WebSocket)
 │   ├── shortlinks/       # URL shortener with interstitial + WAE tracking
 │   ├── referrals/        # Referral tracking (first-touch, WAE)
+│   ├── comments/         # Threaded comments (polymorphic targeting, reactions, moderation)
 │   ├── brand-engine/     # Design tokens, preset expansion, CSS injection
 │   ├── brand-engine-react/ # BrandProvider, LayoutResolver, useBrand()
 │   ├── ottalayout/       # Layout types, presets, path resolver, React slots
+│   ├── ottamenu/         # Menu types, renderers, tree utilities (sidebar, flyout, mega, navbar)
 │   ├── ottablog/         # Blog/CMS (Post, Category, Tag, Series, Studio)
 │   ├── email/            # Email sending (Resend, SES, MailChannels, SMTP)
 │   ├── cron/             # Cron handlers (static + DB scheduler)
@@ -141,13 +144,17 @@ ottabase/
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
 │   ├── ui-shadcn/        # shadcn/ui components
 │   ├── ui-mantine/       # Mantine provider + themes
+│   ├── ui-tailwind/      # Shared Tailwind preset & base styles
 │   ├── ui-components/    # Shared components (DarkModeToggle, Logo)
 │   ├── ui-code-highlight/ # Code syntax highlighting
 │   ├── ui-split-pane/    # Resizable split pane
+│   ├── ui-datatable/     # Advanced data table (TanStack Table v8)
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
 │   ├── ottaupload/       # File uploads (R2, CF Images)
+│   ├── medialibrary/     # Media library primitives, schema, viewer components
 │   ├── ottarenderer/     # EditorJS block renderer
 │   ├── ottaselect/       # Headless select/combobox
+│   ├── ottadate/         # Framework-agnostic date picker
 │   ├── ui-cropper/       # Vanilla JS image cropper (~3-4 KB)
 │   ├── spotlight/        # Command palette
 │   ├── docs/             # Markdown doc viewer
@@ -264,12 +271,12 @@ export { todosTable } from '../models/Todo'; // App
 ### Use Model
 
 ```typescript
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Todo } from './ottabase/models/Todo';
 
 // In worker
-setDriver(createD1Driver(env.OBCF_D1));
+registerConnection('default', createD1Driver(env.OBCF_D1));
 
 // CRUD
 const todo = await Todo.create({ title: 'Buy groceries' });
@@ -322,6 +329,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts    |
 | `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                     |
 | `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache     |
+| `@ottabase/cf-ai`      | Cloudflare AI Gateway & Workers AI wrapper - multi-provider, fallback, streaming, caching |
 | `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)        |
 | `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link |
 | `@ottabase/rbac`       | Role-based access control with per-org KV caching                        |
@@ -339,6 +347,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/brand-engine`       | Design tokens, preset expansion, CSS injection, email branding       |
 | `@ottabase/brand-engine-react` | `BrandProvider`, `LayoutResolver`, `useBrand()` React bindings       |
 | `@ottabase/ottalayout`         | Layout types, 10 presets, path resolver, React slots, LayoutMeta     |
+| `@ottabase/ottamenu`           | Menu types, renderers, tree utilities - sidebar, flyout, mega, navbar, dropdown, footer |
 | `@ottabase/ottablog`           | Blog/CMS models (Post, Category, Tag, Series, Version) + Blog Studio |
 
 ### UI Components
@@ -347,14 +356,18 @@ createTodo.mutate({ title: 'New Todo' });
 | ----------------------------- | -------------------------------------------------------- |
 | `@ottabase/ui-shadcn`         | shadcn/ui components, ShadcnProviders                    |
 | `@ottabase/ui-mantine`        | Mantine provider, pre-built themes                       |
+| `@ottabase/ui-tailwind`       | Shared Tailwind preset and base styles                   |
 | `@ottabase/ui-base`           | Framework-agnostic base styles                           |
 | `@ottabase/ui-components`     | Shared components: DarkModeToggle, Logo                  |
 | `@ottabase/ui-code-highlight` | Code syntax highlighting (Prism/Shiki)                   |
 | `@ottabase/ui-split-pane`     | Resizable split-pane layout component                    |
+| `@ottabase/ui-datatable`      | Advanced data table built on TanStack Table v8            |
 | `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review) |
 | `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)            |
+| `@ottabase/medialibrary`      | Media library primitives, schema, and viewer components   |
 | `@ottabase/ottarenderer`      | EditorJS block renderer for React                        |
 | `@ottabase/ottaselect`        | Headless select/combobox component                       |
+| `@ottabase/ottadate`          | Framework-agnostic date picker with range/fuzzy support   |
 | `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)            |
 | `@ottabase/spotlight`         | Spotlight/command palette component                      |
 | `@ottabase/docs`              | Markdown doc viewer with layout themes                   |
@@ -368,6 +381,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/shortlinks`    | URL shortener: short codes, interstitial, expiry, WAE clicks |
 | `@ottabase/referrals`     | Referral tracking - first-touch attribution, WAE clicks      |
 | `@ottabase/notifications` | Multi-channel notifications (email, WebSocket, system)       |
+| `@ottabase/comments`      | Threaded comments: polymorphic targeting, reactions, moderation |
 
 ### Utilities & Integrations
 

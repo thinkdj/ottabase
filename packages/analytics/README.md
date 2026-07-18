@@ -140,9 +140,13 @@ import { queryEvents } from '@ottabase/analytics';
 
 const result = await queryEvents(
     { accountId: env.CLOUDFLARE_ACCOUNT_ID, apiToken: env.CLOUDFLARE_ANALYTICS_API_TOKEN },
-    { dataset: 'core_events', groupBy: 'country', days: 7 },
+    { dataset: 'shortlink_clicks', groupBy: 'country', days: 7 },
 );
 // result.data = [{ dimension: 'US', value: 42 }, ...]
+// The "country" shortcut resolves to blob1 — matches low-level datasets like this one
+// (see Write Events above, where blobs: [country, ...] puts country in blob1).
+// For core-event datasets, country lives in blob3 instead (see slot mapping table) —
+// use `groupBy: 'blob3'` there, as the Top-K example below does.
 ```
 
 ### Aggregate functions

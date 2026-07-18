@@ -90,18 +90,16 @@ Create `apps/otta-web/.env.local` with the following (if using .env for local au
 AUTH_SECRET=your-32-character-secret-here
 AUTH_URL=http://localhost:3003
 
-# Enable auth providers (true/false)
-AUTH_LOGIN_CREDENTIALS=true
-AUTH_LOGIN_GITHUB=false
-AUTH_LOGIN_GOOGLE=false
+# Credentials sign-in is on by default; set AUTH_DISABLE_CREDENTIALS=true to turn it off.
+# OAuth providers auto-enable when their credentials are present below — there's no separate on/off flag.
 
-# GitHub OAuth (if AUTH_LOGIN_GITHUB=true)
-AUTH_GITHUB_ID=your-github-oauth-client-id
-AUTH_GITHUB_SECRET=your-github-oauth-client-secret
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-oauth-client-id
+GITHUB_CLIENT_SECRET=your-github-oauth-client-secret
 
-# Google OAuth (if AUTH_LOGIN_GOOGLE=true)
-AUTH_GOOGLE_ID=your-google-oauth-client-id
-AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 
 # ============================================================
 # CLOUDFLARE R2 (Server-side API Access)
@@ -134,11 +132,11 @@ Set these via Cloudflare Dashboard or `wrangler secret put`:
 # Authentication
 wrangler secret put AUTH_SECRET
 
-# OAuth Providers (if enabled)
-wrangler secret put AUTH_GITHUB_ID
-wrangler secret put AUTH_GITHUB_SECRET
-wrangler secret put AUTH_GOOGLE_ID
-wrangler secret put AUTH_GOOGLE_SECRET
+# OAuth Providers (auto-enabled once credentials are set — no separate toggle)
+wrangler secret put GITHUB_CLIENT_ID
+wrangler secret put GITHUB_CLIENT_SECRET
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
 
 # Cloudflare API (if needed for runtime operations)
 wrangler secret put CF_ACCOUNT_ID
@@ -213,7 +211,11 @@ multi-app: same placeholder name = shared resource; different names = isolated (
 
 ### 2. `apps/otta-web/cloudflare-env.d.ts`
 
-**Status:** ✅ Already configured
+**Status:** ⚙️ Generated, gitignored — not checked into git
+
+Run `pnpm cf-typegen` (wraps `wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`) to (re)generate it
+from `wrangler.jsonc`. Re-run it whenever you add, rename, or remove a binding. The shape below is what a correct
+generated file looks like:
 
 **Type Definitions:**
 
@@ -261,20 +263,23 @@ export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
 ### Using Drizzle with D1
 
-The app uses `@ottabase/db` package with Drizzle adapter for D1. Access `env` directly from your Worker fetch handler:
+The app uses `@ottabase/db`'s Drizzle adapter for D1 together with `@ottabase/ottaorm`'s fat-model layer
+(`Model.find()`, `Model.where()`, `Model.create()`, ...). Register the D1 driver as a named connection, then call
+model static methods — they use the registered `'default'` connection unless a driver is passed explicitly. Access
+`env` directly from your Worker fetch handler:
 
 ```typescript
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
+import { User } from './models/User';
 
 // cloudflare-worker.ts
 export default {
     async fetch(request: Request, env: CloudflareEnv) {
         const driver = createD1Driver(env.OBCF_D1);
-        setDriver(driver);
+        registerConnection('default', driver);
 
-        const db = driver.getDb();
-        const users = await db.select().from(usersTable);
+        const users = await User.all();
 
         return Response.json(users);
     },
@@ -285,7 +290,9 @@ export default {
 
 ## 🔐 Authentication Setup (Optional)
 
-The `@ottabase/auth` package provides a lightweight, dependency-free auth implementation with D1.
+The `@ottabase/auth` package provides a lightweight, dependency-free auth implementation on D1 — signed session
+cookies, PBKDF2 credentials, OAuth2/PKCE, and magic-link email sign-in, all on the Web Crypto API (no Auth.js, no Node
+crypto).
 
 ### 1. Enable Auth Feature
 
@@ -293,18 +300,31 @@ Ensure `@ottabase/auth` is installed and configured in your application.
 
 ### 2. Configure Auth
 
-```typescript
-// app/auth.ts
-import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
+Mount the backend router for every `/api/auth/*` path your app doesn't already own, then read the session anywhere
+else in the worker with `getSession()`:
 
-export const authConfig = createOttabaseAuthConfig({
-    d1: env.OBCF_D1,
-    providers: [
-        createGoogleProvider(env),
-        // Add more providers
-    ],
-});
+```typescript
+// cloudflare-worker.ts
+import { handleAuthRequest, getSession } from '@ottabase/auth/backend';
+
+export default {
+    async fetch(request: Request, env: CloudflareEnv) {
+        const url = new URL(request.url);
+        if (url.pathname.startsWith('/api/auth/')) {
+            return handleAuthRequest(request, env);
+        }
+
+        const session = await getSession(request, env);
+        // session: { user: { id, email, name, ... }, expires } | null
+
+        return new Response('OK');
+    },
+};
 ```
+
+OAuth providers (Google, GitHub, Discord, Azure AD, Auth0) are enabled purely by which credential env vars are
+present — no code changes needed. **`OBCF_KV` must be bound**: session verification reads it on every request and
+fails closed (no `OBCF_KV` means no one can stay signed in).
 
 ### 3. Set Environment Variables
 
@@ -312,8 +332,8 @@ Add to `.env.local`:
 
 ```bash
 AUTH_SECRET=your-secret-here
-AUTH_GOOGLE_ID=your-google-client-id
-AUTH_GOOGLE_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 ---
@@ -380,7 +400,8 @@ export default {
 
         // D1 via OttaORM (preferred):
         // import { createD1Driver } from '@ottabase/db/drizzle-d1';
-        // const driver = createD1Driver(db); setDriver(driver);
+        // import { registerConnection } from '@ottabase/ottaorm';
+        // const driver = createD1Driver(db); registerConnection('default', driver);
         const kvClient = createKVClient({ namespace: kv });
         const r2Client = createR2Client({ bucket: r2 });
     },
@@ -465,9 +486,9 @@ secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI au
 ## 📚 Additional Resources
 
 - **Packages Documentation:**
-    - `@ottabase/db` - [packages/db/README.md](packages/db/README.md)
-    - `@ottabase/cf` - [packages/cf/README.md](packages/cf/README.md)
-    - `@ottabase/auth` - [packages/auth/README.md](packages/auth/README.md)
+    - `@ottabase/db` - [packages/db/README.md](../packages/db/README.md)
+    - `@ottabase/cf` - [packages/cf/README.md](../packages/cf/README.md)
+    - `@ottabase/auth` - [packages/auth/README.md](../packages/auth/README.md)
 
 - **Cloudflare Documentation:**
     - [D1 Database](https://developers.cloudflare.com/d1/)
@@ -478,7 +499,7 @@ secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI au
 
 - **Project Documentation:**
     - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Complete deployment guide with CI/CD setup
-    - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
+    - [AGENTS.MD](../AGENTS.MD) - Monorepo architecture
 
 ---
 
@@ -539,7 +560,7 @@ pnpm cf-typegen
 
 - ✅ `wrangler.jsonc` - Cloudflare bindings (OBCF\_\* names); `ALL_CAPS` placeholder values are auto-detected and
   substituted from GitHub Secrets via `substitute-wrangler-secrets.py`
-- ✅ `types/cloudflare.d.ts` - TypeScript definitions (OBCF\_\* interfaces)
+- ⚙️ `cloudflare-env.d.ts` - TypeScript definitions (OBCF\_\* interfaces); generated by `pnpm cf-typegen`, gitignored
 - ✅ `cloudflare-worker.ts` - Durable Object exports
 - ✅ `.env.local` - Local environment variables (optional)
 

@@ -313,11 +313,14 @@ const custom: CacheNamespace = 'my-pkg'; // custom strings also accepted
 ### 1. Brand Engine (`@ottabase/brand-engine`)
 
 ```typescript
-import { orgAppKey } from '@ottabase/cf/cache-keys';
+import { appKey } from '@ottabase/cf/cache-keys';
 
-const key = orgAppKey('brand', orgId, appId, 'resolved', mode);
-// brand:org:acme:app:web:resolved:light
+const key = appKey('brand', appId, 'resolved', mode);
+// brand:app:web:resolved:light
 ```
+
+Brand Engine is deliberately **app-scoped only** — no `organizationId` segment (see "Eager Rewrite with Surgical
+Invalidation" above).
 
 ### 2. RBAC (`@ottabase/rbac`)
 
@@ -417,5 +420,5 @@ Custom namespaces are also accepted — any string works.
 ## Testing
 
 ```bash
-pnpm test --filter=@ottabase/cf cache-keys
+pnpm --filter @ottabase/cf test -- cache-keys
 ```

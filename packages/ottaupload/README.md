@@ -71,7 +71,6 @@ const result = await uploadFile(file, {
 | `maxFiles`          | `number`                                       | `1`             | Max file count                   |
 | `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                |
 | `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`) |
-| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                  |
 | `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                     |
 | `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select            |
 | `disabled`          | `boolean`                                      | `false`         | Disable uploader                 |
@@ -115,9 +114,19 @@ For optimized image delivery with automatic variants.
 
 **Client:**
 
+The `<FileUploader>` component always uploads via R2 — it does not accept a `provider` prop. To upload to
+Cloudflare Images from React, use the `useFileUpload` hook directly and pass `provider: 'cloudflare-images'`:
+
 ```tsx
-<FileUploader provider="cloudflare-images" acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
+const { addFiles, uploadAll } = useFileUpload({
+    provider: 'cloudflare-images',
+    acceptedFileTypes: ['image/*'],
+    uploadEndpoint: '/api/upload',
+});
 ```
+
+Point `uploadEndpoint` at a server route that handles the `provider` field (see below), or call
+`uploadFileToCloudflareImages` directly on the server.
 
 **Server:**
 
@@ -191,7 +200,7 @@ const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
 ### useFileUpload
 
 ```tsx
-import { useFileUpload } from '@ottabase/ottaupload/client';
+import { useFileUpload } from '@ottabase/ottaupload';
 
 const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload } = useFileUpload({
     maxFiles: 5,
@@ -205,7 +214,7 @@ const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUp
 ### useDragAndDrop
 
 ```tsx
-import { useDragAndDrop } from '@ottabase/ottaupload/client';
+import { useDragAndDrop } from '@ottabase/ottaupload';
 
 const { isDragging, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } = useDragAndDrop({
     onDrop: (files) => console.log(files),
@@ -353,7 +362,8 @@ const { files, retryUpload } = useFileUpload();
 
 ```
 @ottabase/ottaupload
-├── /client        # React components and hooks
+├── .              # Root entry: everything below, plus the React hooks (useFileUpload, useDragAndDrop)
+├── /client        # React components only (FileUploader, FileUploadList, FileUploadItem)
 ├── /server        # Server-side utilities (R2, Cloudflare Images)
 ├── /validation    # Validation functions and Zod schemas
 ├── /types         # TypeScript type definitions

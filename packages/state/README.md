@@ -23,7 +23,7 @@ const { appStateAtom, atoms, createAtom } = createAppState({
     },
 });
 
-export const { themeAtom, userAtom, isAuthenticatedAtom, sidebarOpenAtom, sidebarCollapsedAtom, isLoadingAtom } = atoms;
+export const { themeAtom, userAtom, isAuthenticatedAtom, sidebarStateAtom, isLoadingAtom } = atoms;
 
 export { appStateAtom, createAtom };
 ```
@@ -43,16 +43,16 @@ export function Providers({ children }) {
 
 ```tsx
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { themeAtom, userAtom, sidebarOpenAtom } from '@/ottabase/state/appState';
+import { themeAtom, userAtom, sidebarStateAtom } from '@/ottabase/state/appState';
 
 function Header() {
     const theme = useAtomValue(themeAtom);
-    const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
+    const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const setUser = useSetAtom(userAtom);
 
     return (
         <header>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)}>Toggle Sidebar</button>
+            <button onClick={() => setSidebarState({ ...sidebarState, isOpen: !sidebarState.isOpen })}>Toggle Sidebar</button>
             <span>Theme: {theme}</span>
         </header>
     );
@@ -61,15 +61,20 @@ function Header() {
 
 ## State Properties
 
-| Property           | Type                | Default   | Description             |
-| ------------------ | ------------------- | --------- | ----------------------- |
-| `appName`          | `string`            | required  | Application name        |
-| `theme`            | `"light" \| "dark"` | `"light"` | Current theme           |
-| `user`             | `BaseUser \| null`  | `null`    | Current user object     |
-| `isAuthenticated`  | `boolean`           | `false`   | Auth status             |
-| `sidebarOpen`      | `boolean`           | `true`    | Sidebar visibility      |
-| `sidebarCollapsed` | `boolean`           | `false`   | Sidebar collapsed state |
-| `isLoading`        | `boolean`           | `false`   | Global loading state    |
+| Property          | Type                              | Default                                            | Description                                                                                             |
+| ----------------- | ---------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `appName`         | `string`                           | required                                            | Application name                                                                                          |
+| `appId`           | `string \| undefined`              | `undefined`                                         | Application identifier (for multi-app setups)                                                             |
+| `organizationId`  | `string \| null \| undefined`      | `null`                                              | Current organization/tenant identifier                                                                    |
+| `theme`           | `"light" \| "dark"`                | `"light"`                                           | Current theme mode                                                                                         |
+| `themeInfo`       | `ThemeInfo`                        | `{ name: 'default' }`                               | Theme name plus an optional nested `layout` config (header, navigation, contentWidth, footer, density)    |
+| `user`            | `BaseUser \| null`                 | `null`                                              | Current user object                                                                                        |
+| `isAuthenticated` | `boolean`                          | `false`                                             | Auth status                                                                                                |
+| `sidebarState`    | `{ isOpen, isCollapsed, width }`   | `{ isOpen: true, isCollapsed: false, width: 250 }`  | Sidebar open/collapsed state and width in pixels                                                          |
+| `scale`           | `number`                           | `1.0`                                               | Global scale multiplier for UI elements                                                                   |
+| `zoom`            | `number`                           | `1.0`                                               | Global zoom level for content                                                                             |
+| `isLoading`       | `boolean`                          | `false`                                             | Global loading state                                                                                       |
+| `language`        | `string`                           | `"en"`                                              | Current language code (e.g., `'en'`, `'es'`, `'fr'`, `'de'`)                                              |
 
 ## Custom User Type
 

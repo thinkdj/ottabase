@@ -83,6 +83,7 @@ flowchart TD
 
     subgraph L0 [Layer 0 — Leaf]
         db
+        config
         cfRealtime["cf-realtime"]
         ottarouter
         uiShadcn["ui-shadcn"]
@@ -101,7 +102,7 @@ flowchart TD
     shortlinks --> ottaorm
     referrals --> ottaorm
     ottaorm --> db
-    cf --> db
+    cf --> config
 ```
 
 **Dependency direction:** arrows point downward (from consumer to dependency). Packages may only depend on the same or a
@@ -281,7 +282,8 @@ automatically filtered by security context (`userId`, `organizationId`, `appId`)
 | `roles`, `permissions`        | Tenant-scoped             | `organizationId` |
 | `users`                       | Owner-only                | `id`             |
 | `accounts`, `sessions`        | User-scoped               | `userId`         |
-| `posts`, `tags`, `shortlinks` | App-scoped                | `appId`          |
+| `tags`, `shortlinks`          | App-scoped                | `appId`          |
+| `posts`                       | Hierarchical              | `organizationId` + `userId` (+ `appId`) |
 | `audit_logs`                  | Tenant-scoped (read-only) | `organizationId` |
 | `system_config`               | Admin-only                | —                |
 
@@ -294,7 +296,7 @@ Ottabase supports both multi-tenant SaaS and single-founder modes.
 
 ```mermaid
 flowchart TD
-    Req[Incoming Request] --> Extract["Extract organizationId<br/>(header / subdomain / JWT / query)"]
+    Req[Incoming Request] --> Extract["Extract organizationId<br/>(session/JWT claim / header / subdomain / query)"]
     Extract --> Context["Build SecurityContext<br/>userId + organizationId + appId + roles"]
     Context --> RLS["RLS filters all queries<br/>by organizationId automatically"]
     RLS --> D1[(D1)]
@@ -305,7 +307,8 @@ flowchart TD
 
 **Key properties:**
 
-- `organizationId` is extracted from `X-Org-Id` header, subdomain, JWT claim, or query parameter (priority order).
+- `organizationId` is extracted from the session/JWT claim (`session.user.organizationId`), then the `X-Org-Id`
+  header, then subdomain, then query parameter (priority order, first match wins).
 - All tenant-scoped models include an `organizationId` column. RLS injects this filter automatically.
 - RBAC roles and permissions are scoped per organization. A user can be `admin` in one org and `member` in another.
 - Caching (`@ottabase/rbac`) uses per-org KV keys with O(1) invalidation.
@@ -350,7 +353,7 @@ erDiagram
 **Core models** (from `@ottabase/ottaorm`): `User`, `Account`, `Session`, `Authenticator`, `VerificationToken`,
 `Organization`, `OrganizationMember`, `Role`, `Permission`, `UserRole`, `AuditLog`, `ScheduledTask`, `Tag`, `Media`.
 
-**Package models** (owned by feature packages): `Post`, `Category`, `Series` (`@ottabase/ottablog`), `Shortlink`
+**Package models** (owned by feature packages): `Post`, `PostCategory`, `PostSeries` (`@ottabase/ottablog`), `Shortlink`
 (`@ottabase/shortlinks`), `ReferralTracking` (`@ottabase/referrals`), `Comment` (`@ottabase/comments`).
 
 ### Schema Sources

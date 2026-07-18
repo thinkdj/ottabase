@@ -6,10 +6,9 @@ with pre-built themes and configuration utilities.
 ## Features
 
 - **ProviderUIMantine**: Main UI provider that wires Mantine, notifications, and modal support
-- **Pre-built Themes**: Slate, Graphite, Azure, and Aurora presets
+- **Pre-built Themes**: Slate, Graphite, Azure, Aurora, and Artisan presets
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
-- **FOUC Prevention**: Flash of unstyled content prevention helpers
 
 ## Installation
 
@@ -132,6 +131,7 @@ function App({ children }) {
 - **mantineGraphite**: High-contrast monochrome theme
 - **mantineAzure**: Structured blue theme for dashboards
 - **mantineAurora**: Luminous violet/blue theme with premium accents
+- **mantineArtisan**: Gallery-inspired theme with burgundy and gold accents
 
 ## Theme System Architecture
 

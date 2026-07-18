@@ -21,6 +21,10 @@ This package is part of the Ottabase monorepo and uses pnpm workspaces.
 pnpm add @ottabase/i18n
 ```
 
+`react` and `react-i18next` (^15.2.0) are peer dependencies required only if you use the `@ottabase/i18n/react`
+entry point (`I18nProvider`, `useTranslation`, etc.) — install them alongside this package if your app doesn't
+already have them. The non-React entry point (`@ottabase/i18n`) has no such requirement.
+
 ## Usage
 
 ### React Applications
@@ -94,6 +98,11 @@ src/locales/
 
 ### Adding New Translations
 
+There are two ways to add translations, depending on whether you're changing this shared package or building a
+consuming app.
+
+**Editing the package itself** (e.g. adding to the built-in `common` namespace):
+
 1. Add the key to all language files in the same namespace
 2. TypeScript will automatically provide autocomplete and type checking
 
@@ -112,6 +121,35 @@ const { t } = useTranslation('common');
 t('myNewKey'); // Type-safe and autocompleted!
 ```
 
+**Adding/overriding translations from a consuming app:**
+
+Most apps should not edit this package's source directly. Instead, pass a `resources` object to `initI18n()` or
+`I18nProvider` — it is deep-merged on top of the package's built-in resources (your keys take precedence on
+conflicts), so you can add app-specific keys/namespaces or override existing ones without touching
+`@ottabase/i18n`:
+
+```tsx
+import { I18nProvider } from '@ottabase/i18n/react';
+import enApp from './locales/en/app.json';
+
+const appResources = {
+    en: {
+        common: enApp, // merged into (and overriding) the package's `en.common`
+    },
+};
+
+function App() {
+    return (
+        <I18nProvider defaultLanguage="en" resources={appResources}>
+            <YourApp />
+        </I18nProvider>
+    );
+}
+```
+
+The same `resources` option is accepted by `initI18n()` for non-React usage. See
+`apps/otta-web/src/providers/Providers.tsx` in this monorepo for a real example.
+
 ## API Reference
 
 ### React API
@@ -128,6 +166,8 @@ Wraps your application to provide i18n context.
 - `supportedLngs?`: readonly string[] - Languages the app allows (constrains package list; e.g. app `enabledLanguages`)
 - `fallbackLng?`: string - Fallback when a translation is missing (defaults to defaultLanguage or 'en')
 - `debug?`: boolean - Enable debug mode (default: false)
+- `resources?`: Resource - App translations deep-merged on top of the package's built-in resources (your keys win on
+  conflicts); see "Adding New Translations" above
 - `fallback?`: ReactNode - Loading fallback component
 
 #### `useTranslation(namespace)`
@@ -153,6 +193,8 @@ Initialize i18next instance.
 - `supportedLngs?`: readonly string[] - Allowed languages (passed to i18next)
 - `fallbackLng?`: string - Fallback for missing translations
 - `debug?`: boolean
+- `resources?`: Resource - App translations deep-merged on top of the package's built-in resources (your keys win on
+  conflicts); see "Adding New Translations" above
 
 #### `supportedLanguages`
 

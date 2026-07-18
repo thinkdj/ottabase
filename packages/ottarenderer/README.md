@@ -19,6 +19,13 @@ React renderer for [Editor.js](https://editorjs.io/) content and generic HTML.
 pnpm add @ottabase/ottarenderer
 ```
 
+Import the package's own stylesheet once in your app entry point. It supplies the theme-token defaults and block
+layout classes (e.g. `.cdc-content-block`, list/reference styling) that the components rely on:
+
+```tsx
+import '@ottabase/ottarenderer/styles';
+```
+
 Code blocks use `@ottabase/ui-code-highlight`. Import its styles in your app (e.g. in `globals.css`):
 
 ```css
@@ -54,7 +61,7 @@ function BlogPost({ content }) {
 import { HtmlRenderer } from '@ottabase/ottarenderer';
 
 function SafeContent({ htmlString }) {
-    return <HtmlRenderer html={htmlString} className="my-content" />;
+    return <HtmlRenderer content={htmlString} className="my-content" />;
 }
 ```
 
@@ -82,6 +89,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `MediaEmbed`         | Embedded media (video, audio, PDF, document) with native playback via `MediaPreview`              |
 | `MediaGallery`       | Gallery block with 5 presets (`grid-balanced`, `grid-featured`, `masonry`, `filmstrip`, `mosaic`) |
 | `Quote`              | Styled pull-quote with attribution                                                                |
+| `References`         | Academic-style bibliography list (`numbered` / `footnote`) with authors, year, and accessed date  |
 | `Review`             | Product/service review card with star rating, pros/cons, CTA link, and verdict                    |
 | `Spoiler`            | Click-to-reveal blurred text                                                                      |
 | `Steps`              | Minimal numbered timeline for tutorials, onboarding, and walkthroughs                             |
@@ -209,6 +217,31 @@ import { ImageHotspots } from '@ottabase/ottarenderer';
         height: '500px', // optional fixed height
         imageFit: 'cover', // 'contain' | 'cover'
         imagePosition: 'center', // ImagePosition (9 presets)
+    }}
+/>;
+```
+
+## References Block
+
+Renders an academic-style bibliography list. Only items with a URL are rendered; the block returns `null` if none
+qualify.
+
+```tsx
+import { References } from '@ottabase/ottarenderer';
+
+<References
+    data={{
+        style: 'numbered', // 'numbered' | 'footnote'
+        items: [
+            {
+                url: 'https://example.com/article',
+                title: 'An Example Article',
+                authors: 'Jane Doe',
+                year: '2024',
+                accessedDate: '2026-01-15',
+                note: 'Retrieved from the publisher archive',
+            },
+        ],
     }}
 />;
 ```

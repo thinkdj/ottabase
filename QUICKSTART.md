@@ -8,7 +8,7 @@ in under 5 minutes.
 - **Edge-first runtime** on Cloudflare Workers (D1, KV, R2, Queues)
 - **Multi-tenant SaaS** (organizations, RBAC, RLS built-in)
 - **Fat models** (business logic lives in OttaORM models, not controllers)
-- **47 integrated packages** (auth, blog, realtime, queues, UI, and more)
+- **49 integrated packages** (auth, blog, realtime, queues, UI, and more)
 - **Type-safe** — TypeScript everywhere, no JavaScript escapes
 - **Two-part dev setup** — Vite frontend (port 3003) + Wrangler backend (port 3004)
 
@@ -49,15 +49,12 @@ pnpm install
 pnpm build:pkg
 ```
 
-👉 If you want one command that installs dependencies, builds packages, runs tests, and then starts local development,
-you can use:
-
-```bash
-pnpm dev:full
-```
-
-Use `pnpm dev:full` for a fresh-machine sanity run. Use `pnpm dev` for normal day-to-day development after the repo is
-already installed and built.
+> **⚠️ Note:** `pnpm dev:full` is **not** a sequential install-then-build-then-test-then-dev flow. It runs
+> `pnpm i & pnpm build:pkg & pnpm test & pnpm dev` with single `&` separators, which launches all four commands
+> concurrently in the background rather than one after another. On a genuinely fresh clone this starts `build:pkg`,
+> `test`, and `dev` before `pnpm i` has finished installing, and will fail. Stick with the explicit steps above
+> (`pnpm install` then `pnpm build:pkg`) for a fresh machine, and use `pnpm dev` for day-to-day development once the
+> repo is installed and built.
 
 `pnpm dev` waits for both Vite and the Wrangler worker health endpoint before it reports readiness or opens the browser,
 which avoids the common first-load race where the frontend boots before the backend is reachable.
@@ -145,10 +142,6 @@ Start **both** the frontend and backend in parallel:
 # Option A: Everything at once (recommended)
 pnpm dev
 
-# Option A2: Full fresh-machine workflow
-# Installs, builds, tests, then starts dev
-pnpm dev:full
-
 # Option B: Manually in two terminals if Option A doesn't work
 
 # Terminal 1 — Vite frontend (port 3003)
@@ -172,7 +165,8 @@ Wait 10–15 seconds for both servers to start. You'll see:
 Command summary:
 
 - `pnpm dev` — normal local development
-- `pnpm dev:full` — install + build + test + dev in one command
+- `pnpm dev:full` — runs `pnpm i`, `pnpm build:pkg`, `pnpm test`, and `pnpm dev` concurrently (not sequentially); not
+  suitable for a fresh clone (see the note in Step 1)
 
 ---
 
@@ -312,12 +306,12 @@ set.
 - **`apps/`** — Full-stack applications
     - `otta-web/` — Main TanStack Router + Vite + Wrangler app
     - `otta-landing/` — Marketing site (Next.js)
-- **`packages/`** — 47 shared packages
+- **`packages/`** — 49 shared packages
     - `@ottabase/ottaorm` — Fat model ORM (core)
     - `@ottabase/auth` — Lightweight custom auth
     - `@ottabase/rbac` — Role-based access control
     - `@ottabase/ui-shadcn` — UI component library
-    - (and 43 more...)
+    - (and 45 more...)
 
 ### 5. **Workspace Protocol**
 
@@ -389,7 +383,7 @@ No JavaScript in source. All packages must have `tsconfig.json` and export `.d.t
 | **Build fails with native modules** | Delete `node_modules/` and `.pnpm-store/`, then `pnpm install` again                              |
 | **Bootstrap API returns 401**       | Check `BOOTSTRAP_OWNER_SECRET` in `.env.local` matches the curl header value                      |
 | **Database not initialized**        | Re-run `curl -X POST http://localhost:3004/__bootstrap__/api/init` with correct secret            |
-| **"Platform is not READY"** error   | Bootstrap hasn't completed. Check browser console for bootstrap status at `/__bootstrap__/status` |
+| **"Platform is not READY"** error   | Bootstrap hasn't completed. Check bootstrap status at `/__bootstrap__/api/status`                  |
 | **Changes not reflecting**          | Clear browser cache and restart both dev servers                                                  |
 
 ---
@@ -417,8 +411,8 @@ pnpm format
 ```bash
 # Development
 pnpm dev                     # Start Vite + Wrangler
-pnpm dev:full                # Install + build + test + start dev
-pnpm dev:worker             # Wrangler only (3004)
+pnpm dev:full                # Runs install/build/test/dev concurrently, NOT sequentially (see Step 1)
+pnpm dev:be                  # Wrangler only (3004)
 
 # Building
 pnpm build:pkg              # Build shared packages (required first)

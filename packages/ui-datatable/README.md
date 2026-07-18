@@ -1,7 +1,7 @@
 # @ottabase/ui-datatable
 
 Advanced, headless-first data table built on **TanStack Table v8** for ottabase. Supports server-side
-sort/filter/pagination (via OttaORM), column visibility, row selection, inline editing, bulk actions, and theme-aware
+sort/filter/pagination (via OttaORM), column visibility, row selection, bulk actions, and theme-aware
 styling.
 
 ## Why

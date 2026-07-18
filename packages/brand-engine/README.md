@@ -99,21 +99,27 @@ const primary = getToken(DEFAULT_COLORS_LIGHT, 'colors.primary.500');
 
 ### Preset Expansion (Server-Side)
 
+Preset expansion is not a standalone export — it's an internal helper that runs automatically inside the Brand Kit
+handlers whenever a `themePresetId` is present on the request body:
+
 ```typescript
-import { expandPresetToTokens } from '@ottabase/brand-engine/handlers';
+import { handleCreateBrandKit, handleUpdateBrandKit } from '@ottabase/brand-engine/handlers';
 
-// When user selects a preset, expand it to full tokens and save to DB
-const tokensJson = expandPresetToTokens('verdant', null);
-await brandKit.set('tokensJson', tokensJson).save();
+// POST /api/brand/kits  { name: 'My App', themePresetId: 'verdant' }
+// → preset is expanded to full tokens and saved as the kit's tokensJson
 
-// Custom color overrides are merged; cursors (not in presets) are preserved
-const customTokensJson = expandPresetToTokens('verdant', existingTokensJson);
+// PUT /api/brand/kits/:id  { themePresetId: 'verdant' }
+// → re-expands on preset change; custom color overrides are merged in,
+//   and cursors (not part of presets) are preserved
 ```
+
+See `POST /api/brand/kits` and `PUT /api/brand/kits/:id` in [API Endpoints](#api-endpoints).
 
 ### Load and Apply Theme (Client & Server)
 
 ```typescript
-import { brandKitToTheme, applyBrandTheme } from '@ottabase/brand-engine';
+import { brandKitToTheme } from '@ottabase/brand-engine/persistence';
+import { applyBrandTheme } from '@ottabase/brand-engine';
 
 // Load brand kit from DB
 const kit = await BrandKit.findByAppId(appId);

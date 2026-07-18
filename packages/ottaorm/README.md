@@ -18,6 +18,15 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
 - **Field Metadata** - UI config, validation, form/table config
 - **Type Casting** - Automatic boolean, date, json conversion
 - **Per-App Models** - Core models + app-specific models
+- **RBAC, Scheduling & Media Data Layer** - Core `Permission`/`Role`/`UserRole`, `ScheduledTask`, and `Media` models
+  back the [@ottabase/rbac](../rbac/README.md), [@ottabase/cron](../cron/README.md), and
+  [@ottabase/medialibrary](../medialibrary/README.md) packages
+
+**Note:** The package's primary, supported target is Cloudflare D1/SQLite as described throughout this README. It also
+ships an internal `MongoBaseModel` (`src/base/MongoBaseModel.ts`, with a Mongo-backed example `Log` model) for a
+document-store backend, which is why `mongodb` appears as an optional peer dependency — but it isn't re-exported from
+any public entry point (`.`, `/models`, `/base`, `/client`) today, so treat it as an unsupported/experimental escape
+hatch rather than a documented feature.
 
 ## Installation
 
@@ -94,7 +103,7 @@ export class Todo extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { usersTable, postsTable } from '@ottabase/ottaorm'; // Core tables
+export { usersTable, tagsTable } from '@ottabase/ottaorm'; // Core tables
 export { todosTable } from '../models/Todo'; // Your tables
 export { shortlinksTable } from '@ottabase/shortlinks'; // Package tables
 ```
@@ -777,6 +786,12 @@ The package includes these core models (in `@ottabase/ottaorm`):
 - **Session** - User sessions
 - **VerificationToken** - Email verification tokens
 - **Authenticator** - WebAuthn/Passkey credentials
+- **Permission**, **Role**, **UserRole** - RBAC primitives (permissions, roles, and the user↔role join table). Full
+  RBAC integration built on top of these lives in [@ottabase/rbac](../rbac/README.md).
+- **ScheduledTask** - DB-driven cron scheduler ("like Laravel's scheduler"), consumed by
+  [@ottabase/cron](../cron/README.md).
+- **Media** - Tracks all uploaded files (images, videos, audio, documents), consumed by
+  [@ottabase/medialibrary](../medialibrary/README.md).
 
 **Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
 enhanced features.

@@ -24,11 +24,11 @@ const { editorRef, save, hasUnsavedChanges, undo, redo, canUndo, canRedo } = use
 
 ### EditorJS (13)
 
-`header`, `paragraph`, `list`, `checklist`, `code`, `quote`, `table`, `warning`, `delimiter`, `linkTool`, `embed`,
-`raw`, `Marker`, `underline`, `inlineCode`
+`header`, `paragraph`, `list`, `checklist`, `quote`, `table`, `warning`, `delimiter`, `linkTool`, `embed`, `Marker`,
+`underline`, `inlineCode`
 
-Raw HTML blocks are sanitized on save to remove wrapper/executable tags (`html`, `head`, `body`, `script`, `iframe`) and
-unsafe inline attributes/protocols.
+These 13 are thin wrappers around `@editorjs/*` npm packages. Everything else — including `code` and `raw` below —
+is a custom in-repo implementation.
 
 ### Custom Blocks (17)
 
@@ -36,6 +36,7 @@ unsafe inline attributes/protocols.
 | --------------- | -------------------------------------------------------------------------------------- |
 | `annotation`    | Callout/admonition block with type presets (info, warning, tip, etc.)                  |
 | `beforeAfter`   | Image comparison slider with horizontal/vertical orientation, height + imageFit config |
+| `code`          | Syntax-highlighted code block with language picker, line numbers, wrapping, max-height, and collapsible long snippets |
 | `cta`           | Call-to-action button with 4 styles (primary/secondary/outline/ghost) and alignment    |
 | `disclosure`    | AI usage disclosure (slight/mid/high/custom %) and sponsored-content disclaimer        |
 | `faq`           | Q&A accordion or flat list; emits `FAQPage` schema.org structured data                 |
@@ -44,11 +45,32 @@ unsafe inline attributes/protocols.
 | `map`           | Embeddable map (OpenStreetMap, Google Maps)                                            |
 | `mediaEmbed`    | Video/audio/PDF/document player; auto-inserted for non-image media                     |
 | `mediaGallery`  | Gallery with 5 layouts (grid-balanced, grid-featured, masonry, filmstrip, mosaic)      |
+| `raw`           | Raw HTML block, sanitized on save to remove wrapper/executable tags (`html`, `head`, `body`, `script`, `iframe`) and unsafe inline attributes/protocols |
 | `references`    | Citation/bibliography block with numbered references                                   |
 | `review`        | Product review with image, rating, pros/cons                                           |
 | `spoiler`       | Collapsible content                                                                    |
 | `steps`         | Step-by-step timeline with reorder/delete                                              |
 | `testimonial`   | Quote card with 5 variants; emits `Review` schema.org when rating is set               |
+
+### Additional Tools (not in `defaultPlugins`)
+
+`AdvancedImageTool` and `MediaLibraryTool` are exported by the package but are **not** part of the 30 default plugins
+above — apps that want them must register them explicitly via `additionalPlugins`.
+
+- `AdvancedImageTool` is a standalone image-upload block (drag-and-drop, file picker, or URL paste) built on
+  `@ottabase/ottaupload`, with border/background/stretch/featured toggles and aspect-ratio cropping. It's already
+  wired into `layout`'s nested-column editors, but is otherwise unavailable unless added explicitly. It defaults to
+  `uploadEndpoint: '/api/upload'` and `provider: 'r2'`, both overridable via config.
+- `MediaLibraryTool` is a placeholder block that opens the host app's media picker via the `media-library-open` /
+  `media-library-selected-item` events (see "Media Library Integration" below) and inserts an `image` or
+  `mediaEmbed` block once media is selected.
+
+```tsx
+additionalPlugins: [
+    { name: 'image', tool: AdvancedImageTool, config: { uploadEndpoint: '/api/upload', provider: 'r2' } },
+    { name: 'mediaLibrary', tool: MediaLibraryTool, config: {} },
+],
+```
 
 ## API
 

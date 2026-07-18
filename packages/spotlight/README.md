@@ -5,7 +5,7 @@ search.
 
 ## Features
 
-- **Lightweight** - Minimal dependencies, built on shadcn/ui Dialog
+- **Lightweight** - Minimal dependencies, built on `@ottabase/ui-shadcn`'s Dialog primitive
 - **Dark/Light Mode** - Automatic theme support via Tailwind
 - **CSS Effects** - Background blur and smooth animations
 - **Keyboard Shortcuts** - Configurable trigger keys (default: `/`)
@@ -23,6 +23,13 @@ search.
 ```bash
 pnpm add @ottabase/spotlight
 ```
+
+**Peer dependencies:** `react`, `react-dom`, `@radix-ui/react-dialog`, `@tabler/icons-react` (and optionally
+`@ottabase/api` if you use the `createApiSearchHandler`/`createApiSearchHandlerWithSignal` helpers).
+
+Spotlight is styled entirely with `@ottabase/ui-shadcn`'s CSS variables (see [Styling](#styling)) — make sure your app
+has already completed `@ottabase/ui-shadcn`'s setup (Tailwind content path + stylesheet import) before installing, or
+the palette will render unstyled.
 
 ## Usage
 
@@ -345,8 +352,18 @@ function App() {
 
 ## Styling
 
-The component uses Tailwind CSS and automatically adapts to dark/light mode via the `dark:` variant. The background blur
-effect uses `backdrop-blur` with semi-transparent backgrounds.
+The component uses Tailwind CSS and renders via `@ottabase/ui-shadcn`'s `Dialog`, styling itself entirely with
+shadcn/BrandEngine CSS variables rather than hardcoded colors — it automatically adapts to dark/light mode and any
+BrandEngine theme. The background blur effect uses `backdrop-blur` with semi-transparent backgrounds. This means
+`@ottabase/ui-shadcn` must already be set up in the consuming app (Tailwind content path + stylesheet import, see its
+README) — without that, Spotlight will render with no theming (transparent/undefined colors). Key variables used:
+
+- `--popover`, `--popover-foreground` — the palette surface
+- `--overlay` — the backdrop scrim
+- `--accent`, `--accent-foreground` — selected/hovered result
+- `--muted-foreground` — placeholder text, secondary copy, loading/empty states
+- `--destructive` — error state
+- `--border` — palette and input divider
 
 ## License
 

@@ -85,14 +85,19 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 **App:**
 
 - Different applications sharing the same database (web, admin, api)
-- Users can have different permissions in different apps
-- Example: User is admin in web app, viewer in admin dashboard
+- `appId` flows through `buildAppContext` and shows up on the resulting context and in audit log
+  entries, so you always know which app an action happened in
+- Permissions are **not** scoped by app today: `User.roles()` / `User.getPermissions()` (and therefore
+  `buildAppContext`) only filter by `organizationId`. Passing a different `appId` to the same user in the
+  same organization returns identical roles/permissions. `user_roles` has an `appId` column reserved for
+  this, but nothing in the current permission-resolution path reads it yet — don't rely on `appId` to
+  separate access between apps
 
 **User:**
 
 - Global user accounts (same login across all tenants)
 - Users can belong to multiple organizations
-- Permissions are scoped per tenant + app
+- Permissions are scoped per tenant (organization), not per app
 
 ---
 
@@ -142,13 +147,14 @@ const orgs = await OrganizationMember.getUserOrganizations(user.id);
 
 ### 3. RBAC (Roles + Permissions)
 
-Permissions are assigned via roles, scoped by organization (and optionally by app).
+Permissions are assigned via roles, scoped by organization. `appId` is not used when resolving roles or
+permissions today.
 
 ```typescript
 import { User, Role, UserRole } from '@ottabase/ottaorm/models';
 
 // Assign role to user in organization
-// Note: appId is not a parameter of assignRole; use buildAppContext to scope by app
+// Note: appId is not a parameter of assignRole, and roles/permissions aren't filtered by app anyway
 await user.assignRole(
     adminRoleId,
     assignedBy.id,
@@ -231,7 +237,8 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 - `organization_members` - User ↔ Organization
 - `roles` - System roles (admin, editor, viewer)
 - `permissions` - System permissions (users:\*, posts:read, etc.)
-- `user_roles` - User role assignments (per organization + app)
+- `user_roles` - User role assignments (organization-scoped; has an `appId` column that isn't used for
+  permission resolution yet)
 - `audit_logs` - Complete audit trail
 
 ### Step 2: Seed Data (Optional)
@@ -247,18 +254,21 @@ const adminRole = await Role.create({
     description: 'Full access to all resources',
 });
 
-// Create permissions
+// Create permissions (resource + action are required fields on Permission)
 const permissions = ['users:*', 'posts:*', 'roles:*', 'audit:read'];
 
 for (const perm of permissions) {
+    const [resource, action] = perm.split(':');
     await Permission.create({
         name: perm,
         description: `Permission for ${perm}`,
+        resource,
+        action,
     });
-}
 
-// Link permissions to roles (pass the permission name string, not an id)
-await adminRole.addPermission(permission.name);
+    // Link permission to role (pass the permission name string, not an id)
+    await adminRole.addPermission(perm);
+}
 ```
 
 ### Step 3: Setup RBAC Cache (Production)
@@ -574,29 +584,33 @@ for (const permName of permissions) {
 }
 
 // Assign role to user
-// Note: assignRole does not accept appId; app-scoping is handled via buildAppContext
+// Note: assignRole does not accept appId; roles/permissions are scoped by organization only
 await user.assignRole(editorRole.id, adminUser.id, 'org-acme');
 ```
 
-### App-Specific Permissions
+### App Context vs. App-Scoped Permissions
+
+`appId` is part of every context, but it does **not** filter roles or permissions — those are resolved by
+`organizationId` alone (`User.roles()`, `User.getPermissions()`, `buildAppContext`). A user's permissions are
+identical no matter which `appId` you pass, as long as `organizationId` stays the same.
 
 ```typescript
-// User is admin in organization
+// User is admin in the organization (this role applies across every app)
 await user.assignRole(adminRoleId, assignerId, orgId);
 
-// User is viewer in organization (app-scoping is enforced via buildAppContext appId)
-await user.assignRole(viewerRoleId, assignerId, orgId);
-
-// Check permissions in specific app
 const context = await buildAppContext({
     organizationId: orgId,
-    appId: 'admin', // Admin dashboard
+    appId: 'admin', // Recorded on the context and in audit logs, not used to filter permissions
     user,
 });
 
-// This will use permissions for admin app only
+// Same result you'd get with appId: 'web' or any other app in this organization
 const canEditSettings = hasPermission(context, 'settings:edit');
 ```
+
+`user_roles` has an `appId` column, but nothing in the current permission-resolution path reads it. If your
+product genuinely needs different permissions per app, you'll need to add that filtering yourself (e.g. query
+`user_roles.appId` directly) — don't assume passing a different `appId` is enough to separate access.
 
 ---
 
@@ -611,12 +625,12 @@ Every action creates an audit log entry with:
 - When: createdAt timestamp
 - Where: organizationId, appId
 - How: ipAddress, userAgent
-- Changes: before/after values
+- Changes: per-field diffs for updates (`{ field: { from, to } }`), the created record for creates
 
 ### Logging Actions
 
 ```typescript
-import { logCreate, logUpdate, logDelete } from '@ottabase/audit';
+import { logCreate, logUpdate, logDelete, detectChanges } from '@ottabase/audit';
 
 // Create
 await logCreate('post', post.id, post, {
@@ -626,11 +640,12 @@ await logCreate('post', post.id, post, {
     ipAddress: context.ipAddress,
 });
 
-// Update
+// Update - the 3rd argument is a per-field diff map: Record<string, { from, to }>
+// detectChanges(oldData, newData) builds that map for you
 await logUpdate(
     'post',
     post.id,
-    { before, after },
+    detectChanges(oldPost, post), // e.g. { title: { from: 'Old', to: 'New' } }
     {
         userId: context.userId,
         organizationId: context.organizationId,
@@ -638,8 +653,8 @@ await logUpdate(
     },
 );
 
-// Delete
-await logDelete('post', post.id, post, {
+// Delete - no data argument, just resourceType, resourceId, and context
+await logDelete('post', post.id, {
     userId: context.userId,
     organizationId: context.organizationId,
     appId: context.appId,
@@ -670,12 +685,15 @@ const userLogs = await AuditLog.getByUserInOrganization(user.id, 'org-acme', 50)
 // Resource-specific logs
 const postLogs = await AuditLog.getByResourceInOrganization('post', post.id, 'org-acme', 20);
 
-// Advanced queries
-const recentDeletes = await AuditLog.where({
+// Advanced queries: `where()` only supports equality and `{ $ne }` — there's no
+// $gte/$lte, so date-range filtering has to happen in application code
+const orgDeletes = await AuditLog.where({
     organizationId: 'org-acme',
     action: 'delete',
-    createdAt: { $gte: Date.now() - 7 * 24 * 60 * 60 * 1000 },
 });
+const recentDeletes = orgDeletes.filter(
+    (log) => (log.get('createdAt') as Date).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000,
+);
 ```
 
 ---
@@ -928,17 +946,14 @@ console.log(stats);
 **Solution:**
 
 1. Check role has permissions assigned
-2. Verify organizationId matches
-3. Check role is assigned in correct app
+2. Verify organizationId matches (this is what roles/permissions are actually scoped by — `appId` is not)
+3. Check the permission string format (`resource:action`) and wildcard matches
 
 ```typescript
 // Debug permissions
 const role = await Role.first({ name: 'admin' });
-const permissions = await role.permissions();
-console.log(
-    'Role permissions:',
-    permissions.map((p) => p.name),
-);
+const permissions = role.getPermissions(); // synchronous, already string[] of permission names
+console.log('Role permissions:', permissions);
 
 const userPerms = await user.getPermissions({
     organizationId: 'org-acme',
@@ -962,9 +977,8 @@ of users ✅ **Maintainable** - Clear architecture, easy to extend
 ## Next Steps
 
 1. **Read the architecture docs:**
-    - `MULTI_APP_MULTI_TENANT_ARCHITECTURE.md` - Deep dive into design decisions
-    - `RBAC_AUDIT_SETUP_GUIDE.md` - Detailed RBAC setup
-    - `OPTIMIZATION_SUMMARY.md` - Performance tips
+    - `docs/RBAC_MULTI_TENANT_GUIDE.md` - Deep dive into the Tenant > App > User architecture, RBAC, and audit
+      logging
 
 2. **Explore examples:**
     - `packages/ottaorm/examples/rbac-audit-demo.ts` - Complete working example
@@ -990,7 +1004,7 @@ of users ✅ **Maintainable** - Clear architecture, easy to extend
 - Documentation: ./docs
 - Examples: ./packages/ottaorm/examples
 
-**Pro tip:** Check `MULTI_APP_MULTI_TENANT_ARCHITECTURE.md` for architectural decisions and trade-offs.
+**Pro tip:** Check `docs/RBAC_MULTI_TENANT_GUIDE.md` for architectural decisions and trade-offs.
 
 ---
 

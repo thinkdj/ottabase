@@ -20,8 +20,13 @@ ModelCrud.
 ## Installation
 
 ```bash
-pnpm add @ottabase/forms @ottabase/ottaorm zod
+pnpm add @ottabase/forms @ottabase/ottaorm @tanstack/react-query zod
 ```
+
+`ModelCrud` uses TanStack Query (`useQuery`/`useMutation`) internally for data fetching and caching, so your app
+needs a `QueryClientProvider` somewhere in the tree — otherwise it throws at runtime. The easiest way is
+`OttaQueryProvider` from `@ottabase/ottaorm/client`, which ships pre-configured defaults. `ModelForm` used standalone
+does not require this.
 
 ## Usage
 
@@ -30,11 +35,16 @@ pnpm add @ottabase/forms @ottabase/ottaorm zod
 ```tsx
 import { ModelCrud, createModelConfig } from '@ottabase/forms';
 import { User } from '@ottabase/ottaorm/models';
+import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 
 const userConfig = createModelConfig(User);
 
 export function UserManagement() {
-    return <ModelCrud config={userConfig} apiBasePath="/api/ottaorm" />;
+    return (
+        <OttaQueryProvider>
+            <ModelCrud config={userConfig} apiBasePath="/api/ottaorm" />
+        </OttaQueryProvider>
+    );
 }
 ```
 

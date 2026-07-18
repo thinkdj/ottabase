@@ -27,8 +27,8 @@ pnpm test:apps           # Run only app tests
 ### Run Tests for Specific Targets
 
 ```bash
-pnpm test:vite       # Test Vite template app
-pnpm test:next       # Test Next.js template app
+pnpm test:otta-web       # Test otta-web app
+pnpm test:otta-landing   # Test otta-landing app
 turbo test --filter=@ottabase/utils  # Test specific package
 ```
 
@@ -225,8 +225,8 @@ Each package and app includes test scripts:
 | `test:all`               | Explicit: test packages + apps |
 | `test:packages`          | Test all packages only         |
 | `test:apps`              | Test all apps only             |
-| `test:vite`              | Test Vite app                  |
-| `test:next`              | Test Next.js app               |
+| `test:otta-web`          | Test otta-web app               |
+| `test:otta-landing`      | Test otta-landing app           |
 | `test:coverage`          | All tests with coverage        |
 | `test:coverage:packages` | Packages with coverage         |
 | `test:coverage:apps`     | Apps with coverage             |
@@ -323,14 +323,14 @@ it('should delay', async () => {
 
 ## CI/CD Integration
 
-Tests run in GitHub Actions:
+Tests run in GitHub Actions (`.github/workflows/ci.yml`):
 
-- **Trigger**: On push and pull requests
-- **Platforms**: Ubuntu, Windows, macOS
+- **Trigger**: On pull requests targeting `main` or `develop`, and manually via `workflow_dispatch` (not on every push)
+- **Platform**: `ubuntu-latest` only (no OS matrix)
 - **Node Version**: 24.x
 - **Status**: Required for PR merge
 
-Test failures are tracked but don't block CI (currently `continue-on-error: true`).
+Tests run as part of `pnpm run ci:check` (`turbo run lint type-check test build`), which has no `continue-on-error`, so a failing test fails the CI job and blocks merge. The separate "Validate Cloudflare Configuration" job uses `continue-on-error: true`, but only to soft-fail on Cloudflare config/network flakiness — it does not apply to tests.
 
 ## Debugging Tests
 

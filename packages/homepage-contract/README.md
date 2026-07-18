@@ -2,6 +2,12 @@
 
 Shared Zod contract package for homepage, marketing page, and navigation payloads.
 
+> **Status: design proposal, not yet implemented.** This directory currently contains only this README — there is no
+> `package.json`, `src/`, or built `dist/` output, and the package is not published or installable. It does not appear
+> as a dependency anywhere else in this monorepo (including in `apps/otta-landing`, which references it only
+> descriptively). Everything below describes the intended schema contract, not a shipped package — treat it as a spec
+> to implement against, not a usable import today.
+
 ## Purpose
 
 `@ottabase/homepage-contract` is the payload contract layer for homepage-style content.
@@ -15,20 +21,21 @@ It exists to keep producers and consumers aligned on the same data shape for:
 
 Right now, this package is a schema package, not a runtime rendering or theming package.
 
-## How It Works Now
+## How It Would Work
 
-The current implementation is straightforward:
+The intended usage is straightforward:
 
 1. A producer returns homepage or page JSON.
 2. A consumer imports schemas from `@ottabase/homepage-contract`.
 3. The consumer validates the payload with Zod.
 4. The validated payload is then mapped into UI components, routing, or rendering logic.
 
-The current package surface is the built output in `dist/`.
+Once implemented, the package surface would be the built output in `dist/`, following the same pattern as every
+other package in this monorepo.
 
 ## What This Package Covers
 
-The current build exports schemas for four main areas.
+The design covers schemas for four main areas.
 
 ### 1. Homepage payloads
 
@@ -41,7 +48,7 @@ These cover the main homepage response shape.
 - `ExposedPageSchema`
 - `HomepageDataSchema`
 
-`HomepageDataSchema` currently models:
+`HomepageDataSchema` is designed to model:
 
 - `sections`
 - `display`
@@ -63,7 +70,7 @@ Homepage sections support fields such as:
 - `features`
 - `actions`
 
-Homepage display config currently supports:
+Homepage display config is designed to support:
 
 - `variantBySlot`
 - `themePreset`
@@ -84,14 +91,14 @@ These cover individual marketing or content pages.
 - `PageContentSchema`
 - `PageDataSchema`
 
-`PageDataSchema` currently models:
+`PageDataSchema` is designed to model:
 
 - `page`
 - `sections`
 - `display`
 - `content`
 
-Page metadata currently includes fields such as:
+Page metadata is designed to include fields such as:
 
 - `id`
 - `slug`
@@ -109,7 +116,7 @@ These cover list endpoints and admin-style page indexes.
 
 - `PagesListSchema`
 
-This currently models a `pages` array containing summary fields like:
+This is designed to model a `pages` array containing summary fields like:
 
 - `id`
 - `slug`
@@ -166,11 +173,11 @@ So the current boundary is:
 - `homepage-contract` is for homepage/page data shape
 - `brand-engine` is for theme and brand behavior
 
-## Current Usage Pattern
+## Intended Usage Pattern
 
 Use this package when a producer and consumer need to agree on homepage or page JSON.
 
-Example:
+Example (illustrative — the package is not implemented yet, so this is not runnable today):
 
 ```typescript
 import { HomepageDataSchema, PageDataSchema, PagesListSchema, NavPagesSchema } from '@ottabase/homepage-contract';
@@ -181,7 +188,7 @@ const pagesListPayload = PagesListSchema.parse(json);
 const navPayload = NavPagesSchema.parse(json);
 ```
 
-This gives you one place to validate the payload contract before rendering.
+Once built, this would give you one place to validate the payload contract before rendering.
 
 ## Practical Scope
 
@@ -204,7 +211,9 @@ Do not use it for:
 
 As the repo stands now:
 
-- this package is a shared Zod contract layer
-- it documents homepage/page payload structure, not UI behavior
-- the Next.js homepage app handles brand theming directly through brand-engine
-- the package is best understood as content-contract infrastructure, separate from the brand runtime
+- this package is a design proposal for a shared Zod contract layer — there is no `package.json`, source, or build,
+  and it cannot be installed or imported
+- the schemas above document an intended homepage/page payload structure, not an implemented one
+- the Next.js homepage app handles brand theming directly through brand-engine, with no dependency on this package
+- if and when it is implemented, this package should remain content-contract infrastructure, separate from the brand
+  runtime

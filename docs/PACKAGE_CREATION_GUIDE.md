@@ -28,17 +28,17 @@ packages/package-name/
     "name": "@ottabase/package-name",
     "version": "1.0.0",
     "main": "dist/index.js",
-    "module": "dist/index.esm.js",
+    "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.esm.js",
+            "import": "./dist/index.mjs",
             "require": "./dist/index.js",
         },
         "./component-name": {
             "types": "./dist/component-name.d.ts",
-            "import": "./dist/component-name.esm.js",
+            "import": "./dist/component-name.mjs",
             "require": "./dist/component-name.js",
         },
     },
@@ -92,7 +92,7 @@ Add to package.json exports and build script:
     "exports": {
         "./component-name": {
             "types": "./dist/component-name.d.ts",
-            "import": "./dist/component-name.esm.js",
+            "import": "./dist/component-name.mjs",
             "require": "./dist/component-name.js"
         }
     },

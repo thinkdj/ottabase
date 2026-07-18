@@ -1,6 +1,7 @@
 # Cloudflare Features Guide
 
-Complete guide for using Cloudflare bindings with `@ottabase/cf` and Next.js.
+Complete guide for using Cloudflare bindings with `@ottabase/cf` in `apps/otta-web` — a Vite + TanStack Router app
+deployed as a single Cloudflare Worker (not Next.js/OpenNext).
 
 ## Overview
 
@@ -141,12 +142,14 @@ pnpm wrangler secret put CF_API_TOKEN
 
 ```bash
 cd apps/otta-web
-pnpm dev
+pnpm dev          # Vite dev server (fast local DX)
+pnpm dev:worker   # Wrangler dev with real Cloudflare bindings
 ```
 
-- Uses Next.js dev server with HMR
-- Bindings use local state (`.wrangler/state/v3/`)
-- No Cloudflare account required
+- `pnpm dev` runs the Vite dev server for fast frontend iteration; it proxies `/api`, `/shortlinks/go`, and
+  `/__bootstrap__` requests to a Wrangler dev worker (`pnpm dev:worker`) so bindings still work end-to-end
+- `pnpm dev:worker` runs Wrangler dev directly, giving bindings local state (`.wrangler/state/v3/`)
+- No Cloudflare account required for either mode
 - Database, KV, R2 stored locally
 
 ### Preview (with workerd)
@@ -171,17 +174,19 @@ pnpm deploy
 
 ## Usage
 
+Bindings arrive on the plain Workers `env` object — there's no context-fetching call to make. `env` is the second
+argument to the Worker's `fetch` handler (`apps/otta-web/cloudflare-worker.ts`), and it's threaded into every API
+route as `context.env` (see `worker/routes/router.ts`'s `ApiRouteContext`). The `@ottabase/cf` factories just wrap
+that raw binding with a `Result<T, Error>`-returning client.
+
 ### D1 Database
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Client } from '@ottabase/cf/d1';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET() {
-    const { env } = await getCloudflareContext();
-    const db = createD1Client({ database: env.OBCF_D1 });
+export async function handleGetUser(context: ApiRouteContext): Promise<Response> {
+    const db = createD1Client({ database: context.env.OBCF_D1 });
 
     // Query
     const result = await db.query<User>('SELECT * FROM users WHERE id = ?', [userId]);
@@ -202,14 +207,11 @@ export async function GET() {
 ### KV Storage
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createKVClient } from '@ottabase/cf/kv';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET() {
-    const { env } = await getCloudflareContext();
-    const kv = createKVClient({ namespace: env.OBCF_KV });
+export async function handleGetSession(context: ApiRouteContext): Promise<Response> {
+    const kv = createKVClient({ namespace: context.env.OBCF_KV });
 
     // Set with TTL
     await kv.putJSON('session:abc', sessionData, {
@@ -229,16 +231,13 @@ export async function GET() {
 ### R2 Storage
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createR2Client } from '@ottabase/cf/r2';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
+export async function handleUpload(context: ApiRouteContext): Promise<Response> {
+    const r2 = createR2Client({ bucket: context.env.OBCF_R2 });
 
-export async function POST(request: Request) {
-    const { env } = await getCloudflareContext();
-    const r2 = createR2Client({ bucket: env.OBCF_R2 });
-
-    const formData = await request.formData();
+    const formData = await context.request.formData();
     const file = formData.get('file') as File;
 
     // Upload
@@ -304,15 +303,11 @@ Update `wrangler.jsonc`:
 ```typescript
 import { PrismaClient } from '@prisma/client';
 import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET() {
-    const { env } = await getCloudflareContext();
-
+export async function handleGetUsers(context: ApiRouteContext): Promise<Response> {
     const hyperdrive = createHyperdriveClient({
-        hyperdrive: env.HYPERDRIVE,
+        hyperdrive: context.env.HYPERDRIVE,
     });
 
     const prisma = new PrismaClient({
@@ -330,15 +325,11 @@ export async function GET() {
 ```typescript
 import { Client } from 'pg';
 import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET() {
-    const { env } = await getCloudflareContext();
-
+export async function handleGetUsers(context: ApiRouteContext): Promise<Response> {
     const hyperdrive = createHyperdriveClient({
-        hyperdrive: env.HYPERDRIVE,
+        hyperdrive: context.env.HYPERDRIVE,
     });
 
     const client = new Client({
@@ -359,15 +350,11 @@ export async function GET() {
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET() {
-    const { env } = await getCloudflareContext();
-
+export async function handleGetUsers(context: ApiRouteContext): Promise<Response> {
     const hyperdrive = createHyperdriveClient({
-        hyperdrive: env.HYPERDRIVE,
+        hyperdrive: context.env.HYPERDRIVE,
     });
 
     const client = postgres(hyperdrive.getConnectionString());
@@ -397,14 +384,11 @@ export async function GET() {
 ### Queues
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createQueuesClient } from '@ottabase/cf/queues';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function POST(request: Request) {
-    const { env } = await getCloudflareContext();
-    const queue = createQueuesClient({ queue: env.OBCF_QUEUE });
+export async function handleSendJob(context: ApiRouteContext): Promise<Response> {
+    const queue = createQueuesClient({ queue: context.env.OBCF_QUEUE });
 
     // Send message
     await queue.send({
@@ -420,18 +404,15 @@ export async function POST(request: Request) {
 ### Rate Limiting
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
+import type { ApiRouteContext } from './router';
 
-export const runtime = 'edge';
-
-export async function GET(request: Request) {
-    const { env } = await getCloudflareContext();
+export async function handleRateLimitedRoute(context: ApiRouteContext): Promise<Response> {
     const limiter = createRateLimitingClient({
-        rateLimiter: env.OBCF_RATE_LIMITER,
+        rateLimiter: context.env.OBCF_RATE_LIMITER,
     });
 
-    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+    const ip = context.request.headers.get('cf-connecting-ip') || 'unknown';
     const result = await limiter.limit({ key: `ip:${ip}` });
 
     if (!result.data.success) {
@@ -449,41 +430,17 @@ export async function GET(request: Request) {
 }
 ```
 
-## Next.js-Specific Notes
+## Where Bindings Are Available in otta-web
 
-### Server Components
+otta-web is a single Worker, not a Next.js/OpenNext app, so there's no framework-level context to fetch — bindings
+just show up on `env` wherever the Workers runtime hands it to you:
 
-Access bindings in Server Components:
-
-```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-
-export default async function Page() {
-    const { env } = await getCloudflareContext();
-    // Use env.OBCF_D1, env.OBCF_KV, env.OBCF_R2, etc.
-}
-```
-
-### Route Handlers
-
-All route handlers must use edge runtime:
-
-```typescript
-export const runtime = 'edge';
-```
-
-### Middleware
-
-Access bindings in middleware:
-
-```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-
-export async function middleware(request: NextRequest) {
-    const { env } = await getCloudflareContext();
-    // Use bindings for rate limiting, authentication, etc.
-}
-```
+- **Worker entry point**: `env` is the second argument to the exported `fetch` handler in
+  `apps/otta-web/cloudflare-worker.ts`.
+- **API routes**: every route handler receives `env` on its `ApiRouteContext` (`worker/routes/router.ts`), e.g.
+  `context.env.OBCF_KV`.
+- **Queue consumer**: the exported `queue` handler in `cloudflare-worker.ts` also receives `env` as its second
+  argument, for processing messages sent via the Queues binding.
 
 ## Best Practices
 
@@ -576,5 +533,4 @@ Working examples available at:
 - [Cloudflare D1 Docs](https://developers.cloudflare.com/d1/)
 - [Cloudflare KV Docs](https://developers.cloudflare.com/kv/)
 - [Cloudflare R2 Docs](https://developers.cloudflare.com/r2/)
-- [OpenNext Cloudflare](https://opennext.js.org/cloudflare/)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)

@@ -2,13 +2,16 @@
 
 Shared configuration utilities for Ottabase applications with environment variable support.
 
+This package ships two complementary config systems: `createAppConfig()` for env-driven runtime app config (UI framework, theme, storage prefix, feature toggles), and `defineOttabaseConfig()` — the single source of truth for package gating, feature configuration, email settings, and env-override resolution that real apps build their `ottabase.config.ts` on (see `apps/otta-web/ottabase/ottabase.config.ts` for a live example).
+
 ## Features
 
 - **Environment Variable Support**: Automatically reads from set environment variables
 - **Type-Safe Configuration**: Full TypeScript support with strict typing
 - **Flexible Defaults**: Override defaults per app or use global defaults
 - **Storage Utilities**: Helper functions for consistent storage key naming
-- **Multiple UI Framework Support**: Built-in support for Mantine, Shadcn, Chakra, and MUI
+- **Multiple UI Framework Support**: Built-in support for Mantine, Shadcn, Chakra, MUI, and Tremor
+- **Ottabase App Config**: `defineOttabaseConfig()` — single source of truth for package toggles, feature configuration (referrals, spotlight, crudHub, pagination, auth behavior), email settings, and environment-variable override resolution via `resolveConfigWithEnv()`
 
 ## Installation
 
@@ -57,8 +60,8 @@ const config = createAppConfig({
         },
         uiFramework: 'shadcn',
         features: {
-            darkMode: false,
-            analytics: true,
+            scopeByAppId: true,
+            spotlight: { enabled: false },
         },
     },
 });
@@ -85,7 +88,7 @@ APP_COPYRIGHT_TEXT="© 2024 Your Company"
 APP_COMPANY_NAME="Your Company"
 
 # UI Framework
-UI_FRAMEWORK="mantine"    # mantine | shadcn | chakra | mui
+UI_FRAMEWORK="mantine"    # mantine | shadcn | chakra | mui | tremor
 
 # Storage
 STORAGE_PREFIX="my-app"
@@ -102,10 +105,10 @@ const config = createAppConfig({ appName: 'My App' });
 
 // Create prefixed storage keys
 const themeKey = createStorageKey(config, STORAGE_KEYS.THEME);
-// Result: "my-app-theme"
+// Result: "my-app.theme"
 
 const customKey = createStorageKey(config, 'user-settings');
-// Result: "my-app-user-settings"
+// Result: "my-app.user-settings"
 
 // Use in localStorage
 localStorage.setItem(themeKey, 'dark');
@@ -129,6 +132,7 @@ const framework: SupportedUIFramework = 'mantine';
 
 ```typescript
 interface AppConfig {
+    appId: string;
     meta: {
         appName: string;
         logoUrl: string;
@@ -140,21 +144,91 @@ interface AppConfig {
         copyrightText: string;
         companyName: string;
     };
-    uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui';
-    features: {
-        darkMode: boolean;
-        analytics: boolean;
-        notifications: boolean;
+    uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui' | 'tremor';
+    ui: {
+        preventFOUC: boolean;
+        preventFOUCInsideIframe: boolean;
+        debounceMs: number;
+        layout: { minWidth: number; maxWidth: number };
+        enforceGoogleFonts: boolean;
     };
-    api: {
-        baseUrl: string;
-        timeout: number;
+    theme?: {
+        colorDefault: string;
+        colors: ThemeColors;
     };
     storage: {
         prefix: string;
     };
+    api: {
+        serverErrorHttpCode: number;
+    };
+    features: {
+        scopeByAppId: boolean;
+        spotlight: SpotlightConfig;
+        crudHub: CrudHubConfig;
+        auth: AuthConfig;
+        pagination: PaginationConfig;
+        referrals: ReferralsConfig;
+    };
+    model: {
+        defaultRelKey: string;
+    };
 }
 ```
+
+## Ottabase Config (`defineOttabaseConfig`)
+
+While `createAppConfig()` covers env-driven runtime app config, `defineOttabaseConfig()` is the **single source of truth** for package gating, feature configuration, email settings, and the migrations/routes an app wires up. This is what real apps use to configure themselves — see `apps/otta-web/ottabase/ottabase.config.ts` for a live example.
+
+```typescript
+// ottabase.config.ts
+import { defineOttabaseConfig } from '@ottabase/config';
+
+export default defineOttabaseConfig({
+    appId: 'otta-web',
+    appName: 'My App',
+
+    // Toggle built-in packages on/off
+    packages: {
+        comments: true,
+        ottablog: true,
+        shortlinks: true,
+        referrals: true,
+    },
+
+    // Register custom/premium packages (tables + migrations)
+    customPackages: {},
+
+    // Feature configuration
+    features: {
+        referrals: { enabled: true, trackClicks: true, expiryDays: 90, referralParam: 'ref' },
+        spotlight: { enabled: true, shortcuts: ['/'] },
+        pagination: { defaultPageSize: 10, maxPageSize: 100, sizeOptions: [5, 10, 20, 50, 100] },
+        crudHub: { apiBaseUrl: '/api/crudhub', urlBase: 'crudhub', urlBaseListing: 'browse' },
+        authBehavior: {
+            sessionMaxAge: 30 * 24 * 60 * 60,
+            requireEmailVerified: false,
+            disableCredentials: false,
+            verbose: false,
+        },
+    },
+
+    // Non-secret email settings (secrets stay in env vars)
+    email: { from: 'noreply@example.com', sesRegion: 'us-east-1' },
+
+    ui: { preventFOUC: false, debounceMs: 500, layout: { minWidth: 320, maxWidth: 1280 }, enforceGoogleFonts: true },
+});
+```
+
+`defineOttabaseConfig()` validates required fields (`appId`, `appName`), merges built-in defaults with your overrides, and warns on unrecognised top-level keys.
+
+**Helpers:**
+
+- `isPackageEnabled(config, 'referrals')` / `isCustomPackageEnabled(config, 'myPremiumFeature')` — check whether a built-in or custom package is enabled.
+- `resolveConfigWithEnv(config, env)` — applies environment-variable overrides (see `ENV_KEYS`) on top of the config file, with precedence **ENV > config file > default**. Pass the request env (e.g. Cloudflare Workers `env`) per request; secrets (auth secret, OAuth keys, API keys) must still come from env vars only, never from the config file.
+- `BUILT_IN_PACKAGES` — the list of built-in package keys (`'comments' | 'ottablog' | 'shortlinks' | 'referrals'`).
+
+**Types:** `OttabaseConfig` (the resolved config) and `OttabaseConfigInput` (what you pass to `defineOttabaseConfig()`).
 
 ## Examples
 
@@ -198,9 +272,8 @@ export function useAppConfig() {
                 appName: 'My App',
                 defaults: {
                     features: {
-                        darkMode: true,
-                        analytics: false,
-                        notifications: true,
+                        spotlight: { enabled: true },
+                        referrals: { enabled: false },
                     },
                 },
             }),

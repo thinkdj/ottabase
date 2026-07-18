@@ -170,6 +170,70 @@ This component requires:
   the Logo in your router's `<Link>` component instead and omit `linkUrl`)
 - Internal DarkModeToggle component (if darkModeSwitcher is true)
 
+### MessageBox
+
+A status/placeholder display component for loading, empty, and info/error states. Shows an icon plus message content
+based on `messageType`, or a loading indicator (spinner or skeleton) when `isLoading` is set. `message` accepts a
+string, a React node, an `Error` (which automatically switches the display to the `error` type), or a plain object
+(pretty-printed as JSON).
+
+#### Props
+
+- `isLoading?: boolean` - Show the loading state instead of a message
+- `loadingType?: 'spinner' | 'skeleton'` - Loading visual variant (default: `'spinner'`)
+- `message?: React.ReactNode | Error | Record<string, unknown> | string` - Message content
+- `messageType?: MessageTypes` - One of `'info' | 'error' | 'warning' | 'success' | 'help' | 'loginRequired' |
+  'disconnected' | 'loading'` (default: `'info'`)
+- `width?: string | number` - Width of the loading skeleton container
+
+#### Usage
+
+```tsx
+import { MessageBox } from '@ottabase/ui-components';
+
+<MessageBox message="Operation completed!" messageType="success" />
+
+<MessageBox isLoading />
+
+<MessageBox isLoading loadingType="skeleton" />
+```
+
+### BlogPagination
+
+A simple pagination control for blog post listings, with Previous/Next buttons and ellipsis-collapsed page numbers
+for large page counts.
+
+#### Props
+
+- `page: number | undefined` - Current page (default: 1)
+- `lastPage: number | undefined` - Total number of pages (default: 1)
+- `perPage: number | undefined` - Items per page (default: 30)
+- `isLoading?: boolean` - Disable page buttons while true
+- `showNextPrev?: boolean` - Show the Previous/Next buttons (default: `true`)
+- `showPageNumbers?: boolean` - Show the numbered page buttons (default: `true`)
+- `onPageChange: (page: number) => void` - Fires when the user selects a page
+
+#### Usage
+
+```tsx
+import { BlogPagination } from '@ottabase/ui-components';
+
+<BlogPagination page={page} lastPage={12} perPage={10} onPageChange={setPage} />;
+```
+
+### HistoryGoBackButton
+
+A minimal "Go Back" button that navigates with `window.history.back()`. It's a client component (`'use client'`) and
+no-ops if there's no browser history to go back to. Takes no props.
+
+#### Usage
+
+```tsx
+import { HistoryGoBackButton } from '@ottabase/ui-components';
+
+<HistoryGoBackButton />;
+```
+
 ## Tree Shaking
 
 This package supports atomic imports for optimal tree shaking. Each component can be imported individually:
@@ -184,9 +248,12 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 
 ## Available Atomic Imports
 
-- `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
+- `@ottabase/ui-components/blog-pagination` - BlogPagination component
 - `@ottabase/ui-components/confirm-dialog` - ConfirmDialog component
+- `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
+- `@ottabase/ui-components/history-go-back-button` - HistoryGoBackButton component
 - `@ottabase/ui-components/logo` - Logo component
+- `@ottabase/ui-components/message-box` - MessageBox component
 
 ## Installation
 

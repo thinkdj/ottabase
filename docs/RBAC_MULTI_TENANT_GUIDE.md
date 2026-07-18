@@ -76,11 +76,16 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 ### 2. Seed Data (Optional)
 
+There's no pnpm script for this -- `seedRBAC()` (and its sub-steps `seedPermissions()` / `seedRoles()`) in
+`packages/ottaorm/src/seed/rbac.ts` is a plain async function meant to be imported and called from your own
+init/setup code (or run directly with a runtime like `tsx`/`node`):
+
 ```bash
-pnpm --filter @ottabase/ottaorm seed:rbac
+npx tsx -e "import('./packages/ottaorm/src/seed/rbac').then(m => m.seedRBAC())"
 ```
 
-Creates default system roles: `owner`, `admin`, `member`
+Creates default system roles: `owner`, `admin`, `editor`, `viewer`, `user`, `member` (see `DEFAULT_ROLES` in that
+file).
 
 ### 3. Enable Row-Level Security in Worker
 
@@ -130,29 +135,31 @@ export default {
 
 ### 4. Access Admin UI
 
+The admin nav is organized into categorized sections under `/admin/*`:
+
 ```
 # Core Admin Pages
-http://localhost:5173/admin                      # Admin Dashboard
-http://localhost:5173/admin/users                # User Management (NEW)
-http://localhost:5173/admin/users/:userId/rbac   # User RBAC Assignment (NEW)
+http://localhost:5173/admin                                                # Admin Dashboard
+http://localhost:5173/admin/access/users                                   # User Management
+http://localhost:5173/admin/access/users/:userId/rbac                      # User RBAC Assignment
 
 # RBAC Management
-http://localhost:5173/admin/rbac                 # RBAC Admin Dashboard
-http://localhost:5173/admin/rbac/roles           # Roles Management
-http://localhost:5173/admin/rbac/permissions     # Permissions Matrix
+http://localhost:5173/admin/access/rbac                                    # RBAC Admin Dashboard
+http://localhost:5173/admin/access/rbac/roles                              # Roles Management
+http://localhost:5173/admin/access/rbac/permissions                        # Permissions Matrix
 
 # Organization Management
-http://localhost:5173/organizations              # Organizations List
-http://localhost:5173/organizations/new          # Create Organization (NEW)
-http://localhost:5173/organizations/:id/settings # Organization Settings (NEW)
-http://localhost:5173/organizations/:id/members  # Organization Members
+http://localhost:5173/admin/access/organizations                           # Organizations List
+http://localhost:5173/admin/access/organizations/new                       # Create Organization
+http://localhost:5173/admin/access/organizations/:organizationId/settings  # Organization Settings
+http://localhost:5173/admin/access/organizations/:organizationId/members   # Organization Members
 
 # User Profile
-http://localhost:5173/profile                    # User Profile Page (NEW)
+http://localhost:5173/profile                                              # User Profile Page
 
 # Audit & Security
-http://localhost:5173/admin/audit                # Audit Log Viewer
-http://localhost:5173/admin/security/rls         # RLS Demo Page
+http://localhost:5173/admin/security/audit                                 # Audit Log Viewer
+http://localhost:5173/admin/security/rls                                   # RLS Demo Page
 ```
 
 ---
@@ -364,12 +371,18 @@ GET / api / ottaorm / organization_members / member - 123; // member-123 belongs
 - user_roles
 - audit_logs
 
-**Admin-Only (blocked from generic CRUD):**
+**User-Scoped (filtered by `userId`):**
 
-- users
 - accounts
 - sessions
+
+**Public-Read-Only:**
+
 - verification_tokens
+
+**Blocked from generic CRUD entirely:**
+
+- users - CRUD is disabled outright (403 `CRUD_DISABLED`); use `/api/users/me` for profile access instead
 
 ### Organization Extraction
 
@@ -386,7 +399,8 @@ Extracts tenant context from:
 
 ### Organizations Page
 
-**Route:** `/organizations` **File:** `apps/otta-web/src/pages/organizations/OrganizationsPage.tsx`
+**Route:** `/admin/access/organizations` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationsPage.tsx`
 
 Features:
 
@@ -400,7 +414,8 @@ Features:
 
 ### Organization Members
 
-**Route:** `/organizations/:orgId/members` **File:** `apps/otta-web/src/pages/organizations/OrganizationMembersPage.tsx`
+**Route:** `/admin/access/organizations/$organizationId/members` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationMembersPage.tsx`
 
 Features:
 
@@ -413,7 +428,7 @@ Features:
 
 ### RBAC Admin
 
-**Route:** `/admin/rbac` **File:** `apps/otta-web/src/pages/admin/rbac/RBACAdminPage.tsx`
+**Route:** `/admin/access/rbac` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACAdminPage.tsx`
 
 Dashboard with links to:
 
@@ -423,7 +438,7 @@ Dashboard with links to:
 
 ### Roles Management
 
-**Route:** `/admin/rbac/roles` **File:** `apps/otta-web/src/pages/admin/rbac/RBACRolesPage.tsx`
+**Route:** `/admin/access/rbac/roles` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACRolesPage.tsx`
 
 Features:
 
@@ -434,7 +449,8 @@ Features:
 
 ### Permissions Matrix
 
-**Route:** `/admin/rbac/permissions` **File:** `apps/otta-web/src/pages/admin/rbac/PermissionsMatrixPage.tsx`
+**Route:** `/admin/access/rbac/permissions` **File:**
+`apps/otta-web/src/pages/admin/access/rbac/PermissionsMatrixPage.tsx`
 
 Features:
 
@@ -446,7 +462,7 @@ Features:
 
 ### Audit Log Viewer
 
-**Route:** `/admin/audit` **File:** `apps/otta-web/src/pages/admin/audit/AuditLogViewerPage.tsx`
+**Route:** `/admin/security/audit` **File:** `apps/otta-web/src/pages/admin/security/audit/AuditLogViewerPage.tsx`
 
 Features:
 
@@ -458,7 +474,8 @@ Features:
 
 ### Organization Registration (NEW)
 
-**Route:** `/organizations/new` **File:** `apps/otta-web/src/pages/organizations/OrganizationRegistrationPage.tsx`
+**Route:** `/admin/access/organizations/new` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationRegistrationPage.tsx`
 
 Features:
 
@@ -471,7 +488,8 @@ Features:
 
 ### Organization Settings (NEW)
 
-**Route:** `/organizations/:id/settings` **File:** `apps/otta-web/src/pages/organizations/OrganizationSettingsPage.tsx`
+**Route:** `/admin/access/organizations/$organizationId/settings` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationSettingsPage.tsx`
 
 Features:
 
@@ -500,7 +518,7 @@ Features:
 
 ### User Management (NEW)
 
-**Route:** `/admin/users` **File:** `apps/otta-web/src/pages/admin/users/UserManagementPage.tsx`
+**Route:** `/admin/access/users` **File:** `apps/otta-web/src/pages/admin/access/users/UserManagementPage.tsx`
 
 Features:
 
@@ -513,7 +531,7 @@ Features:
 
 ### User RBAC Assignment (NEW)
 
-**Route:** `/admin/users/:userId/rbac` **File:** `apps/otta-web/src/pages/admin/users/UserRBACPage.tsx`
+**Route:** `/admin/access/users/$userId/rbac` **File:** `apps/otta-web/src/pages/admin/access/users/UserRBACPage.tsx`
 
 Features:
 
@@ -622,7 +640,7 @@ inviteMutation.mutate({
 // Quick role change with optimistic update
 const updateRoleMutation = useUpdateMemberRole();
 updateRoleMutation.mutate({
-    memberId: 'member-123',
+    userId: 'user-123',
     role: 'admin',
     organizationId: orgId,
 });
@@ -630,7 +648,7 @@ updateRoleMutation.mutate({
 // Remove member
 const removeMutation = useRemoveMember();
 removeMutation.mutate({
-    memberId: 'member-123',
+    userId: 'user-123',
     organizationId: orgId,
 });
 ```
@@ -687,7 +705,7 @@ import {
 
 // Prefetch for faster navigation
 const prefetch = usePrefetchOrganizations();
-<Link onMouseEnter={prefetch} to="/organizations">
+<Link onMouseEnter={prefetch} to="/admin/access/organizations">
     Organizations
 </Link>
 
@@ -698,16 +716,24 @@ invalidateAll(); // After major changes
 
 ### Query Keys Structure
 
+There's no single `rbacKeys` object. Each entity gets its own query-key factory from `createModelHooks`
+(`@ottabase/ottaorm/client`), and a couple of custom endpoints use ad-hoc keys:
+
 ```typescript
-// Organized hierarchy for cache management
-rbacKeys.all; // ['rbac']
-rbacKeys.organizations(); // ['rbac', 'organizations']
-rbacKeys.organization(id); // ['rbac', 'organizations', id]
-rbacKeys.members(orgId); // ['rbac', 'members', orgId]
-rbacKeys.member(id); // ['rbac', 'member', id]
-rbacKeys.roles(); // ['rbac', 'roles']
-rbacKeys.role(id); // ['rbac', 'roles', id]
-rbacKeys.auditLogs(filters); // ['rbac', 'audit', filters]
+// Per-entity keys, generated by createModelHooks({ entityName }) -> queryKeys
+organizationHooks.queryKeys.all(); // ['organizations']
+organizationHooks.queryKeys.lists(); // ['organizations', 'list']
+organizationHooks.queryKeys.list(filters); // ['organizations', 'list', filters]
+organizationHooks.queryKeys.detail(id); // ['organizations', 'detail', id]
+
+roleHooks.queryKeys.all(); // ['roles']
+roleHooks.queryKeys.lists(); // ['roles', 'list']
+
+orgMemberHooks.queryKeys.all(); // ['organization_members']
+
+// Custom endpoints outside the generic CRUD path use their own keys:
+['admin-organization-members', organizationId, page, perPage]; // useOrganizationMembers
+['list', filters]; // useAuditLogs
 ```
 
 ### Cache Strategies
@@ -726,7 +752,7 @@ All mutations include automatic optimistic updates:
 const updateRoleMutation = useUpdateMemberRole();
 
 updateRoleMutation.mutate(
-    { memberId, role: 'admin', organizationId },
+    { userId, role: 'admin', organizationId },
     {
         // UI updates immediately (before server responds)
         onSuccess: () => toast.rbac.memberUpdated(),
@@ -1067,17 +1093,21 @@ export default {
 
 All system models come with RLS policies out of the box:
 
-| Model                  | Policy                    | Filter Field     | Allow Null |
-| ---------------------- | ------------------------- | ---------------- | ---------- |
-| `organizations`        | Tenant-Scoped             | `organizationId` | Yes        |
-| `organization_members` | Tenant-Scoped             | `organizationId` | No         |
-| `roles`                | Tenant-Scoped             | `organizationId` | Yes        |
-| `permissions`          | Tenant-Scoped             | `organizationId` | Yes        |
-| `user_roles`           | Tenant-Scoped             | `organizationId` | No         |
-| `audit_logs`           | Tenant-Scoped (Read-Only) | `organizationId` | Yes        |
-| `users`                | Owner-Only                | `id`             | No         |
-| `accounts`             | User-Scoped               | `userId`         | No         |
-| `sessions`             | User-Scoped               | `userId`         | No         |
+| Model                  | Policy                    | Filter Field                 | Allow Null |
+| ---------------------- | ------------------------- | ----------------------------- | ---------- |
+| `organizations`        | Custom                    | `id` (or `ownerId` fallback)  | N/A        |
+| `organization_members` | Tenant-Scoped             | `organizationId`              | No         |
+| `roles`                | Tenant-Scoped             | `organizationId`              | Yes        |
+| `permissions`          | Tenant-Scoped             | `organizationId`              | Yes        |
+| `user_roles`           | Tenant-Scoped             | `organizationId`              | No         |
+| `audit_logs`           | Tenant-Scoped (Read-Only) | `organizationId`              | Yes        |
+| `users`                | Owner-Only                | `id`                          | No         |
+| `accounts`             | User-Scoped               | `userId`                      | No         |
+| `sessions`             | User-Scoped               | `userId`                      | No         |
+
+> `organizations` rows don't have an `organizationId` column -- they *are* the organization. Its policy filters by
+> `id` against the caller's resolved membership list (`context.memberOrganizationIds`, owned + member orgs), falling
+> back to `ownerId` when that list isn't available. See `packages/ottaorm/src/rls/registry.ts`.
 
 ### Security Context
 
@@ -1201,7 +1231,6 @@ import { rlsMiddleware, executeSecureCrudRequest, initRLS, registerPolicy, RLSPo
 
 ## 📚 Additional Documentation
 
-- **TENANT_ISOLATION.md** - Deep dive on database-level isolation
 - **packages/rbac/README.md** - RBAC package API reference
 - **packages/audit/README.md** - Audit package API reference
 - **packages/ottaorm/README.md** - ORM models and multi-tenant patterns
@@ -1297,5 +1326,5 @@ const exportData = auditTrail.map((log) => ({
 For issues or questions:
 
 1. Check package READMEs in `packages/rbac/` and `packages/audit/`
-2. Review TENANT_ISOLATION.md for security details
+2. Review the Row-Level Security section above and `packages/ottaorm/src/rls/` for security details
 3. Examine example implementations in `apps/otta-web/`

@@ -77,7 +77,7 @@ CREATE TABLE scheduled_tasks (
   name TEXT NOT NULL,
   description TEXT,
   schedule TEXT NOT NULL,
-  task_type TEXT NOT NULL DEFAULT 'handler',
+  task_type TEXT NOT NULL DEFAULT 'handler', -- only 'handler' is executed; see caveat below
   task TEXT NOT NULL,
   payload TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
@@ -244,7 +244,7 @@ await task.markFailed('Error message', nextRunAt);
 | name        | text      | Task name                                                             |
 | description | text      | Optional description                                                  |
 | schedule    | text      | Cron expression                                                       |
-| taskType    | text      | "handler", "command", or "url"                                        |
+| taskType    | text      | "handler", "command", or "url" — only "handler" is currently executed (see caveat below) |
 | task        | text      | Handler name to execute                                               |
 | payload     | text      | JSON payload                                                          |
 | isActive    | boolean   | Whether task is active                                                |
@@ -255,6 +255,12 @@ await task.markFailed('Error message', nextRunAt);
 | lastError   | text      | Last error message                                                    |
 | runCount    | integer   | Total runs                                                            |
 | failCount   | integer   | Failed runs                                                           |
+
+> **Note:** Only `taskType: 'handler'` is currently implemented. `Scheduler.tick()` skips any task whose
+> `taskType` is `'command'` or `'url'`, logging a warning (`... not supported`) instead of running it. Skipped
+> tasks are **not** marked completed or failed, so `nextRunAt` is never advanced — the task will show as due and
+> be skipped on every subsequent tick, indefinitely, with no error surfaced beyond the console warning. Use
+> `taskType: 'handler'` and register the corresponding handler with `.handler(name, fn)`.
 
 ## API Reference
 

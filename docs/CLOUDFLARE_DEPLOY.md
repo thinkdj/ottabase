@@ -110,12 +110,22 @@ Go to: GitHub repository → **Settings** → **Secrets and variables** → **Ac
 
 ---
 
-## Step 4: Setup Database (Optional)
+## Step 4: Initialize the Database Schema
 
-If using a database, ensure you have your migrations ready.
+Ottabase uses **OttaORM auto-init**, not `wrangler d1 migrations` — CI/CD does **not** apply the schema for you. After
+deploying (and again any time your Models change), call the init endpoint yourself:
 
-**Note:** CI/CD automatically applies migrations to production. See
-[CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for details.
+```bash
+# One-time: protect the endpoint in production
+wrangler secret put MIGRATION_SECRET
+
+# Apply/update the schema
+curl -X POST https://your-app.workers.dev/api/ottaorm/init \
+  -H "Authorization: Bearer ${MIGRATION_SECRET}"
+```
+
+See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md#-database-setup) for how OttaORM auto-init
+works and the local-dev equivalent (no `Authorization` header needed).
 
 ---
 
@@ -141,8 +151,9 @@ Watch in GitHub Actions:
 
 - ✓ Build packages
 - ✓ Build application & worker bundle
-- ✓ Apply database migrations
 - ✓ Deploy to Cloudflare
+
+CI/CD does not touch the database — run Step 4's OttaORM init call after the deploy finishes.
 
 ---
 
@@ -183,13 +194,14 @@ Then update GitHub secrets with new IDs.
 
 Regenerate API token with correct permissions (Step 2).
 
-### "Migration failed" errors
+### "Migration failed" errors / schema out of date
 
 ```bash
 wrangler d1 execute ottabase-db --remote --command="SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-CI pipeline gracefully handles already-applied migrations.
+If tables are missing, you likely haven't called the OttaORM init endpoint (CI/CD does not run it — see Step 4).
+OttaORM auto-init is idempotent, so re-running `POST /api/ottaorm/init` for an already-initialized database is safe.
 
 ### Build fails
 
@@ -232,8 +244,9 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 
 1. Build packages & app
 2. Build Cloudflare Worker bundle
-3. Apply database migrations
-4. Deploy to Cloudflare Workers
+3. Deploy to Cloudflare Workers
+
+Database schema changes are **not** part of this workflow — apply them manually via OttaORM init (see Step 4).
 
 ### Important Files
 
@@ -266,6 +279,7 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 - [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
 - [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)
 - [ ] Push to main branch
+- [ ] Initialize the database schema: set `MIGRATION_SECRET` and call `POST /api/ottaorm/init` (Step 4)
 - [ ] Verify deployment
 
 **Done! Your app is deployed with full CI/CD.** 🚀

@@ -21,12 +21,18 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Server-Side Search** - Full-text search across titles, slugs, and excerpts
 - **Blog Studio** - Themes and plugins managed from DB; active theme and Content Injector (and config) applied at init
   (see [STUDIO.md](./STUDIO.md))
+- **Hooks** - WordPress-style filter/action hooks for content, rendering, cards, themes, and plugins
+  (see [HOOKS_THEMES_PLUGINS.md](./HOOKS_THEMES_PLUGINS.md))
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
+pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/ottarenderer drizzle-orm
 ```
+
+`@ottabase/ottaorm` and `@ottabase/ottarenderer` are required peer dependencies — `BlogRenderer` and the built-in
+themes (Default and Minimal) import EditorJS rendering blocks and styles from `@ottabase/ottarenderer`, so it must be
+installed alongside `@ottabase/ottablog` even though it isn't imported directly in the Quick Start example below.
 
 ## Quick Start
 
@@ -684,6 +690,28 @@ hooks (e.g. Content Injector with DB-backed config).
   content types, priority).
 
 Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)**.
+
+## Hooks
+
+Ottablog ships a WordPress-style hooks system (`addFilter`, `addAction`, `applyFilters`, `doAction`, `removeHook`) for
+extending content and rendering behavior. It's the mechanism Blog Studio plugins register on, but it's also usable
+directly in app code:
+
+```typescript
+import { addFilter, addAction, HOOKS } from '@ottabase/ottablog';
+
+// Filters transform data (e.g. modify post content before render)
+addFilter(HOOKS['post.content.filter'], async (content, post) => modifiedContent, 10);
+
+// Actions run side effects (e.g. logging, analytics)
+addAction(HOOKS['post.render.before'], async (post, props) => console.log('Rendering', post.title), 10);
+```
+
+The `HOOKS` constant covers content (`post.content.filter`, `post.excerpt.filter`, `post.title.filter`, ...), render
+(`post.render.before/after`, ...), card (`post.card.before/after/image`), theme (`theme.register`, `theme.activate`),
+and plugin (`plugin.register`, `plugin.activate`) lifecycle events. Priority is lower-runs-first.
+
+Full hook reference, theme/plugin authoring guide, and examples: **[HOOKS_THEMES_PLUGINS.md](./HOOKS_THEMES_PLUGINS.md)**.
 
 ## Styling
 

@@ -4,13 +4,14 @@ Edge-friendly email templating + mailer helpers for Ottabase.
 
 ## Features
 
-- Handlebars templates (header/body/footer layout)
+- Handlebars templates (header/body/footer layout) — full syntax on Node, with an automatic fallback to a limited engine on restricted edge runtimes (see Templates below)
 - Template registry + rendering helpers
 - Mailer abstraction for providers
 - Resend provider (fetch-based, edge-safe)
 - AWS SES provider (HTTP API, edge-safe)
+- Nodemailer/SMTP provider for Node environments
 - Dev email trap provider for local workflows
-- Cloudflare provider stub (pluggable transport)
+- Cloudflare providers: DKIM-capable MailChannels mailer (recommended for Workers) and a pluggable custom-transport wrapper
 
 ## Install
 
@@ -92,6 +93,12 @@ registerEmailTemplate({
     footer: '<p>This link expires in {{minutes}} minutes.</p>',
 });
 ```
+
+### Edge runtime fallback
+
+Templates are compiled with real `Handlebars.compile()`, so on Node you get the full Handlebars feature set (helpers, `{{#each}}`, `{{else}}`, partials, etc.). Some restricted V8 isolates — notably Cloudflare Workers without the `unsafe-eval` compatibility flag — disallow the runtime code generation that `Handlebars.compile()` relies on. When that happens, rendering silently falls back to a minimal built-in engine that only supports `{{var}}` / `{{{var}}}` substitution and single-level `{{#if var}}...{{/if}}` blocks — no `{{else}}`, `{{#each}}`, comparison helpers, or partials.
+
+This fallback is silent by design (no error is thrown), so a template that relies on advanced Handlebars syntax will render incorrectly instead of failing loudly if it ever runs in one of these environments. If you need guaranteed full Handlebars support in a Workers-style environment, enable the `unsafe-eval` compatibility flag, or keep templates that may run there to the subset above.
 
 ## Cloudflare Provider
 
