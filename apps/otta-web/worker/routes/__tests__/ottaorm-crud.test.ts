@@ -32,6 +32,7 @@ vi.mock('@ottabase/comments', () => ({
 }));
 
 vi.mock('@ottabase/ottaorm/models', () => ({
+    Organization: { delete: vi.fn() },
     OrganizationMember: { create: vi.fn() },
     User: { whereIn: vi.fn() },
     UserGroupMember: { find: vi.fn() },
@@ -175,6 +176,89 @@ describe('handleOttaormCrud (posts concurrency)', () => {
             expect(executeSecureCrudRequest as any).toHaveBeenCalled();
         },
     );
+});
+
+describe('handleOttaormCrud (organization create — owner-membership atomicity)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('provisions the owner membership after a successful org create (no rollback)', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Organization, OrganizationMember } = await import('@ottabase/ottaorm/models');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'organizations',
+            method: 'POST',
+            body: { name: 'New Org' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({
+            success: true,
+            data: { id: 'org-new' },
+            status: 201,
+        });
+        (OrganizationMember.create as any).mockResolvedValue({ id: 'member-1' });
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(201);
+        expect(OrganizationMember.create as any).toHaveBeenCalledWith(
+            expect.objectContaining({ userId: 'user-1', organizationId: 'org-new', role: 'owner' }),
+        );
+        // Success path must NOT roll back the org.
+        expect(Organization.delete as any).not.toHaveBeenCalled();
+    });
+
+    it('compensating-deletes the orphaned org and returns 500 when the owner-membership insert fails', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Organization, OrganizationMember } = await import('@ottabase/ottaorm/models');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'organizations',
+            method: 'POST',
+            body: { name: 'New Org' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({
+            success: true,
+            data: { id: 'org-new' },
+            status: 201,
+        });
+        // D1 has no cross-table txn: the org row is committed, but the membership insert blows up.
+        (OrganizationMember.create as any).mockRejectedValue(new Error('membership insert failed'));
+        (Organization.delete as any).mockResolvedValue(undefined);
+
+        const response = await handleOttaormCrud(createContext());
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(500);
+        expect(body.code).toBe('ORG_MEMBER_CREATE_FAILED');
+        // The just-created org must be rolled back so it isn't orphaned (unreachable via memberships).
+        expect(Organization.delete as any).toHaveBeenCalledWith('org-new');
+    });
+
+    it('still returns 500 (does not throw) when the compensating delete itself fails', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Organization, OrganizationMember } = await import('@ottabase/ottaorm/models');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'organizations',
+            method: 'POST',
+            body: { name: 'New Org' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({
+            success: true,
+            data: { id: 'org-new' },
+            status: 201,
+        });
+        (OrganizationMember.create as any).mockRejectedValue(new Error('membership insert failed'));
+        (Organization.delete as any).mockRejectedValue(new Error('rollback failed too'));
+
+        const response = await handleOttaormCrud(createContext());
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(500);
+        expect(body.code).toBe('ORG_MEMBER_CREATE_FAILED');
+    });
 });
 
 describe('handleOttaormCrud (comments)', () => {

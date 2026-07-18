@@ -81,8 +81,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Org creation is now all-or-nothing.** With the `ownerId` fallback removed (see stale-ownership fix), a partial
   failure between the `organizations` and `organization_members` inserts would orphan the org (unreachable even by its
-  creator). Both org-creation paths (generic CRUD, `provisionDefaultOrganizationForUser`) now compensating-delete the
-  org if the owner membership can't be written.
+  creator). All **three** org-creation paths — generic CRUD, `provisionDefaultOrganizationForUser`, and the first-user
+  bootstrap `createPersonalOrganizationIfMissing` — now compensating-delete the org if the owner membership can't be
+  written. (The bootstrap path was missed in the first atomicity pass; it does two raw non-atomic D1 inserts.)
+
+- **Cross-tenant bypass is now scope-aware.** `enforceOrgMembership` (the RLS defense-in-depth tenant check) gated its
+  super-admin bypass on the `*:*` permission STRING, which an org-scoped/legacy grant can carry without being a platform
+  admin. It now gates on the scope-aware `SecurityContext.platformAdmin` flag — consistent with the `checkAccess`
+  platform gate — so only a genuine platform admin may act across tenants; a stale org-scoped `*:*` cannot.
+
+- **Secret-gated throttles share one fail-open policy.** The bootstrap-secret check and the platform-owner promote
+  endpoint handled a missing rate-limiter binding inconsistently (one ignored the 500 and proceeded, the other 500'd the
+  whole request). Both now use a shared `enforceBruteForceThrottle`: a real 429 blocks, but an unavailable limiter FAILS
+  OPEN behind the secret gate **with a logged warning** — so a misconfigured binding can't brick first-run bootstrap or
+  break-glass ownership recovery, and the degraded state is diagnosable. Added coverage for the limiter counting/window
+  logic and the org-creation compensating-delete rollback.
 
 - **RBAC Permissions Matrix un-broken.** `useRBAC`'s role hooks now target `/api/admin/roles*` (platform-scoped) instead
   of the now-blocked generic `/api/ottaorm/roles`, so the permissions matrix — linked from the RBAC Roles page — works.

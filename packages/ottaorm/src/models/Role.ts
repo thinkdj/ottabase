@@ -304,6 +304,13 @@ export class Role extends BaseModel {
      *    which follows the reconcile with an RBAC-cache invalidation + session refresh so the healed
      *    permissions take effect (see reconcileSystemRoleSessions). Do NOT heal from the signup path.
      *
+     * TRADEOFF (deliberate): because heal runs only from seed, a legacy `owner = ['*:*']` row
+     * survives until an operator runs it. That delay is NOT a privilege-escalation window: platform
+     * access is gated on a SYSTEM-scoped grant (not on merged permissions), grant/system tables are
+     * default-denied in generic CRUD, and the cross-tenant bypass is gated on the scope-aware
+     * `platformAdmin` flag (not the `*:*` string) — so a lingering org-scoped `*:*` grants exactly
+     * what a legitimate org admin has, and nothing platform-wide or cross-tenant.
+     *
      * System roles are framework-owned; customize by creating NEW roles, never by editing these
      * (the admin API rejects edits to `isSystem` roles, and heal would revert them anyway).
      *

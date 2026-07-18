@@ -3,7 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { initDbConnection } from '../lib/db-utils';
-import { enforceRateLimit } from '../lib/rate-limiting';
+import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress, normalizeEmail, readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
@@ -32,8 +32,17 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
 
     // Rate-limit by IP before the secret compare, so this grant-of-ultimate-privilege endpoint can't
     // be brute-forced — matching the throttling on register/reset. Throttled BEFORE reading the body.
+    // enforceBruteForceThrottle fails OPEN with a logged warning if the limiter binding is missing (a
+    // real 429 still blocks) — the secret compare below is the authoritative gate, and this shares the
+    // exact policy the bootstrap secret check uses so break-glass recovery isn't bricked by a missing
+    // limiter binding.
     const ip = getClientIpAddress(request);
-    const rateLimited = await enforceRateLimit(request, env, `admin:promote-owner:${ip}`);
+    const rateLimited = await enforceBruteForceThrottle(
+        request,
+        env,
+        `admin:promote-owner:${ip}`,
+        'platform-owner promote',
+    );
     if (rateLimited) return rateLimited;
 
     const secret = env.BOOTSTRAP_OWNER_SECRET;

@@ -28,7 +28,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
 import { reconcileSystemRoleSessions } from '../lib/auth-utils';
-import { enforceRateLimit } from '../lib/rate-limiting';
+import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import {
@@ -129,11 +129,17 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
         // attacker could guess it unthrottled here and then make a single valid promote/create-owner
         // call — making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
-        // so legit use with the correct secret is never limited. Best-effort: a missing limiter
-        // (500) is ignored; only a real 429 blocks.
+        // so legit use with the correct secret is never limited. enforceBruteForceThrottle fails OPEN
+        // WITH A LOGGED WARNING if the limiter binding is missing (a real 429 still blocks) — the
+        // same policy the promote endpoint uses, so the two behave consistently.
         const ip = getClientIpAddress(context.request);
-        const limited = await enforceRateLimit(context.request, context.env, `bootstrap:secret:${ip}`);
-        if (limited && limited.status === 429) return limited;
+        const limited = await enforceBruteForceThrottle(
+            context.request,
+            context.env,
+            `bootstrap:secret:${ip}`,
+            'bootstrap secret check',
+        );
+        if (limited) return limited;
 
         if (isApiRequest) {
             return jsonResp(

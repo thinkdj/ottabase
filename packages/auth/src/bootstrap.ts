@@ -110,12 +110,28 @@ export async function createPersonalOrganizationIfMissing(
             .bind(organizationId, workspaceName, slug, userId, now, now)
             .run();
 
-        await env.OBCF_D1.prepare(
-            `INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at, updated_at)
-             VALUES (?, ?, ?, 'owner', 'active', ?, ?, ?)`,
-        )
-            .bind(crypto.randomUUID(), userId, organizationId, now, now, now)
-            .run();
+        try {
+            await env.OBCF_D1.prepare(
+                `INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at, updated_at)
+                 VALUES (?, ?, ?, 'owner', 'active', ?, ?, ?)`,
+            )
+                .bind(crypto.randomUUID(), userId, organizationId, now, now, now)
+                .run();
+        } catch (memberError) {
+            // D1 has no cross-table transaction, so the organizations row above is already
+            // committed. If the membership insert fails we would orphan an org that has an
+            // owner_id but no membership row — and because org access is resolved from ACTIVE
+            // MEMBERSHIPS (not owner_id; see OrganizationMember.organizationIdsForUser), the
+            // platform owner could never see or manage it. Compensate by deleting the org so a
+            // retry starts clean. Same rollback pattern as the other two org-creation paths
+            // (ottaorm-crud org POST, provisionDefaultOrganizationForUser).
+            try {
+                await env.OBCF_D1.prepare(`DELETE FROM organizations WHERE id = ?`).bind(organizationId).run();
+            } catch {
+                /* best-effort rollback; re-running bootstrap/seed can reconcile a leftover org */
+            }
+            throw memberError; // surfaced to the outer catch → logs + returns null
+        }
 
         return organizationId;
     } catch (error) {

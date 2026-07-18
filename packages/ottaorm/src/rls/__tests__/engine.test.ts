@@ -414,24 +414,38 @@ describe('org membership enforcement', () => {
         expect(() => engine.validateWrite('posts', ctx, data, 'create')).toThrow(/not one of the user's organizations/);
     });
 
-    it('still lets a super-admin (*:*) act across tenants even with empty memberships', () => {
+    it('still lets a platform admin act across tenants even with empty memberships', () => {
         const ctx: SecurityContext = {
             userId: 'u1',
             organizationId: 'org-x',
             memberOrganizationIds: [],
-            permissions: ['*:*'],
+            platformAdmin: true,
         };
         expect(engine.getReadFilter('posts', ctx)).toEqual({ organizationId: 'org-x' });
     });
 
-    it('lets a platform super-admin (*:*) act across tenants', () => {
+    it('lets a platform admin act across tenants (member of a different org)', () => {
+        const ctx: SecurityContext = {
+            userId: 'u1',
+            organizationId: 'org-x',
+            memberOrganizationIds: ['org-1'],
+            platformAdmin: true,
+        };
+        expect(engine.getReadFilter('posts', ctx)).toEqual({ organizationId: 'org-x' });
+    });
+
+    it('does NOT let an org-scoped *:* (no platformAdmin) bypass the tenant check', () => {
+        // A stale/org-scoped grant can carry the `*:*` permission string without being a platform
+        // admin. The cross-tenant bypass is gated on the scope-aware platformAdmin flag, so this
+        // must still be blocked from reading an org the user isn't a member of.
         const ctx: SecurityContext = {
             userId: 'u1',
             organizationId: 'org-x',
             memberOrganizationIds: ['org-1'],
             permissions: ['*:*'],
+            platformAdmin: false,
         };
-        expect(engine.getReadFilter('posts', ctx)).toEqual({ organizationId: 'org-x' });
+        expect(() => engine.getReadFilter('posts', ctx)).toThrow(/not one of the user's organizations/);
     });
 
     it('blocks a create scoped to a non-member org (even when it matches context)', () => {
