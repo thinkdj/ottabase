@@ -151,6 +151,195 @@ function baseLayout(title: string, body: string): string {
 }
 
 // ============================================================
+// Re-seed page — focused maintenance UI over POST /api/seed
+// ============================================================
+//
+// A one-click affordance to re-run RBAC seeding after a framework upgrade that
+// changed role permissions. Non-destructive: ensureDefaultRoles() reconciles the
+// built-in `isSystem` roles to the canonical permission sets (e.g. heals a legacy
+// `owner = ['*:*']` row) and never touches data or operator-created roles.
+export function renderReseedPage(state: PlatformStateResult): string {
+    const isReady = state.state === 'READY';
+    // The inline <script> uses string concatenation (no template literals / no `${...}`) so it does
+    // not collide with this outer template string.
+    return baseLayout(
+        'Reconcile Roles',
+        `
+  <p class="subtitle">Re-seed the framework's default RBAC roles &amp; permissions</p>
+
+  <div class="card">
+    <h2>Reconcile roles &amp; permissions</h2>
+    <p>
+      Re-applies the canonical system-role permission sets (platform_owner, owner, admin, editor,
+      viewer, member) and ensures the default permissions exist. Safe to run anytime — it is
+      <strong>non-destructive</strong>: it only reconciles the built-in system roles to code, and
+      never touches your data or custom roles. Use it after a framework upgrade that changed role
+      permissions (e.g. to heal a legacy <code>owner = ['*:*']</code> row without clearing the DB).
+    </p>
+    <div class="form-group">
+      <label class="form-label" for="reseed-secret">Bootstrap Token</label>
+      <input class="form-input" id="reseed-secret" type="password" placeholder="Secret Token" autocomplete="off">
+      <div class="form-hint">Your <code>BOOTSTRAP_OWNER_SECRET</code>. Prefilled from <code>?secret=</code> in the URL if present.</div>
+    </div>
+    <button class="btn btn-primary" id="btn-reseed">Reconcile roles &amp; permissions</button>
+    <div class="log-area" id="reseed-log"></div>
+    <div class="alert alert-success" id="reseed-relogin" style="display:none;margin-top:0.75rem">
+      Done. Signed-in users keep a cached session snapshot — <strong>log out and back in</strong>
+      (the platform owner especially) so the corrected roles and platform-admin flag take effect.
+    </div>
+  </div>
+  ${
+      isReady
+          ? ''
+          : `<div class="alert alert-warning">Platform is not fully set up yet. For a first run, use the <a href="/__bootstrap__" style="color:var(--accent-light)">setup wizard</a> instead.</div>`
+  }
+
+  <script>
+    (function () {
+      var input = document.getElementById('reseed-secret');
+      var btn = document.getElementById('btn-reseed');
+      var log = document.getElementById('reseed-log');
+      var relogin = document.getElementById('reseed-relogin');
+      try {
+        var q = new URLSearchParams(location.search).get('secret');
+        if (q) input.value = q;
+      } catch (e) {}
+      function line(msg, cls) {
+        log.classList.add('visible');
+        var d = document.createElement('div');
+        d.className = 'log-line ' + (cls || '');
+        d.textContent = msg;
+        log.appendChild(d);
+      }
+      btn.addEventListener('click', function () {
+        var secret = (input.value || '').trim();
+        if (!secret) { line('Enter the bootstrap token first.', 'log-error'); return; }
+        btn.disabled = true;
+        log.innerHTML = '';
+        relogin.style.display = 'none';
+        line('Reconciling roles & permissions...', 'log-info');
+        fetch('/__bootstrap__/api/seed', {
+          method: 'POST',
+          headers: { 'X-Bootstrap-Secret': secret, 'Content-Type': 'application/json' },
+        })
+          .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'error'), 'log-error');
+              btn.disabled = false;
+              return;
+            }
+            var roles = res.body && res.body.roles;
+            if (roles && roles.created && roles.created.length) line('Created / healed: ' + roles.created.join(', '), 'log-success');
+            else line('All system roles already match code.', 'log-success');
+            if (roles && roles.existing) line('Roles present: ' + roles.existing.join(', '), '');
+            relogin.style.display = 'block';
+            btn.disabled = false;
+          })
+          .catch(function (e) { line('Network error: ' + e.message, 'log-error'); btn.disabled = false; });
+      });
+    })();
+  </script>
+        `,
+    );
+}
+
+// ============================================================
+// Promote-owner page — focused UI over POST /api/admin/platform-owner/promote
+// ============================================================
+//
+// Grants the SYSTEM-scoped platform_owner role to an EXISTING account. Secret-gated (same
+// BOOTSTRAP_OWNER_SECRET) so it works without a session — useful for granting/transferring
+// platform ownership or recovering when no owner can sign in.
+export function renderPromoteOwnerPage(state: PlatformStateResult): string {
+    const isReady = state.state === 'READY';
+    return baseLayout(
+        'Promote Platform Owner',
+        `
+  <p class="subtitle">Grant an existing account the system-scoped <code>platform_owner</code> role</p>
+
+  <div class="card">
+    <h2>Promote to platform owner</h2>
+    <p>
+      Grants full platform (control-plane) access to an <strong>existing</strong> user account. The
+      person must already have signed up — this does not create an account. Additive: existing
+      platform owners keep their access.
+    </p>
+    <div class="form-group">
+      <label class="form-label" for="promote-secret">Bootstrap Token</label>
+      <input class="form-input" id="promote-secret" type="password" placeholder="Secret Token" autocomplete="off">
+      <div class="form-hint">Your <code>BOOTSTRAP_OWNER_SECRET</code>. Prefilled from <code>?secret=</code> in the URL if present.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="promote-email">Account email</label>
+      <input class="form-input" id="promote-email" type="email" placeholder="owner@example.com" autocomplete="off">
+      <div class="form-hint">The email of the existing account to promote.</div>
+    </div>
+    <button class="btn btn-primary" id="btn-promote">Promote to platform owner</button>
+    <div class="log-area" id="promote-log"></div>
+    <div class="alert alert-success" id="promote-relogin" style="display:none;margin-top:0.75rem">
+      Done. If that user is currently signed in, they must <strong>log out and back in</strong> for the
+      platform-admin access to take effect in their session.
+    </div>
+  </div>
+  ${
+      isReady
+          ? ''
+          : `<div class="alert alert-warning">Platform is not fully set up yet. Use the <a href="/__bootstrap__" style="color:var(--accent-light)">setup wizard</a> to create the first owner.</div>`
+  }
+
+  <script>
+    (function () {
+      var secretInput = document.getElementById('promote-secret');
+      var emailInput = document.getElementById('promote-email');
+      var btn = document.getElementById('btn-promote');
+      var log = document.getElementById('promote-log');
+      var relogin = document.getElementById('promote-relogin');
+      try {
+        var q = new URLSearchParams(location.search).get('secret');
+        if (q) secretInput.value = q;
+      } catch (e) {}
+      function line(msg, cls) {
+        log.classList.add('visible');
+        var d = document.createElement('div');
+        d.className = 'log-line ' + (cls || '');
+        d.textContent = msg;
+        log.appendChild(d);
+      }
+      btn.addEventListener('click', function () {
+        var secret = (secretInput.value || '').trim();
+        var email = (emailInput.value || '').trim();
+        if (!secret) { line('Enter the bootstrap token first.', 'log-error'); return; }
+        if (!email) { line('Enter the account email to promote.', 'log-error'); return; }
+        btn.disabled = true;
+        log.innerHTML = '';
+        relogin.style.display = 'none';
+        line('Promoting ' + email + '...', 'log-info');
+        fetch('/api/admin/platform-owner/promote', {
+          method: 'POST',
+          headers: { 'X-Bootstrap-Secret': secret, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
+        })
+          .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'error'), 'log-error');
+              btn.disabled = false;
+              return;
+            }
+            line('Promoted. Role: ' + ((res.body && res.body.role) || 'platform_owner') + ' (user ' + ((res.body && res.body.userId) || '?') + ')', 'log-success');
+            relogin.style.display = 'block';
+            btn.disabled = false;
+          })
+          .catch(function (e) { line('Network error: ' + e.message, 'log-error'); btn.disabled = false; });
+      });
+    })();
+  </script>
+        `,
+    );
+}
+
+// ============================================================
 // Wizard page — the main setup flow
 // ============================================================
 

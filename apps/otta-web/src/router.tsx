@@ -452,14 +452,14 @@ const adminDevMailRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/DevMailPage'),
     'AdminDevMailPage',
 );
+const adminEmailRoute = makeAdminRoute(
+    '/admin/infrastructure/email',
+    () => import('@/pages/admin/infrastructure/EmailPage'),
+    'AdminEmailPage',
+);
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
 
-const adminNotificationsRoute = makeAdminRoute(
-    '/admin/growth/notifications',
-    () => import('@/pages/admin/growth/NotificationsPage'),
-    'AdminNotificationsPage',
-);
 // Referrals dashboard shows the viewer's OWN referral stats (user-scoped), so any admin may open it.
 const adminReferralsRoute = makeAdminRoute(
     '/admin/growth/referrals',
@@ -609,7 +609,7 @@ const coreRoutes = [
     adminQueuesRoute,
     adminCronRoute,
     adminDevMailRoute,
-    adminNotificationsRoute,
+    adminEmailRoute,
 ];
 
 // Routes that depend on optional packages.

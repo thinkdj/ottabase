@@ -44,15 +44,21 @@ function hasPermission(permissions: string[] | undefined, required: string): boo
 
 /**
  * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
- * appearance/content). Derived server-side from a SYSTEM-scoped grant and surfaced as
- * `user.platformAdmin`; we accept the '*:*' superadmin permission as a fallback. NOT role-name based.
+ * appearance/content). Trust ONLY the server-derived, scope-aware `user.platformAdmin` flag (set from
+ * a SYSTEM-scoped grant). Deliberately NO `*:*` fallback: the session's merged permission list is
+ * scope-blind, so an ORG-scoped `*:*` (e.g. a legacy/stale `owner=['*:*']` row on an un-migrated DB)
+ * would otherwise masquerade as platform admin here. The server enforces the same boundary; this is
+ * just what the client renders.
  */
 export function isPlatformAdmin(user: AdminUserLike): boolean {
     if (!user) return false;
-    return user.platformAdmin === true || hasPermission(user.permissions, '*:*');
+    return user.platformAdmin === true;
 }
 
-/** ORGANIZATION administrator — can administer their own tenant (org:admin). Platform owners qualify too. */
+/**
+ * ORGANIZATION administrator — can administer their own tenant. True for `org:admin` (which a
+ * legacy org-scoped `*:*` also matches, correctly: such a user IS an org owner) or a platform owner.
+ */
 export function isOrgAdmin(user: AdminUserLike): boolean {
     if (!user) return false;
     return isPlatformAdmin(user) || hasPermission(user.permissions, 'org:admin');

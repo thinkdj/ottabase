@@ -13,7 +13,6 @@ import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
-    Bell,
     BookOpen,
     Building2,
     Clock,
@@ -23,6 +22,8 @@ import {
     Inbox,
     Layers,
     Layout,
+    Mail,
+    Megaphone,
     Palette,
     Power,
     RefreshCw,
@@ -113,6 +114,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Create and manage blog posts, changelogs, docs, and announcements.',
                 href: '/admin/content/blog',
                 icon: FileText,
+                scope: 'org',
+                requiresPackage: 'ottablog',
+            },
+            {
+                title: 'Changelog',
+                description: 'Publish product changelog entries.',
+                href: '/admin/content/changelog',
+                icon: Megaphone,
                 scope: 'org',
                 requiresPackage: 'ottablog',
             },
@@ -221,6 +230,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Inbox,
             },
             {
+                title: 'Email',
+                description: 'Provider status and test-send to verify email delivery.',
+                href: '/admin/infrastructure/email',
+                icon: Mail,
+            },
+            {
                 title: 'System Health',
                 description: 'View system health metrics and API status.',
                 href: '/api/health',
@@ -234,12 +249,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Growth',
         icon: Rocket,
         items: [
-            {
-                title: 'Notifications',
-                description: 'Send notifications and broadcast system alerts.',
-                href: '/admin/growth/notifications',
-                icon: Bell,
-            },
             {
                 title: 'Referrals',
                 description: 'Referral statistics, usernames, and conversion tracking.',

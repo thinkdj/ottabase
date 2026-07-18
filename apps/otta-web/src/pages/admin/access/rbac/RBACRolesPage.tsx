@@ -56,7 +56,7 @@ export function RBACRolesPage() {
         try {
             setLoading(true);
             setError(null);
-            const response = await api<{ data: RoleRecord[] }>('/api/rbac/roles');
+            const response = await api<{ data: RoleRecord[] }>('/api/admin/roles');
             if (response.data) {
                 setRoles(response.data);
             }
@@ -102,7 +102,7 @@ export function RBACRolesPage() {
         if (!deleteDialog) return;
 
         try {
-            await api(`/api/rbac/roles/${deleteDialog}`, { method: 'DELETE' });
+            await api(`/api/admin/roles/${deleteDialog}`, { method: 'DELETE' });
             toast.rbac.roleDeleted();
             await fetchRoles();
             setDeleteDialog(null);
@@ -127,13 +127,13 @@ export function RBACRolesPage() {
 
         try {
             if (editingRole) {
-                await api(`/api/rbac/roles/${editingRole.id}`, {
+                await api(`/api/admin/roles/${editingRole.id}`, {
                     method: 'PATCH',
                     body: JSON.stringify(data),
                 });
                 toast.rbac.roleUpdated();
             } else {
-                await api('/api/rbac/roles', {
+                await api('/api/admin/roles', {
                     method: 'POST',
                     body: JSON.stringify(data),
                 });

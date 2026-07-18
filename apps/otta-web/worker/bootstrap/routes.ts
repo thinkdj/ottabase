@@ -4,9 +4,11 @@
 //
 // Handles all /__bootstrap__/* requests:
 //   GET  /__bootstrap__                  → Wizard UI (HTML)
+//   GET  /__bootstrap__/seed             → Focused "reconcile roles" UI over POST /api/seed
+//   GET  /__bootstrap__/promote-owner    → UI over POST /api/admin/platform-owner/promote
 //   GET  /__bootstrap__/api/status       → Current platform state + binding probe
 //   POST /__bootstrap__/api/init         → Clear KV, then run schema creation + migrations
-//   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
+//   POST /__bootstrap__/api/seed         → Seed/reconcile RBAC roles + permissions
 //   POST /__bootstrap__/api/create-owner → Create first platform owner account
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
@@ -25,8 +27,18 @@ import {
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
+import { reconcileSystemRoleSessions } from '../lib/auth-utils';
+import { enforceRateLimit } from '../lib/rate-limiting';
+import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
-import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
+import {
+    renderBindingsErrorPage,
+    renderLockedPage,
+    renderMaintenancePage,
+    renderPromoteOwnerPage,
+    renderReseedPage,
+    renderWizardPage,
+} from './pages';
 import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import { META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
 import type { PlatformStateResult } from './types';
@@ -113,6 +125,16 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     // Only allow query param for the GET wizard page
     const allowQuery = !isApiRequest && context.request.method === 'GET';
     if (!isValidSecret(context, allowQuery)) {
+        // Throttle brute-forcing of BOOTSTRAP_OWNER_SECRET. EVERY bootstrap endpoint is a
+        // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
+        // attacker could guess it unthrottled here and then make a single valid promote/create-owner
+        // call — making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
+        // so legit use with the correct secret is never limited. Best-effort: a missing limiter
+        // (500) is ignored; only a real 429 blocks.
+        const ip = getClientIpAddress(context.request);
+        const limited = await enforceRateLimit(context.request, context.env, `bootstrap:secret:${ip}`);
+        if (limited && limited.status === 429) return limited;
+
         if (isApiRequest) {
             return jsonResp(
                 {
@@ -134,6 +156,18 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     if (path === '/__bootstrap__/api/seed') return handleSeed(context);
     if (path === '/__bootstrap__/api/create-owner') return handleCreateOwner(context);
     if (path === '/__bootstrap__/api/finalize') return handleFinalize(context);
+
+    // Focused re-seed page (reconcile default roles) — a lightweight maintenance UI over
+    // /api/seed, usable after first-run setup. Matched before the generic wizard fallback below.
+    if (path === '/__bootstrap__/seed' && context.request.method === 'GET') {
+        return serveReseedPage(context);
+    }
+
+    // Focused promote-owner page — grants platform_owner to an existing account via the secret-gated
+    // POST /api/admin/platform-owner/promote. Break-glass / ownership-transfer UI (no login needed).
+    if (path === '/__bootstrap__/promote-owner' && context.request.method === 'GET') {
+        return servePromoteOwnerPage(context);
+    }
 
     // Wizard HTML page — serve for any /__bootstrap__* GET
     if (context.request.method === 'GET') {
@@ -391,11 +425,20 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (platform_owner, owner, admin, editor, viewer, member). This also
-        // self-heals existing system-role permission sets to match the canonical definitions —
-        // e.g. a legacy 'owner' = ['*:*'] row is corrected in place — so no separate normalize step.
-        const changedRoles = await Role.ensureDefaultRoles();
+        // Seed default roles (platform_owner, owner, admin, editor, viewer, member) AND reconcile
+        // existing system-role permission sets to the canonical definitions — e.g. heal a legacy
+        // 'owner' = ['*:*'] row in place. This is the DELIBERATE heal path (heal:true); the signup
+        // path only creates-if-missing. See ensureDefaultRoles.
+        const changedRoles = await Role.ensureDefaultRoles({ heal: true });
         const roleNames = changedRoles.map((r: any) => r.get('name') as string);
+
+        // A heal changes what the auth layer grants, so drop RBAC caches and refresh the
+        // (small, system-scoped) platform-owner sessions — otherwise a healed permission set / the
+        // platformAdmin flag wouldn't take effect until the JWT expires. Org-scoped sessions refresh
+        // on next sign-in (see reconcileSystemRoleSessions).
+        if (changedRoles.length > 0) {
+            await reconcileSystemRoleSessions(env);
+        }
 
         // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
@@ -700,6 +743,20 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
     } catch (error: any) {
         return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
     }
+}
+
+function serveReseedPage(context: BootstrapContext): Response {
+    return new Response(renderReseedPage(context.platformState), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+    });
+}
+
+function servePromoteOwnerPage(context: BootstrapContext): Response {
+    return new Response(renderPromoteOwnerPage(context.platformState), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+    });
 }
 
 function serveWizardPage(context: BootstrapContext): Response {

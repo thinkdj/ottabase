@@ -2,7 +2,6 @@ import { registerAppEmailTemplates } from '@/email/templates';
 import { listEmailTemplates, renderEmail } from '@ottabase/email';
 import {
     Badge,
-    Button,
     Card,
     CardContent,
     CardDescription,
@@ -18,7 +17,6 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
-import { AlertCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -87,26 +85,6 @@ export function EmailDemoPage() {
     const [headerText, setHeaderText] = useState<string>(EMAIL_TYPES[0].content.header || '');
     const [bodyText, setBodyText] = useState<string>(EMAIL_TYPES[0].content.body);
     const [footerText, setFooterText] = useState<string>(EMAIL_TYPES[0].content.footer || '');
-    const [recipientCsv, setRecipientCsv] = useState('test1@example.com, test2@example.com');
-    const [sendStatus, setSendStatus] = useState<
-        | { state: 'idle' }
-        | { state: 'sending' }
-        | { state: 'success'; results: Array<{ email: string; ok: boolean }> }
-        | { state: 'error'; message: string }
-    >({ state: 'idle' });
-    const [selectedProvider, setSelectedProvider] = useState<'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer'>(
-        'auto',
-    );
-    const [providers, setProviders] = useState<{
-        devTrap?: { available: boolean; required: string[]; optional: string[] };
-        resend?: { available: boolean; required: string[]; optional: string[] };
-        ses?: { available: boolean; required: string[]; optional: string[] };
-        nodemailer?: {
-            available: boolean;
-            required: string[];
-            optional: string[];
-        };
-    }>({});
 
     const selectedType = useMemo(
         () => EMAIL_TYPES.find((type) => type.id === emailType) || EMAIL_TYPES[0],
@@ -120,13 +98,6 @@ export function EmailDemoPage() {
         setBodyText(selectedType.content.body);
         setFooterText(selectedType.content.footer || '');
     }, [selectedType]);
-
-    useEffect(() => {
-        fetch('/api/email/providers')
-            .then((res) => res.json())
-            .then((data) => setProviders(data))
-            .catch(() => {});
-    }, []);
 
     const contentDraft = useMemo(
         () => ({
@@ -161,71 +132,11 @@ export function EmailDemoPage() {
         });
     }, [templateName, parsedVariables, contentDraft, subjectText]);
 
-    const handleSendTest = async () => {
-        if (parseError) {
-            setSendStatus({
-                state: 'error',
-                message: 'Fix JSON errors before sending.',
-            });
-            return;
-        }
-
-        const recipients = recipientCsv
-            .split(/[\s,;]+/)
-            .map((value) => value.trim())
-            .filter(Boolean);
-
-        if (!recipients.length) {
-            setSendStatus({
-                state: 'error',
-                message: 'Provide at least one email address.',
-            });
-            return;
-        }
-
-        setSendStatus({ state: 'sending' });
-
-        try {
-            const response = await fetch('/api/email/test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipients,
-                    template: templateName,
-                    emailType,
-                    subject: subjectText,
-                    content: contentDraft,
-                    variables: parsedVariables,
-                    provider: selectedProvider,
-                }),
-            });
-
-            const json = (await response.json().catch(() => null)) as {
-                error?: string;
-                results?: Array<{ email: string; ok: boolean }>;
-            } | null;
-
-            if (!response.ok) {
-                throw new Error(json?.error || 'Failed to send test emails');
-            }
-
-            setSendStatus({
-                state: 'success',
-                results: json?.results || [],
-            });
-        } catch (error) {
-            setSendStatus({
-                state: 'error',
-                message: error instanceof Error ? error.message : 'Failed to send emails',
-            });
-        }
-    };
-
     return (
         <div className="space-y-8">
             <DemoPageHeader
                 title="Email Templates"
-                description="Preview how @ottabase/email renders templates with replacement data."
+                description="Preview how @ottabase/email renders templates with replacement data. To send a real test email or check provider status, use Admin → Infrastructure → Email."
             />
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -347,238 +258,6 @@ export function EmailDemoPage() {
                     </CardContent>
                 </Card>
             </div>
-
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Send Test Emails</CardTitle>
-                    <CardDescription>
-                        Enter comma-separated email addresses to send the current template.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Email Provider</Label>
-                        <Select
-                            value={selectedProvider}
-                            onValueChange={(value) =>
-                                setSelectedProvider(value as 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer')
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="auto">Auto (use first available)</SelectItem>
-                                <SelectItem value="dev-trap">Dev Trap</SelectItem>
-                                <SelectItem value="resend">Resend</SelectItem>
-                                <SelectItem value="ses">AWS SES</SelectItem>
-                                <SelectItem value="nodemailer">Nodemailer (SMTP)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {selectedProvider !== 'auto' &&
-                            providers[selectedProvider] &&
-                            !providers[selectedProvider]?.available && (
-                                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                                    <div>
-                                        <div className="font-medium">Provider not configured</div>
-                                        <p className="mt-0.5 text-xs">
-                                            Missing required environment variables:{' '}
-                                            {providers[selectedProvider]?.required.join(', ')}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        {selectedProvider !== 'auto' && providers[selectedProvider]?.available && (
-                            <Badge
-                                variant="outline"
-                                className="rounded-full border-transparent bg-background text-xs text-success ring-1 ring-border"
-                            >
-                                Configured and ready
-                            </Badge>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Recipients (CSV)</Label>
-                        <Textarea
-                            value={recipientCsv}
-                            onChange={(event) => setRecipientCsv(event.target.value)}
-                            className="min-h-[100px] font-mono text-xs"
-                        />
-                    </div>
-
-                    <Button
-                        onClick={handleSendTest}
-                        disabled={
-                            sendStatus.state === 'sending' ||
-                            (selectedProvider !== 'auto' &&
-                                providers[selectedProvider] &&
-                                !providers[selectedProvider]?.available)
-                        }
-                    >
-                        {sendStatus.state === 'sending' ? 'Sending…' : 'Send Test Email'}
-                    </Button>
-
-                    {sendStatus.state === 'error' && (
-                        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                            {sendStatus.message}
-                        </div>
-                    )}
-
-                    {sendStatus.state === 'success' && (
-                        <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
-                            <div className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                Results
-                            </div>
-                            <ul className="space-y-1">
-                                {sendStatus.results.map((result) => (
-                                    <li key={result.email}>
-                                        {result.email}: {result.ok ? 'Sent' : 'Failed'}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Email Provider Configuration</CardTitle>
-                    <CardDescription>Configure one or more email providers via environment variables.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <strong>Dev Trap</strong> (KV-backed local inbox)
-                            </div>
-                            {providers.devTrap?.available ? (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
-                                >
-                                    Configured
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
-                                >
-                                    Not configured
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                            Required: <code>DEV_EMAIL_TRAP_ENABLED</code>, <code>OBCF_KV</code>
-                            <br />
-                            Optional: <code>DEV_EMAIL_TRAP_MAX_EMAILS</code>
-                            <br />
-                            Captured emails are viewable in the admin inbox at{' '}
-                            <code>/admin/infrastructure/dev-mail</code>.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <strong>Resend</strong> (HTTP API - Edge Compatible)
-                            </div>
-                            {providers.resend?.available ? (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
-                                >
-                                    Configured
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
-                                >
-                                    Not configured
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                            Required: <code>EMAIL_RESEND_API_KEY</code>
-                            <br />
-                            Optional: <code>EMAIL_FROM</code>
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <strong>AWS SES</strong> (HTTP API - Edge Compatible)
-                            </div>
-                            {providers.ses?.available ? (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
-                                >
-                                    Configured
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
-                                >
-                                    Not configured
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                            Required: <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>
-                            <br />
-                            Optional: <code>AWS_REGION</code>, <code>EMAIL_FROM</code>
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <strong>Nodemailer</strong> (SMTP - Node.js only)
-                            </div>
-                            {providers.nodemailer?.available ? (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-success ring-1 ring-border"
-                                >
-                                    Configured
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-muted-foreground ring-1 ring-border"
-                                >
-                                    Not configured
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                            Required: <code>EMAIL_SERVER</code> (SMTP URL)
-                            <br />
-                            Optional: <code>EMAIL_FROM</code>
-                            <br />
-                            <span className="text-warning">
-                                Note: Nodemailer requires Node.js and won't work in Cloudflare Workers
-                            </span>
-                        </p>
-                    </div>
-
-                    <div className="rounded-lg bg-background p-3 text-xs ring-1 ring-border">
-                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Edge Compatibility
-                        </p>
-                        <p className="mt-1 text-muted-foreground">
-                            The dev trap, Resend, and AWS SES work in Cloudflare Workers. Nodemailer uses SMTP (TCP
-                            sockets) and only works in Node.js environments.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 }
