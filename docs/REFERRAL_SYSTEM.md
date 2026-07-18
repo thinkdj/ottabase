@@ -84,7 +84,7 @@ flowchart TD
 | Layout mount                        | `ConfigurableLayout` / `BrandLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`) |
 | Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                              |
 | Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                               |
-| Click analytics UI                  | `apps/otta-web/src/pages/analytics/AnalyticsPage.tsx` (`ReferralAnalyticsTab`, at `/analytics?tab=referrals`, linked from `/referrals`) |
+| Click analytics UI                  | `apps/otta-web/src/pages/analytics/AnalyticsPage.tsx` (`ReferralAnalyticsTab`, at `/analytics?tab=referrals`; links to `/referrals`) |
 | App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)           |
 | Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                     |
 | Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)          |
@@ -111,8 +111,8 @@ Conceptual fields:
 | Field                               | Role                                       |
 | ----------------------------------- | ------------------------------------------ |
 | `id`                                | Primary key                                |
-| `userId`                            | Referrer (owner of the code at click time) |
-| `referralCode`                      | Username / code at time of click           |
+| `userId`                            | Referrer (owner of the code when the row was created) |
+| `referralCode`                      | Username / code when the row was created   |
 | `referredUserId`                    | Set when conversion completes              |
 | `status`                            | `pending`, `completed`, or `invalid`       |
 | `ipAddress`, `userAgent`, `referer` | Request context                            |
@@ -165,10 +165,12 @@ D1 record for an individual click.
 ### `GET /api/referrals/analytics?referralCode=&days=&groupBy=`
 
 Queries Cloudflare Analytics Engine for click-level data (dataset `referral_clicks`). Requires a session (or dev
-environment) plus `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_API_TOKEN` and the `OBCF_ANALYTICS_REFERRALS`
-binding; returns `503` if analytics isn't configured. `groupBy` is one of `country` (default), `referralCode`, or
-`day`; `days` is clamped to 1–90 (default 7). This is the source of click analytics — see [Client
-implementation](#client-implementation) for the corresponding dashboard tab.
+environment) plus `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_API_TOKEN`; returns `503` if analytics isn't
+configured. The `OBCF_ANALYTICS_REFERRALS` binding is not required by this endpoint — it's used by
+`POST /api/referrals/track` to emit click events, so without it there's simply no click data for this endpoint to
+return. `groupBy` is one of `country` (default), `referralCode`, or `day`; `days` is clamped to 1–90 (default 7).
+This is the source of click analytics — see [Client implementation](#client-implementation) for the corresponding
+dashboard tab.
 
 ### `GET /api/referrals/stats?userId={userId}`
 
@@ -263,7 +265,7 @@ recent activity (from D1, via `GET /api/referrals/user` / `/tracking`).
 
 ### Click analytics
 
-`ReferralAnalyticsTab`, one of the tabs on `AnalyticsPage` (`/analytics`, linked from `/referrals`), calls
+`ReferralAnalyticsTab`, one of the tabs on `AnalyticsPage` (`/analytics`, which links to `/referrals`), calls
 `GET /api/referrals/analytics` to show clicks by country, referral code, or day. This is Analytics Engine data — it
 reflects click volume, not the D1 conversion rows shown on the dashboard.
 

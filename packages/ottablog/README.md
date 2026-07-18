@@ -27,7 +27,7 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 ## Installation
 
 ```bash
-pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/ottarenderer drizzle-orm
+pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/ottarenderer @ottabase/db drizzle-orm
 ```
 
 `@ottabase/ottaorm` and `@ottabase/ottarenderer` are required peer dependencies — `BlogRenderer` and the built-in

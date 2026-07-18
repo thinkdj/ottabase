@@ -214,8 +214,9 @@ multi-app: same placeholder name = shared resource; different names = isolated (
 **Status:** ⚙️ Generated, gitignored — not checked into git
 
 Run `pnpm cf-typegen` (wraps `wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`) to (re)generate it
-from `wrangler.jsonc`. Re-run it whenever you add, rename, or remove a binding. The shape below is what a correct
-generated file looks like:
+from `wrangler.jsonc`. Re-run it whenever you add, rename, or remove a binding. The shape below illustrates the
+general structure — it is not exhaustive (e.g. it omits the `ai`/`assets` bindings also declared in
+`wrangler.jsonc`); run the `cf-typegen` script for the authoritative, up-to-date file:
 
 **Type Definitions:**
 
@@ -271,7 +272,7 @@ model static methods — they use the registered `'default'` connection unless a
 ```typescript
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
-import { User } from './models/User';
+import { User } from '@ottabase/ottaorm/models';
 
 // cloudflare-worker.ts
 export default {

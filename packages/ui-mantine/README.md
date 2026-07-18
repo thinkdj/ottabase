@@ -183,6 +183,7 @@ ui-mantine/
 │   ├── mantine-slate.ts
 │   ├── mantine-graphite.ts
 │   ├── mantine-azure.ts
-│   └── mantine-aurora.ts
+│   ├── mantine-aurora.ts
+│   └── mantine-artisan.ts
 └── package.json
 ```

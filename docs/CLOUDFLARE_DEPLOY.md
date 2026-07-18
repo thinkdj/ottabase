@@ -124,8 +124,8 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
 
-See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md#-database-setup) for how OttaORM auto-init
-works and the local-dev equivalent (no `Authorization` header needed).
+See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md#migration-not-applied) for how OttaORM
+auto-init works and the local-dev equivalent (no `Authorization` header needed).
 
 ---
 

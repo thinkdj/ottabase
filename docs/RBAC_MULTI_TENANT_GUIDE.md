@@ -81,7 +81,7 @@ There's no pnpm script for this -- `seedRBAC()` (and its sub-steps `seedPermissi
 init/setup code (or run directly with a runtime like `tsx`/`node`):
 
 ```bash
-npx tsx -e "import('./packages/ottaorm/src/seed/rbac').then(m => m.seedRBAC())"
+npx tsx packages/ottaorm/src/seed/rbac.ts
 ```
 
 Creates default system roles: `owner`, `admin`, `editor`, `viewer`, `user`, `member` (see `DEFAULT_ROLES` in that

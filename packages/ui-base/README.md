@@ -43,7 +43,7 @@ It also handles FOUC (flash-of-unstyled-content) prevention and font family conf
 
 - `preventFOUC` / `preventFOUCInsideIframe`: hide content until styles are ready, with separate control over whether that applies inside iframes
 - `fontFamilies`: override the primary/heading/monospace font stacks
-- `fontVarsFromRoot`: skip setting `--font-heading`/`--font-body` on the wrapper when the brand-engine already sets them on `:root`
+- `fontVarsFromRoot`: skip setting `--font-heading` on the wrapper when the brand-engine already sets it on `:root` (the primary/body font-family is always applied to the wrapper regardless of this flag)
 
 By default, font families fall back to the brand-engine CSS variables (`--font-body`, `--font-heading`, `--font-mono`) when present, and to static font stacks otherwise, so the provider cooperates with brand-engine theming out of the box.
 

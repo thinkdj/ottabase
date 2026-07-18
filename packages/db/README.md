@@ -72,7 +72,7 @@ export default defineAppDbConfig({
 });
 ```
 
-Feature packages register their `.schema.prisma` file and migrations via `registerFeature`/`defineFeatureSchema`; `createFeatureRegistry`/`discoverFeatures`/`FeatureRegistry` handle dependency resolution (topological sort) across features. `packages/scripts` uses this to concatenate schemas and drive migrations (`db-generate`, `db-migrate`, `db-migrate-apply`, `db-migrate-status`) for each app. See `src/prisma/D1_LOCAL_DEVELOPMENT.md` and `src/prisma/D1_PRODUCTION_DEPLOYMENT.md` for the full local-dev and production workflows.
+Feature packages register their `.schema.prisma` file and migrations via `registerFeature`/`defineFeatureSchema`; `createFeatureRegistry`/`discoverFeatures`/`FeatureRegistry` handle dependency resolution (topological sort) across features. `packages/scripts` ships CLI tooling intended to concatenate schemas and drive migrations (`db-generate`, `db-migrate`, `db-migrate-apply`, `db-migrate-status`) — though it is not currently wired up for use in this repo; see `packages/scripts/README.md` for status. See `src/prisma/D1_LOCAL_DEVELOPMENT.md` and `src/prisma/D1_PRODUCTION_DEPLOYMENT.md` for the intended full local-dev and production workflows (these guides also assume the not-currently-wired-up pipeline above).
 
 ## Exports
 

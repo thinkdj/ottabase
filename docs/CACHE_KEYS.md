@@ -44,9 +44,9 @@ The system provides helpers for every meaningful scope combination in a multi-te
 ```typescript
 import { orgKey } from '@ottabase/cf/cache-keys';
 
-// Brand kit cache
-const key = orgKey('brand', 'acme-corp', 'brandkit');
-// Result: brand:org:acme-corp:brandkit
+// Organization feature-flag cache
+const key = orgKey('cache', 'acme-corp', 'feature-flags');
+// Result: cache:org:acme-corp:feature-flags
 ```
 
 ### User-Level Cache
@@ -74,9 +74,9 @@ const key = appKey('config', 'web', 'settings');
 ```typescript
 import { orgAppKey } from '@ottabase/cf/cache-keys';
 
-// Brand layout per org and app
-const key = orgAppKey('brand', 'acme', 'web', 'layout', 'header');
-// Result: brand:org:acme:app:web:layout:header
+// App theme config per org
+const key = orgAppKey('config', 'acme', 'web', 'theme');
+// Result: config:org:acme:app:web:theme
 ```
 
 ### Composite Org+User Cache
@@ -405,7 +405,7 @@ const key = orgUserKey('rbac', orgId, userId, 'perms');
 | Namespace   | Purpose                | Example                              |
 | ----------- | ---------------------- | ------------------------------------ |
 | `rbac`      | RBAC permissions/roles | `rbac:org:acme:usr:user-123:roles`   |
-| `brand`     | Brand kits and layouts | `brand:org:acme:app:web:layout`      |
+| `brand`     | Brand kits and layouts | `brand:app:web:meta`                 |
 | `ratelimit` | Rate limiting          | `ratelimit:usr:user-123:api-create`  |
 | `dedupe`    | Job deduplication      | `dedupe:org:acme:email-send:msg-123` |
 | `session`   | User sessions          | `session:usr:user-123:active`        |

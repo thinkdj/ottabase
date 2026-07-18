@@ -110,7 +110,8 @@ import { handleCreateBrandKit, handleUpdateBrandKit } from '@ottabase/brand-engi
 
 // PUT /api/brand/kits/:id  { themePresetId: 'verdant' }
 // → re-expands on preset change; custom color overrides are merged in,
-//   and cursors (not part of presets) are preserved
+//   and any cursor values you've set take precedence over the preset's own
+//   cursor values (several presets, e.g. artisan/funky, ship registry cursors)
 ```
 
 See `POST /api/brand/kits` and `PUT /api/brand/kits/:id` in [API Endpoints](#api-endpoints).
@@ -275,7 +276,8 @@ const expanded = {
   shadow: preset.shadows,
   motion: preset.motion
 };
-// User-configured cursors (not in presets) are preserved during expansion
+// User-set cursor overrides take precedence over the preset's cursors during expansion
+// (several presets, e.g. artisan/funky, ship registry cursors)
 
 // 3. MERGE: Custom overrides on top of preset
 if (existingCustomColors) {
@@ -302,7 +304,7 @@ applyBrandTheme({ colors, typography, ... });
 
 - **Single Source of Truth**: Database contains complete theme
 - **No Runtime Resolution**: No registry lookups, no theme merging
-- **Cursors Preserved**: User-configured cursors persist when switching presets (not in preset templates)
+- **Cursor Overrides Win**: User-set cursors take precedence when switching presets; otherwise the preset's own cursors (e.g. artisan/funky) are used
 - **Atomic Updates**: What you save = what renders
 - **Works in Cloudflare Workers**: No module-level state dependencies
 - **Self-Contained Kits**: Each kit independent, no preset dependencies

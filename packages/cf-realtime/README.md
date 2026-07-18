@@ -279,8 +279,10 @@ client.subscribe('chat:room:456', handler);
 
 ## Offline Message Queuing
 
-Messages sent with `persistForOffline: true` are queued and redelivered when a client reconnects and
-re-subscribes to the channel:
+Messages sent with `persistForOffline: true` are queued and redelivered as soon as a client reconnects
+with the same `clientId` (no resubscription needed — but note a message may be delivered more than
+once, since resubscribing to a channel also re-triggers delivery of any not-yet-acknowledged messages
+for it):
 
 ```typescript
 // Server-side: Send message with offline persistence

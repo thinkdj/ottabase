@@ -318,7 +318,8 @@ OttaSelect has no stylesheet of its own — the trigger, dropdown, chips, and fo
 Tailwind utility classes bound to shadcn/ui-style semantic CSS custom properties: `bg-background`, `text-foreground`,
 `border-input`, `bg-popover`/`text-popover-foreground`, `border-border`, `hover:bg-accent`/`text-accent-foreground`,
 `bg-primary`/`text-primary`, `text-destructive`, `text-muted-foreground`, and `focus:ring-ring`, plus the theme
-tokens `--spacing-element`, `--radius`, `--duration-fast`, `--duration-normal`, and `--ease-theme`. None of these are
+tokens `--spacing-element`, `--radius`, `--duration-fast`, `--duration-normal`, and the `ease-theme` utility (backed
+by `--ease`). None of these are
 defined by a plain Tailwind setup — `darkMode: 'class'` and a content glob alone are **not** enough to render the
 component correctly. The consuming app needs a full design-token theme (semantic colors + motion, not just dark-mode
 toggling) already in place, or the component's colors/borders will resolve to nothing.
