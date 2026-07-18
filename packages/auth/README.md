@@ -139,14 +139,7 @@ await revokeAllUserSessions(userId, env);
 Pure, I/O-free helpers for reading a `Session` are in `@ottabase/auth/session`:
 
 ```typescript
-import {
-    isAuthenticated,
-    requireAuth,
-    getUserId,
-    getUserEmail,
-    hasVerifiedEmail,
-    serializeSession,
-} from '@ottabase/auth/session';
+import { isAuthenticated, requireAuth, getUserId, getUserEmail, hasVerifiedEmail } from '@ottabase/auth/session';
 
 const session = await getSession(request, env);
 if (isAuthenticated(session)) {
@@ -156,7 +149,6 @@ if (isAuthenticated(session)) {
 const required = requireAuth(session); // throws if not authenticated
 const userId = getUserId(session); // string | null
 const verified = hasVerifiedEmail(session); // boolean
-const data = serializeSession(session); // { authenticated, user } shape for API responses
 ```
 
 ## Password Hashing

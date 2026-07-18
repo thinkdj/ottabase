@@ -17,7 +17,6 @@ export default defineConfig({
                 '.wrangler/',
                 '.next/',
                 '.storybook/',
-                'prisma/',
                 '**/*.config.ts',
                 '**/*.config.js',
                 '**/*.d.ts',

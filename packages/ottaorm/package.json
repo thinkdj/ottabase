@@ -70,13 +70,9 @@
         "@cloudflare/workers-types": "catalog:",
         "@tanstack/react-query": "catalog:",
         "drizzle-orm": "catalog:",
-        "mongodb": "catalog:",
         "react": "catalog:"
     },
     "peerDependenciesMeta": {
-        "mongodb": {
-            "optional": true
-        },
         "@tanstack/react-query": {
             "optional": true
         },
@@ -91,7 +87,6 @@
         "@types/react": "catalog:",
         "drizzle-orm": "catalog:",
         "eslint": "catalog:",
-        "mongodb": "catalog:",
         "react": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",

@@ -55,8 +55,7 @@ function resolveAppId(context: BlogRouteContext): string {
 
 /**
  * Public blog lookup by slug: always discriminates by appId.
- * Tries the resolved app first, then legacy rows with app_id IS NULL only.
- * Never queries by slug alone — the same slug can exist for NULL vs non-NULL appId (see Post schema indexes).
+ * Never queries by slug alone — the same slug can exist across apps (see Post schema indexes).
  */
 async function findPublishedPostBySlug(
     slug: string,
@@ -65,13 +64,7 @@ async function findPublishedPostBySlug(
 ): Promise<Post | null> {
     const primary: Record<string, unknown> = { slug, status: 'published', appId };
     if (contentTypeParam) primary.contentType = contentTypeParam;
-    let record = await Post.first(primary);
-    if (record) return record;
-
-    const legacyNullApp: Record<string, unknown> = { slug, status: 'published', appId: null };
-    if (contentTypeParam) legacyNullApp.contentType = contentTypeParam;
-    record = await Post.first(legacyNullApp);
-    return record;
+    return Post.first(primary);
 }
 
 /**
@@ -607,7 +600,6 @@ export async function handleBlogRelatedPosts(context: BlogRouteContext, postId: 
     const categoryIds = categoryLinks.map((cl) => cl.get('categoryId') as string);
 
     const related = await Post.related(postId, {
-        categoryId: post.get('categoryId') as string | null,
         categoryIds,
         contentType: post.get('contentType') as string,
         appId: appId ?? undefined,

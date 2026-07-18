@@ -49,9 +49,6 @@ export type { AutoInitConfig, RuntimeMigrationConfig } from './migrations';
 
 /**
  * Base models (Edge-safe)
- *
- * Note: MongoDB-related exports are intentionally NOT exported from this entrypoint
- * because they pull in the `mongodb` package (Node-only) which breaks Next.js Edge runtime.
  */
 export { AbstractBaseModel, BaseModel } from './base';
 export type {

@@ -120,19 +120,17 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 - `user_roles` - User-role assignments (org-scoped)
 - `audit_logs` - Audit trail (org-scoped)
 
-### 2. Seed Data (Optional)
+### 2. Seed Data
 
-There's no pnpm script for this -- `seedRBAC()` (and its sub-steps `seedPermissions()` / `seedRoles()`) in
-`packages/ottaorm/src/seed/rbac.ts` is a plain async function meant to be imported and called from your own
-init/setup code (or run directly with a runtime like `tsx`/`node`):
+No separate seed step is needed — `Role.ensureDefaultRoles()` runs automatically when the platform owner account is
+created during bootstrap, creating any missing system roles. To reconcile existing roles back to their canonical
+permissions after a framework upgrade, run the secret-gated seed step: open `/__bootstrap__/seed` or call
+`POST /__bootstrap__/api/seed` (see "Bootstrap & Recovery Pages" below).
 
-```bash
-npx tsx packages/ottaorm/src/seed/rbac.ts
-```
-
-Creates default system roles: `platform_owner` (system-wide `*:*` wildcard, bootstrapped app owner),
-`owner` and `admin` (org-scoped, no system-level wildcard), `editor`, `viewer`, `user`, and `member` (see
-`DEFAULT_ROLES` in that file).
+Creates default system roles: `platform_owner` (system-scoped, `*:*`, bootstrapped app owner), `owner` and `admin`
+(org-scoped, no system-level wildcard), `editor`, `viewer`, and `member` (see `DEFAULT_ROLE_DEFINITIONS` in
+`packages/ottaorm/src/models/Role.ts` — the single source of truth; the old standalone seed CLI with its own
+parallel role list, including an extra `user` role, was removed).
 
 ### 3. Enable Row-Level Security in Worker
 

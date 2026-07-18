@@ -263,18 +263,8 @@ describe('blog post app scoping by slug', () => {
         });
     });
 
-    it('after primary appId miss, tries legacy published row with appId null only', async () => {
-        mocks.firstMock.mockResolvedValueOnce(null).mockResolvedValueOnce({
-            get: (key: string) => (key === 'contentType' ? 'blog' : null),
-            toJson: () => ({
-                id: 'legacy-post',
-                slug: 'legacy-slug',
-                title: 'Legacy',
-                isProtected: false,
-                content: { blocks: [] },
-                footnotes: null,
-            }),
-        });
+    it('returns 404 when no published row matches the resolved appId (no null-app fallback)', async () => {
+        mocks.firstMock.mockResolvedValueOnce(null);
 
         const context = {
             request: new Request('http://localhost/api/blog/posts/by-slug/legacy-slug', {
@@ -286,16 +276,13 @@ describe('blog post app scoping by slug', () => {
 
         const res = await handleBlogPostBySlug(context, 'legacy-slug');
 
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(404);
+        // Only the appId-scoped query runs — no second query for appId: null.
+        expect(mocks.firstMock).toHaveBeenCalledTimes(1);
         expect(mocks.firstMock).toHaveBeenNthCalledWith(1, {
             slug: 'legacy-slug',
             status: 'published',
             appId: 'site-a',
-        });
-        expect(mocks.firstMock).toHaveBeenNthCalledWith(2, {
-            slug: 'legacy-slug',
-            status: 'published',
-            appId: null,
         });
     });
 });

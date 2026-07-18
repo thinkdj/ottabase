@@ -14,8 +14,6 @@ catalog:
     "@mantine/hooks": ^8.3.15
     "@mantine/modals": ^8.3.15
     "@mantine/notifications": ^8.3.15
-    "@prisma/adapter-d1": ^5.22.0
-    "@prisma/client": ^5.22.0
     "@storybook/addon-docs": ^10.2.10
     "@storybook/addon-links": ^10.2.10
     "@storybook/addon-styling-webpack": ^3.0.0
@@ -57,7 +55,6 @@ catalog:
     lint-staged: ^15.5.2
     localflare: ^0.1.2
     lucide-react: ^0.468.0
-    mongodb: ^7.0.0
     next-themes: ^0.4.6
     nodemailer: ^7.0.0
     postcss: ^8.5.6
@@ -66,7 +63,6 @@ catalog:
     postcss-preset-mantine: ^1.18.0
     postcss-simple-vars: ^7.0.1
     prettier: ^3.7.4
-    prisma: ^5.22.0
     react: ^19.2.4
     react-dom: ^19.2.4
     react-hook-form: ^7.54.2

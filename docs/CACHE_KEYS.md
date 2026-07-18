@@ -170,13 +170,12 @@ await warmBrandCache(env, { kitId: 'kit-123' });
 
 // App-level invalidation (when route mappings change)
 await warmBrandCache(env, { appId: 'web' });
-// → Invalidates: brand:app:web:meta, brand:app:web:resolved:*
+// → Invalidates: brand:app:web:meta
 // → Re-resolves route mappings + layouts, kits lazily loaded
 
 // Cache keys:
 // - brand:kit:{kitId}:resolved                     → Per-kit (light + dark themes)
 // - brand:app:{appId}:meta                         → Route mappings + layouts
-// - brand:app:{appId}:resolved:{mode} (legacy)     → Full app config (backward compat)
 ```
 
 **Benefits:**

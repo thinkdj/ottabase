@@ -403,27 +403,31 @@ Get current time in specific timezone.
 
 ## Schema Example (Numeric Timestamps)
 
-```prisma
-model User {
-    id        String  @id @default(cuid())
-    email     String  @unique
-    timezone  String  @default("UTC") // Store user's preferred timezone
-    createdAt BigInt  // Set in app with Date.now()
-    updatedAt BigInt  // Set in app with Date.now()
-    posts     Post[]
-}
+Store timestamps as integer UTC milliseconds (`Date.now()`) — Drizzle over Cloudflare D1 (SQLite):
 
-model Post {
-    id          String   @id @default(cuid())
-    title       String
-    content     String?
-    scheduledAt BigInt? // UTC ms timestamp (Date.now)
-    publishedAt BigInt? // UTC ms timestamp (Date.now)
-    createdAt   BigInt  // Set in app with Date.now()
-    updatedAt   BigInt  // Set in app with Date.now()
-    userId      String
-    user        User    @relation(fields: [userId], references: [id])
-}
+```typescript
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const users = sqliteTable('users', {
+    id: text('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    timezone: text('timezone').notNull().default('UTC'), // user's preferred timezone
+    createdAt: integer('created_at').notNull(), // UTC ms, set in app with Date.now()
+    updatedAt: integer('updated_at').notNull(), // UTC ms, set in app with Date.now()
+});
+
+export const posts = sqliteTable('posts', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    content: text('content'),
+    scheduledAt: integer('scheduled_at'), // UTC ms timestamp (Date.now)
+    publishedAt: integer('published_at'), // UTC ms timestamp (Date.now)
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    userId: text('user_id')
+        .notNull()
+        .references(() => users.id),
+});
 ```
 
 ## Testing

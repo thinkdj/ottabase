@@ -951,7 +951,6 @@ export class Post extends BaseModel {
     static async related(
         postId: string,
         options?: {
-            categoryId?: string | null;
             categoryIds?: string[];
             contentType?: string;
             appId?: string;
@@ -991,24 +990,6 @@ export class Post extends BaseModel {
                         results.push(p as Post);
                         seenIds.add(p.get('id') as string);
                     }
-                }
-            }
-        }
-
-        // 1b. Legacy fallback: same category via direct categoryId field
-        if (results.length < limit && options?.categoryId) {
-            const byCat = await this.where(
-                {
-                    categoryId: options.categoryId,
-                    status: 'published',
-                    ...(options?.appId ? { appId: options.appId } : {}),
-                },
-                { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
-            );
-            for (const p of byCat) {
-                if (!seenIds.has(p.get('id') as string) && results.length < limit) {
-                    results.push(p as Post);
-                    seenIds.add(p.get('id') as string);
                 }
             }
         }

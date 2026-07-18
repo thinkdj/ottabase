@@ -34,38 +34,3 @@ export function getUserEmail(session: Session | null): string | null {
 export function hasVerifiedEmail(session: Session | null): boolean {
     return isAuthenticated(session) && !!session.user.emailVerified;
 }
-
-export interface SessionData {
-    authenticated: boolean;
-    user: {
-        id: string;
-        name?: string | null;
-        email?: string | null;
-        image?: string | null;
-        emailVerified?: number | null;
-        organizationId?: string | null;
-        roles?: string[];
-        permissions?: string[];
-    } | null;
-}
-
-/** Convert a session to a serializable shape for API responses. */
-export function serializeSession(session: Session | null): SessionData {
-    if (!isAuthenticated(session)) {
-        return { authenticated: false, user: null };
-    }
-
-    return {
-        authenticated: true,
-        user: {
-            id: session.user.id,
-            name: session.user.name ?? null,
-            email: session.user.email ?? null,
-            image: session.user.image ?? null,
-            emailVerified: session.user.emailVerified ?? null,
-            organizationId: session.user.organizationId ?? null,
-            roles: session.user.roles ?? undefined,
-            permissions: session.user.permissions ?? undefined,
-        },
-    };
-}

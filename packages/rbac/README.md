@@ -28,7 +28,11 @@ pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
 curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `platform_owner`, `owner`, `admin`, `member`
+Default roles are seeded automatically during bootstrap (when the platform owner is created, via
+`Role.ensureDefaultRoles()`); to reconcile them later, run the secret-gated seed step: `POST /__bootstrap__/api/seed`.
+
+Creates tables: `roles`, `permissions`, `user_roles`. Default roles: `platform_owner`, `owner`, `admin`, `editor`,
+`viewer`, `member`
 
 The default roles/permissions seed logic (`seedRoles`, `seedPermissions`, or the combined `seedRBAC`) lives in
 `packages/ottaorm/src/seed/rbac.ts`, but it isn't wired to a pnpm script or CLI yet. Until that's added, seed manually

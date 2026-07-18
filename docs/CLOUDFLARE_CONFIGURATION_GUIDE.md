@@ -302,7 +302,8 @@ Ensure `@ottabase/auth` is installed and configured in your application.
 ### 2. Configure Auth
 
 Mount the backend router for every `/api/auth/*` path your app doesn't already own, then read the session anywhere
-else in the worker with `getSession()`:
+else in the worker with `getSession()`. Providers are auto-configured from environment variables (see below) — no
+config-object builder is required.
 
 ```typescript
 // cloudflare-worker.ts
@@ -329,7 +330,7 @@ fails closed (no `OBCF_KV` means no one can stay signed in).
 
 ### 3. Set Environment Variables
 
-Add to `.env.local`:
+Add to `.env.local` (Google OAuth is enabled automatically when both vars are present):
 
 ```bash
 AUTH_SECRET=your-secret-here

@@ -46,9 +46,7 @@ export {
     hasVerifiedEmail,
     isAuthenticated,
     requireAuth,
-    serializeSession,
     type Session,
-    type SessionData,
     type SessionUser,
 } from './session';
 

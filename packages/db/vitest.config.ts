@@ -8,15 +8,7 @@ export default defineConfig({
         coverage: {
             provider: 'c8',
             reporter: ['text', 'json', 'html', 'lcov'],
-            exclude: [
-                'node_modules/',
-                'dist/',
-                '**/*.config.ts',
-                '**/*.config.js',
-                '**/index.ts',
-                '**/*.d.ts',
-                'prisma/',
-            ],
+            exclude: ['node_modules/', 'dist/', '**/*.config.ts', '**/*.config.js', '**/index.ts', '**/*.d.ts'],
             all: true,
             lines: 75,
             functions: 75,

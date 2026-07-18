@@ -173,7 +173,7 @@ export function SplitPaneDemoPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="h-[300px] rounded-lg border border-border/60">
-                        <SplitPane split="vertical" defaultSize="33%" minSize={100} onChange={setSize3}>
+                        <SplitPane split="vertical" defaultSize="33%" minWidth={100} onChange={setSize3}>
                             <div className="h-full p-4 bg-muted/30">
                                 <p className="font-medium">33% Default Width</p>
                                 <p className="text-sm text-muted-foreground mt-1">

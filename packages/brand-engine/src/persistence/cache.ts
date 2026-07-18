@@ -11,13 +11,13 @@ import type { BrandResolutionCache } from './types';
 const CACHE_TTL = 60 * 60; // 1 hour
 
 export interface BrandCacheClient {
-    /** Get full resolution data (legacy - for backward compatibility) */
+    /** Get full resolution data (assembled from per-kit + meta caches) */
     getResolutionData(appId: string | null, mode?: string): Promise<BrandResolutionCache | null>;
     /** Get single brand kit data */
     getKit(kitId: string): Promise<BrandResolutionCache['brandKitsMap'][string] | null>;
     /** Get route mappings + layouts (meta data) */
     getMeta(appId: string | null): Promise<Omit<BrandResolutionCache, 'brandKitsMap'> | null>;
-    /** Set full resolution data (legacy - stores both per-kit and meta) */
+    /** Set full resolution data (stores per-kit + meta) */
     setResolutionData(appId: string | null, mode: string, data: BrandResolutionCache): Promise<void>;
     /** Set single brand kit data */
     setKit(kitId: string, data: BrandResolutionCache['brandKitsMap'][string]): Promise<void>;
@@ -34,7 +34,6 @@ export interface BrandCacheClient {
  * Uses globalKey for sanitization (colons/whitespace → dash) and consistency with @ottabase/cf/cache-keys.
  * Per-kit: brand:kit:{sanitizedKitId}:resolved
  * Per-app meta: brand:app:{appId}:meta
- * Legacy per-app: brand:app:{appId}:resolved:{mode}
  */
 function getKitKey(kitId: string): string {
     return globalKey('brand', 'kit', kitId, 'resolved');
@@ -45,23 +44,11 @@ function getMetaKey(appId?: string | null): string {
     return appKey('brand', effectiveAppId, 'meta');
 }
 
-function getLegacyKey(appId?: string | null, mode?: string): string {
-    const effectiveAppId = appId || 'default';
-    const effectiveMode = mode || 'light';
-    return appKey('brand', effectiveAppId, 'resolved', effectiveMode);
-}
-
 export function createBrandCache(kv: KVNamespace): BrandCacheClient {
     return {
-        async getResolutionData(appId, mode) {
-            // Try new per-kit cache first
+        async getResolutionData(appId) {
             const meta = await this.getMeta(appId);
-            if (!meta) {
-                // Fallback to legacy cache
-                const key = getLegacyKey(appId, mode);
-                const cached = await kv.get(key, { type: 'json' });
-                return cached as BrandResolutionCache | null;
-            }
+            if (!meta) return null;
 
             // Fetch all kits from route mappings
             const kitIds = [...new Set(meta.routeMappings.map((m) => m.brandKitId))];
@@ -94,8 +81,8 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
             return cached as Omit<BrandResolutionCache, 'brandKitsMap'> | null;
         },
 
-        async setResolutionData(appId, mode, data) {
-            // Store per-kit + meta (new format) — include menuSlots for consistent response shape
+        async setResolutionData(appId, _mode, data) {
+            // Store per-kit + meta — include menuSlots for consistent response shape
             await this.setMeta(appId, {
                 routeMappings: data.routeMappings,
                 layoutTemplatesMap: data.layoutTemplatesMap,
@@ -104,10 +91,6 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
 
             const kitIds = Object.keys(data.brandKitsMap);
             await Promise.all(kitIds.map((id) => this.setKit(id, data.brandKitsMap[id])));
-
-            // Also store legacy format for backward compatibility
-            const legacyKey = getLegacyKey(appId, mode);
-            await kv.put(legacyKey, JSON.stringify(data), { expirationTtl: CACHE_TTL });
         },
 
         async setKit(kitId, data) {
@@ -123,27 +106,14 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
         async invalidate(target) {
             if ('kitId' in target) {
                 await kv.delete(getKitKey(target.kitId));
-                // Invalidate legacy keys for the kit's app
-                const appId = target.appId ?? null;
-                for (const m of ['all', 'light', 'dark'] as const) {
-                    await kv.delete(getLegacyKey(appId, m));
-                }
                 // Critical: also invalidate the REQUESTING app's cache (client refetches with its appId)
                 const reqAppId = target.requestAppId ?? null;
                 if (reqAppId !== null) {
                     await kv.delete(getMetaKey(reqAppId));
-                    for (const m of ['all', 'light', 'dark'] as const) {
-                        await kv.delete(getLegacyKey(reqAppId, m));
-                    }
                 }
             } else {
-                // Full app invalidation - meta + legacy caches
+                // Full app invalidation - meta cache
                 await kv.delete(getMetaKey(target.appId));
-                for (const m of ['all', 'light', 'dark'] as const) {
-                    await kv.delete(getLegacyKey(target.appId, m));
-                    // Also invalidate system default when app cache is cleared
-                    if (target.appId) await kv.delete(getLegacyKey(null, m));
-                }
             }
         },
     };

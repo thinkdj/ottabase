@@ -1,12 +1,10 @@
 # @ottabase/scripts
 
-CLI tools for Ottabase monorepo — Cloudflare resource setup, schema generation, migrations, and cache management.
+CLI tools for Ottabase monorepo — Cloudflare resource setup and cache management.
 
 ## Overview
 
-This package provides the `pnpm cf:*` and `pnpm clean:*` scripts used across the monorepo. It also ships a
-Prisma-based DB Schema CLI (`db-generate`, `db-migrate`, `db-migrate-apply`, `db-migrate-status`) for apps that use
-Prisma with Cloudflare D1 — see [DB Schema CLI](#db-schema-cli) below for its current status in this repo.
+This package provides the `pnpm cf:*` and `pnpm clean:*` scripts used across the monorepo.
 
 ## Cloudflare Setup CLI
 
@@ -68,68 +66,6 @@ All three `cf:*` commands operate on one app's `wrangler.jsonc`. The app is sele
 If a repo has multiple apps and none of the above is set, the command stops and lists the available apps so you can pass
 `--app`. The app's `pnpm --filter` target is read from its `package.json` `name`, so the directory name and package name
 can differ.
-
-## DB Schema CLI
-
-The db CLI tools use `db.config.ts` in your app directory to manage Prisma schema concatenation and D1 migrations.
-
-> **Status:** these tools are not currently wired up for use in this repo. Their executables
-> (`bin/db-generate.cjs`, `bin/db-migrate.cjs`, `bin/db-migrate-apply.cjs`, `bin/db-migrate-status.cjs`) exist on
-> disk but are not declared in this package's `bin` field, and no `pnpm db:*` scripts are defined anywhere in the
-> monorepo (the root `package.json` has no `db:*` entries, and the repo's app, otta-web, manages its schema with
-> Drizzle directly via its own `db:push`/`db:studio` scripts instead). To actually use this CLI in an app you'd
-> first need to add the `db-generate`/`db-migrate`/`db-migrate-apply`/`db-migrate-status` entries to this package's
-> `bin` field and wire up corresponding `db:*` scripts. The commands below describe the intended usage once that
-> wiring exists.
-
-### `db-generate`
-
-Concatenates modular Prisma schemas into a single `schema.prisma` and runs `prisma generate`.
-
-Create `db.config.ts` in your app:
-
-```typescript
-import { defineAppDbConfig } from '@ottabase/db/config';
-
-export default defineAppDbConfig({
-    appId: 'my-app',
-    features: ['auth'], // adds auth tables to schema
-});
-```
-
-Then run:
-
-```bash
-db-generate          # Concatenate schemas + prisma generate
-db-generate --verbose  # Verbose output
-db-generate --skip-generate  # Concatenate only, skip prisma generate
-```
-
-### `db-migrate`
-
-Generates SQL migrations from Prisma schema for Cloudflare D1.
-
-```bash
-db-migrate --name=add_users_table  # Generate migration
-db-migrate --name=add_column --apply  # Generate and apply to D1
-```
-
-### `db-migrate-apply`
-
-Applies pending D1 migrations.
-
-```bash
-db-migrate-apply          # Apply to local D1
-db-migrate-apply --remote  # Apply to remote/production D1
-```
-
-### `db-migrate-status`
-
-Shows which migrations have been applied.
-
-```bash
-db-migrate-status
-```
 
 ## Cache/Reset CLI
 

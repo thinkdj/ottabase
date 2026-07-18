@@ -169,9 +169,9 @@ describe('SplitPane', () => {
         fireEvent.mouseUp(document);
     });
 
-    it('respects minSize constraint', () => {
+    it('respects minWidth constraint', () => {
         const { container } = render(
-            <SplitPane split="vertical" defaultSize={200} minSize={100}>
+            <SplitPane split="vertical" defaultSize={200} minWidth={100}>
                 <div>Pane 1</div>
                 <div>Pane 2</div>
             </SplitPane>,
@@ -183,22 +183,22 @@ describe('SplitPane', () => {
         mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
-        // Try to resize below minSize
+        // Try to resize below minWidth
         fireEvent.mouseMove(document, {
             clientX: 50,
             clientY: 0,
         });
 
         const pane1 = wrapper.children[0] as HTMLElement;
-        // Should be clamped to minSize
+        // Should be clamped to minWidth
         expect(pane1.style.width).toBe('100px');
 
         fireEvent.mouseUp(document);
     });
 
-    it('respects maxSize constraint', () => {
+    it('respects maxWidth constraint', () => {
         const { container } = render(
-            <SplitPane split="vertical" defaultSize={200} maxSize={400}>
+            <SplitPane split="vertical" defaultSize={200} maxWidth={400}>
                 <div>Pane 1</div>
                 <div>Pane 2</div>
             </SplitPane>,
@@ -210,14 +210,14 @@ describe('SplitPane', () => {
         mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
-        // Try to resize above maxSize
+        // Try to resize above maxWidth
         fireEvent.mouseMove(document, {
             clientX: 600,
             clientY: 0,
         });
 
         const pane1 = wrapper.children[0] as HTMLElement;
-        // Should be clamped to maxSize
+        // Should be clamped to maxWidth
         expect(pane1.style.width).toBe('400px');
 
         fireEvent.mouseUp(document);
@@ -275,7 +275,7 @@ describe('SplitPane', () => {
 
     it('handles keyboard navigation - Home and End keys', () => {
         const { container } = render(
-            <SplitPane split="vertical" defaultSize={200} minSize={100} maxSize={500}>
+            <SplitPane split="vertical" defaultSize={200} minWidth={100} maxWidth={500}>
                 <div>Pane 1</div>
                 <div>Pane 2</div>
             </SplitPane>,
@@ -294,66 +294,5 @@ describe('SplitPane', () => {
         // Press End to go to maximum
         fireEvent.keyDown(resizer, { key: 'End' });
         expect(pane1.style.width).toBe('500px');
-    });
-
-    it('warns about deprecated minSize prop', () => {
-        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-        render(
-            <SplitPane split="vertical" defaultSize={200} minSize={100}>
-                <div>Pane 1</div>
-                <div>Pane 2</div>
-            </SplitPane>,
-        );
-
-        expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[SplitPane] The "minSize" prop is deprecated'),
-        );
-
-        consoleSpy.mockRestore();
-    });
-
-    it('warns about deprecated maxSize prop', () => {
-        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-        render(
-            <SplitPane split="vertical" defaultSize={200} maxSize={400}>
-                <div>Pane 1</div>
-                <div>Pane 2</div>
-            </SplitPane>,
-        );
-
-        expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[SplitPane] The "maxSize" prop is deprecated'),
-        );
-
-        consoleSpy.mockRestore();
-    });
-
-    it('uses minWidth instead of minSize for vertical split', () => {
-        const { container } = render(
-            <SplitPane split="vertical" defaultSize={200} minSize={100} minWidth={150}>
-                <div>Pane 1</div>
-                <div>Pane 2</div>
-            </SplitPane>,
-        );
-
-        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
-        const wrapper = container.firstChild as HTMLElement;
-
-        mockContainerRect(wrapper);
-
-        fireEvent.mouseDown(resizer);
-        // Try to resize below minWidth
-        fireEvent.mouseMove(document, {
-            clientX: 50,
-            clientY: 0,
-        });
-
-        const pane1 = wrapper.children[0] as HTMLElement;
-        // Should be clamped to minWidth (150), not minSize (100)
-        expect(pane1.style.width).toBe('150px');
-
-        fireEvent.mouseUp(document);
     });
 });

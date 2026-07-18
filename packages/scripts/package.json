@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/scripts",
     "version": "1.0.0",
-    "description": "Utility scripts for Ottabase monorepo - schema generation, migrations, and CLI tools",
+    "description": "Utility scripts for Ottabase monorepo - Cloudflare resource setup and cache management CLIs",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -10,9 +10,7 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
-        },
-        "./schema": null,
-        "./migrations": null
+        }
     },
     "bin": {
         "cloudflare-login": "bin/cloudflare-login.cjs",
@@ -54,8 +52,7 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@inquirer/checkbox": "^5.0.7",
-        "@ottabase/db": "workspace:*"
+        "@inquirer/checkbox": "^5.0.7"
     },
     "devDependencies": {
         "@types/node": "catalog:",

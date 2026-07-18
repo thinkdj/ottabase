@@ -1,5 +1,5 @@
-export { mediaLibraryItemsTable, mediaTable } from './schema';
-export type { MediaLibraryItemRecord, MediaType, NewMediaLibraryItemRecord, NewMediaType } from './schema';
+export { mediaTable } from './schema';
+export type { MediaType, NewMediaType } from './schema';
 
 export type {
     CreateMediaLibraryRecordInput,
