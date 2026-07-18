@@ -34,11 +34,6 @@ Default roles are seeded automatically during bootstrap (when the platform owner
 Creates tables: `roles`, `permissions`, `user_roles`. Default roles: `platform_owner`, `owner`, `admin`, `editor`,
 `viewer`, `member`
 
-The default roles/permissions seed logic (`seedRoles`, `seedPermissions`, or the combined `seedRBAC`) lives in
-`packages/ottaorm/src/seed/rbac.ts`, but it isn't wired to a pnpm script or CLI yet. Until that's added, seed manually
-by running that module directly or by creating roles yourself via `Role.create()` (see
-[Default Roles](#default-roles) below).
-
 ### 2. Initialize Cache
 
 ```typescript

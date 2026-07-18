@@ -22,12 +22,6 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
   back the [@ottabase/rbac](../rbac/README.md), [@ottabase/cron](../cron/README.md), and
   [@ottabase/medialibrary](../medialibrary/README.md) packages
 
-**Note:** The package's primary, supported target is Cloudflare D1/SQLite as described throughout this README. It also
-ships an internal `MongoBaseModel` (`src/base/MongoBaseModel.ts`, with a Mongo-backed example `Log` model) for a
-document-store backend, which is why `mongodb` appears as an optional peer dependency — but it isn't re-exported from
-any public entry point (`.`, `/models`, `/base`, `/client`) today, so treat it as an unsupported/experimental escape
-hatch rather than a documented feature.
-
 ## Installation
 
 ```bash
