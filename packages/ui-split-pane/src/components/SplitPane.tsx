@@ -1,4 +1,4 @@
-import React, { Children, CSSProperties, useState, useEffect, useMemo } from 'react';
+import React, { Children, CSSProperties, useState, useMemo } from 'react';
 import { SplitPaneProps } from '../types';
 import { useSplitPane } from '../hooks/useSplitPane';
 
@@ -49,8 +49,6 @@ const baseStyles: Record<string, CSSProperties> = {
 export const SplitPane: React.FC<SplitPaneProps> = ({
     split = 'vertical',
     defaultSize = '50%',
-    minSize,
-    maxSize,
     minWidth,
     maxWidth,
     minHeight,
@@ -68,25 +66,9 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
 }) => {
     const [isHovering, setIsHovering] = useState(false);
 
-    // Warn about deprecated props
-    useEffect(() => {
-        if (minSize !== undefined && (split === 'vertical' ? minWidth === undefined : minHeight === undefined)) {
-            console.warn(
-                '[SplitPane] The "minSize" prop is deprecated and will be removed in a future major version. ' +
-                    `Use "min${split === 'vertical' ? 'Width' : 'Height'}" instead.`,
-            );
-        }
-        if (maxSize !== undefined && (split === 'vertical' ? maxWidth === undefined : maxHeight === undefined)) {
-            console.warn(
-                '[SplitPane] The "maxSize" prop is deprecated and will be removed in a future major version. ' +
-                    `Use "max${split === 'vertical' ? 'Width' : 'Height'}" instead.`,
-            );
-        }
-    }, [minSize, maxSize, minWidth, maxWidth, minHeight, maxHeight, split]);
-
     // Determine min/max based on split direction
-    const effectiveMinSize = split === 'vertical' ? (minWidth ?? minSize ?? 50) : (minHeight ?? minSize ?? 50);
-    const effectiveMaxSize = split === 'vertical' ? (maxWidth ?? maxSize) : (maxHeight ?? maxSize);
+    const effectiveMinSize = split === 'vertical' ? (minWidth ?? 50) : (minHeight ?? 50);
+    const effectiveMaxSize = split === 'vertical' ? maxWidth : maxHeight;
 
     const { containerRef, pane1Size, isPercentage, isDragging, handleMouseDown, handleKeyDown } = useSplitPane({
         split,
