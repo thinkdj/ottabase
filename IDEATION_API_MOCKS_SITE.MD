@@ -7,6 +7,10 @@ details are directional. No adversarial verification was run on this.
 
 # Ideation — Hosted Custom Mock-API Product
 
+> Part of the ideation set — see [`IDEATION_2026_MASTER.MD`](./IDEATION_2026_MASTER.MD) for the full
+> catalog. This is idea **#6** there; its graduation funnel feeds idea **#0** (Real Backend for
+> vibe-coded apps).
+
 **Date:** 2026-07-17 · **Basis:** Opus reasoning from knowledge (no research fan-out) ·
 **Prompt:** "Is there still scope for apps that host custom mock APIs for clients — client
 defines a data model (e.g. `GET /names → { id: int, name: <random english name> }`), gets a
