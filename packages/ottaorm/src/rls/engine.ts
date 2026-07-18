@@ -208,6 +208,15 @@ export class RLSEngine {
      * Check role/permission requirements
      */
     private checkAccess(model: string, context: SecurityContext, policy: RLSPolicy): void {
+        // Platform-admin gate (scope-aware — set upstream from a system-scoped grant, never a role name)
+        if (policy.requirePlatformAdmin && !context.platformAdmin) {
+            throw new RLSError(`Access denied: ${model} requires platform administrator`, {
+                type: 'permission_denied',
+                model,
+                context,
+            });
+        }
+
         // Check required roles
         if (policy.requiredRoles && policy.requiredRoles.length > 0) {
             const hasRole = policy.requiredRoles.some((role) => context.roles?.includes(role));
@@ -249,7 +258,11 @@ export class RLSEngine {
      *  - `[]`        → caller resolved it and the user belongs to ZERO orgs → fail closed; no
      *                  organization claim can ever be satisfied by an empty set.
      * A null/undefined org (system or single-founder rows) is not a tenant claim and is skipped.
-     * Platform super-admins (the `*:*` permission) may act across tenants.
+     * Only PLATFORM administrators may act across tenants — gated on the scope-aware
+     * `platformAdmin` flag, NOT the `*:*` permission string. Those differ: a platform owner has
+     * both, but a stale/org-scoped grant can carry `*:*` (org-level) WITHOUT being a platform
+     * admin. Trusting the permission string here would let such a grant bypass the tenant check;
+     * gating on `platformAdmin` keeps this consistent with the checkAccess platform gate.
      */
     private enforceOrgMembership(orgId: unknown, context: SecurityContext, model: string): void {
         if (orgId === null || orgId === undefined) return;
@@ -257,7 +270,7 @@ export class RLSEngine {
         // Only `undefined` is "membership unknown". An empty array is a real answer ("no orgs"),
         // so it must fall through to the membership check below, which then always fails closed.
         if (!Array.isArray(memberships)) return;
-        if (context.permissions?.includes('*:*')) return;
+        if (context.platformAdmin) return;
         if (!memberships.includes(orgId as string)) {
             throw new RLSError(
                 `Cross-tenant access blocked: organization "${orgId}" is not one of the user's organizations`,

@@ -170,7 +170,7 @@ export function RLSInspectorPage() {
             title: 'Role & Permission Checks',
             description: 'Enforce role-based access at the database level',
             status: 'active',
-            example: 'Admin-only models require admin/owner role',
+            example: 'Admin-only models require admin/owner/platform_owner role',
         },
         {
             title: 'Audit Trail',

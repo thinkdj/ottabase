@@ -1,9 +1,10 @@
-import { Role, User } from '@ottabase/ottaorm/models';
+import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { initDbConnection } from '../lib/db-utils';
-import { readJson } from '../lib/utils';
+import { enforceBruteForceThrottle } from '../lib/rate-limiting';
+import { getClientIpAddress, normalizeEmail, readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 function clean(value: string | null): string | null {
@@ -13,9 +14,36 @@ function clean(value: string | null): string | null {
     return trimmed;
 }
 
-export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise<Response> {
+function constantTimeEqual(a: string, b: string): boolean {
+    const encoder = new TextEncoder();
+    const bufA = encoder.encode(a);
+    const bufB = encoder.encode(b);
+    if (bufA.byteLength !== bufB.byteLength) return false;
+    let result = 0;
+    for (let i = 0; i < bufA.byteLength; i++) {
+        result |= bufA[i] ^ bufB[i];
+    }
+    return result === 0;
+}
+
+export async function handleAdminPromotePlatformOwner(context: ApiRouteContext): Promise<Response> {
     const { env, request } = context;
     initDbConnection(env);
+
+    // Rate-limit by IP before the secret compare, so this grant-of-ultimate-privilege endpoint can't
+    // be brute-forced — matching the throttling on register/reset. Throttled BEFORE reading the body.
+    // enforceBruteForceThrottle fails OPEN with a logged warning if the limiter binding is missing (a
+    // real 429 still blocks) — the secret compare below is the authoritative gate, and this shares the
+    // exact policy the bootstrap secret check uses so break-glass recovery isn't bricked by a missing
+    // limiter binding.
+    const ip = getClientIpAddress(request);
+    const rateLimited = await enforceBruteForceThrottle(
+        request,
+        env,
+        `admin:promote-owner:${ip}`,
+        'platform-owner promote',
+    );
+    if (rateLimited) return rateLimited;
 
     const secret = env.BOOTSTRAP_OWNER_SECRET;
     if (!secret) {
@@ -23,7 +51,6 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
     }
 
     const headerSecret = clean(request.headers.get('x-bootstrap-secret'));
-    const querySecret = clean(context.url.searchParams.get('secret'));
 
     let bodySecret: string | null = null;
     let userId: string | undefined;
@@ -33,13 +60,15 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
         const body = await readJson<{ secret?: string; userId?: string; email?: string }>(request);
         bodySecret = clean(body.secret || null);
         userId = body.userId || undefined;
-        email = body.email || undefined;
+        // Normalize like every other account path (login/register/reset) — a plain unique email
+        // column is case-sensitive, so a correct-but-miscased address must not 404 this break-glass tool.
+        email = typeof body.email === 'string' && body.email.trim() ? normalizeEmail(body.email) : undefined;
     } catch {
         // ignore malformed JSON
     }
 
-    const providedSecret = headerSecret || bodySecret || querySecret;
-    if (providedSecret !== secret) {
+    const providedSecret = headerSecret || bodySecret;
+    if (!providedSecret || !constantTimeEqual(providedSecret, secret)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -53,17 +82,30 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
     }
 
     await Role.ensureDefaultRoles();
-    const ownerRole = await Role.findByName('owner');
-    if (!ownerRole) {
-        return errorResponse('Owner role is missing', 500, { code: 'ROLE_MISSING' });
+    const platformOwnerRole = await Role.findByName(PLATFORM_OWNER_ROLE_NAME);
+    if (!platformOwnerRole) {
+        return errorResponse('Platform owner role is missing', 500, { code: 'ROLE_MISSING' });
     }
 
-    await user.assignRole(ownerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
+    const roleId = platformOwnerRole.get('id') as string;
+    const existingGrants = await UserRole.where({
+        roleId,
+        organizationId: SYSTEM_ORGANIZATION_ID,
+    });
+    if (existingGrants.length > 0) {
+        const existingIds = existingGrants.map((g: any) => g.get('userId'));
+        console.warn(
+            `[platform-owner] Promoting user ${user.get('id')} to platform_owner while ` +
+                `${existingGrants.length} existing grant(s) exist (user IDs: ${existingIds.join(', ')})`,
+        );
+    }
+
+    await user.assignRole(roleId, undefined, SYSTEM_ORGANIZATION_ID);
 
     return jsonResponse({
         success: true,
         userId: user.get('id'),
-        role: ownerRole.get('name'),
+        role: platformOwnerRole.get('name'),
         organizationId: SYSTEM_ORGANIZATION_ID,
     });
 }

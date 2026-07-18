@@ -2,24 +2,32 @@
 // @ottabase/ottaorm - RBAC Seed Script
 // ============================================================
 
-import { Permission, Role } from '../models';
+import { ORG_OWNER_PERMISSIONS, Permission, PLATFORM_OWNER_ROLE_NAME, Role } from '../models';
 
 /**
  * Default system roles
  */
 export const DEFAULT_ROLES = [
     {
+        name: PLATFORM_OWNER_ROLE_NAME,
+        description: 'Platform owner (bootstrapped app owner) with full privileges',
+        permissions: ['*:*'],
+        isSystem: true,
+    },
+    {
         id: '00000000-0000-0000-0000-000000000000',
         name: 'owner',
-        description: 'System owner with full privileges',
-        permissions: ['*:*'],
+        description: 'Organization owner — full org-level access (no system-level wildcard)',
+        permissions: ORG_OWNER_PERMISSIONS,
         isSystem: true,
     },
     {
         id: '00000000-0000-0000-0000-000000000001',
         name: 'admin',
-        description: 'Full system access - can perform all actions',
-        permissions: ['*:*'],
+        description: 'Organization administrator — full org-level access (no system-level wildcard)',
+        // Org-level, NOT '*:*': platform authority comes only from a system-scoped platform:admin
+        // grant (platform_owner). Keeps a role merely named 'admin' from being a superadmin.
+        permissions: ORG_OWNER_PERMISSIONS,
         isSystem: true,
     },
     {
@@ -82,6 +90,19 @@ export const DEFAULT_PERMISSIONS = [
     { name: 'audit:export', description: 'Export audit logs', resource: 'audit', action: 'export' },
     { name: 'audit:delete', description: 'Delete audit logs', resource: 'audit', action: 'delete' },
     { name: 'audit:*', description: 'All audit actions', resource: 'audit', action: '*' },
+
+    // Platform (SaaS control plane) — only meaningful when granted at SYSTEM scope.
+    {
+        name: 'platform:admin',
+        description: 'Administer the platform control plane',
+        resource: 'platform',
+        action: 'admin',
+    },
+    { name: 'platform:*', description: 'All platform actions', resource: 'platform', action: '*' },
+
+    // Organization administration — held org-scoped by owner/admin roles.
+    { name: 'org:admin', description: 'Administer an organization', resource: 'org', action: 'admin' },
+    { name: 'org:*', description: 'All organization actions', resource: 'org', action: '*' },
 
     // Wildcard permissions
     { name: '*:read', description: 'Read all resources', resource: '*', action: 'read' },

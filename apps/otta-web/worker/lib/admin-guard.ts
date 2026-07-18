@@ -39,8 +39,11 @@ export async function requireAdminAccess(
 
     initDbConnection(env);
 
-    // For system-scope routes (e.g. Database Manager), force system org context so isSystemScope is true.
-    // Otherwise users with an org in session/header would get 403 even with *:* permissions.
+    // For system-scope routes (e.g. Database Manager), pin the ACTING organization to system so
+    // downstream handlers that branch on auth.organizationId === 'system' behave correctly. This
+    // is no longer the authorization mechanism: assertAdmin now gates system scope on a SYSTEM-
+    // scoped platform:admin grant (reqCtx.systemPermissions), independent of the request's org —
+    // an org owner browsing with an org in session still fails a scope:'system' route.
     const reqCtx = await getRequestContext(request, env as any, {
         getAuthOptions,
         allowNullTenant: options?.allowNullTenant,
@@ -113,8 +116,9 @@ export async function requireBrandEditAccess(
         roles: reqCtx.roles,
         permissions: reqCtx.permissions,
         isAuthenticated: reqCtx.isAuthenticated,
-        organizationId: result.organizationId,
-        tenantId: result.organizationId,
+        // Brand rows are app-global; a null org (system/default brand) maps to "no tenant".
+        organizationId: result.organizationId ?? undefined,
+        tenantId: result.organizationId ?? undefined,
     };
 
     return {

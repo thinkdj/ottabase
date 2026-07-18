@@ -18,6 +18,9 @@ describe('handleAdminOrganizationInviteMember', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValue(false);
+        // Roster access requires an OWNER/ADMIN membership in the target org; the happy paths below
+        // act on org-1, of which the caller is an owner/admin.
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(true);
     });
 
     it('creates the membership with server-controlled invite fields', async () => {
@@ -276,5 +279,152 @@ describe('handleAdminOrganizationInviteMember', () => {
         expect(removeSpy).not.toHaveBeenCalled();
         const body = (await response.json()) as any;
         expect(body.code).toBe('LAST_ACTIVE_OWNER_GUARD');
+    });
+});
+
+describe('roster access boundary (owner/admin membership in the TARGET org)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const systemAuth = {
+        user: { id: 'platform-owner-1' },
+        organizationId: 'system',
+        appId: 'web',
+        rbac: { organizationId: 'system' } as any,
+        session: {},
+    };
+
+    it('denies a system-scope admin who is not an owner/admin of the target org', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
+        const spy = vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(false);
+
+        const response = await handleAdminOrganizationMembersList(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members'),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(403);
+        expect(spy).toHaveBeenCalledWith('platform-owner-1', 'org-9');
+    });
+
+    it('denies a rank-and-file member self-promoting to owner in the target org', async () => {
+        // Regression for the roster-escalation report: the attacker passes requireAdminAccess via
+        // org:admin in their OWN personal org (auth.organizationId here), and is a plain 'member' of
+        // the target org-9. assertRosterAccess must require OWNER/ADMIN in org-9 — a plain member
+        // (isOwnerOrAdmin=false) is rejected, so they can never PATCH their own role to 'owner'.
+        vi.mocked(requireAdminAccess).mockResolvedValue({
+            ...systemAuth,
+            user: { id: 'attacker' },
+            organizationId: 'attacker-personal-org',
+        });
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(false);
+        const updateRoleSpy = vi.spyOn(OrganizationMember, 'updateRole');
+
+        const response = await handleAdminOrganizationUpdateMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members/attacker', {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ role: 'owner' }),
+                }),
+                env: {},
+            } as any,
+            'org-9',
+            'attacker',
+        );
+
+        expect(response.status).toBe(403);
+        expect(updateRoleSpy).not.toHaveBeenCalled();
+    });
+
+    it('denies even when the target org is injected via header/query', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue({ ...systemAuth, organizationId: 'org-9' });
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(false);
+
+        const response = await handleAdminOrganizationInviteMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members/invite', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ userId: 'victim', role: 'admin' }),
+                }),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(403);
+    });
+
+    it('allows an owner/admin of the target org', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(systemAuth);
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(true);
+        vi.spyOn(OrganizationMember, 'countOrganizationMembers').mockResolvedValue(0);
+        vi.spyOn(OrganizationMember, 'getOrganizationMembers').mockResolvedValue([]);
+
+        const response = await handleAdminOrganizationMembersList(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members'),
+                env: {},
+            } as any,
+            'org-9',
+        );
+
+        expect(response.status).toBe(200);
+    });
+
+    it('denies an ADMIN self-promoting to owner (only owners may grant owner)', async () => {
+        // The admin passes assertRosterAccess (isOwnerOrAdmin) but is NOT an owner (hasRole → false).
+        vi.mocked(requireAdminAccess).mockResolvedValue({ ...systemAuth, user: { id: 'org-admin' } });
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(true);
+        vi.spyOn(OrganizationMember, 'hasRole').mockResolvedValue(false);
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
+            toJson: () => ({ userId: 'org-admin', organizationId: 'org-9', role: 'admin' }),
+        } as any);
+        const updateRoleSpy = vi.spyOn(OrganizationMember, 'updateRole');
+
+        const response = await handleAdminOrganizationUpdateMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members/org-admin', {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ role: 'owner' }),
+                }),
+                env: {},
+            } as any,
+            'org-9',
+            'org-admin',
+        );
+
+        expect(response.status).toBe(403);
+        expect(updateRoleSpy).not.toHaveBeenCalled();
+    });
+
+    it('denies an ADMIN removing an owner', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue({ ...systemAuth, user: { id: 'org-admin' } });
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(true);
+        vi.spyOn(OrganizationMember, 'hasRole').mockResolvedValue(false);
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
+            toJson: () => ({ userId: 'the-owner', organizationId: 'org-9', role: 'owner' }),
+        } as any);
+        const removeSpy = vi.spyOn(OrganizationMember, 'removeMember');
+
+        const response = await handleAdminOrganizationRemoveMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-9/members/the-owner', {
+                    method: 'DELETE',
+                }),
+                env: {},
+            } as any,
+            'org-9',
+            'the-owner',
+        );
+
+        expect(response.status).toBe(403);
+        expect(removeSpy).not.toHaveBeenCalled();
     });
 });

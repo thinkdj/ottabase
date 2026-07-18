@@ -21,20 +21,25 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         policy: {
             level: 'custom',
             filter: (context) => {
-                // Organizations don't have organizationId - they ARE the organization
-                // Users should see organizations they own OR are members of
+                // Organizations don't have organizationId — they ARE the organization. A user sees
+                // the orgs they are an ACTIVE member of (owners always have an active owner
+                // membership, so this covers them too).
                 if (!context.userId) {
                     return null;
                 }
 
-                // When memberOrganizationIds is populated (by the upstream security
-                // context builder), use it to return all orgs the user can access.
-                // This list already includes both owned and member orgs.
-                if (context.memberOrganizationIds && context.memberOrganizationIds.length > 0) {
-                    return { id: context.memberOrganizationIds };
+                // When membership was RESOLVED (Array.isArray — even to an empty set), trust it.
+                // An empty set means "no accessible orgs" → deny (null); it must NOT fall back to
+                // ownerId. `Organization.ownerId` is stamped at creation and never cleared on
+                // removal/demotion, so an ownerId fallback would let a removed ex-owner keep reading
+                // (and, since secure-crud lets you update rows you can read, writing) the org they
+                // created. Mirrors the enforceOrgMembership Array.isArray guard.
+                if (Array.isArray(context.memberOrganizationIds)) {
+                    return context.memberOrganizationIds.length > 0 ? { id: context.memberOrganizationIds } : null;
                 }
 
-                // Fallback: filter by ownerId only (membership info not available)
+                // Membership UNRESOLVED (undefined — e.g. pre-migration or an internal context that
+                // didn't populate it): best-effort filter by ownership.
                 return { ownerId: context.userId };
             },
         },
@@ -91,21 +96,30 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // RBAC definition/grant tables. Generic CRUD on these is hard-blocked in ottaorm-crud.ts (they
+    // grant the roles/permissions the auth layer reads from). These policies are DEFENSE-IN-DEPTH so
+    // any other secure-crud path is platform-admin gated too.
+    // WARNING: `roles`/`permissions` are ALSO fail-closed today by an accidental RLS-field/column
+    // mismatch (they have no `organizationId` column). Do NOT "fix" that mismatch without keeping a
+    // real gate — the requirePlatformAdmin below is that gate, so the mismatch no longer matters.
     {
         model: 'roles',
-        policy: RLSPolicies.TenantScoped(true), // System roles have null orgId
+        policy: { level: 'custom', requirePlatformAdmin: true },
         auditEnabled: true,
     },
 
     {
         model: 'permissions',
-        policy: RLSPolicies.TenantScoped(true), // System permissions have null orgId
+        policy: { level: 'custom', requirePlatformAdmin: true },
         auditEnabled: true,
     },
 
+    // user_roles is org-scoped (real `organization_id` column), so its tenant RLS FUNCTIONS — the
+    // gap was the missing permission gate. requirePlatformAdmin closes it: minting/reading a role
+    // grant now requires a system-scoped platform admin, matching how grants are actually issued.
     {
         model: 'user_roles',
-        policy: RLSPolicies.TenantScoped(false),
+        policy: { ...RLSPolicies.TenantScoped(false), requirePlatformAdmin: true },
         auditEnabled: true,
     },
 
@@ -141,8 +155,14 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     {
+        // Previously PublicReadOnly, which — with no auth gate on the generic CRUD route — let anyone
+        // read every email-verification / password-reset / magic-link token row. The auth flows read
+        // and consume these via direct model calls (VerificationToken.consumeByIdentifierAndToken,
+        // etc.) that bypass RLS, so nothing legitimate needs RLS/CRUD access: deny reads (custom
+        // filter returns null) and keep writes blocked (readOnly). Also hard-blocked in
+        // ottaorm-crud.ts as the primary gate.
         model: 'verification_tokens',
-        policy: RLSPolicies.PublicReadOnly(), // Token validation needs read access
+        policy: { level: 'custom', readOnly: true, filter: () => null },
         auditEnabled: false,
     },
 
@@ -214,10 +234,21 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: false,
     },
 
-    // Blog post versions - app-scoped
+    // Blog post versions - tenant + app scoped.
+    // Previously AppScoped (appId only), which let any caller read every organization's draft /
+    // version history through the generic CRUD route. organizationId is already injected on write
+    // via contextFields, so scope reads to the caller's organization (and app) as well. Including
+    // organizationId in the read filter also activates the engine's enforceOrgMembership check.
     {
         model: 'post_versions',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
+        policy: {
+            level: 'custom',
+            filter: (context) => {
+                const filter: Record<string, any> = { organizationId: context.organizationId ?? null };
+                if (context.appId) filter.appId = context.appId;
+                return filter;
+            },
+        },
         contextFields: ['organizationId', 'appId'],
         auditEnabled: true,
     },
@@ -243,14 +274,20 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // auth check of its own, unlike users/menus/organization_members which are blocked outright).
     {
         model: 'shortlinks',
-        policy: { ...RLSPolicies.AppScoped(), requiredRoles: RLSPolicies.AdminOnly().requiredRoles },
+        policy: { ...RLSPolicies.AppScoped(), requirePlatformAdmin: true },
         auditEnabled: true,
     },
 
-    // Referral tracking - app-scoped
+    // Referral tracking - owner-scoped.
+    // Previously AppScoped (appId only), which exposed and allowed forgery of every user's referral
+    // rows (IP, user-agent, referrer graph) through the generic CRUD route. Reads are now scoped to
+    // the owning referrer (fails closed when unauthenticated), and writes pin userId. These rows are
+    // written server-side (bypassing RLS), so this only constrains the RLS/CRUD path — which is
+    // additionally hard-blocked in ottaorm-crud.ts as the primary gate.
     {
         model: 'referral_tracking',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
+        policy: RLSPolicies.OwnerOnly('userId'),
+        enforceOnWrite: { userId: 'userId' },
         auditEnabled: true,
     },
 
@@ -321,12 +358,16 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Menu slot assignments - app-scoped, requires brand:edit
+    // Menu slot assignments - app-global brand data (platform-owned). The live write path is
+    // /api/brand/menu-slots (direct model calls, system-scoped requireBrandEditAccess); generic CRUD
+    // is default-denied. requirePlatformAdmin here is defense-in-depth so this RLS can never be
+    // satisfied by an org-scoped session (e.g. a stale pre-heal `*:*`) if ever reached via secure-crud.
     {
         model: 'menu_slot_assignments',
         policy: {
             ...RLSPolicies.AppScoped(),
             requiredPermissions: ['brand:edit'],
+            requirePlatformAdmin: true,
         },
         contextFields: ['appId'],
         auditEnabled: true,

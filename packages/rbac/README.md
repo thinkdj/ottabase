@@ -28,7 +28,7 @@ pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
 curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`
+Creates tables: `roles`, `permissions`, `user_roles` Default roles: `platform_owner`, `owner`, `admin`, `member`
 
 The default roles/permissions seed logic (`seedRoles`, `seedPermissions`, or the combined `seedRBAC`) lives in
 `packages/ottaorm/src/seed/rbac.ts`, but it isn't wired to a pnpm script or CLI yet. Until that's added, seed manually
@@ -99,7 +99,7 @@ const roles = await user.roles({
 
 ```
 System (Global)
-├─ Roles: owner, admin, member
+├─ Roles: platform_owner, owner, admin, member
 └─ Organization (Tenant)
    ├─ Custom Roles (org-scoped)
    ├─ Members with Roles
@@ -346,11 +346,20 @@ if (access instanceof Response) return access;
 
 ## Default Roles
 
-| Role     | Permissions        | Description                     |
-| -------- | ------------------ | ------------------------------- |
-| `owner`  | `*:*`              | Full organization control       |
-| `admin`  | `*:*` (org-scoped) | Manage org members and settings |
-| `member` | `*:read`           | Basic read access               |
+| Role             | Permissions                             | Description                                             |
+| ---------------- | --------------------------------------- | ------------------------------------------------------- |
+| `platform_owner` | `*:*`                                   | Bootstrapped app owner (system-scoped → platform:admin) |
+| `owner`          | org bundle incl. `org:admin` (no `*:*`) | Full org control (own tenant)                           |
+| `admin`          | org bundle incl. `org:admin` (no `*:*`) | Organization administrator (own tenant)                 |
+| `member`         | `*:read`                                | Basic read access                                       |
+
+> **Authorization is permission + scope, never role NAME.** Platform authority requires a **system-scoped** grant
+> carrying `platform:admin` (or `*:*`) — only `platform_owner` has it. Org admins hold `org:admin` **org-scoped**.
+> `assertAdmin(ctx, { scope: 'system' | 'organization' | 'either' })` reads `ctx.systemPermissions` for platform scope
+> and `ctx.permissions` for org scope; there is no role-name check. RLS `AdminOnly()` sets `requirePlatformAdmin`
+> (checked against the scope-aware `platformAdmin` flag). `Role.ensureDefaultRoles()` is create-if-missing by default;
+> `ensureDefaultRoles({ heal: true })` (run from `/__bootstrap__/seed`) additionally reconciles existing system-role
+> permission sets to the canonical values and refreshes affected sessions.
 
 Create custom roles:
 

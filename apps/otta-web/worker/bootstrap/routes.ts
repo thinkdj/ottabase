@@ -4,10 +4,12 @@
 //
 // Handles all /__bootstrap__/* requests:
 //   GET  /__bootstrap__                  → Wizard UI (HTML)
+//   GET  /__bootstrap__/seed             → Focused "reconcile roles" UI over POST /api/seed
+//   GET  /__bootstrap__/promote-owner    → UI over POST /api/admin/platform-owner/promote
 //   GET  /__bootstrap__/api/status       → Current platform state + binding probe
 //   POST /__bootstrap__/api/init         → Clear KV, then run schema creation + migrations
-//   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
-//   POST /__bootstrap__/api/create-owner → Create first admin/owner account
+//   POST /__bootstrap__/api/seed         → Seed/reconcile RBAC roles + permissions
+//   POST /__bootstrap__/api/create-owner → Create first platform owner account
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
@@ -25,8 +27,18 @@ import {
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
+import { reconcileSystemRoleSessions } from '../lib/auth-utils';
+import { enforceBruteForceThrottle } from '../lib/rate-limiting';
+import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
-import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
+import {
+    renderBindingsErrorPage,
+    renderLockedPage,
+    renderMaintenancePage,
+    renderPromoteOwnerPage,
+    renderReseedPage,
+    renderWizardPage,
+} from './pages';
 import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import { META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
 import type { PlatformStateResult } from './types';
@@ -54,30 +66,6 @@ function jsonResp(data: unknown, status = 200): Response {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    owner: ['*:*'],
-    admin: ['*:*'],
-    editor: ['*:read', '*:create', '*:update'],
-    viewer: ['*:read'],
-    member: ['*:read'],
-};
-
-async function enforceDefaultRolePermissions(env: CloudflareEnv): Promise<string[]> {
-    if (!env.OBCF_D1) return [];
-
-    const normalized: string[] = [];
-    const now = Date.now();
-
-    for (const [name, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-        await env.OBCF_D1.prepare(`UPDATE roles SET permissions = ?, updated_at = ? WHERE name = ?`)
-            .bind(JSON.stringify(permissions), now, name)
-            .run();
-        normalized.push(name);
-    }
-
-    return normalized;
 }
 
 /**
@@ -137,6 +125,22 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     // Only allow query param for the GET wizard page
     const allowQuery = !isApiRequest && context.request.method === 'GET';
     if (!isValidSecret(context, allowQuery)) {
+        // Throttle brute-forcing of BOOTSTRAP_OWNER_SECRET. EVERY bootstrap endpoint is a
+        // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
+        // attacker could guess it unthrottled here and then make a single valid promote/create-owner
+        // call — making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
+        // so legit use with the correct secret is never limited. enforceBruteForceThrottle fails OPEN
+        // WITH A LOGGED WARNING if the limiter binding is missing (a real 429 still blocks) — the
+        // same policy the promote endpoint uses, so the two behave consistently.
+        const ip = getClientIpAddress(context.request);
+        const limited = await enforceBruteForceThrottle(
+            context.request,
+            context.env,
+            `bootstrap:secret:${ip}`,
+            'bootstrap secret check',
+        );
+        if (limited) return limited;
+
         if (isApiRequest) {
             return jsonResp(
                 {
@@ -158,6 +162,18 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     if (path === '/__bootstrap__/api/seed') return handleSeed(context);
     if (path === '/__bootstrap__/api/create-owner') return handleCreateOwner(context);
     if (path === '/__bootstrap__/api/finalize') return handleFinalize(context);
+
+    // Focused re-seed page (reconcile default roles) — a lightweight maintenance UI over
+    // /api/seed, usable after first-run setup. Matched before the generic wizard fallback below.
+    if (path === '/__bootstrap__/seed' && context.request.method === 'GET') {
+        return serveReseedPage(context);
+    }
+
+    // Focused promote-owner page — grants platform_owner to an existing account via the secret-gated
+    // POST /api/admin/platform-owner/promote. Break-glass / ownership-transfer UI (no login needed).
+    if (path === '/__bootstrap__/promote-owner' && context.request.method === 'GET') {
+        return servePromoteOwnerPage(context);
+    }
 
     // Wizard HTML page — serve for any /__bootstrap__* GET
     if (context.request.method === 'GET') {
@@ -415,10 +431,20 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (owner, admin, editor, viewer, member)
-        const createdRoles = await Role.ensureDefaultRoles();
-        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
-        const normalizedRoles = await enforceDefaultRolePermissions(env);
+        // Seed default roles (platform_owner, owner, admin, editor, viewer, member) AND reconcile
+        // existing system-role permission sets to the canonical definitions — e.g. heal a legacy
+        // 'owner' = ['*:*'] row in place. This is the DELIBERATE heal path (heal:true); the signup
+        // path only creates-if-missing. See ensureDefaultRoles.
+        const changedRoles = await Role.ensureDefaultRoles({ heal: true });
+        const roleNames = changedRoles.map((r: any) => r.get('name') as string);
+
+        // A heal changes what the auth layer grants, so drop RBAC caches and refresh the
+        // (small, system-scoped) platform-owner sessions — otherwise a healed permission set / the
+        // platformAdmin flag wouldn't take effect until the JWT expires. Org-scoped sessions refresh
+        // on next sign-in (see reconcileSystemRoleSessions).
+        if (changedRoles.length > 0) {
+            await reconcileSystemRoleSessions(env);
+        }
 
         // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
@@ -426,7 +452,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
 
         return jsonResp({
             success: true,
-            roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
+            roles: { created: roleNames, existing: existingRoles },
             timestamp: Date.now(),
         });
     } catch (error: any) {
@@ -436,7 +462,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
 
 /**
  * POST /__bootstrap__/api/create-owner
- * Step 3: Create the first admin/owner account.
+ * Step 3: Create the first platform owner account.
  * Body: { email: string, password: string, name?: string }
  */
 async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
@@ -477,19 +503,20 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
     }
 
-    // Tracks the owner row once created, so any failure after that point can roll it back.
+    // Tracks the platform owner row once created, so any failure after that point can roll it back.
     let createdUserId: string | null = null;
     try {
         ensureOrmConnection(env);
         await ensureMetaTable(env);
 
+        // ensureDefaultRoles both creates missing system roles and self-heals existing ones to the
+        // canonical permission sets, so no separate normalize step is needed here.
         await Role.ensureDefaultRoles();
-        await enforceDefaultRolePermissions(env);
 
-        // Atomically claim the right to create the owner account. Unlike a
-        // SELECT COUNT(*) check, this INSERT is guarded by the `key` PRIMARY
-        // KEY on _ottabase_meta, so if two requests race, only one of them
-        // can win the insert — the other fails immediately and never
+        // Atomically claim the right to create the platform owner account.
+        // Unlike a SELECT COUNT(*) check, this INSERT is guarded by the `key`
+        // PRIMARY KEY on _ottabase_meta, so if two requests race, only one of
+        // them can win the insert — the other fails immediately and never
         // proceeds to create a user, closing the TOCTOU window.
         try {
             await env.OBCF_D1.prepare(`INSERT INTO ${META_TABLE} (key, value, updated_at) VALUES (?, ?, ?)`)
@@ -499,23 +526,23 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
                     code: 'OWNER_EXISTS',
                 },
                 409,
             );
         }
 
-        // Belt-and-braces: if an owner somehow already exists (e.g. a user
-        // was provisioned out-of-band while the claim was held), don't
-        // silently create a second one.
+        // Belt-and-braces: if a user somehow already exists (e.g. provisioned
+        // out-of-band while the claim was held), don't silently create a
+        // second account.
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
         if (userCount > 0) {
             return jsonResp(
                 {
                     success: false,
-                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
                     code: 'OWNER_EXISTS',
                 },
                 409,
@@ -527,7 +554,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const newUser = await User.create({
             email,
             name: name || null,
-            emailVerified: Date.now(), // Auto-verify owner
+            emailVerified: Date.now(), // Auto-verify platform owner
             passwordHash,
         });
 
@@ -557,30 +584,31 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'Failed to provision default organization for owner account',
+                    error: 'Failed to provision default organization for platform owner account',
                     code: 'ORG_PROVISION_FAILED',
                 },
                 500,
             );
         }
 
-        // Claim the SYSTEM-scope owner grant for this account. provisionDefaultOrganizationForUser
-        // only assigns the owner role at the personal-organization scope; without this the
-        // system-scope owner slot stays unclaimed, so the first person to sign in afterwards
-        // would seize global ownership via bootstrapFirstUser. This is idempotent.
+        // Claim the SYSTEM-scope platform_owner grant for this account.
+        // provisionDefaultOrganizationForUser only assigns the org-scoped 'owner' role at the
+        // personal-organization scope; without this the platform_owner slot stays unclaimed,
+        // so the first person to sign in afterwards would seize global ownership via
+        // bootstrapFirstUser. This is idempotent.
         await bootstrapFirstUser(env, { id: userId, email, name: name || null });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
-        const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
+        // The bootstrap user now holds the SYSTEM-scoped 'platform_owner' grant (via
+        // bootstrapFirstUser above) AND the org-scoped 'owner'. Let loadUserContext derive the
+        // real context from those DB grants — it resolves platformAdmin=true and the '*:*'
+        // permission set from the system-scoped grant, so no fake wildcard is injected here.
         const { cookie, session } = await createSessionCookieForUser(
             {
                 id: userId,
                 email,
                 name: name || null,
                 emailVerified: Date.now(),
-                organizationId,
-                roles: assignedRole ? [assignedRole] : [],
-                permissions: ownerPermissions,
             },
             env as any,
             request,
@@ -608,7 +636,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             },
         });
     } catch (error: any) {
-        // Roll back any partially-created owner (orphan user row + held claim) so the
+        // Roll back any partially-created platform owner (orphan user row + held claim) so the
         // OWNER_EXISTS / userCount guards don't permanently block a legitimate retry.
         await rollbackOwnerCreation(env, createdUserId);
 
@@ -619,7 +647,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     }
 }
 
-/** Best-effort release of the owner-creation claim (used when owner creation fails before a user row is committed). */
+/** Best-effort release of the platform-owner-creation claim (used when creation fails before a user row is committed). */
 async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
     if (!env.OBCF_D1) return;
     try {
@@ -630,8 +658,8 @@ async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
 }
 
 /**
- * Best-effort rollback of a failed owner-creation attempt: delete the just-created owner row (if
- * any) and release the claim. Both must be undone together — a leftover user trips the
+ * Best-effort rollback of a failed platform-owner-creation attempt: delete the just-created user
+ * row (if any) and release the claim. Both must be undone together — a leftover user trips the
  * `userCount > 0` guard and a held claim trips OWNER_EXISTS, either of which would otherwise
  * permanently brick a legitimate retry of first-time setup.
  */
@@ -682,7 +710,7 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
             return jsonResp(
                 {
                     success: false,
-                    error: 'No admin account found — create an owner account first',
+                    error: 'No admin account found — create a platform owner account first',
                     code: 'NO_OWNER',
                 },
                 400,
@@ -721,6 +749,20 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
     } catch (error: any) {
         return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
     }
+}
+
+function serveReseedPage(context: BootstrapContext): Response {
+    return new Response(renderReseedPage(context.platformState), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+    });
+}
+
+function servePromoteOwnerPage(context: BootstrapContext): Response {
+    return new Response(renderPromoteOwnerPage(context.platformState), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+    });
 }
 
 function serveWizardPage(context: BootstrapContext): Response {

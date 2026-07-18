@@ -151,11 +151,10 @@ describe('Cloudflare Worker API', () => {
 
     describe('/api/ottaorm/shortlinks', () => {
         // The generic CRUD route is fully disabled for shortlinks (like users/menus/
-        // organization_members): RLS's requiredRoles check only tests role-NAME membership,
-        // not which organization a role was granted in, so it can't actually restrict this to
-        // system admins (every self-registered user holds an org-scoped 'owner' role). All
-        // shortlink management goes through /api/shortlinks, which correctly gates on
-        // requireAdminAccess({ scope: 'system' }) — see 'Legacy /api/shortlinks' below.
+        // organization_members). The shortlinks RLS policy is platform-admin gated
+        // (requirePlatformAdmin), and the hard-block additionally routes all management through
+        // /api/shortlinks, which gates on requireAdminAccess({ scope: 'system' }) and owns
+        // analytics/slug handling — see 'Legacy /api/shortlinks' below.
         it('should be disabled, even for an authenticated admin session', async () => {
             (getSession as any).mockResolvedValue({ user: { id: 'admin-1', roles: ['admin'] } });
 

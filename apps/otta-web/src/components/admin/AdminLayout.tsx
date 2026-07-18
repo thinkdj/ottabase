@@ -10,6 +10,7 @@
  *   requires (1) a route in router.tsx and (2) one entry in admin-nav.
  */
 
+import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
 import { Input } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -21,7 +22,13 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
-    const groups = getEnabledAdminNav();
+    const { user } = useSession();
+    // Show only the sections the caller can actually use: platform admins see everything, org
+    // admins see just their own-tenant sections (rather than a wall of control-plane pages).
+    const groups = useMemo(
+        () => getEnabledAdminNav({ isPlatformAdmin: isPlatformAdmin(user), isOrgAdmin: isOrgAdmin(user) }),
+        [user],
+    );
     const { pathname } = useLocation();
     const [search, setSearch] = useState('');
 

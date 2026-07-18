@@ -144,12 +144,24 @@ export async function provisionDefaultOrganizationForUser(params: {
 
         organizationId = String(organization.get('id') || '');
 
-        await OrganizationMember.create({
-            userId,
-            organizationId,
-            role: resolvedOrganizationRole,
-            status: 'active',
-        });
+        try {
+            await OrganizationMember.create({
+                userId,
+                organizationId,
+                role: resolvedOrganizationRole,
+                status: 'active',
+            });
+        } catch (err) {
+            // The tenant boundary is membership-only (organizationIdsForUser no longer trusts the
+            // never-cleared Organization.ownerId), so an org without an owner membership is ORPHANED
+            // — unreachable even by its creator. Roll the org back so provisioning is all-or-nothing.
+            try {
+                await Organization.delete(organizationId);
+            } catch (rollbackErr) {
+                console.error('[user-provisioning] Failed to roll back orphaned organization:', rollbackErr);
+            }
+            throw err;
+        }
     }
 
     let brandSetupError: string | undefined;

@@ -38,14 +38,16 @@ describe('RLS Registry', () => {
             expect(filter(ctx)).toBeNull();
         });
 
-        it('returns ownerId filter when no memberOrganizationIds', () => {
-            const ctx: SecurityContext = { userId: 'u1' };
+        it('falls back to ownerId ONLY when membership is UNRESOLVED (undefined)', () => {
+            const ctx: SecurityContext = { userId: 'u1' }; // memberOrganizationIds undefined
             expect(filter(ctx)).toEqual({ ownerId: 'u1' });
         });
 
-        it('returns ownerId filter when memberOrganizationIds is empty', () => {
+        it('DENIES (null) when membership is resolved to empty — no stale-ownerId fallback', () => {
+            // A removed ex-owner resolves to zero active memberships; the never-cleared
+            // Organization.ownerId must NOT grant them access to the org they created.
             const ctx: SecurityContext = { userId: 'u1', memberOrganizationIds: [] };
-            expect(filter(ctx)).toEqual({ ownerId: 'u1' });
+            expect(filter(ctx)).toBeNull();
         });
 
         it('returns id array filter when memberOrganizationIds is populated', () => {

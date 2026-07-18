@@ -33,10 +33,12 @@ describe('RLSPolicies', () => {
         expect(policy.readOnly).toBe(true);
     });
 
-    it('AdminOnly returns custom policy with requiredRoles', () => {
+    it('AdminOnly returns custom policy gated on platformAdmin (not role names)', () => {
         const policy = RLSPolicies.AdminOnly();
         expect(policy.level).toBe('custom');
-        expect(policy.requiredRoles).toEqual(['admin', 'owner']);
+        expect(policy.requirePlatformAdmin).toBe(true);
+        // Must NOT gate on scope-blind role names — that was the escalation vector.
+        expect(policy.requiredRoles).toBeUndefined();
     });
 
     it('PermissionBased returns custom policy with requiredPermissions (RLS engine supports wildcards: *:*, brand:*)', () => {

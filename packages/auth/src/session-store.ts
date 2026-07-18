@@ -31,7 +31,7 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { userKey } from '@ottabase/cf/cache-keys';
 import { registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { OrganizationMember, PLATFORM_ADMIN_PERMISSION, User } from '@ottabase/ottaorm/models';
 import { SYSTEM_ORGANIZATION_ID, parseBooleanFlag } from './bootstrap';
 import { clearCookie, isHttpsRequest, parseCookies, serializeCookie } from './cookies';
 import { signJwt, verifyJwt } from './jwt';
@@ -145,10 +145,28 @@ function profileVersionKey(userId: string): string {
     return userKey('auth', userId, 'profile', 'version');
 }
 
+/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
+function permissionSatisfies(perms: Iterable<string>, required: string): boolean {
+    const [reqResource, reqAction] = required.split(':');
+    for (const perm of perms) {
+        const [permResource, permAction] = perm.split(':');
+        if (permResource === '*' && permAction === '*') return true;
+        if (
+            (permResource === '*' || permResource === reqResource) &&
+            (permAction === '*' || permAction === reqAction)
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 interface UserContext {
     organizationId: string | null;
     roles: string[];
     permissions: string[];
+    /** True when a SYSTEM-scoped grant carries platform:admin/'*:*' — the platform-admin flag. */
+    platformAdmin: boolean;
     createdAt: number | null;
     name: string | null;
     image: string | null;
@@ -172,6 +190,8 @@ interface RegistrySnapshot {
     organizationId: string | null;
     roles: string[];
     permissions: string[];
+    /** Platform-admin flag (system-scoped grant). Persisted so buildUser can serve it. */
+    platformAdmin: boolean;
     createdAt: number | null;
     name: string | null;
     image: string | null;
@@ -225,6 +245,7 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
 
     let roles: string[] = [];
     let permissions: string[] = [];
+    let platformAdmin = false;
     let createdAt: number | null = null;
     let name: string | null = null;
     let image: string | null = null;
@@ -241,19 +262,40 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
                     : Number.isFinite(Number(emailVerifiedRaw))
                       ? Number(emailVerifiedRaw)
                       : null;
-            if (organizationId) {
-                // Fetch role records once and derive both role names and permissions from them.
-                // (user.getPermissions() would re-run the same role queries internally, doubling
-                // the D1 round trips on this hot-ish path.)
-                const roleRecords = await user.roles({ organizationId });
-                roles = roleRecords.map((role: { get: (key: string) => unknown }) => String(role.get('name')));
-                const permissionSet = new Set<string>();
-                for (const role of roleRecords) {
+
+            const roleNameSet = new Set<string>();
+            const permissionSet = new Set<string>();
+            // Permissions from SYSTEM-scoped grants only — the platform-admin flag derives from
+            // these, so an org-scoped grant (or a role merely NAMED 'owner'/'admin') can never
+            // confer platform authority.
+            const systemPermissionSet = new Set<string>();
+            const collectRoles = (records: any[], isSystemScope: boolean) => {
+                for (const role of records) {
+                    roleNameSet.add(String(role.get('name')));
                     const rolePerms = (role as { getPermissions?: () => string[] }).getPermissions?.() ?? [];
-                    for (const perm of rolePerms) permissionSet.add(perm);
+                    for (const perm of rolePerms) {
+                        permissionSet.add(perm);
+                        if (isSystemScope) systemPermissionSet.add(perm);
+                    }
                 }
-                permissions = [...permissionSet];
+            };
+
+            if (organizationId) {
+                const orgRoleRecords = await user.roles({ organizationId });
+                collectRoles(orgRoleRecords, organizationId === SYSTEM_ORGANIZATION_ID);
             }
+
+            // Also load system-scope roles (e.g. platform_owner) so that users
+            // who hold a system-level grant see the correct permissions in their
+            // session — mirrors what getRequestContext does on the backend.
+            if (organizationId !== SYSTEM_ORGANIZATION_ID) {
+                const systemRoleRecords = await user.roles({ organizationId: SYSTEM_ORGANIZATION_ID });
+                collectRoles(systemRoleRecords, true);
+            }
+
+            roles = [...roleNameSet];
+            permissions = [...permissionSet];
+            platformAdmin = permissionSatisfies(systemPermissionSet, PLATFORM_ADMIN_PERMISSION);
             const createdAtRaw = user.get('createdAt');
             if (createdAtRaw) {
                 const parsed =
@@ -265,7 +307,7 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
         console.warn('Failed to load user roles/permissions for session:', error);
     }
 
-    return { organizationId, roles, permissions, createdAt, name, image, emailVerified };
+    return { organizationId, roles, permissions, platformAdmin, createdAt, name, image, emailVerified };
 }
 
 export interface CreateSessionInput {
@@ -337,6 +379,11 @@ export async function createSessionForUser(
                   organizationId: input.organizationId,
                   roles: input.roles,
                   permissions: input.permissions,
+                  // Fast path (explicit context, e.g. legacy callers): platform-admin cannot be
+                  // inferred from a merged permission list without scope, so default false. Callers
+                  // that need a platform-admin session omit roles/permissions and go through
+                  // loadUserContext, which derives it from the real system-scoped grants.
+                  platformAdmin: false,
                   createdAt: null,
               }
             : await loadUserContext(input.id, env);
@@ -371,6 +418,7 @@ export async function createSessionForUser(
         organizationId: context.organizationId,
         roles: context.roles,
         permissions: context.permissions,
+        platformAdmin: context.platformAdmin,
         createdAt: context.createdAt,
         name: input.name ?? null,
         image: input.image ?? null,
@@ -403,6 +451,7 @@ export async function createSessionForUser(
             organizationId: context.organizationId,
             roles: context.roles,
             permissions: context.permissions,
+            platformAdmin: context.platformAdmin,
             createdAt: context.createdAt,
         },
     };
@@ -424,7 +473,7 @@ export function buildClearSessionCookie(env: AuthEnv, request: Request): string 
 /**
  * Create a session and return the ready-to-use `Set-Cookie` header value.
  * Used both by the normal sign-in handlers and by system-initiated logins
- * (e.g. the first-run owner-account bootstrap wizard).
+ * (e.g. the first-run platform-owner bootstrap wizard).
  */
 export async function createSessionCookieForUser(
     input: CreateSessionInput,
@@ -448,6 +497,7 @@ function parseSnapshot(raw: string | null): RegistrySnapshot | null {
             organizationId: parsed.organizationId ?? null,
             roles: Array.isArray(parsed.roles) ? parsed.roles : [],
             permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
+            platformAdmin: parsed.platformAdmin === true,
             createdAt: parsed.createdAt ?? null,
             name: parsed.name ?? null,
             image: parsed.image ?? null,
@@ -478,6 +528,7 @@ async function refreshSnapshotIfStale(
             organizationId: context.organizationId,
             roles: context.roles,
             permissions: context.permissions,
+            platformAdmin: context.platformAdmin,
             createdAt: context.createdAt ?? snapshot.createdAt,
             name: context.name,
             image: context.image,
@@ -505,6 +556,7 @@ function buildUser(payload: SessionTokenPayload, snapshot: RegistrySnapshot | nu
         organizationId: snapshot?.organizationId ?? payload.organizationId ?? null,
         roles: snapshot?.roles ?? [],
         permissions: snapshot?.permissions ?? [],
+        platformAdmin: snapshot?.platformAdmin ?? false,
         createdAt: snapshot?.createdAt ?? payload.createdAt ?? null,
     };
 }
@@ -599,6 +651,7 @@ export async function getSession(
                 organizationId: context.organizationId,
                 roles: context.roles,
                 permissions: context.permissions,
+                platformAdmin: context.platformAdmin,
                 createdAt: context.createdAt,
                 name: context.name,
                 image: context.image,

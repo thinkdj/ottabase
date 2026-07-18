@@ -1,4 +1,4 @@
-import { useSession } from '@/lib/auth';
+import { isAdminUser, useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
@@ -24,7 +24,7 @@ export const TopbarHeader = memo(function TopbarHeader({
     const location = useLocation();
     const { config } = useBrand();
 
-    const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
+    const isAdmin = isAdminUser(user);
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
@@ -106,7 +106,7 @@ export const MinimalHeader = memo(function MinimalHeader({
     const location = useLocation();
     const { config } = useBrand();
 
-    const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
+    const isAdmin = isAdminUser(user);
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">

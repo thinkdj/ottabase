@@ -1,4 +1,4 @@
-import { useSession } from '@/lib/auth';
+import { isAdminUser, useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
@@ -21,7 +21,7 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
     const { isAuthenticated, user } = useSession();
     const location = useLocation();
     const { config } = useBrand();
-    const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
+    const isAdmin = isAdminUser(user);
     const links = getNavLinks({ isAuthenticated, isAdmin });
 
     const staticContent = links.map((link) => {

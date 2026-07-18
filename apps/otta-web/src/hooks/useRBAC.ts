@@ -26,7 +26,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const organizationHooks = createModelHooks<OrganizationRecord>({ entityName: 'organizations' });
 const orgMemberHooks = createModelHooks<OrganizationMemberRecord>({ entityName: 'organization_members' });
-const roleHooks = createModelHooks<RoleRecord>({ entityName: 'roles' });
+// Role definitions are managed via the platform-scoped admin endpoint, NOT generic CRUD
+// (/api/ottaorm/roles is default-denied). Same REST shape (GET list, POST, PATCH/:id, DELETE/:id).
+const roleHooks = createModelHooks<RoleRecord>({ entityName: 'roles', apiPath: '/api/admin/roles' });
 
 // ============================================================================
 // Organizations — Query Hooks
@@ -387,7 +389,7 @@ export function useUpdateRole() {
     return useMutation({
         meta: { entity: 'roles' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<RoleRecord> }) => {
-            const response = await api<{ data: RoleRecord }>(`/api/ottaorm/roles/${id}`, {
+            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${id}`, {
                 method: 'PATCH',
                 body: JSON.stringify(data),
             });
@@ -444,7 +446,7 @@ export function useTogglePermission() {
                 ? currentPermissions.filter((p) => p !== permissionId)
                 : [...currentPermissions, permissionId];
 
-            const response = await api<{ data: RoleRecord }>(`/api/ottaorm/roles/${roleId}`, {
+            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${roleId}`, {
                 method: 'PATCH',
                 body: JSON.stringify({ permissions: newPermissions }),
             });

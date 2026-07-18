@@ -1,15 +1,25 @@
-import { useSession } from '@/lib/auth';
+import { isPlatformAdmin, useSession } from '@/lib/auth';
 import { rememberReturnPath } from '@/lib/auth-redirect';
 import { AUTH_STORAGE_KEY } from '@ottabase/auth/react';
 import { Spinner } from '@ottabase/ui-shadcn';
 import { useNavigate } from '@tanstack/react-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
+function matchesPermission(held: string, required: string): boolean {
+    if (held === required) return true;
+    const [hRes, hAct] = held.split(':');
+    const [rRes, rAct] = required.split(':');
+    if (hRes === '*' && hAct === '*') return true;
+    return (hRes === '*' || hRes === rRes) && (hAct === '*' || hAct === rAct);
+}
+
 interface ProtectedRouteProps {
     children: ReactNode;
     redirectTo?: string;
     requiredPermissions?: string[];
     requiredRoles?: string[];
+    /** Require PLATFORM administrator (system-scoped). Gates the control-plane admin pages. */
+    requirePlatformAdmin?: boolean;
     fallback?: ReactNode;
 }
 
@@ -33,6 +43,7 @@ export function ProtectedRoute({
     redirectTo = '/login',
     requiredPermissions,
     requiredRoles,
+    requirePlatformAdmin,
     fallback,
 }: ProtectedRouteProps) {
     const navigate = useNavigate();
@@ -46,7 +57,8 @@ export function ProtectedRoute({
     // carried over from a prior login, or updated in another tab) while /api/auth/session is correct.
     // Without this an owner with `*:*` on the server can be wrongly denied. Pull the current session
     // once for role/permission-gated routes and hold the decision until it resolves.
-    const gatesAuthz = (requiredPermissions?.length ?? 0) > 0 || (requiredRoles?.length ?? 0) > 0;
+    const gatesAuthz =
+        (requiredPermissions?.length ?? 0) > 0 || (requiredRoles?.length ?? 0) > 0 || !!requirePlatformAdmin;
     const [authzResolved, setAuthzResolved] = useState(!gatesAuthz);
     const authzStarted = useRef(false);
 
@@ -97,9 +109,11 @@ export function ProtectedRoute({
     const hasRequiredPermissions =
         !requiredPermissions ||
         requiredPermissions.length === 0 ||
-        requiredPermissions.every((perm) => user?.permissions?.includes('*:*') || user?.permissions?.includes(perm));
+        requiredPermissions.every((perm) => user?.permissions?.some((held) => matchesPermission(held, perm)));
 
-    const authorized = hasRequiredRoles && hasRequiredPermissions;
+    const hasPlatformAdmin = !requirePlatformAdmin || isPlatformAdmin(user);
+
+    const authorized = hasRequiredRoles && hasRequiredPermissions && hasPlatformAdmin;
 
     // Don't flash "denied" while the fresh authz fetch is still in flight — the stored session
     // may simply be stale. Wait for the refresh, then decide.

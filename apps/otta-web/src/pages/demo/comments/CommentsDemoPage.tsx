@@ -195,7 +195,9 @@ function UserAvatar({ user, userId }: { user?: CommentUser | null; userId?: stri
 
 interface CommentNodeProps {
     comment: CommentType;
-    allComments: CommentType[];
+    /** Precomputed parentId -> children[] map (see CommentThread), O(1) lookup per node
+     *  instead of filtering the full comment array at every node on every render. */
+    commentsByParent: Map<string | null, CommentType[]>;
     currentUserId: string | null;
     /** Show user name/avatar from `_user` enrichment (default true) */
     fetchUser?: boolean;
@@ -211,7 +213,7 @@ interface CommentNodeProps {
 
 function CommentNode({
     comment,
-    allComments,
+    commentsByParent,
     currentUserId,
     fetchUser = true,
     onReact,
@@ -225,7 +227,7 @@ function CommentNode({
 }: CommentNodeProps) {
     const [showAllReplies, setShowAllReplies] = useState(false);
 
-    const children = allComments.filter((c) => c.parentId === comment.id);
+    const children = commentsByParent.get(comment.id) ?? [];
     const visibleChildren = showAllReplies ? children : children.slice(0, REPLY_PAGE_SIZE);
     const hiddenCount = children.length - REPLY_PAGE_SIZE;
 
@@ -348,7 +350,7 @@ function CommentNode({
                 <CommentNode
                     key={child.id}
                     comment={child}
-                    allComments={allComments}
+                    commentsByParent={commentsByParent}
                     currentUserId={currentUserId}
                     fetchUser={fetchUser}
                     onReact={onReact}
@@ -450,10 +452,19 @@ function CommentThread({
     const [replyText, setReplyText] = useState('');
     const [visibleRootCount, setVisibleRootCount] = useState(ROOT_PAGE_SIZE);
 
-    const rootComments = useMemo(
-        () => comments.filter((c) => c.parentId === null || c.parentId === undefined),
-        [comments],
-    );
+    // Precompute parentId -> children[] once per comments change, instead of every CommentNode
+    // filtering the full array on every render (O(N) per node, O(N^2) total for N comments).
+    const commentsByParent = useMemo(() => {
+        const map = new Map<string | null, CommentType[]>();
+        for (const comment of comments) {
+            const parentId = comment.parentId ?? null;
+            const list = map.get(parentId) ?? [];
+            list.push(comment);
+            map.set(parentId, list);
+        }
+        return map;
+    }, [comments]);
+    const rootComments = commentsByParent.get(null) ?? [];
     const visibleRoots = rootComments.slice(0, visibleRootCount);
     const moreRoots = rootComments.length - visibleRootCount;
 
@@ -559,7 +570,7 @@ function CommentThread({
                         <div key={c.id}>
                             <CommentNode
                                 comment={c}
-                                allComments={comments}
+                                commentsByParent={commentsByParent}
                                 currentUserId={currentUserId}
                                 fetchUser={fetchUser}
                                 onReact={onReact}

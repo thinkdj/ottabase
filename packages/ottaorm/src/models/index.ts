@@ -31,7 +31,16 @@ export {
 
 // RBAC models (with tenant + app scoping)
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
-export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
+export {
+    ORG_ADMIN_PERMISSION,
+    ORG_OWNER_PERMISSIONS,
+    PLATFORM_ADMIN_PERMISSION,
+    PLATFORM_OWNER_ROLE_NAME,
+    Role,
+    rolesTable,
+    type NewRoleType,
+    type RoleType,
+} from './Role';
 export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
 
 // User groups (generic membership primitive — tenant + app scoped, membership-scoped RLS)

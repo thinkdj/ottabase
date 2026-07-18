@@ -23,7 +23,7 @@ packages/auth/src/
 ├── crypto.ts              # Web Crypto helpers: HMAC-SHA256, PBKDF2 password hashing
 ├── csrf.ts                # Double-submit CSRF cookie helpers
 ├── cookies.ts             # Cookie serialize/parse helpers
-├── bootstrap.ts            # First-run owner-account bootstrap helper
+├── bootstrap.ts            # First-run platform-owner bootstrap helper
 ├── providers.ts            # Re-exports OAuth presets + resolveMagicLinkSender
 ├── providers/
 │   ├── presets.ts         # Google/GitHub/Discord/Azure AD/Auth0 OAuth preset configs
@@ -72,7 +72,7 @@ apps/otta-web/
 ├── worker/routes/auth.ts      # handleAuthApiRequest + routes the app owns directly (register, verify-email,
 │                               # password reset/change, config, users/me)
 ├── worker/lib/auth-utils.ts   # getAuthOptions() builds CreateAuthConfigOptions (pages, hooks, session max age)
-├── worker/bootstrap/routes.ts # First-run owner-account wizard, calls createSessionCookieForUser directly
+├── worker/bootstrap/routes.ts # First-run platform-owner wizard, calls createSessionCookieForUser directly
 └── src/pages/                 # Login/Register pages use LoginForm/RegisterForm components + client API/hooks
 ```
 

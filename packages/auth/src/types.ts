@@ -15,6 +15,12 @@ export interface SessionUser {
     organizationId?: string | null;
     roles?: string[];
     permissions?: string[];
+    /**
+     * True when the user is a PLATFORM administrator — derived server-side from a SYSTEM-scoped
+     * `platform:admin`/'*:*' grant, never from a role name or an org-scoped grant. Drives the
+     * platform-only sections of the admin UI; the server enforces the same boundary independently.
+     */
+    platformAdmin?: boolean;
     createdAt?: number | null;
     [key: string]: unknown;
 }

@@ -20,7 +20,12 @@ import {
 
 import { type ComponentType, type ReactNode } from 'react';
 
-const ADMIN_REQUIRED_PERMISSIONS = ['admin'];
+/**
+ * Admin page scope. `platform` = SaaS control plane (system-scoped platform admin only);
+ * `org` = own-tenant administration (org:admin, which a platform owner also satisfies). Gates
+ * are permission + scope based — a role merely NAMED 'owner'/'admin' grants nothing on its own.
+ */
+type AdminRouteScope = 'platform' | 'org';
 
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
@@ -47,13 +52,22 @@ function AdminPrivilegeFallback() {
     );
 }
 
-/** Wraps an admin page in: ProtectedRoute(admin) → AdminLayout(sidebar) → page. */
-function renderAdminRoute(children: ReactNode) {
-    return (
-        <ProtectedRoute requiredPermissions={ADMIN_REQUIRED_PERMISSIONS} fallback={<AdminPrivilegeFallback />}>
-            <AdminLayout>{children}</AdminLayout>
-        </ProtectedRoute>
-    );
+/** Wraps an admin page in: ProtectedRoute(scope) → AdminLayout(sidebar) → page. */
+function renderAdminRoute(scope: AdminRouteScope, children: ReactNode) {
+    // Platform pages require a system-scoped platform admin; org pages require org:admin (a platform
+    // owner also satisfies org:admin via '*:*'). The worker APIs enforce the same boundary — this
+    // client gate only avoids showing an org owner a page whose data would 403.
+    const guarded =
+        scope === 'platform' ? (
+            <ProtectedRoute requirePlatformAdmin fallback={<AdminPrivilegeFallback />}>
+                <AdminLayout>{children}</AdminLayout>
+            </ProtectedRoute>
+        ) : (
+            <ProtectedRoute requiredPermissions={['org:admin']} fallback={<AdminPrivilegeFallback />}>
+                <AdminLayout>{children}</AdminLayout>
+            </ProtectedRoute>
+        );
+    return guarded;
 }
 
 const rootRoute = new RootRoute({
@@ -100,23 +114,28 @@ function protectedRoute(path: string, loader: () => Promise<Record<string, Compo
     });
 }
 
-/** Admin-protected lazy route — wraps page in AdminLayout sidebar. */
+/**
+ * Admin-protected lazy route — wraps page in AdminLayout sidebar.
+ * `scope` defaults to 'platform' (most restrictive): a page must OPT IN to org-level access, so a
+ * forgotten scope fails safe (platform-only) rather than exposing a control-plane page to org admins.
+ */
 function makeAdminRoute(
     path: string,
     loader: () => Promise<Record<string, ComponentType>>,
     exportName: string,
-    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown }> = {},
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown; scope: AdminRouteScope }> = {},
 ) {
+    const { scope = 'platform', validateSearch } = options;
     return new Route({
         getParentRoute: () => rootRoute,
         path,
         component: lazyRouteComponent(() =>
             loader().then((m) => {
                 const Comp = m[exportName]!;
-                return { default: () => renderAdminRoute(<Comp />) };
+                return { default: () => renderAdminRoute(scope, <Comp />) };
             }),
         ),
-        ...options,
+        ...(validateSearch ? { validateSearch } : {}),
     });
 }
 
@@ -200,7 +219,9 @@ const changelogDetailRoute = publicRoute('/changelog/$slug', () =>
 
 // ─── /admin overview ─────────────────────────────────────────────────────────
 
-const adminRoute = makeAdminRoute('/admin', () => import('@/pages/admin/AdminIndexPage'), 'AdminIndexPage');
+const adminRoute = makeAdminRoute('/admin', () => import('@/pages/admin/AdminIndexPage'), 'AdminIndexPage', {
+    scope: 'org',
+});
 
 // ─── /admin/appearance ───────────────────────────────────────────────────────
 
@@ -246,12 +267,14 @@ const adminBlogRoute = makeAdminRoute(
     '/admin/content/blog',
     () => import('@/pages/admin/content/blog/AdminBlogListPage'),
     'AdminBlogListPage',
+    { scope: 'org' },
 );
 const adminBlogNewRoute = makeAdminRoute(
     '/admin/content/blog/new',
     () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
     'AdminBlogEditorPage',
     {
+        scope: 'org',
         validateSearch: (search: Record<string, unknown>) => ({
             contentType: typeof search.contentType === 'string' ? search.contentType : undefined,
         }),
@@ -261,7 +284,9 @@ const adminBlogEditRoute = makeAdminRoute(
     '/admin/content/blog/$postId/edit',
     () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
     'AdminBlogEditorPage',
+    { scope: 'org' },
 );
+// Blog Studio manages APP-GLOBAL theme + renderer plugins → platform scope (default).
 const adminBlogStudioRoute = makeAdminRoute(
     '/admin/content/blog/studio',
     () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
@@ -271,21 +296,25 @@ const adminBlogTagsRoute = makeAdminRoute(
     '/admin/content/blog/tags',
     () => import('@/pages/admin/content/blog/AdminBlogTagsPage'),
     'AdminBlogTagsPage',
+    { scope: 'org' },
 );
 const adminBlogCategoriesRoute = makeAdminRoute(
     '/admin/content/blog/categories',
     () => import('@/pages/admin/content/blog/AdminBlogCategoriesPage'),
     'AdminBlogCategoriesPage',
+    { scope: 'org' },
 );
 const adminBlogSeriesRoute = makeAdminRoute(
     '/admin/content/blog/series',
     () => import('@/pages/admin/content/blog/AdminBlogSeriesPage'),
     'AdminBlogSeriesPage',
+    { scope: 'org' },
 );
 const adminChangelogRoute = makeAdminRoute(
     '/admin/content/changelog',
     () => import('@/pages/admin/content/changelog/AdminChangelogListPage'),
     'AdminChangelogListPage',
+    { scope: 'org' },
 );
 // Changelog new/edit redirect to blog editor with contentType=changelog.
 // Cast Navigate target: routes built via makeAdminRoute don't expose path as a
@@ -311,6 +340,7 @@ const adminMediaLibraryRoute = makeAdminRoute(
     '/admin/content/media',
     () => import('@/pages/admin/content/MediaLibraryPage'),
     'AdminMediaLibraryPage',
+    { scope: 'org' },
 );
 
 // ─── /admin/access ───────────────────────────────────────────────────────────
@@ -325,25 +355,31 @@ const adminUserRBACRoute = makeAdminRoute(
     () => import('@/pages/admin/access/users/UserRBACPage'),
     'UserRBACPage',
 );
+// Organizations pages are org-scoped: reads are RLS-filtered to the caller's memberships (a platform
+// owner sees all via '*:*'); a plain org admin manages only their own org.
 const adminOrganizationsRoute = makeAdminRoute(
     '/admin/access/organizations',
     () => import('@/pages/admin/access/organizations/OrganizationsPage'),
     'OrganizationsPage',
+    { scope: 'org' },
 );
 const adminOrganizationNewRoute = makeAdminRoute(
     '/admin/access/organizations/new',
     () => import('@/pages/admin/access/organizations/OrganizationRegistrationPage'),
     'OrganizationRegistrationPage',
+    { scope: 'org' },
 );
 const adminOrganizationMembersRoute = makeAdminRoute(
     '/admin/access/organizations/$organizationId/members',
     () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
     'OrganizationMembersPage',
+    { scope: 'org' },
 );
 const adminOrganizationSettingsRoute = makeAdminRoute(
     '/admin/access/organizations/$organizationId/settings',
     () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
     'OrganizationSettingsPage',
+    { scope: 'org' },
 );
 const adminRBACRoute = makeAdminRoute(
     '/admin/access/rbac',
@@ -363,10 +399,13 @@ const adminRBACPermissionsRoute = makeAdminRoute(
 
 // ─── /admin/security ─────────────────────────────────────────────────────────
 
+// Audit log reads are derived from the caller's actual memberships (worker/routes/audit.ts), so
+// org admins see their own org's rows; a platform owner sees across orgs.
 const adminAuditRoute = makeAdminRoute(
     '/admin/security/audit',
     () => import('@/pages/admin/security/audit/AuditLogViewerPage'),
     'AuditLogViewerPage',
+    { scope: 'org' },
 );
 const adminSecurityRLSRoute = makeAdminRoute(
     '/admin/security/rls',
@@ -413,18 +452,20 @@ const adminDevMailRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/DevMailPage'),
     'AdminDevMailPage',
 );
+const adminEmailRoute = makeAdminRoute(
+    '/admin/infrastructure/email',
+    () => import('@/pages/admin/infrastructure/EmailPage'),
+    'AdminEmailPage',
+);
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
 
-const adminNotificationsRoute = makeAdminRoute(
-    '/admin/growth/notifications',
-    () => import('@/pages/admin/growth/NotificationsPage'),
-    'AdminNotificationsPage',
-);
+// Referrals dashboard shows the viewer's OWN referral stats (user-scoped), so any admin may open it.
 const adminReferralsRoute = makeAdminRoute(
     '/admin/growth/referrals',
     () => import('@/pages/admin/growth/ReferralsPage'),
     'AdminReferralsPage',
+    { scope: 'org' },
 );
 
 // ─── /demo gallery ───────────────────────────────────────────────────────────
@@ -568,7 +609,7 @@ const coreRoutes = [
     adminQueuesRoute,
     adminCronRoute,
     adminDevMailRoute,
-    adminNotificationsRoute,
+    adminEmailRoute,
 ];
 
 // Routes that depend on optional packages.

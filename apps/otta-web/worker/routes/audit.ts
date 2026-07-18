@@ -1,9 +1,11 @@
 import { getSession } from '@ottabase/auth/backend';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { isDevEnvironment, requireSessionOrDev } from '../lib/utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import type { ApiRouteContext } from './router';
 
 export interface AuditRouteContext {
     request: Request;
@@ -29,15 +31,33 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
 
     const sessionUser = session?.user as any | undefined;
     const userOrgId = sessionUser?.organizationId as string | undefined;
-    const roles = (sessionUser?.roles as string[]) || [];
-    const permissions = (sessionUser?.permissions as string[]) || [];
 
-    const isAdmin =
-        isDev ||
-        roles.includes('admin') ||
-        permissions.includes('*:*') ||
-        permissions.includes('audit:*') ||
-        permissions.includes('audit:read');
+    // Admin status is validated against the live RBAC context, not the session snapshot's
+    // role names — role names alone are ambiguous ('owner' exists in every personal org).
+    // Non-admins fall through to seeing their own rows only.
+    const adminAuth = isDev
+        ? null
+        : await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'either' });
+    const adminContext = adminAuth && !(adminAuth instanceof Response) ? adminAuth : null;
+    const isAdmin = isDev || adminContext !== null;
+
+    // Audit rows are tenant data: admins — the platform owner included — only see rows for
+    // organizations they are an active member of. A system-scope admin additionally sees
+    // platform-level rows (organization_id 'system' or NULL, e.g. migrations), but never
+    // another tenant's rows. allowedOrgIds === null means unconstrained (dev only).
+    const isSystemAdmin = adminContext?.organizationId === SYSTEM_ORGANIZATION_ID;
+    let allowedOrgIds: string[] | null = null;
+    if (adminContext && userId) {
+        const memberships = await env.OBCF_D1.prepare(
+            `SELECT organization_id FROM organization_members WHERE user_id = ? AND status = 'active'`,
+        )
+            .bind(userId)
+            .all<any>();
+        allowedOrgIds = (memberships.results || []).map((row: any) => String(row.organization_id));
+        if (isSystemAdmin && !allowedOrgIds.includes(SYSTEM_ORGANIZATION_ID)) {
+            allowedOrgIds.push(SYSTEM_ORGANIZATION_ID);
+        }
+    }
 
     const { page, perPage } = parsePaginationParams(url.searchParams);
     const search = (url.searchParams.get('search') || '').trim().toLowerCase();
@@ -47,7 +67,6 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
     const requestedOrgId = url.searchParams.get('organizationId') || '';
 
     const effectiveUserId = isAdmin ? requestedUserId || null : userId;
-    const effectiveOrgId = isAdmin ? requestedOrgId || null : userOrgId || null;
 
     const conditions: string[] = [];
     const values: any[] = [];
@@ -57,9 +76,32 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
         values.push(effectiveUserId);
     }
 
-    if (effectiveOrgId) {
+    if (!isAdmin) {
+        if (userOrgId) {
+            conditions.push('organization_id = ?');
+            values.push(userOrgId);
+        }
+    } else if (allowedOrgIds === null) {
+        if (requestedOrgId) {
+            conditions.push('organization_id = ?');
+            values.push(requestedOrgId);
+        }
+    } else if (requestedOrgId) {
+        if (!allowedOrgIds.includes(requestedOrgId)) {
+            return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
+        }
         conditions.push('organization_id = ?');
-        values.push(effectiveOrgId);
+        values.push(requestedOrgId);
+    } else {
+        const orgClauses: string[] = [];
+        if (allowedOrgIds.length > 0) {
+            orgClauses.push(`organization_id IN (${allowedOrgIds.map(() => '?').join(', ')})`);
+            values.push(...allowedOrgIds);
+        }
+        if (isSystemAdmin) {
+            orgClauses.push('organization_id IS NULL');
+        }
+        conditions.push(orgClauses.length > 0 ? `(${orgClauses.join(' OR ')})` : '0 = 1');
     }
 
     if (action) {

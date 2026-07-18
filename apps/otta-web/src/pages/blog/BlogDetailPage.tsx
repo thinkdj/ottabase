@@ -18,7 +18,7 @@ import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 
 interface BlogPost {
     id: string;
@@ -80,6 +80,109 @@ function getInitials(name?: string | null): string {
     return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase();
 }
 
+interface CommentNodeProps {
+    comment: CommentType;
+    depth: number;
+    commentsByParent: Map<string | null, CommentType[]>;
+    canReply: boolean;
+    /** Shared "which comment's reply box is open" id — this comment's own isReplying is derived
+     *  from comparing its id against this, so only the affected node's visible UI actually
+     *  changes, even though the prop value itself is shared across the whole tree. */
+    replyingToId: string | null;
+    onToggleReply: (commentId: string) => void;
+    onSubmitReply: (comment: CommentType, text: string) => void;
+    isSubmittingReply: boolean;
+}
+
+/**
+ * A single comment plus its nested replies. A real component (not a plain recursive function
+ * called during BlogDetailPage's render) wrapped in React.memo, with its OWN local reply-draft
+ * state — so typing in a reply box only re-renders this one leaf, not the entire (potentially
+ * large) comment tree on every keystroke. commentsByParent/onToggleReply/onSubmitReply are
+ * referentially stable across BlogDetailPage re-renders (memoized/useCallback), so memo actually
+ * skips re-rendering siblings whose props haven't changed. Typing never changes replyingToId (it
+ * only changes on open/cancel), so a keystroke never causes BlogDetailPage — or any sibling node
+ * — to re-render at all.
+ */
+const CommentNode = memo(function CommentNode({
+    comment,
+    depth,
+    commentsByParent,
+    canReply,
+    replyingToId,
+    onToggleReply,
+    onSubmitReply,
+    isSubmittingReply,
+}: CommentNodeProps) {
+    const [replyText, setReplyText] = useState('');
+    const isReplying = replyingToId === comment.id;
+    const children = commentsByParent.get(comment.id) ?? [];
+    // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
+    const indentClass = depth === 0 ? 'py-4' : 'ml-1 border-l border-border/60 pl-4 pt-4';
+
+    return (
+        <div className={indentClass}>
+            <div className="flex gap-3">
+                <Avatar className="h-8 w-8 ring-1 ring-border">
+                    <AvatarImage src={comment._user?.image || undefined} />
+                    <AvatarFallback className="text-xs font-medium">{getInitials(comment._user?.name)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
+                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {formatShortDate(comment.createdAt)}
+                        </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{comment.body}</p>
+                    {canReply && depth < 3 && (
+                        <button
+                            type="button"
+                            className="mt-2 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
+                            onClick={() => onToggleReply(comment.id)}
+                        >
+                            {isReplying ? 'Cancel reply' : 'Reply'}
+                        </button>
+                    )}
+                    {isReplying && (
+                        <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3">
+                            <Textarea
+                                placeholder="Write a reply..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                className="min-h-20 bg-background text-sm"
+                            />
+                            <div className="flex justify-end">
+                                <Button
+                                    size="sm"
+                                    onClick={() => onSubmitReply(comment, replyText)}
+                                    disabled={!replyText.trim() || isSubmittingReply}
+                                >
+                                    {isSubmittingReply ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Post reply
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+            {children.map((child) => (
+                <CommentNode
+                    key={child.id}
+                    comment={child}
+                    depth={depth + 1}
+                    commentsByParent={commentsByParent}
+                    canReply={canReply}
+                    replyingToId={replyingToId}
+                    onToggleReply={onToggleReply}
+                    onSubmitReply={onSubmitReply}
+                    isSubmittingReply={isSubmittingReply}
+                />
+            ))}
+        </div>
+    );
+});
+
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
@@ -91,7 +194,6 @@ export function BlogDetailPage() {
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [commentDraft, setCommentDraft] = useState('');
     const [replyingToId, setReplyingToId] = useState<string | null>(null);
-    const [replyText, setReplyText] = useState('');
     const [commentError, setCommentError] = useState<string | null>(null);
 
     // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
@@ -170,6 +272,43 @@ export function BlogDetailPage() {
         }
         return map;
     }, [comments]);
+
+    // Stable references (useCallback) so CommentNode's React.memo can actually skip
+    // re-rendering unaffected nodes — a new function identity on every BlogDetailPage render
+    // would defeat memoization regardless of how the props are shaped.
+    const toggleReply = useCallback((commentId: string) => {
+        setReplyingToId((current) => (current === commentId ? null : commentId));
+    }, []);
+
+    const handleSubmitReply = useCallback(
+        (parent: CommentType, text: string) => {
+            if (!text.trim() || !commentsTargetId) return;
+            if (!user?.id) {
+                setCommentError('Please sign in to reply.');
+                return;
+            }
+            setCommentError(null);
+            createComment.mutate(
+                {
+                    body: text.trim(),
+                    targetType: COMMENTS_TARGET_TYPE,
+                    targetId: commentsTargetId,
+                    parentId: parent.id,
+                    depth: (parent.depth ?? 0) + 1,
+                },
+                {
+                    onSuccess: () => {
+                        setReplyingToId(null);
+                        refetchComments();
+                    },
+                    onError: (err) => {
+                        setCommentError(err instanceof Error ? err.message : 'Failed to post reply.');
+                    },
+                },
+            );
+        },
+        [commentsTargetId, user?.id, createComment, refetchComments],
+    );
 
     // Loading state — pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
@@ -258,39 +397,6 @@ export function BlogDetailPage() {
         );
     };
 
-    const handleSubmitReply = (parent: CommentType) => {
-        if (!replyText.trim() || !commentsTargetId) return;
-        if (!user?.id) {
-            setCommentError('Please sign in to reply.');
-            return;
-        }
-        setCommentError(null);
-        createComment.mutate(
-            {
-                body: replyText.trim(),
-                targetType: COMMENTS_TARGET_TYPE,
-                targetId: commentsTargetId,
-                parentId: parent.id,
-                depth: (parent.depth ?? 0) + 1,
-            },
-            {
-                onSuccess: () => {
-                    setReplyText('');
-                    setReplyingToId(null);
-                    refetchComments();
-                },
-                onError: (err) => {
-                    setCommentError(err instanceof Error ? err.message : 'Failed to post reply.');
-                },
-            },
-        );
-    };
-
-    const toggleReply = (commentId: string) => {
-        setReplyingToId((current) => (current === commentId ? null : commentId));
-        setReplyText('');
-    };
-
     // Convert post to BlogPostData format
     const blogPostData: BlogPostData = {
         id: displayPost.id,
@@ -325,73 +431,6 @@ export function BlogDetailPage() {
     const canonicalUrl =
         displayPost.seoMeta?.canonicalUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
     const ogImage = displayPost.seoMeta?.ogImage || displayPost.heroImage?.url;
-
-    const renderComments = (parentId: string | null, depth: number): React.ReactNode => {
-        const items = commentsByParent.get(parentId) ?? [];
-        if (items.length === 0) return null;
-
-        return items.map((comment) => {
-            // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
-            const indentClass = depth === 0 ? 'py-4' : 'ml-1 border-l border-border/60 pl-4 pt-4';
-            const isReplying = replyingToId === comment.id;
-
-            return (
-                <div key={comment.id} className={indentClass}>
-                    <div className="flex gap-3">
-                        <Avatar className="h-8 w-8 ring-1 ring-border">
-                            <AvatarImage src={comment._user?.image || undefined} />
-                            <AvatarFallback className="text-xs font-medium">
-                                {getInitials(comment._user?.name)}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
-                                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {formatShortDate(comment.createdAt)}
-                                </span>
-                            </div>
-                            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                                {comment.body}
-                            </p>
-                            {user?.id && depth < 3 && (
-                                <button
-                                    type="button"
-                                    className="mt-2 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
-                                    onClick={() => toggleReply(comment.id)}
-                                >
-                                    {isReplying ? 'Cancel reply' : 'Reply'}
-                                </button>
-                            )}
-                            {isReplying && (
-                                <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3">
-                                    <Textarea
-                                        placeholder="Write a reply..."
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        className="min-h-20 bg-background text-sm"
-                                    />
-                                    <div className="flex justify-end">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => handleSubmitReply(comment)}
-                                            disabled={!replyText.trim() || createComment.isPending}
-                                        >
-                                            {createComment.isPending ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            ) : null}
-                                            Post reply
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    {renderComments(comment.id, depth + 1)}
-                </div>
-            );
-        });
-    };
 
     return (
         <div>
@@ -627,7 +666,21 @@ export function BlogDetailPage() {
                                         No comments yet. Be the first to comment.
                                     </p>
                                 ) : (
-                                    <div>{renderComments(null, 0)}</div>
+                                    <div>
+                                        {(commentsByParent.get(null) ?? []).map((comment) => (
+                                            <CommentNode
+                                                key={comment.id}
+                                                comment={comment}
+                                                depth={0}
+                                                commentsByParent={commentsByParent}
+                                                canReply={!!user?.id}
+                                                replyingToId={replyingToId}
+                                                onToggleReply={toggleReply}
+                                                onSubmitReply={handleSubmitReply}
+                                                isSubmittingReply={createComment.isPending}
+                                            />
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </section>

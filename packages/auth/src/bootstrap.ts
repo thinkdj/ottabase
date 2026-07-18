@@ -3,7 +3,8 @@
 // ============================================================
 //
 // When the very first user account is created (credentials registration,
-// OAuth sign-in, or magic link), grant it the system "owner" role and --
+// OAuth sign-in, or magic link), grant it the system-scoped "platform_owner"
+// role (the app owner, distinct from the org-scoped "owner" role) and --
 // unless multi-tenant mode is disabled -- provision a personal organization.
 //
 // ============================================================
@@ -12,7 +13,9 @@ import { makeSlug } from '@ottabase/utils/url';
 import type { AuthEnv } from './types';
 
 export const SYSTEM_ORGANIZATION_ID = 'system';
-export const OWNER_ROLE_NAME = 'owner';
+// Canonical source: @ottabase/ottaorm PLATFORM_OWNER_ROLE_NAME (duplicated here
+// to avoid a runtime dependency on ottaorm from the auth package).
+export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
 
 export function parseBooleanFlag(value: unknown): boolean {
     if (typeof value === 'boolean') return value;
@@ -23,7 +26,7 @@ export function parseBooleanFlag(value: unknown): boolean {
     return false;
 }
 
-export async function ensureOwnerRole(env: AuthEnv): Promise<string | null> {
+export async function ensurePlatformOwnerRole(env: AuthEnv): Promise<string | null> {
     if (!env.OBCF_D1) return null;
 
     try {
@@ -37,18 +40,26 @@ export async function ensureOwnerRole(env: AuthEnv): Promise<string | null> {
             `INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
-            .bind(roleId, OWNER_ROLE_NAME, 'System owner with full privileges', JSON.stringify(['*:*']), 1, now, now)
+            .bind(
+                roleId,
+                PLATFORM_OWNER_ROLE_NAME,
+                'Platform owner (bootstrapped app owner) with full privileges',
+                JSON.stringify(['*:*']),
+                1,
+                now,
+                now,
+            )
             .run();
 
         // Whether this call created the row or lost the race to another concurrent
         // call, re-read to get the canonical (possibly pre-existing) id.
         const existing = await env.OBCF_D1.prepare(`SELECT id FROM roles WHERE name = ? LIMIT 1`)
-            .bind(OWNER_ROLE_NAME)
+            .bind(PLATFORM_OWNER_ROLE_NAME)
             .first<any>();
 
         return existing?.id ? String(existing.id) : null;
     } catch (error) {
-        console.warn('ensureOwnerRole failed:', error);
+        console.warn('ensurePlatformOwnerRole failed:', error);
         return null;
     }
 }
@@ -99,12 +110,28 @@ export async function createPersonalOrganizationIfMissing(
             .bind(organizationId, workspaceName, slug, userId, now, now)
             .run();
 
-        await env.OBCF_D1.prepare(
-            `INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at, updated_at)
-             VALUES (?, ?, ?, 'owner', 'active', ?, ?, ?)`,
-        )
-            .bind(crypto.randomUUID(), userId, organizationId, now, now, now)
-            .run();
+        try {
+            await env.OBCF_D1.prepare(
+                `INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at, updated_at)
+                 VALUES (?, ?, ?, 'owner', 'active', ?, ?, ?)`,
+            )
+                .bind(crypto.randomUUID(), userId, organizationId, now, now, now)
+                .run();
+        } catch (memberError) {
+            // D1 has no cross-table transaction, so the organizations row above is already
+            // committed. If the membership insert fails we would orphan an org that has an
+            // owner_id but no membership row — and because org access is resolved from ACTIVE
+            // MEMBERSHIPS (not owner_id; see OrganizationMember.organizationIdsForUser), the
+            // platform owner could never see or manage it. Compensate by deleting the org so a
+            // retry starts clean. Same rollback pattern as the other two org-creation paths
+            // (ottaorm-crud org POST, provisionDefaultOrganizationForUser).
+            try {
+                await env.OBCF_D1.prepare(`DELETE FROM organizations WHERE id = ?`).bind(organizationId).run();
+            } catch {
+                /* best-effort rollback; re-running bootstrap/seed can reconcile a leftover org */
+            }
+            throw memberError; // surfaced to the outer catch → logs + returns null
+        }
 
         return organizationId;
     } catch (error) {
@@ -120,19 +147,19 @@ export async function bootstrapFirstUser(
     if (!env.OBCF_D1 || !user?.id) return;
 
     try {
-        const ownerRoleId = await ensureOwnerRole(env);
-        if (!ownerRoleId) return;
+        const platformOwnerRoleId = await ensurePlatformOwnerRole(env);
+        if (!platformOwnerRoleId) return;
 
         const now = Date.now();
 
-        // Atomically claim the "first user" slot: only insert an owner-role grant for
-        // *this* user if no owner-role grant exists yet for this role/organization at all.
-        // The `WHERE NOT EXISTS` subquery and the `INSERT` execute as a single statement,
-        // and D1/SQLite serializes writes to a database, so two concurrent callers can
-        // never both see "no owner assigned yet" and both win -- exactly one INSERT can
-        // succeed. This replaces the old `SELECT COUNT(*) FROM users` check-then-act,
-        // which was a TOCTOU race letting two concurrent registrations both pass the
-        // guard and both be granted the owner role.
+        // Atomically claim the "first user" slot: only insert a platform_owner-role grant
+        // for *this* user if no platform_owner-role grant exists yet for this
+        // role/organization at all. The `WHERE NOT EXISTS` subquery and the `INSERT`
+        // execute as a single statement, and D1/SQLite serializes writes to a database,
+        // so two concurrent callers can never both see "no platform owner assigned yet"
+        // and both win -- exactly one INSERT can succeed. This replaces the old
+        // `SELECT COUNT(*) FROM users` check-then-act, which was a TOCTOU race letting
+        // two concurrent registrations both pass the guard and both be granted the role.
         const claim = await env.OBCF_D1.prepare(
             `INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at)
              SELECT ?, ?, ?, ?
@@ -140,11 +167,18 @@ export async function bootstrapFirstUser(
                  SELECT 1 FROM user_roles WHERE role_id = ? AND organization_id = ?
              )`,
         )
-            .bind(user.id, ownerRoleId, SYSTEM_ORGANIZATION_ID, now, ownerRoleId, SYSTEM_ORGANIZATION_ID)
+            .bind(
+                user.id,
+                platformOwnerRoleId,
+                SYSTEM_ORGANIZATION_ID,
+                now,
+                platformOwnerRoleId,
+                SYSTEM_ORGANIZATION_ID,
+            )
             .run();
 
-        const wonOwnerClaim = (claim?.meta?.changes ?? 0) > 0;
-        if (!wonOwnerClaim) return;
+        const wonPlatformOwnerClaim = (claim?.meta?.changes ?? 0) > 0;
+        if (!wonPlatformOwnerClaim) return;
 
         const multiTenantFlag = env.MULTI_TENANT_ENABLED;
         const multiTenantEnabled = multiTenantFlag === undefined ? true : parseBooleanFlag(multiTenantFlag);

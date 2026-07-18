@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-/** Map of emoji → array of user IDs who reacted */
+/** Map of emoji → array of user IDs who reacted (aggregated from the comment_reactions table) */
 export type ReactionsMap = Record<string, string[]>;
 
 export const commentsTable = sqliteTable(
@@ -29,10 +29,8 @@ export const commentsTable = sqliteTable(
         // Moderation status
         status: text('status').notNull().default('active'),
 
-        // Emoji reactions stored as JSON: { "👍": ["userId1", "userId2"] }
-        reactions: text('reactions', { mode: 'json' }).$type<ReactionsMap>(),
-
-        // Nesting depth: 0 = top-level, 1 = reply, 2 = reply-to-reply, etc.
+        // Nesting depth: 0 = top-level, 1 = reply, 2 = reply-to-reply, etc. Always recomputed
+        // server-side from the parent's depth — never trust a client-supplied value.
         depth: integer('depth').notNull().default(0),
 
         // Multi-app support
@@ -51,14 +49,20 @@ export const commentsTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Fetch all comments for a specific entity
-        index('comments_target_idx').on(table.targetType, table.targetId),
         // Fetch replies to a specific comment
         index('comments_parent_idx').on(table.parentId),
         // Fetch all comments by a specific user
         index('comments_user_idx').on(table.userId),
-        // Filter by moderation status
-        index('comments_status_idx').on(table.status),
+        // Covers both the RLS-mandatory filter (organizationId is always present in the read
+        // filter) and the application query shape (targetType + targetId [+ status]), plus the
+        // createdAt sort every comment-list query uses — one index satisfies filter + sort.
+        index('comments_org_target_status_created_idx').on(
+            table.organizationId,
+            table.targetType,
+            table.targetId,
+            table.status,
+            table.createdAt,
+        ),
     ],
 );
 

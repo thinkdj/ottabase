@@ -540,9 +540,22 @@ export class User extends BaseModel {
     }
 
     /**
-     * Check if user is an admin
+     * Check if the user is an admin WITHIN a specific organization — PERMISSION-based, never
+     * role-NAME based. True when their grants in `organizationId` carry `org:admin` or
+     * `platform:admin` (or the `*:*` wildcard). Pass the system org id to test platform-admin.
+     *
+     * `organizationId` is REQUIRED by design. There is deliberately no org-less "admin somewhere"
+     * mode: since every self-registered user is `org:admin` of their own personal org, an aggregate
+     * check returns true for nearly everyone — reproducing the role-name-trust bug in a new form.
+     * For the platform-vs-org boundary on a request, prefer the guards in @ottabase/rbac
+     * (assertAdmin / the session `platformAdmin` flag), which read SYSTEM-scoped grants.
      */
-    async isAdmin(): Promise<boolean> {
-        return this.hasRole('admin');
+    async isAdmin(organizationId: string, options?: { cache?: any }): Promise<boolean> {
+        const scoped = { ...options, organizationId };
+        const [isPlatform, isOrg] = await Promise.all([
+            this.hasPermission('platform:admin', scoped),
+            this.hasPermission('org:admin', scoped),
+        ]);
+        return isPlatform || isOrg;
     }
 }

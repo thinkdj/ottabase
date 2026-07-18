@@ -119,11 +119,18 @@ export async function handleAdminUserById(context: ApiRouteContext, userId: stri
         return errorResponse('User not found', 404, { code: 'NOT_FOUND' });
     }
 
-    // Also fetch the user's organization memberships
+    // Fetch the target user's org memberships, but expose only the ones for organizations the
+    // CALLER also belongs to. The global user directory is intentional platform-admin capability,
+    // but a platform owner must not be able to enumerate which tenants a user belongs to beyond the
+    // orgs they share — that is the same cross-tenant roster data gated in the org-members and
+    // audit routes (reached here via a user id instead of an org id).
     let memberships: any[] = [];
     try {
+        const callerOrgIds = auth.user?.id
+            ? new Set(await OrganizationMember.organizationIdsForUser(auth.user.id))
+            : new Set<string>();
         const members = await OrganizationMember.where({ userId });
-        memberships = members.map((m) => m.toJson());
+        memberships = members.map((m) => m.toJson()).filter((m: any) => callerOrgIds.has(m.organizationId));
     } catch {
         // organization_members table may not exist yet
     }

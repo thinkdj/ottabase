@@ -147,13 +147,13 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm
 
 ### First-user + admin guard
 
-- First successful sign-in when `users.count() === 1` auto-creates a system-scoped `owner` role (organizationId:
-  `system`).
+- First successful sign-in when `users.count() === 1` auto-creates a system-scoped `platform_owner` role
+  (organizationId: `system`) — the bootstrapped app owner, distinct from the org-scoped `owner` role.
 - If `MULTI_TENANT_ENABLED` is true (default), a personal org is created for that first user and linked as owner.
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
-- Manual recovery: `POST /api/admin/owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET` and body
-  `{ "userId": "..." }` or `{ "email": "..." }` to grant the system owner role.
-- Admin APIs now require system-scope owner/admin (org admins remain scoped to their orgs only).
+- Manual recovery: `POST /api/admin/platform-owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET`
+  and body `{ "userId": "..." }` or `{ "email": "..." }` to grant the `platform_owner` role.
+- Admin APIs now require system-scope platform_owner/admin (org admins remain scoped to their orgs only).
 
 ## Database Setup
 

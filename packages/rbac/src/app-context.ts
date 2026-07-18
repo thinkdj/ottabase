@@ -310,10 +310,15 @@ export function hasAllRoles(context: AppContext, roles: string[]): boolean {
 }
 
 /**
- * Check if user is owner or admin in the organization
+ * Check if the context holds an admin capability — PERMISSION-based, never role-NAME based.
+ * True for a platform admin (`platform:admin`) or an org admin (`org:admin`), or the `*:*`
+ * superadmin wildcard. A role merely NAMED 'owner'/'admin' with no such permission is NOT one.
+ *
+ * NOTE: AppContext is scope-blind. For the platform-vs-org boundary on the server use
+ * assertAdmin / isPlatformAdmin (admin-guard), which read system-scoped grants.
  */
 export function isOwnerOrAdmin(context: AppContext): boolean {
-    return hasAnyRole(context, ['owner', 'admin']);
+    return hasPermission(context, 'platform:admin') || hasPermission(context, 'org:admin');
 }
 
 /**

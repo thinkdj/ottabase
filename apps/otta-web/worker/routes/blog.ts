@@ -183,7 +183,7 @@ export async function handleBlogStudioState(context: BlogRouteContext): Promise<
         // Only seed default theme/plugin rows if the caller is an admin — avoids any unauthenticated
         // visitor triggering DB writes. Non-admins get the current (possibly empty) state; the client
         // falls back to in-memory defaults registered by registerBlogThemesAndPlugins().
-        const admin = await requireAdminAccess(context as any, { scope: 'either' });
+        const admin = await requireAdminAccess(context as any, { scope: 'system' });
         if (!(admin instanceof Response)) {
             if (state.themes.length === 0) {
                 await OttablogTheme.create({
@@ -222,7 +222,7 @@ export async function handleBlogStudioState(context: BlogRouteContext): Promise<
 }
 
 export async function handleBlogStudioActivateTheme(context: BlogRouteContext): Promise<Response> {
-    const admin = await requireAdminAccess(context as any, { scope: 'either' });
+    const admin = await requireAdminAccess(context as any, { scope: 'system' });
     if (admin instanceof Response) return admin;
 
     const { request, env } = context;
@@ -254,7 +254,7 @@ export async function handleBlogStudioActivateTheme(context: BlogRouteContext): 
 }
 
 export async function handleBlogStudioPluginEnable(context: BlogRouteContext): Promise<Response> {
-    const admin = await requireAdminAccess(context as any, { scope: 'either' });
+    const admin = await requireAdminAccess(context as any, { scope: 'system' });
     if (admin instanceof Response) return admin;
 
     const { request, env } = context;
@@ -287,7 +287,7 @@ export async function handleBlogStudioPluginEnable(context: BlogRouteContext): P
 }
 
 export async function handleBlogStudioPluginConfig(context: BlogRouteContext): Promise<Response> {
-    const admin = await requireAdminAccess(context as any, { scope: 'either' });
+    const admin = await requireAdminAccess(context as any, { scope: 'system' });
     if (admin instanceof Response) return admin;
 
     const { request, env } = context;

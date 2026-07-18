@@ -866,7 +866,8 @@ console.log(membership.get('role')); // 'admin', 'member', etc.
 await OrganizationMember.update(membership.id, { role: 'admin' });
 ```
 
-**Available Roles:** `owner`, `admin`, `member` **Available Statuses:** `active`, `invited`, `suspended`
+**Available Roles:** `platform_owner` (system-scoped, `*:*`), `owner` (org-scoped, scoped permissions), `admin`
+(system-scoped, `*:*`), `member` (read-only). **Available Statuses:** `active`, `invited`, `suspended`
 
 **Email-first invites.** A member is either a real user (`userId`) or a pending invite by email (`invitedEmail`, with
 `userId` null) — the same membership shape as `user_group_members`. Invites start `invited`; activate them when the

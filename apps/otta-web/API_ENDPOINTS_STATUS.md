@@ -169,7 +169,7 @@ Implemented in `worker/routes/admin-roles.ts` using the Role ORM model:
 
 - [x] Implement `/api/admin/roles` endpoints (GET, POST, PATCH, DELETE)
 - [ ] Navigate to `/admin/access/rbac/roles`
-- [ ] View system roles (owner, admin, member)
+- [ ] View system roles (platform_owner, owner, admin, member)
 - [ ] Create custom role
 - [ ] Edit custom role permissions
 - [ ] Delete custom role

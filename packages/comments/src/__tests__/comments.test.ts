@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommentRecord, CommentStatus, NewCommentRecord, ReactionsMap } from '../index';
-import { Comment, commentsTable, DEFAULT_REACTIONS } from '../index';
+import { Comment, CommentReaction, commentReactionsTable, commentsTable, DEFAULT_REACTIONS } from '../index';
 
 describe('@ottabase/comments', () => {
     describe('Comment model static properties', () => {
@@ -34,9 +34,8 @@ describe('@ottabase/comments', () => {
             expect(Comment.defaultSortDirection).toBe('desc');
         });
 
-        it('should define casts for date and json fields', () => {
+        it('should define casts for date and json fields (reactions is no longer a column)', () => {
             expect(Comment.casts).toEqual({
-                reactions: 'json',
                 depth: 'number',
                 createdAt: 'date',
                 updatedAt: 'date',
@@ -51,7 +50,8 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.create).toContain('depth');
             // userId and organizationId are in writable.create so the server-side
             // injection passes through the sanitizer; the route handler always
-            // overwrites them from session context to prevent impersonation.
+            // overwrites them (and depth) from session/server-computed context to
+            // prevent impersonation and forged nesting depth.
             expect(Comment.writable.create).toContain('userId');
             expect(Comment.writable.create).toContain('organizationId');
             // status must NOT be writable on create (defaults to 'active')
@@ -59,8 +59,6 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.update).toContain('body');
             // status is writable to support moderation via CRUD
             expect(Comment.writable.update).toContain('status');
-            // reactions must NOT be directly writable — toggling is server-side only via _reaction
-            expect(Comment.writable.update).not.toContain('reactions');
             // targetType and targetId should NOT be updatable
             expect(Comment.writable.update).not.toContain('targetType');
             expect(Comment.writable.update).not.toContain('targetId');
@@ -73,7 +71,7 @@ describe('@ottabase/comments', () => {
         });
 
         // Check that the table has expected column names by inspecting the Drizzle table object
-        it('should have expected columns', () => {
+        it('should have expected columns (reactions moved to a dedicated table)', () => {
             const columnNames = Object.keys(commentsTable);
             expect(columnNames).toContain('id');
             expect(columnNames).toContain('body');
@@ -82,10 +80,39 @@ describe('@ottabase/comments', () => {
             expect(columnNames).toContain('parentId');
             expect(columnNames).toContain('userId');
             expect(columnNames).toContain('status');
-            expect(columnNames).toContain('reactions');
             expect(columnNames).toContain('depth');
             expect(columnNames).toContain('createdAt');
             expect(columnNames).toContain('updatedAt');
+            expect(columnNames).not.toContain('reactions');
+        });
+    });
+
+    describe('commentReactionsTable schema', () => {
+        it('should export the table with the expected columns', () => {
+            expect(commentReactionsTable).toBeDefined();
+            const columnNames = Object.keys(commentReactionsTable);
+            expect(columnNames).toContain('id');
+            expect(columnNames).toContain('commentId');
+            expect(columnNames).toContain('emoji');
+            expect(columnNames).toContain('userId');
+            expect(columnNames).toContain('createdAt');
+        });
+    });
+
+    describe('CommentReaction model static properties', () => {
+        it('should have correct entity name', () => {
+            expect(CommentReaction.entity).toBe('comment_reactions');
+        });
+
+        it('should not be writable via generic CRUD', () => {
+            expect(CommentReaction.writable.create).toEqual([]);
+            expect(CommentReaction.writable.update).toEqual([]);
+        });
+
+        it('should have toggle, deleteForComment, and reactionsFor static methods', () => {
+            expect(typeof CommentReaction.toggle).toBe('function');
+            expect(typeof CommentReaction.deleteForComment).toBe('function');
+            expect(typeof CommentReaction.reactionsFor).toBe('function');
         });
     });
 
@@ -130,14 +157,6 @@ describe('@ottabase/comments', () => {
 
         it('should have restore method', () => {
             expect(typeof Comment.prototype.restore).toBe('function');
-        });
-
-        it('should have addReaction method', () => {
-            expect(typeof Comment.prototype.addReaction).toBe('function');
-        });
-
-        it('should have removeReaction method', () => {
-            expect(typeof Comment.prototype.removeReaction).toBe('function');
         });
 
         it('should have toggleReaction method', () => {
@@ -199,88 +218,35 @@ describe('@ottabase/comments', () => {
 
         describe('softDelete', () => {
             it('sets status to deleted and body to [deleted]', async () => {
-                const comment = makeStub({ status: 'active', body: 'Hello world', reactions: { '👍': ['u1'] } });
+                const comment = makeStub({ id: 'c1', status: 'active', body: 'Hello world' });
+                vi.spyOn(CommentReaction, 'deleteForComment').mockResolvedValue(undefined);
                 await comment.softDelete();
                 expect((comment as unknown as { _data: Record<string, unknown> })._data.status).toBe('deleted');
                 expect((comment as unknown as { _data: Record<string, unknown> })._data.body).toBe('[deleted]');
             });
 
-            it('clears reactions on soft-delete', async () => {
-                const comment = makeStub({
-                    status: 'active',
-                    body: 'Hello world',
-                    reactions: { '👍': ['u1'], '❤️': ['u2'] },
-                });
+            it('clears reactions on soft-delete via CommentReaction.deleteForComment', async () => {
+                const comment = makeStub({ id: 'c1', status: 'active', body: 'Hello world' });
+                const deleteSpy = vi.spyOn(CommentReaction, 'deleteForComment').mockResolvedValue(undefined);
                 await comment.softDelete();
-                expect((comment as unknown as { _data: Record<string, unknown> })._data.reactions).toEqual({});
+                expect(deleteSpy).toHaveBeenCalledWith('c1');
             });
 
             it('calls save once', async () => {
-                const comment = makeStub({ status: 'active', body: 'Hello world' });
+                const comment = makeStub({ id: 'c1', status: 'active', body: 'Hello world' });
+                vi.spyOn(CommentReaction, 'deleteForComment').mockResolvedValue(undefined);
                 await comment.softDelete();
                 expect((comment as unknown as { _saveCalls: unknown[] })._saveCalls).toHaveLength(1);
             });
         });
 
-        describe('addReaction', () => {
-            it('adds a new emoji entry with the user', async () => {
-                const comment = makeStub({ reactions: {} });
-                await comment.addReaction('👍', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['👍']).toEqual(['user-1']);
-            });
-
-            it('is idempotent — does not duplicate user', async () => {
-                const comment = makeStub({ reactions: { '👍': ['user-1'] } });
-                await comment.addReaction('👍', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['👍']).toEqual(['user-1']);
-            });
-        });
-
-        describe('removeReaction', () => {
-            it('removes the user from an existing emoji entry', async () => {
-                const comment = makeStub({ reactions: { '👍': ['user-1', 'user-2'] } });
-                await comment.removeReaction('👍', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['👍']).toEqual(['user-2']);
-            });
-
-            it('deletes the emoji key when the last user is removed', async () => {
-                const comment = makeStub({ reactions: { '👍': ['user-1'] } });
-                await comment.removeReaction('👍', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['👍']).toBeUndefined();
-            });
-
-            it('is a no-op when emoji key does not exist', async () => {
-                const comment = makeStub({ reactions: {} });
-                await comment.removeReaction('👍', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(Object.keys(reactions)).toHaveLength(0);
-            });
-        });
-
         describe('toggleReaction', () => {
-            it('adds the reaction when the user has not reacted', async () => {
-                const comment = makeStub({ reactions: {} });
-                await comment.toggleReaction('❤️', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['❤️']).toContain('user-1');
-            });
-
-            it('removes the reaction when the user has already reacted', async () => {
-                const comment = makeStub({ reactions: { '❤️': ['user-1'] } });
-                await comment.toggleReaction('❤️', 'user-1');
-                const reactions = (comment as unknown as { _data: Record<string, unknown> })._data
-                    .reactions as ReactionsMap;
-                expect(reactions['❤️']).toBeUndefined();
+            it('delegates to CommentReaction.toggle with this comment id', async () => {
+                const comment = makeStub({ id: 'c1' });
+                const toggleSpy = vi.spyOn(CommentReaction, 'toggle').mockResolvedValue({ added: true });
+                const result = await comment.toggleReaction('❤️', 'user-1');
+                expect(toggleSpy).toHaveBeenCalledWith('c1', '❤️', 'user-1');
+                expect(result).toEqual({ added: true });
             });
         });
 
@@ -329,6 +295,90 @@ describe('@ottabase/comments', () => {
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const depth = await Comment.computeDepthForParent('parent-id');
             expect(depth).toBe(2);
+            findSpy.mockRestore();
+        });
+    });
+
+    describe('Comment.validateReplyParent', () => {
+        const ctx = { targetType: 'post', targetId: 'post-1', organizationId: 'org-1' };
+
+        it('returns ok with depth 0 when parentId is null (top-level comment)', async () => {
+            const result = await Comment.validateReplyParent(null, ctx);
+            expect(result).toEqual({ ok: true, depth: 0 });
+        });
+
+        it('returns ok:false when the parent comment does not exist', async () => {
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(null as never);
+            const result = await Comment.validateReplyParent('missing-parent', ctx);
+            expect(result).toEqual({ ok: false });
+            findSpy.mockRestore();
+        });
+
+        it('returns ok:false when the parent belongs to a different target', async () => {
+            const parentStub = Object.create(Comment.prototype);
+            const data: Record<string, unknown> = {
+                targetType: 'post',
+                targetId: 'a-different-post',
+                organizationId: 'org-1',
+                depth: 0,
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (parentStub as any).get = (key: string) => data[key];
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const result = await Comment.validateReplyParent('parent-id', ctx);
+            expect(result).toEqual({ ok: false });
+            findSpy.mockRestore();
+        });
+
+        it('returns ok:false when the parent belongs to a different organization', async () => {
+            const parentStub = Object.create(Comment.prototype);
+            const data: Record<string, unknown> = {
+                targetType: 'post',
+                targetId: 'post-1',
+                organizationId: 'org-2',
+                depth: 0,
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (parentStub as any).get = (key: string) => data[key];
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const result = await Comment.validateReplyParent('parent-id', ctx);
+            expect(result).toEqual({ ok: false });
+            findSpy.mockRestore();
+        });
+
+        it('returns ok:true with parent.depth + 1 when target and org match', async () => {
+            const parentStub = Object.create(Comment.prototype);
+            const data: Record<string, unknown> = {
+                targetType: 'post',
+                targetId: 'post-1',
+                organizationId: 'org-1',
+                depth: 2,
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (parentStub as any).get = (key: string) => data[key];
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const result = await Comment.validateReplyParent('parent-id', ctx);
+            expect(result).toEqual({ ok: true, depth: 3 });
+            findSpy.mockRestore();
+        });
+
+        it('treats null organizationId on both sides as matching (single-founder mode)', async () => {
+            const parentStub = Object.create(Comment.prototype);
+            const data: Record<string, unknown> = {
+                targetType: 'post',
+                targetId: 'post-1',
+                organizationId: null,
+                depth: 0,
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (parentStub as any).get = (key: string) => data[key];
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const result = await Comment.validateReplyParent('parent-id', {
+                targetType: 'post',
+                targetId: 'post-1',
+                organizationId: null,
+            });
+            expect(result).toEqual({ ok: true, depth: 1 });
             findSpy.mockRestore();
         });
     });

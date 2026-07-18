@@ -170,7 +170,7 @@ Command summary:
 
 ---
 
-## Step 4: Bootstrap the Platform and create Owner account (~2 minutes)
+## Step 4: Bootstrap the Platform and create Platform Owner account (~2 minutes)
 
 For a fresh install, you do not need to manually navigate special routes.
 
@@ -184,7 +184,7 @@ In the wizard, complete these steps:
 
 - Create tables and run migrations
 - Seed RBAC roles/permissions
-- Create owner admin account
+- Create platform owner account
 - Finalize launch
 
 After finalize, the platform is marked ready and normal app routes open.

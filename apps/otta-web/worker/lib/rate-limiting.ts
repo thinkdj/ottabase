@@ -114,6 +114,15 @@ export async function enforceRateLimit(request: Request, env: CloudflareEnv, key
         });
     }
 
+    return buildRateLimitResponse(rateLimitData);
+}
+
+function buildRateLimitResponse(rateLimitData: {
+    success: boolean;
+    limit: number;
+    remaining: number;
+    resetAfter: number;
+}): Response | null {
     const { success, limit, remaining, resetAfter } = rateLimitData;
     const headers = new Headers({
         'RateLimit-Limit': String(limit),
@@ -134,5 +143,40 @@ export async function enforceRateLimit(request: Request, env: CloudflareEnv, key
         );
     }
 
+    return null;
+}
+
+/**
+ * Best-effort brute-force throttle for SECRET-GATED endpoints (bootstrap secret check,
+ * platform-owner promote). The secret compare — not the limiter — is the authoritative gate
+ * here; this rate limit is defense-in-depth against guessing that secret.
+ *
+ * Returns:
+ *  - a 429 Response ONLY when the caller is actually over the limit → block;
+ *  - `null` when under the limit → proceed;
+ *  - `null` (after logging a warning) when the limiter itself is UNAVAILABLE (no OBCF_KV /
+ *    OBCF_RATE_LIMITER binding, i.e. `enforceRateLimit` would 500). We deliberately FAIL OPEN
+ *    behind the secret gate so a missing limiter binding can't brick first-run bootstrap or
+ *    break-glass ownership recovery — but we log so the degraded state is diagnosable.
+ *
+ * Use this (not raw `enforceRateLimit`) wherever a secret already gates the endpoint, so
+ * bootstrap and promote share one consistent fail-open-with-log policy instead of one silently
+ * ignoring the 500 and the other 500-ing the whole request.
+ */
+export async function enforceBruteForceThrottle(
+    request: Request,
+    env: CloudflareEnv,
+    key: string,
+    label: string,
+): Promise<Response | null> {
+    const limited = await enforceRateLimit(request, env, key);
+    if (!limited) return null; // under the limit → proceed
+    if (limited.status === 429) return limited; // over the limit → block
+
+    // status 500: limiter unavailable. Fail OPEN behind the secret gate, but make it visible.
+    console.warn(
+        `[rate-limit] limiter unavailable for "${label}" — proceeding WITHOUT brute-force throttle. ` +
+            `Configure OBCF_RATE_LIMITER or OBCF_KV to restore it.`,
+    );
     return null;
 }

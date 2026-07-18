@@ -49,7 +49,7 @@ vi.mock('../admin-organization-members', () => ({
 }));
 
 vi.mock('../admin-owner', () => ({
-    handleAdminPromoteOwner: handlerMock('handleAdminPromoteOwner'),
+    handleAdminPromotePlatformOwner: handlerMock('handleAdminPromotePlatformOwner'),
 }));
 
 vi.mock('../admin-queues', () => ({
@@ -234,7 +234,7 @@ import {
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
 } from '../admin-organization-members';
-import { handleAdminPromoteOwner } from '../admin-owner';
+import { handleAdminPromotePlatformOwner } from '../admin-owner';
 import {
     handleAdminQueuesDLQJob,
     handleAdminQueuesDLQList,
@@ -363,7 +363,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleAdminOrganizationMembersList,
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
-    handleAdminPromoteOwner,
+    handleAdminPromotePlatformOwner,
     handleAdminQueuesDLQJob,
     handleAdminQueuesDLQList,
     handleAdminQueuesDLQPurge,

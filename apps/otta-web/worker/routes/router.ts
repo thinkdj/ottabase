@@ -19,6 +19,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
@@ -39,7 +40,7 @@ import {
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
 } from './admin-organization-members';
-import { handleAdminPromoteOwner } from './admin-owner';
+import { handleAdminPromotePlatformOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
     handleAdminQueuesDLQList,
@@ -231,7 +232,15 @@ apiRouter.get('/api/health', () =>
         timestamp: Date.now(),
     }),
 );
-apiRouter.get('/api/system/kill-switches', (c) => jsonResponse({ ...getKillSwitchStatus(c.env) }));
+// Platform control-plane status — exposes lockdown/read-only flags, so restrict to platform admins.
+apiRouter.get(
+    '/api/system/kill-switches',
+    h(async (ctx) => {
+        const auth = await requireAdminAccess(ctx, { scope: 'system' });
+        if (auth instanceof Response) return auth;
+        return jsonResponse({ ...getKillSwitchStatus(ctx.env) });
+    }),
+);
 
 // Brand API (core — always enabled). May return null to decline and keep matching.
 apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand', h(handleBrandApi));
@@ -271,7 +280,7 @@ apiRouter.post('/api/analytics/track', (c) =>
 apiRouter.get('/api/audit/logs', h(handleAuditLogs));
 
 // -------------------------------------------------------
-// Admin: users, roles, owner, organizations
+// Admin: users, roles, platform owner, organizations
 // -------------------------------------------------------
 apiRouter.get('/api/admin/users', h(handleAdminUsers));
 apiRouter.get('/api/admin/users/search', h(handleAdminUserSearch));
@@ -280,7 +289,7 @@ apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
 apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
 apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
 apiRouter.delete('/api/admin/roles/:roleId', (c) => handleAdminRoleDelete(ctxOf(c), c.params.roleId));
-apiRouter.post('/api/admin/owner/promote', h(handleAdminPromoteOwner));
+apiRouter.post('/api/admin/platform-owner/promote', h(handleAdminPromotePlatformOwner));
 apiRouter.get('/api/admin/organizations/:organizationId/members', (c) =>
     handleAdminOrganizationMembersList(ctxOf(c), c.params.organizationId),
 );
@@ -392,7 +401,16 @@ apiRouter.all('/api/upload/file/*', h(handleUploadFile));
 // OttaORM — generic CRUD catch-all with two excluded exacts;
 // excluded tails decline so unmatched methods fall through
 // -------------------------------------------------------
-apiRouter.get('/api/ottaorm/models-metadata', () => handleModelsMetadata());
+// Model metadata exposes the full schema surface (every table + package), so restrict to
+// platform admins — it backs the admin Database/Migrations pages.
+apiRouter.get(
+    '/api/ottaorm/models-metadata',
+    h(async (ctx) => {
+        const auth = await requireAdminAccess(ctx, { scope: 'system' });
+        if (auth instanceof Response) return auth;
+        return handleModelsMetadata();
+    }),
+);
 apiRouter.on(['GET', 'POST'], '/api/ottaorm/init', h(handleOttaormInit));
 apiRouter.all('/api/ottaorm/*', (c) =>
     c.params['*'] === 'init' || c.params['*'] === 'models-metadata' ? null : handleOttaormCrud(ctxOf(c)),

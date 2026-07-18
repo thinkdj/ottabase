@@ -200,10 +200,18 @@ function checkPermissionMatch(userPermissions: string[], requiredPermission: str
 }
 
 /**
- * Check if user is admin
+ * Check if the context holds any admin capability — PERMISSION-based, never role-NAME-based.
+ * True when the caller has `platform:admin` or `org:admin` (or the '*:*' superadmin wildcard).
+ * A role merely named 'owner'/'admin' with no such permission is NOT an admin.
+ *
+ * NOTE: RBACContext is scope-blind. For the platform-vs-org boundary on the server, use
+ * assertAdmin / isPlatformAdmin from admin-guard.ts (which read system-scoped grants).
  */
 export function isAdmin(context: RBACContext): boolean {
-    return context.roles.includes('admin') || context.permissions.includes('*:*');
+    return (
+        checkPermissionMatch(context.permissions, 'platform:admin') ||
+        checkPermissionMatch(context.permissions, 'org:admin')
+    );
 }
 
 /**
