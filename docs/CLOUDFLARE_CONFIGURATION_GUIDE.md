@@ -90,18 +90,14 @@ Create `apps/otta-web/.env.local` with the following (if using .env for local au
 AUTH_SECRET=your-32-character-secret-here
 AUTH_URL=http://localhost:3003
 
-# Enable auth providers (true/false)
-AUTH_LOGIN_CREDENTIALS=true
-AUTH_LOGIN_GITHUB=false
-AUTH_LOGIN_GOOGLE=false
+# OAuth providers auto-enable when both the client id and secret are present.
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-oauth-client-id
+GITHUB_CLIENT_SECRET=your-github-oauth-client-secret
 
-# GitHub OAuth (if AUTH_LOGIN_GITHUB=true)
-AUTH_GITHUB_ID=your-github-oauth-client-id
-AUTH_GITHUB_SECRET=your-github-oauth-client-secret
-
-# Google OAuth (if AUTH_LOGIN_GOOGLE=true)
-AUTH_GOOGLE_ID=your-google-oauth-client-id
-AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 
 # ============================================================
 # CLOUDFLARE R2 (Server-side API Access)
@@ -135,10 +131,10 @@ Set these via Cloudflare Dashboard or `wrangler secret put`:
 wrangler secret put AUTH_SECRET
 
 # OAuth Providers (if enabled)
-wrangler secret put AUTH_GITHUB_ID
-wrangler secret put AUTH_GITHUB_SECRET
-wrangler secret put AUTH_GOOGLE_ID
-wrangler secret put AUTH_GOOGLE_SECRET
+wrangler secret put GITHUB_CLIENT_ID
+wrangler secret put GITHUB_CLIENT_SECRET
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
 
 # Cloudflare API (if needed for runtime operations)
 wrangler secret put CF_ACCOUNT_ID
@@ -294,26 +290,24 @@ Ensure `@ottabase/auth` is installed and configured in your application.
 ### 2. Configure Auth
 
 ```typescript
-// app/auth.ts
-import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
+// worker/routes/auth.ts
+import { handleAuthRequest } from '@ottabase/auth/backend';
 
-export const authConfig = createOttabaseAuthConfig({
-    d1: env.OBCF_D1,
-    providers: [
-        createGoogleProvider(env),
-        // Add more providers
-    ],
-});
+// Route every /api/auth/* request through the auth handler. Providers are auto-configured
+// from environment variables (see below) — no config-object builder is required.
+export function handleAuth(request: Request, env: CloudflareEnv) {
+    return handleAuthRequest(request, env);
+}
 ```
 
 ### 3. Set Environment Variables
 
-Add to `.env.local`:
+Add to `.env.local` (Google OAuth is enabled automatically when both vars are present):
 
 ```bash
 AUTH_SECRET=your-secret-here
-AUTH_GOOGLE_ID=your-google-client-id
-AUTH_GOOGLE_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 ---

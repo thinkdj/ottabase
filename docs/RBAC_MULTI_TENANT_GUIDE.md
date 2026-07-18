@@ -53,10 +53,11 @@ This is why a self-registered user — who receives the RBAC role _named_ `owner
 their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
 system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
 
-**Self-healing system roles:** `Role.ensureDefaultRoles()` reconciles existing `isSystem` role rows to the canonical
-permission sets on every run (it executes during user provisioning), so a role seeded under an older definition — e.g. a
-legacy `owner = ['*:*']` — is corrected automatically without a manual re-seed or DB wipe. Customize by creating NEW
-roles, never by editing system ones.
+**Self-healing system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
+canonical permission sets — correcting a role seeded under an older definition (e.g. a legacy `owner = ['*:*']`) without
+a manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
+signup/provisioning hot path only creates missing roles and never rewrites existing ones. Customize by creating NEW
+roles, never by editing system ones (the admin API rejects edits to `isSystem` roles).
 
 ### Two Modes
 
@@ -96,13 +97,13 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 - `user_roles` - User-role assignments (org-scoped)
 - `audit_logs` - Audit trail (org-scoped)
 
-### 2. Seed Data (Optional)
+### 2. Seed Data
 
-```bash
-pnpm --filter @ottabase/ottaorm seed:rbac
-```
+Default system roles are seeded automatically via `Role.ensureDefaultRoles()` when the platform owner is created during
+bootstrap. To reconcile them to the canonical definitions after a framework upgrade, run the secret-gated seed step —
+open `/__bootstrap__/seed` or `POST /__bootstrap__/api/seed`.
 
-Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `member`
+Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `editor`, `viewer`, `member`
 
 ### 3. Enable Row-Level Security in Worker
 

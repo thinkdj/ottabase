@@ -243,11 +243,8 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Canonical definitions of the built-in system roles — the source of truth for
-     * ensureDefaultRoles() (runtime seeding + heal). NOTE: the standalone seed CLI
-     * (packages/ottaorm/src/seed/rbac.ts) keeps its OWN parallel list (fixed UUIDs + an extra
-     * 'user' role) and imports only ORG_OWNER_PERMISSIONS from here — if you change a role's
-     * permissions, update both by hand.
+     * Canonical definitions of the built-in system roles — the single source of truth for
+     * ensureDefaultRoles() (runtime seeding + heal).
      *
      * IMPORTANT: `admin` and `owner` are ORG-level roles (no '*:*'). Platform authority comes
      * ONLY from a system-scoped grant carrying `platform:admin` (or '*:*'), which the bootstrap

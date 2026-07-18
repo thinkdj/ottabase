@@ -94,7 +94,6 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
     disableCredentials?: boolean;
     authConfig?: {
         pages?: {
-            signIn?: string;
             error?: string;
         };
     };

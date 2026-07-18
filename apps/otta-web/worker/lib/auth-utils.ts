@@ -47,7 +47,6 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const options: CreateAuthConfigOptions = {
         authConfig: {
             pages: {
-                signIn: '/login',
                 error: '/login',
             },
         },

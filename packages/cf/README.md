@@ -6,7 +6,6 @@ Framework-agnostic Cloudflare bindings wrapper for TypeScript applications.
 
 Type-safe wrappers for all major Cloudflare Worker bindings:
 
-- **Prisma D1**: Prisma ORM integration for D1 (recommended for complex queries)
 - **D1**: Raw SQLite database with query builder
 - **KV**: Key-value storage
 - **R2**: Object storage

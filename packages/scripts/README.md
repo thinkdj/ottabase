@@ -1,10 +1,10 @@
 # @ottabase/scripts
 
-CLI tools for Ottabase monorepo — Cloudflare resource setup, schema generation, migrations, and cache management.
+CLI tools for Ottabase monorepo — Cloudflare resource setup and cache management.
 
 ## Overview
 
-This package provides the `pnpm cf:*`, `pnpm db:*`, and `pnpm clean:*` scripts used across the monorepo.
+This package provides the `pnpm cf:*` and `pnpm clean:*` scripts used across the monorepo.
 
 ## Cloudflare Setup CLI
 
@@ -66,59 +66,6 @@ All three `cf:*` commands operate on one app's `wrangler.jsonc`. The app is sele
 If a repo has multiple apps and none of the above is set, the command stops and lists the available apps so you can pass
 `--app`. The app's `pnpm --filter` target is read from its `package.json` `name`, so the directory name and package name
 can differ.
-
-## DB Schema CLI
-
-The db CLI tools use `db.config.ts` in your app directory to manage Prisma schema concatenation and D1 migrations.
-
-### `pnpm db:generate`
-
-Concatenates modular Prisma schemas into a single `schema.prisma` and runs `prisma generate`.
-
-Create `db.config.ts` in your app:
-
-```typescript
-import { defineAppDbConfig } from '@ottabase/db';
-
-export default defineAppDbConfig({
-    appId: 'my-app',
-    features: ['auth'], // adds auth tables to schema
-});
-```
-
-Then run:
-
-```bash
-pnpm db:generate          # Concatenate schemas + prisma generate
-pnpm db:generate --verbose  # Verbose output
-pnpm db:generate --skip-generate  # Concatenate only, skip prisma generate
-```
-
-### `pnpm db:migrate`
-
-Generates SQL migrations from Prisma schema for Cloudflare D1.
-
-```bash
-pnpm db:migrate --name=add_users_table  # Generate migration
-pnpm db:migrate --name=add_column --apply  # Generate and apply to D1
-```
-
-### `pnpm db:migrate:apply`
-
-Applies pending D1 migrations.
-
-```bash
-pnpm db:migrate:apply          # Apply to local D1
-pnpm db:migrate:apply --remote  # Apply to remote/production D1
-```
-
-### `pnpm db:migrate:status`
-
-Shows which migrations have been applied.
-
-```bash
-pnpm db:migrate:status
-```
 
 ## Cache/Reset CLI
 

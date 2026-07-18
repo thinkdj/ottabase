@@ -144,7 +144,7 @@ export interface PaginationResult<T> {
  * - Attribute access
  * - Model metadata
  *
- * Subclasses (BaseModel, MongoBaseModel) implement database-specific operations.
+ * Subclasses (BaseModel) implement database-specific operations.
  *
  * @abstract
  */

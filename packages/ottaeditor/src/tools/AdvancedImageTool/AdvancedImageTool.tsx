@@ -47,12 +47,8 @@ export default class AdvancedImageTool {
         this.config.maxFileSize = this.config.maxFileSize || 10 * 1024 * 1024; // 10MB default
         this.config.provider = this.config.provider || 'r2'; // Default to R2
 
-        // Accept legacy @editorjs/image data shape: { file: { url }, caption, withBorder, withBackground, stretched }
-        const legacyUrl = data?.file?.url || '';
-        const initialUrl = data?.url || legacyUrl || '';
-
         this.data = {
-            url: initialUrl,
+            url: data?.url || '',
             mediaId: data?.mediaId || '',
             mimeType: data?.mimeType || '',
             caption: data?.caption || '',
@@ -342,8 +338,6 @@ export default class AdvancedImageTool {
                         this.data.alt = (response as any)?.media?.altText || this.data.alt;
                         this.data.width = (response as any)?.media?.width || this.data.width;
                         this.data.height = (response as any)?.media?.height || this.data.height;
-                        // match legacy format
-                        this.data.file = { url: response.url };
                         this.renderImage();
                     }
                 },

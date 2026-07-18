@@ -25,12 +25,13 @@ pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
 ```bash
 # Run migration (auto-applied or manual)
 curl -X POST http://localhost:3004/api/ottaorm/init
-
-# Seed default roles
-pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `platform_owner`, `owner`, `admin`, `member`
+Default roles are seeded automatically during bootstrap (when the platform owner is created, via
+`Role.ensureDefaultRoles()`); to reconcile them later, run the secret-gated seed step: `POST /__bootstrap__/api/seed`.
+
+Creates tables: `roles`, `permissions`, `user_roles`. Default roles: `platform_owner`, `owner`, `admin`, `editor`,
+`viewer`, `member`
 
 ### 2. Initialize Cache
 

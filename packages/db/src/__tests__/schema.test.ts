@@ -20,29 +20,15 @@ describe('Database Schema', () => {
             // Verify Drizzle integration
             expect(schema).toBeDefined();
         });
-
-        it('should support MongoDB schema definitions', () => {
-            // Verify MongoDB support exists
-            expect(schema).toBeDefined();
-        });
     });
 
     describe('Schema Validation', () => {
         it('should export valid table definitions', () => {
             expect(typeof schema).toBe('object');
         });
-
-        it('should have Prisma schema integration', () => {
-            // Prisma schema support
-            expect(schema).toBeDefined();
-        });
     });
 
     describe('Features', () => {
-        it('should support multi-database backends', () => {
-            expect(schema).toBeDefined();
-        });
-
         it('should be compatible with D1 adapter', () => {
             expect(schema).toBeDefined();
         });

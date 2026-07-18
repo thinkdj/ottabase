@@ -54,7 +54,7 @@ packages/auth/src/
 - `@ottabase/auth/components` - UI components (`LoginForm`, `RegisterForm`, `CredentialsForm`, `MagicLinkForm`,
   `SocialLoginButtons`, `getLoginConfig` helper)
 - `@ottabase/auth/session` - Pure session helpers: `isAuthenticated`, `requireAuth`, `getUserId`, `getUserEmail`,
-  `hasVerifiedEmail`, `serializeSession`
+  `hasVerifiedEmail`
 - `@ottabase/auth/providers` - OAuth presets (`createGoogleProvider`, `createGitHubProvider`, `createDiscordProvider`,
   `createAzureAdProvider`, `createAuth0Provider`, `autoConfigureProviders`, `getConfiguredProvider`) + magic-link
   senders (`resolveMagicLinkSender`, `createDevEmailTrapMagicLinkSender`, `createNodemailerMagicLinkSender`,
@@ -246,13 +246,9 @@ handleAuthRequest(request, env, {
     disableCredentials: false,
     requireVerifiedEmail: false,
 
-    // Verbose logging
-    verbose: true,
-
-    // Where to send users for sign-in / OAuth errors
+    // Where to send users for OAuth errors
     authConfig: {
         pages: {
-            signIn: '/custom-login',
             error: '/custom-login',
         },
     },
@@ -267,8 +263,8 @@ handleAuthRequest(request, env, {
 });
 ```
 
-`authConfig.pages` is the entire shape — just `signIn` and `error` paths used for OAuth error redirects and (by
-convention) the app's login route. There is no broader Auth.js-style config object.
+`authConfig.pages` is the entire shape — just an `error` path used for OAuth error redirects. There is no broader
+Auth.js-style config object.
 
 ## Features
 

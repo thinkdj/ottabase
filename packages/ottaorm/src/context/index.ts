@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - Connection Registry
 // ============================================================
 //
-// Multi-database connection management for OttaORM
-// Supports multiple named connections (e.g., 'default', 'mongodb')
+// Multi-connection management for OttaORM
+// Supports multiple named connections (e.g., 'default')
 // Usage: registerConnection(name, driver), models specify connection via static property
 // ============================================================
 
@@ -22,20 +22,14 @@ const connections: Map<string, any> =
  * Register a named database connection
  *
  * @param name - Connection name
- * @param driver - Database driver (DbDriver for SQL, MongoDriver for MongoDB)
+ * @param driver - Database driver (DbDriver)
  *
  * @example
  * ```typescript
  * import { registerConnection } from "@ottabase/ottaorm";
  * import { createD1Driver } from "@ottabase/db/drizzle-d1";
- * import { createMongoDriver } from "@ottabase/db/mongodb";
  *
- * // SQL connection (default)
  * registerConnection('default', createD1Driver(env.OBCF_D1));
- *
- * // MongoDB connection
- * const mongoDriver = await createMongoDriver(env.MONGODB_URI, "myapp");
- * registerConnection('mongodb', mongoDriver);
  * ```
  */
 export function registerConnection(name: string, driver: any): void {
@@ -52,7 +46,6 @@ export function registerConnection(name: string, driver: any): void {
  * @example
  * ```typescript
  * const driver = getConnection('default');
- * const mongoDriver = getConnection('mongodb');
  * ```
  */
 export function getConnection(name: string = 'default'): any {
