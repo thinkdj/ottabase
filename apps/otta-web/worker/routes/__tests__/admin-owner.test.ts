@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/rate-limiting', () => ({ enforceBruteForceThrottle: vi.fn() }));
+vi.mock('../../lib/auth-utils', () => ({ reconcileSystemRoleSessions: vi.fn() }));
 vi.mock('../../lib/db-utils', () => ({ initDbConnection: vi.fn() }));
 vi.mock('../../lib/utils', () => ({
     getClientIpAddress: vi.fn(() => '1.2.3.4'),
@@ -15,7 +16,8 @@ vi.mock('@ottabase/ottaorm/models', () => ({
 }));
 vi.mock('../../lib/admin-guard', () => ({ SYSTEM_ORGANIZATION_ID: 'system' }));
 
-import { User } from '@ottabase/ottaorm/models';
+import { Role, User } from '@ottabase/ottaorm/models';
+import { reconcileSystemRoleSessions } from '../../lib/auth-utils';
 import { enforceBruteForceThrottle } from '../../lib/rate-limiting';
 import { normalizeEmail, readJson } from '../../lib/utils';
 import { handleAdminPromotePlatformOwner } from '../admin-owner';
@@ -53,5 +55,28 @@ describe('handleAdminPromotePlatformOwner', () => {
         expect(normalizeEmail).toHaveBeenCalledWith('  Owner@Example.COM ');
         expect(User.first).toHaveBeenCalledWith({ email: 'owner@example.com' });
         expect(res.status).toBe(404);
+    });
+
+    it('assigns the grant AND refreshes the promoted user session on success', async () => {
+        vi.mocked(enforceBruteForceThrottle).mockResolvedValue(null);
+        vi.mocked(readJson as any).mockResolvedValue({ secret: 'secret', userId: 'u-target' });
+        const assignRole = vi.fn().mockResolvedValue(undefined);
+        vi.mocked(User.find as any).mockResolvedValue({
+            get: (k: string) => (k === 'id' ? 'u-target' : null),
+            assignRole,
+        });
+        vi.mocked(Role.ensureDefaultRoles as any).mockResolvedValue([]);
+        vi.mocked(Role.findByName as any).mockResolvedValue({
+            get: (k: string) => (k === 'id' ? 'role-po' : 'platform_owner'),
+        });
+
+        const res = await handleAdminPromotePlatformOwner(ctx());
+        const body = (await res.json()) as any;
+
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(assignRole).toHaveBeenCalledWith('role-po', undefined, 'system');
+        // The grant must be pushed to the target's live session, not left stale until re-login.
+        expect(reconcileSystemRoleSessions).toHaveBeenCalled();
     });
 });

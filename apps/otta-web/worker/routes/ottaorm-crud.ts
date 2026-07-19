@@ -88,15 +88,25 @@ async function resolveCommentSecurityContext(
  * visibility — a published blog post's comments are readable by anyone). Write actions that
  * mutate someone else's comment (edit body/status, moderate) require either authorship or a
  * moderation permission — plain tenant-membership is not authorship.
+ *
+ * `ambient` is the caller's ORIGINAL (pre-org-swap) security context, and `commentOrgId` is the
+ * comment's resolved org. Moderation is ORG-scoped, so `comments:moderate`/`*:*` is honored only
+ * when the caller is acting within the comment's own org (or is a platform admin) — otherwise a
+ * moderator in org Y could edit/soft-delete a comment on a PUBLIC post belonging to org X.
+ * Authorship stays identity-based and works across orgs.
  */
 function isCommentOwnerOrModerator(
     comment: { get(field: string): unknown },
     session: any,
-    securityContext: Awaited<ReturnType<typeof getSecurityContext>>,
+    ambient: Awaited<ReturnType<typeof getSecurityContext>>,
+    commentOrgId: string | null,
 ): boolean {
     const userId = session?.user?.id;
     if (userId && comment.get('userId') === userId) return true;
-    const permissions = (securityContext.permissions as string[] | undefined) ?? [];
+    if (ambient.platformAdmin) return true;
+    // Org-scoped moderation authority only applies inside the comment's own org.
+    if (ambient.organizationId == null || ambient.organizationId !== commentOrgId) return false;
+    const permissions = (ambient.permissions as string[] | undefined) ?? [];
     return permissions.includes('*:*') || permissions.includes('comments:moderate');
 }
 
@@ -137,6 +147,13 @@ const APP_TAXONOMY_MODELS = new Set([
 ]);
 
 const CRUD_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Methods that mutate or destroy an EXISTING organization row (i.e. everything except create).
+ * PUT is included deliberately: secure CRUD treats PUT as a full update exactly like PATCH, so any
+ * authorization gate that lists only PATCH/DELETE leaves PUT as a silent bypass.
+ */
+const ORG_MUTATING_METHODS = new Set(['PATCH', 'PUT', 'DELETE']);
 
 /**
  * DEFAULT-DENY allowlist for the generic `/api/ottaorm/*` route. ONLY these app-data models may be
@@ -326,14 +343,38 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
     }
 
+    // Mutating or deleting an organization requires owner/admin authority in the TARGET org. The
+    // organizations RLS policy only scopes rows to the caller's memberships (ANY role) with no
+    // permission/role gate, so without this a plain member could rewrite name/slug/metadata/settings
+    // or DELETE the org outright (orphaning every other member + all org-scoped posts/media/comments).
+    // Stripping plan/status below is not enough. POST (create) stays open — the creator isn't a
+    // member until membership is provisioned right after insert (see the organizations POST block
+    // below). Gate on the target org id (crudRequest.id), never the caller's ambient active org.
+    // NOTE: PUT must be included — secure CRUD treats PUT as a full update just like PATCH, so
+    // listing only PATCH/DELETE here would leave PUT as an unguarded bypass.
+    if (
+        crudRequest.model === 'organizations' &&
+        ORG_MUTATING_METHODS.has(crudRequest.method) &&
+        !securityContext.platformAdmin
+    ) {
+        const actorId = session?.user?.id;
+        const targetOrgId = crudRequest.id;
+        if (!actorId || !targetOrgId || !(await OrganizationMember.isOwnerOrAdmin(actorId, targetOrgId))) {
+            return errorResponse('Only an organization owner or admin can modify or delete the organization', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+    }
+
     // Organization plan/status are billing/lifecycle fields owned by the PLATFORM, not self-service.
     // The organizations RLS policy scopes rows to the caller's memberships but does not check the
     // membership ROLE, so without this any member could self-upgrade `plan` or flip `status` on
     // their own org. Strip both from non-platform-admin writes (a platform owner passes untouched).
+    // PUT is included for the same reason as the guard above.
     if (
         crudRequest.model === 'organizations' &&
         crudRequest.body &&
-        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH') &&
+        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH' || crudRequest.method === 'PUT') &&
         !securityContext.platformAdmin
     ) {
         const body = crudRequest.body as Record<string, unknown>;
@@ -501,9 +542,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
                 // Any other PATCH (body edit and/or moderation status change) requires the
                 // caller to be the comment's author or hold a moderation permission — plain
-                // tenant scoping is not authorship. Without this, any org member could edit or
-                // moderate any other member's comment.
-                if (!isCommentOwnerOrModerator(comment, session, orgResolution.securityContext)) {
+                // tenant scoping is not authorship. Pass the AMBIENT (pre-swap) context and the
+                // comment's org so moderation authority is scoped to the comment's own org and
+                // can't be exercised cross-tenant via the caller's other-org permissions.
+                if (!isCommentOwnerOrModerator(comment, session, securityContext, orgResolution.organizationId)) {
                     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
                 }
 

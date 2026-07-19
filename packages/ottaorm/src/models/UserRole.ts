@@ -204,6 +204,41 @@ export class UserRole extends BaseModel {
     }
 
     /**
+     * Revoke EVERY org-scoped role grant a user holds in one organization.
+     *
+     * Membership (`organization_members.role`) and authorization (`user_roles`) are separate
+     * sources: provisioning an org owner writes BOTH, but roster demotion/removal only rewrites the
+     * membership row. Without this, a demoted or removed member keeps the org-scoped grant that
+     * still carries their old permissions (media:*, comments:moderate, audit:read, org:admin, ...),
+     * and re-adding a removed user silently reactivates it. Revoking is the fail-safe direction —
+     * elevation must be an explicit, separate grant, never an implicit side effect of a roster edit.
+     *
+     * THROWS if any grant survives. Callers gate a privilege downgrade on this, so a partial
+     * delete (some rows removed, one failing mid-loop) must NOT look like success — the caller
+     * needs "all grants are gone" to be a guarantee, not a best effort.
+     *
+     * @returns the number of grants revoked
+     * @throws if the revocation could not be completed for every grant
+     */
+    static async revokeAllForOrganization(userId: string, organizationId: string): Promise<number> {
+        const grants = await this.where({ userId, organizationId });
+        for (const grant of grants) {
+            await grant.destroy();
+        }
+
+        // Re-read: confirm none survived (a mid-loop failure, or a row the delete silently missed).
+        const remaining = await this.where({ userId, organizationId });
+        if (remaining.length > 0) {
+            throw new Error(
+                `Failed to revoke all org-scoped role grants for user ${userId} in organization ` +
+                    `${organizationId}: ${remaining.length} grant(s) still present`,
+            );
+        }
+
+        return grants.length;
+    }
+
+    /**
      * Check if user has role
      * @param userId User ID
      * @param roleId Role ID

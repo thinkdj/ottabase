@@ -2,6 +2,7 @@ import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaor
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
+import { reconcileSystemRoleSessions } from '../lib/auth-utils';
 import { initDbConnection } from '../lib/db-utils';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress, normalizeEmail, readJson } from '../lib/utils';
@@ -101,6 +102,15 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     }
 
     await user.assignRole(roleId, undefined, SYSTEM_ORGANIZATION_ID);
+
+    // Make the grant take effect on the target's live session. Without this the endpoint returns
+    // success while the promoted user's cached session snapshot keeps platformAdmin=false (and the
+    // RBAC cache omits the grant) until the ~30-day JWT expires — so they stay blocked from the
+    // control plane. reconcileSystemRoleSessions drops the 'rbac:' cache and bumps every
+    // platform_owner holder's profile version (now including this user), the same refresh contract
+    // the bootstrap seed path uses. Best-effort: no-ops without OBCF_KV and swallows errors, so it
+    // can't break the success response.
+    await reconcileSystemRoleSessions(env);
 
     return jsonResponse({
         success: true,

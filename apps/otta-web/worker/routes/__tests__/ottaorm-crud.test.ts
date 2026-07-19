@@ -33,7 +33,7 @@ vi.mock('@ottabase/comments', () => ({
 
 vi.mock('@ottabase/ottaorm/models', () => ({
     Organization: { delete: vi.fn() },
-    OrganizationMember: { create: vi.fn() },
+    OrganizationMember: { create: vi.fn(), isOwnerOrAdmin: vi.fn() },
     User: { whereIn: vi.fn() },
     UserGroupMember: { find: vi.fn() },
 }));
@@ -258,6 +258,74 @@ describe('handleOttaormCrud (organization create — owner-membership atomicity)
 
         expect(response.status).toBe(500);
         expect(body.code).toBe('ORG_MEMBER_CREATE_FAILED');
+    });
+});
+
+describe('handleOttaormCrud (organization mutation authorization)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    async function orgWrite(method: 'PATCH' | 'PUT' | 'DELETE', ctxOverride: Record<string, unknown>) {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            ...ctxOverride,
+        });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'organizations',
+            method,
+            id: 'org-1',
+            body: method === 'DELETE' ? undefined : { name: 'Renamed' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'org-1' }, status: 200 });
+        return handleOttaormCrud(createContext());
+    }
+
+    // PUT is covered deliberately — secure CRUD treats it as a full update like PATCH, so a guard
+    // listing only PATCH/DELETE would leave PUT as a silent bypass.
+    it.each(['PATCH', 'PUT', 'DELETE'] as const)(
+        'blocks a non-owner member from %sing an organization',
+        async (method) => {
+            const { executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            const { OrganizationMember } = await import('@ottabase/ottaorm/models');
+            (OrganizationMember.isOwnerOrAdmin as any).mockResolvedValue(false);
+
+            const response = await orgWrite(method, { permissions: [] });
+            const body = (await response.json()) as any;
+
+            expect(response.status).toBe(403);
+            expect(body.code).toBe('FORBIDDEN');
+            expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['PATCH', 'PUT', 'DELETE'] as const)('allows an owner/admin of the TARGET org to %s it', async (method) => {
+        const { executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { OrganizationMember } = await import('@ottabase/ottaorm/models');
+        (OrganizationMember.isOwnerOrAdmin as any).mockResolvedValue(true);
+
+        const response = await orgWrite(method, { permissions: [] });
+
+        expect(OrganizationMember.isOwnerOrAdmin as any).toHaveBeenCalledWith('user-1', 'org-1');
+        expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+        expect(response.status).toBe(200);
+    });
+
+    // NOTE: this asserts the ROUTE GUARD skips the membership check for a platform admin. Whether
+    // they can actually reach a non-member org is decided by the organizations RLS filter, which is
+    // covered separately (and unmocked) in packages/ottaorm rls/__tests__/registry.test.ts.
+    it('skips the membership check for a platform admin', async () => {
+        const { executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { OrganizationMember } = await import('@ottabase/ottaorm/models');
+
+        const response = await orgWrite('PATCH', { platformAdmin: true, permissions: ['*:*'] });
+
+        expect(OrganizationMember.isOwnerOrAdmin as any).not.toHaveBeenCalled();
+        expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+        expect(response.status).toBe(200);
     });
 });
 
@@ -522,6 +590,79 @@ describe('handleOttaormCrud (comments)', () => {
             const { executeSecureCrudRequest } = await import('@ottabase/ottaorm');
             (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
             await setUpEditAttempt({ commentUserId: 'user-2', permissions: ['comments:moderate'] })();
+
+            const response = await handleOttaormCrud(createContext());
+
+            expect(response.status).toBe(200);
+            expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+        });
+
+        it('blocks cross-tenant moderation: comments:moderate in the active org does not authorize moderating a comment whose post is in another org', async () => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            const { Post } = await import('@ottabase/ottablog');
+            const { Comment } = await import('@ottabase/comments');
+            const { getSecurityContext } = await import('../../lib/auth-utils');
+
+            // Active org is org-Y with comments:moderate; the comment's post lives in org-X.
+            (getSecurityContext as any).mockResolvedValueOnce({
+                organizationId: 'org-Y',
+                appId: 'otta-web',
+                permissions: ['comments:moderate'],
+            });
+            (parseCrudRequest as any).mockResolvedValue({
+                model: 'comments',
+                method: 'PATCH',
+                id: 'c1',
+                body: { status: 'deleted' },
+            });
+            (Comment.find as any).mockResolvedValue(
+                makeCommentStub({
+                    id: 'c1',
+                    targetType: 'post',
+                    targetId: 'post-x',
+                    organizationId: 'org-X',
+                    userId: 'author',
+                }),
+            );
+            (Post.find as any).mockResolvedValue({ get: () => 'org-X' });
+
+            const response = await handleOttaormCrud(createContext());
+            const body = (await response.json()) as any;
+
+            expect(response.status).toBe(403);
+            expect(body.code).toBe('FORBIDDEN');
+            expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+        });
+
+        it('lets a platform admin moderate a comment in any org', async () => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            const { Post } = await import('@ottabase/ottablog');
+            const { Comment } = await import('@ottabase/comments');
+            const { getSecurityContext } = await import('../../lib/auth-utils');
+
+            (getSecurityContext as any).mockResolvedValueOnce({
+                organizationId: 'org-Y',
+                appId: 'otta-web',
+                platformAdmin: true,
+                permissions: [],
+            });
+            (parseCrudRequest as any).mockResolvedValue({
+                model: 'comments',
+                method: 'PATCH',
+                id: 'c1',
+                body: { status: 'deleted' },
+            });
+            (Comment.find as any).mockResolvedValue(
+                makeCommentStub({
+                    id: 'c1',
+                    targetType: 'post',
+                    targetId: 'post-x',
+                    organizationId: 'org-X',
+                    userId: 'author',
+                }),
+            );
+            (Post.find as any).mockResolvedValue({ get: () => 'org-X' });
+            (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
 
             const response = await handleOttaormCrud(createContext());
 

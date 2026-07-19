@@ -28,6 +28,16 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
                     return null;
                 }
 
+                // Platform admins are the SaaS control plane and administer EVERY tenant (rename,
+                // suspend, change plan), so they are not membership-scoped. Gated on the scope-aware
+                // `platformAdmin` flag — derived from a SYSTEM-scoped grant, never a role name — the
+                // same signal enforceOrgMembership uses for its cross-tenant bypass. Without this an
+                // org-mutation route that allows platform admins would still 404 on the
+                // read-before-write for any org they don't personally belong to.
+                if (context.platformAdmin) {
+                    return {};
+                }
+
                 // When membership was RESOLVED (Array.isArray — even to an empty set), trust it.
                 // An empty set means "no accessible orgs" → deny (null); it must NOT fall back to
                 // ownerId. `Organization.ownerId` is stamped at creation and never cleared on

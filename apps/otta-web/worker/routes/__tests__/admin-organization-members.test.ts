@@ -1,4 +1,4 @@
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { OrganizationMember, User, UserRole } from '@ottabase/ottaorm/models';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     handleAdminOrganizationInviteMember,
@@ -425,6 +425,126 @@ describe('roster access boundary (owner/admin membership in the TARGET org)', ()
         );
 
         expect(response.status).toBe(403);
+        expect(removeSpy).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Roster role (organization_members.role) and RBAC authority (user_roles) are separate sources.
+ * Provisioning an org owner writes BOTH, so a roster edit that only rewrites the membership row
+ * would leave the old grant — and its permissions — fully live.
+ */
+describe('org-scoped grant revocation on roster demotion/removal', () => {
+    function patchRequest(role: string) {
+        return {
+            request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ role }),
+            }),
+            env: {},
+        } as any;
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValue(false);
+        vi.spyOn(OrganizationMember, 'isOwnerOrAdmin').mockResolvedValue(true);
+        // Caller is an OWNER, so the owner-tier hierarchy guard admits demoting an owner.
+        vi.spyOn(OrganizationMember, 'hasRole').mockResolvedValue(true);
+        vi.spyOn(OrganizationMember, 'updateRole').mockResolvedValue({} as any);
+        vi.mocked(requireAdminAccess).mockResolvedValue({
+            user: { id: 'admin-1' },
+            organizationId: 'org-1',
+            appId: 'web',
+            rbac: { organizationId: 'org-1' } as any,
+            session: {},
+        });
+    });
+
+    it('revokes the org-scoped RBAC grants when a member is DEMOTED', async () => {
+        vi.spyOn(OrganizationMember, 'first')
+            .mockResolvedValueOnce({ toJson: () => ({ role: 'owner', status: 'active' }) } as any)
+            .mockResolvedValueOnce({ toJson: () => ({ userId: 'user-2', role: 'member' }) } as any);
+        const revokeSpy = vi.spyOn(UserRole, 'revokeAllForOrganization').mockResolvedValue(1);
+
+        const response = await handleAdminOrganizationUpdateMember(patchRequest('member'), 'org-1', 'user-2');
+
+        expect(response.status).toBe(200);
+        // Without this the demoted owner keeps media:*, comments:moderate, audit:read, org:admin...
+        expect(revokeSpy).toHaveBeenCalledWith('user-2', 'org-1');
+    });
+
+    it('does NOT revoke or auto-grant on PROMOTION (elevation stays an explicit RBAC operation)', async () => {
+        vi.spyOn(OrganizationMember, 'first')
+            .mockResolvedValueOnce({ toJson: () => ({ role: 'member', status: 'active' }) } as any)
+            .mockResolvedValueOnce({ toJson: () => ({ userId: 'user-2', role: 'admin' }) } as any);
+        const revokeSpy = vi.spyOn(UserRole, 'revokeAllForOrganization').mockResolvedValue(0);
+
+        const response = await handleAdminOrganizationUpdateMember(patchRequest('admin'), 'org-1', 'user-2');
+
+        expect(response.status).toBe(200);
+        expect(revokeSpy).not.toHaveBeenCalled();
+    });
+
+    it('revokes the org-scoped RBAC grants when a member is REMOVED', async () => {
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({ role: 'member' }) } as any);
+        vi.spyOn(OrganizationMember, 'removeMember').mockResolvedValue(true as any);
+        const revokeSpy = vi.spyOn(UserRole, 'revokeAllForOrganization').mockResolvedValue(2);
+
+        const response = await handleAdminOrganizationRemoveMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
+                    method: 'DELETE',
+                }),
+                env: {},
+            } as any,
+            'org-1',
+            'user-2',
+        );
+
+        expect(response.status).toBe(200);
+        // Otherwise re-adding them later as a plain member reactivates the old grant.
+        expect(revokeSpy).toHaveBeenCalledWith('user-2', 'org-1');
+    });
+
+    // Failure path: revocation is a SECURITY operation, not best-effort cleanup. A swallowed error
+    // would return 200 for a "demotion" while the user still holds owner/admin grants.
+    it('does NOT report success, and leaves the roster untouched, when demotion revocation fails', async () => {
+        vi.spyOn(OrganizationMember, 'first')
+            .mockResolvedValueOnce({ toJson: () => ({ role: 'owner', status: 'active' }) } as any)
+            .mockResolvedValueOnce({ toJson: () => ({ userId: 'user-2', role: 'member' }) } as any);
+        const updateRoleSpy = vi.spyOn(OrganizationMember, 'updateRole').mockResolvedValue({} as any);
+        vi.spyOn(UserRole, 'revokeAllForOrganization').mockRejectedValue(new Error('D1 unavailable'));
+
+        const response = await handleAdminOrganizationUpdateMember(patchRequest('member'), 'org-1', 'user-2');
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(500);
+        expect(body.code).toBe('ORG_GRANT_REVOKE_FAILED');
+        // The demotion must NOT be applied — a "demoted" user with live owner grants is the bug.
+        expect(updateRoleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT report success, and leaves membership intact, when removal revocation fails', async () => {
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({ role: 'member' }) } as any);
+        const removeSpy = vi.spyOn(OrganizationMember, 'removeMember').mockResolvedValue(true as any);
+        vi.spyOn(UserRole, 'revokeAllForOrganization').mockRejectedValue(new Error('D1 unavailable'));
+
+        const response = await handleAdminOrganizationRemoveMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
+                    method: 'DELETE',
+                }),
+                env: {},
+            } as any,
+            'org-1',
+            'user-2',
+        );
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(500);
+        expect(body.code).toBe('ORG_GRANT_REVOKE_FAILED');
         expect(removeSpy).not.toHaveBeenCalled();
     });
 });

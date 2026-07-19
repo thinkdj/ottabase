@@ -137,7 +137,7 @@ ottabase/
 │   ├── cron/             # Cron handlers (static + DB scheduler)
 │   ├── logger/           # Structured logging (multi-transport)
 │   ├── config/           # App config, env vars, storage keys
-│   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*, db:*
+│   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
 │   ├── ui-shadcn/        # shadcn/ui components
 │   ├── ui-mantine/       # Mantine provider + themes
@@ -330,7 +330,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/analytics`  | Cloudflare Analytics Engine (WAE) - write events, query, funnel, top-K   |
 | `@ottabase/config`     | App config, env vars, storage key utilities                              |
 | `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)     |
-| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`, `db:*`      |
+| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`              |
 
 ### Brand, Layout & Content
 

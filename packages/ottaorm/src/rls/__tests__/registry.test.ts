@@ -50,6 +50,24 @@ describe('RLS Registry', () => {
             expect(filter(ctx)).toBeNull();
         });
 
+        it('returns an UNSCOPED filter for a platform admin (control plane administers every tenant)', () => {
+            // Platform admins must be able to read/mutate an org they are not a member of —
+            // otherwise a route that authorizes them still 404s on the read-before-write.
+            const ctx: SecurityContext = { userId: 'u1', platformAdmin: true, memberOrganizationIds: [] };
+            expect(filter(ctx)).toEqual({});
+        });
+
+        it('does NOT unscope for a non-platform-admin, even with an org-scoped *:* permission', () => {
+            // Authority here is the scope-aware platformAdmin flag, never a permission string.
+            const ctx: SecurityContext = {
+                userId: 'u1',
+                platformAdmin: false,
+                permissions: ['*:*'],
+                memberOrganizationIds: ['org-1'],
+            };
+            expect(filter(ctx)).toEqual({ id: ['org-1'] });
+        });
+
         it('returns id array filter when memberOrganizationIds is populated', () => {
             const ctx: SecurityContext = {
                 userId: 'u1',

@@ -1,4 +1,4 @@
-import { Organization, OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, User, UserRole } from '@ottabase/ottaorm/models';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -34,6 +34,62 @@ function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boo
     return (
         (body.role !== undefined && body.role !== 'owner') || (body.status !== undefined && body.status !== 'active')
     );
+}
+
+/** Roster tiers, highest authority first. Used to detect a DEMOTION (never an elevation). */
+const ROSTER_ROLE_TIER: Record<string, number> = { owner: 3, admin: 2, member: 1 };
+
+function isDemotion(previousRole: unknown, nextRole: string): boolean {
+    const before = ROSTER_ROLE_TIER[String(previousRole)] ?? 0;
+    const after = ROSTER_ROLE_TIER[nextRole] ?? 0;
+    return before > after;
+}
+
+/**
+ * Revoke the user's org-scoped RBAC grants for this organization, FAILING CLOSED.
+ *
+ * Membership (`organization_members.role`) and authorization (`user_roles`) are SEPARATE sources:
+ * provisioning an org owner writes both, but a roster edit only rewrites the membership row. So a
+ * demoted or removed member would otherwise keep the org-scoped grant carrying their old
+ * permissions (media:*, comments:moderate, audit:read, org:admin, taxonomy writes ...) — and the
+ * profile-version bump would simply reload it. Re-adding a removed user would reactivate it.
+ *
+ * Returns an error Response when revocation fails, so callers can ABORT. This must never be
+ * best-effort: unlike cache invalidation (which self-heals at TTL), a failed revocation leaves
+ * privilege live indefinitely, and acknowledging the downgrade anyway would report success while
+ * the user still holds owner/admin authority. Callers run this BEFORE mutating the roster, so a
+ * failure leaves membership untouched (D1 has no cross-table transaction — ordering plus failing
+ * closed is how this stays all-or-nothing).
+ *
+ * Deliberately one-directional: roster edits only ever REVOKE authority here. Promotion/invite does
+ * NOT auto-grant an RBAC role, because implicitly conferring broad org permissions from a roster
+ * change would over-grant; elevation stays an explicit RBAC operation.
+ */
+async function revokeOrgScopedGrantsOrError(
+    userId: string,
+    organizationId: string,
+    action: 'demotion' | 'removal',
+): Promise<Response | null> {
+    try {
+        await UserRole.revokeAllForOrganization(userId, organizationId);
+        return null;
+    } catch (err) {
+        console.error('[org-members] Grant revocation failed; aborting roster change', {
+            userId,
+            organizationId,
+            action,
+            err,
+        });
+        return errorResponse(
+            `Could not revoke the member's existing role grants, so the ${action} was not applied. ` +
+                'Membership is unchanged — retry.',
+            500,
+            {
+                code: 'ORG_GRANT_REVOKE_FAILED',
+                details: err instanceof Error ? err.message : 'Unknown error',
+            },
+        );
+    }
 }
 
 /**
@@ -345,6 +401,18 @@ export async function handleAdminOrganizationUpdateMember(
         }
     }
 
+    const previousRole = (existingMember.toJson() as { role?: string }).role;
+
+    // A DEMOTION must actually remove authority: updateRole only rewrites the roster row, so
+    // without this the user keeps the org-scoped user_roles grant from their previous tier and the
+    // profile-version bump below simply reloads it — "demoted" in the UI, unchanged in effect.
+    // Revoke FIRST and abort on failure, so we never report a successful demotion while the old
+    // owner/admin grant may still be live. On failure the roster is untouched, so a retry is clean.
+    if (body.role !== undefined && isDemotion(previousRole, body.role)) {
+        const revokeFailed = await revokeOrgScopedGrantsOrError(userId, organizationId, 'demotion');
+        if (revokeFailed) return revokeFailed;
+    }
+
     try {
         if (body.role !== undefined) {
             await OrganizationMember.updateRole(userId, organizationId, body.role);
@@ -402,6 +470,13 @@ export async function handleAdminOrganizationRemoveMember(
             code: 'LAST_ACTIVE_OWNER_GUARD',
         });
     }
+
+    // Removal must also drop the org-scoped RBAC grants. They are otherwise merely dormant (a
+    // non-member resolves to no memberships, so RLS denies) — but re-adding the person later, even
+    // as a plain member, would silently reactivate their old owner/admin permissions. Revoke FIRST
+    // and abort on failure so removal is never reported successful with grants still attached.
+    const revokeFailed = await revokeOrgScopedGrantsOrError(userId, organizationId, 'removal');
+    if (revokeFailed) return revokeFailed;
 
     try {
         const removed = await OrganizationMember.removeMember(userId, organizationId);
