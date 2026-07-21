@@ -48,14 +48,15 @@ export {
 
 export {
     APPROXIMATION_LABELS,
+    APPROXIMATION_ORDER,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
     buildFuzzyLabel,
     createFuzzyDateTime,
-    getResolutionDescription,
     isResolutionFinerOrEqual,
     parseFuzzyDateTime,
     refreshFuzzyLabel,
+    resolutionBounds,
     resolutionIndex,
     snapToResolution,
 } from './core/fuzzy';

@@ -1,13 +1,20 @@
 /**
  * @ottabase/ottadate — FuzzyDateTimePicker
  *
- * Framework-agnostic picker for approximate/fuzzy dates.
- * Users choose a resolution level (year, month, day, hour, minute, second)
- * and an approximation (exact, around, sometime). The result is a FuzzyDateTime
- * object with a human-readable label.
+ * Picker for dates the user only partially remembers. Instead of asking the
+ * user to declare a precision level up front, the UI is a progressive
+ * drill-down: the year is always present, and month → day → time each appear
+ * one level at a time as the previous level is filled. The resolution is
+ * DERIVED from how deep the user went (see core/fuzzy-selection.ts).
  *
- * Example output:
- *   { timestamp: 1588291200, resolution: 'month', approximation: 'sometime', label: 'Sometime in May 2020' }
+ * Layout:
+ *   Sometime in May 2020                ← live sentence headline (the result)
+ *   [ Sometime | Around | Exactly ]     ← approximation segment
+ *   YEAR   ‹  [2020]  ›                 ← stepper with a directly editable year
+ *   MONTH  · if you remember           ← 12-month grid; re-tap the active month to clear
+ *   DAY    · if you remember           ← appears once a month is chosen
+ *   TIME   · if you remember           ← hh:mm:ss cascade, appears once a day is chosen
+ *   [Today] [Clear]          [Done]     ← every change auto-applies; Done just closes
  *
  * Usage:
  *   const picker = OttaDate.createFuzzyDateTimePicker(container, {
@@ -15,21 +22,9 @@
  *   });
  */
 
-import {
-    APPROXIMATION_LABELS,
-    createFuzzyDateTime,
-    isResolutionFinerOrEqual,
-    parseFuzzyDateTime,
-    RESOLUTION_LABELS,
-    RESOLUTION_ORDER,
-} from '../core/fuzzy';
-import type {
-    DateApproximation,
-    DateResolution,
-    FuzzyDateTime,
-    FuzzyDateTimePickerInstance,
-    FuzzyDateTimePickerOptions,
-} from '../core/types';
+import { APPROXIMATION_LABELS } from '../core/fuzzy';
+import { createFuzzySelection, type FuzzySelection } from '../core/fuzzy-selection';
+import type { FuzzyDateTime, FuzzyDateTimePickerInstance, FuzzyDateTimePickerOptions } from '../core/types';
 import { getIntlLocale, getMonthNamesShort, pad2, resolveConfig } from '../core/utils';
 import {
     btn,
@@ -51,35 +46,15 @@ export function createFuzzyDateTimePicker(
 ): FuzzyDateTimePickerInstance {
     let config = resolveConfig({
         placeholder: 'Select approximate date…',
-        resolutions: [...RESOLUTION_ORDER],
-        approximations: ['exact', 'around', 'sometime'] as DateApproximation[],
         ...options,
     });
 
-    // State
-    let resolution: DateResolution = 'month';
-    let approximation: DateApproximation = 'sometime';
-    let selectedYear = new Date().getFullYear();
-    let selectedMonth = 0; // 0-indexed
-    let selectedDay = 1;
-    let selectedHour = 12;
-    let selectedMinute = 0;
-    let selectedSecond = 0;
-    let currentFuzzy: FuzzyDateTime | null = null;
-
-    // Initialize from existing value
-    if (config.value) {
-        const parsed = parseFuzzyDateTime(config.value);
-        resolution = parsed.resolution;
-        approximation = parsed.approximation;
-        selectedYear = parsed.date.getUTCFullYear();
-        selectedMonth = parsed.date.getUTCMonth();
-        selectedDay = parsed.date.getUTCDate();
-        selectedHour = parsed.date.getUTCHours();
-        selectedMinute = parsed.date.getUTCMinutes();
-        selectedSecond = parsed.date.getUTCSeconds();
-        currentFuzzy = config.value;
-    }
+    let sel: FuzzySelection = createFuzzySelection({
+        resolutions: config.resolutions,
+        approximations: config.approximations,
+        value: config.value,
+    });
+    let currentFuzzy: FuzzyDateTime | null = config.value ?? null;
 
     let isOpen = false;
     let removeClickOutside: (() => void) | null = null;
@@ -118,29 +93,24 @@ export function createFuzzyDateTimePicker(
     // Popover
     const popover = div('ottadate-popover');
     popover.style.display = config.inline ? '' : 'none';
-    // Narrower now that the year selector is a stepper and the month grid is 6-wide,
-    // not a 3-column grid — the old 20rem was sized for those bulkier layouts.
     popover.style.minWidth = '17rem';
     if (config.inline) isOpen = true;
     root.appendChild(popover);
 
-    // --- Helpers ---
+    // --- Actions ---
 
-    /** Build a Date from the current selection state */
-    function buildDate(): Date {
-        return new Date(
-            Date.UTC(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute, selectedSecond),
-        );
+    function emitChange() {
+        if (config.onChange) {
+            config.onChange(currentFuzzy);
+        }
     }
 
-    /** Build the current FuzzyDateTime from state */
-    function buildFuzzy(): FuzzyDateTime {
-        return createFuzzyDateTime(buildDate(), resolution, approximation);
-    }
-
-    /** Check if a given resolution is enabled */
-    function isResEnabled(res: DateResolution): boolean {
-        return (config.resolutions ?? RESOLUTION_ORDER).includes(res);
+    /** Every interaction commits immediately — each partial state is a valid fuzzy date */
+    function commit() {
+        currentFuzzy = sel.build();
+        updateTriggerText();
+        emitChange();
+        render();
     }
 
     // --- Rendering ---
@@ -157,91 +127,114 @@ export function createFuzzyDateTimePicker(
         }
     }
 
-    function renderApproximationSection(): HTMLElement {
-        const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'How precise?'));
-
-        const chips = div('ottadate-fuzzy-chips');
-        for (const approx of config.approximations ?? (['exact', 'around', 'sometime'] as DateApproximation[])) {
-            const chip = btn('ottadate-chip', APPROXIMATION_LABELS[approx], () => {
-                if (config.disabled) return;
-                approximation = approx;
-                updateAndRender();
-            });
-            if (approx === approximation) {
-                chip.classList.add('ottadate-chip--active');
-            }
-            chips.appendChild(chip);
-        }
-        section.appendChild(chips);
-        return section;
+    /** Section label row: micro-label on the left, muted hint on the right */
+    function labelRow(label: string, hint?: string): HTMLElement {
+        const row = div('ottadate-fuzzy-label-row');
+        row.appendChild(span('ottadate-fuzzy-label', label));
+        if (hint) row.appendChild(span('ottadate-fuzzy-hint', hint));
+        return row;
     }
 
-    function renderResolutionSection(): HTMLElement {
-        const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'I remember up to…'));
-
-        const chips = div('ottadate-fuzzy-chips');
-        for (const res of RESOLUTION_ORDER) {
-            if (!isResEnabled(res)) continue;
-
-            const chip = btn('ottadate-chip', RESOLUTION_LABELS[res], () => {
-                if (config.disabled) return;
-                resolution = res;
-                updateAndRender();
-            });
-            if (res === resolution) {
-                chip.classList.add('ottadate-chip--active');
-            }
-            chips.appendChild(chip);
+    /** The live sentence — what will actually be stored, front and center */
+    function renderHeadline(): HTMLElement {
+        const headline = div('ottadate-fuzzy-headline');
+        const preview = sel.build();
+        if (preview) {
+            headline.textContent = preview.label;
+        } else {
+            headline.textContent = 'Pick what you remember…';
+            headline.classList.add('ottadate-fuzzy-headline--empty');
         }
-        section.appendChild(chips);
-        return section;
+        return headline;
     }
 
-    /** Compact prev/value/next stepper — a single year is one field, not a range to browse. */
-    function renderYearSelector(): HTMLElement {
+    /** Segmented Sometime / Around / Exactly control — it only shapes the sentence */
+    function renderApproxSegment(): HTMLElement {
+        const segment = div('ottadate-fuzzy-approx');
+        for (const approx of sel.allowedApprox) {
+            const button = btn('ottadate-fuzzy-approx-btn', APPROXIMATION_LABELS[approx], () => {
+                if (config.disabled) return;
+                sel.setApproximation(approx);
+                if (sel.state.hasSelection) commit();
+                else render();
+            });
+            if (approx === sel.state.approximation) button.classList.add('ottadate-fuzzy-approx-btn--active');
+            // "Sometime at 11:30" is a contradiction — disabled once a time is set
+            if (approx === 'sometime' && sel.sometimeDisabled()) {
+                button.classList.add('ottadate-fuzzy-approx-btn--disabled');
+                button.title = 'Not available once a time is set';
+            }
+            segment.appendChild(button);
+        }
+        return segment;
+    }
+
+    /** Year: prev/next steppers around a directly editable value */
+    function renderYearSection(): HTMLElement {
         const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'Year'));
+        section.appendChild(labelRow('Year'));
 
         const stepper = div('ottadate-fuzzy-year-stepper');
 
         const prevBtn = btn('ottadate-nav-btn', '', () => {
             if (config.disabled) return;
-            selectedYear -= 1;
-            updateAndRender();
+            sel.stepYear(-1);
+            commit();
         });
         prevBtn.innerHTML = iconChevronLeft();
+        prevBtn.setAttribute('aria-label', 'Previous year');
 
-        const yearValue = span('ottadate-fuzzy-year-value', selectedYear.toString());
+        const yearInput = el('input', {
+            className: 'ottadate-fuzzy-year-input',
+            type: 'number',
+            'aria-label': 'Year',
+        }) as HTMLInputElement;
+        yearInput.value = String(sel.state.year);
+        if (config.disabled) yearInput.disabled = true;
+        yearInput.addEventListener('change', () => {
+            const parsed = parseInt(yearInput.value, 10);
+            if (!isNaN(parsed)) {
+                sel.setYear(parsed);
+                commit();
+            } else {
+                yearInput.value = String(sel.state.year);
+            }
+        });
 
         const nextBtn = btn('ottadate-nav-btn', '', () => {
             if (config.disabled) return;
-            selectedYear += 1;
-            updateAndRender();
+            sel.stepYear(1);
+            commit();
         });
         nextBtn.innerHTML = iconChevronRight();
+        nextBtn.setAttribute('aria-label', 'Next year');
 
-        stepper.append(prevBtn, yearValue, nextBtn);
+        stepper.append(prevBtn, yearInput, nextBtn);
         section.appendChild(stepper);
         return section;
     }
 
-    function renderMonthSelector(): HTMLElement {
+    /** Hint text for an optional, toggleable level */
+    function levelHint(isSet: boolean, required: boolean): string | undefined {
+        if (required) return undefined;
+        return isSet ? 'tap again to clear' : 'if you remember';
+    }
+
+    function renderMonthSection(): HTMLElement {
+        const required = sel.base !== 'year';
         const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'Month'));
+        section.appendChild(labelRow('Month', levelHint(sel.state.monthSet, required)));
 
         const grid = div('ottadate-months');
-        const localeStr = getIntlLocale(config.locale);
-        const months = getMonthNamesShort(localeStr);
+        const months = getMonthNamesShort(getIntlLocale(config.locale));
 
         months.forEach((name, idx) => {
             const monthBtn = btn('ottadate-month-cell', name, () => {
                 if (config.disabled) return;
-                selectedMonth = idx;
-                updateAndRender();
+                sel.toggleMonth(idx);
+                commit();
             });
-            if (idx === selectedMonth) {
+            if (sel.state.monthSet && idx === sel.state.month) {
                 monthBtn.classList.add('ottadate-month-cell--selected');
             }
             grid.appendChild(monthBtn);
@@ -251,21 +244,21 @@ export function createFuzzyDateTimePicker(
         return section;
     }
 
-    function renderDaySelector(): HTMLElement {
+    function renderDaySection(): HTMLElement {
+        const required = sel.base !== 'year' && sel.base !== 'month';
         const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'Day'));
+        section.appendChild(labelRow('Day', levelHint(sel.state.daySet, required)));
 
-        // Simple number grid (1-31, capped to month's actual days)
         const grid = div('ottadate-days ottadate-days--fuzzy');
-        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const daysInMonth = sel.daysInMonth();
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dayBtn = btn('ottadate-day', d.toString(), () => {
                 if (config.disabled) return;
-                selectedDay = d;
-                updateAndRender();
+                sel.toggleDay(d);
+                commit();
             });
-            if (d === selectedDay) {
+            if (sel.state.daySet && d === sel.state.day) {
                 dayBtn.classList.add('ottadate-day--selected');
             }
             grid.appendChild(dayBtn);
@@ -275,104 +268,82 @@ export function createFuzzyDateTimePicker(
         return section;
     }
 
-    function renderTimeSelector(): HTMLElement {
-        const section = div('ottadate-fuzzy-section');
-        section.appendChild(span('ottadate-fuzzy-label', 'Time'));
-
-        const timeRow = div('ottadate-time');
-        timeRow.style.borderTop = 'none';
-        timeRow.style.paddingTop = '0';
-        timeRow.style.marginTop = '0';
-
-        const scrollContainer = div('ottadate-time-scroll');
-
-        // Hour
-        if (isResolutionFinerOrEqual(resolution, 'hour')) {
-            const hourInput = el('input', {
-                className: 'ottadate-time-input',
-                type: 'number',
-            }) as HTMLInputElement;
-            hourInput.min = '0';
-            hourInput.max = '23';
-            hourInput.value = pad2(selectedHour);
-            if (config.disabled) hourInput.disabled = true;
-            hourInput.addEventListener('change', () => {
-                selectedHour = Math.max(0, Math.min(23, parseInt(hourInput.value, 10) || 0));
-                hourInput.value = pad2(selectedHour);
-                updateAndRender();
-            });
-            scrollContainer.appendChild(hourInput);
-        }
-
-        // Minute
-        if (isResolutionFinerOrEqual(resolution, 'minute')) {
-            scrollContainer.appendChild(span('ottadate-time-separator', ':'));
-            const minInput = el('input', {
-                className: 'ottadate-time-input',
-                type: 'number',
-            }) as HTMLInputElement;
-            minInput.min = '0';
-            minInput.max = '59';
-            minInput.value = pad2(selectedMinute);
-            if (config.disabled) minInput.disabled = true;
-            minInput.addEventListener('change', () => {
-                selectedMinute = Math.max(0, Math.min(59, parseInt(minInput.value, 10) || 0));
-                minInput.value = pad2(selectedMinute);
-                updateAndRender();
-            });
-            scrollContainer.appendChild(minInput);
-        }
-
-        // Second
-        if (isResolutionFinerOrEqual(resolution, 'second')) {
-            scrollContainer.appendChild(span('ottadate-time-separator', ':'));
-            const secInput = el('input', {
-                className: 'ottadate-time-input',
-                type: 'number',
-            }) as HTMLInputElement;
-            secInput.min = '0';
-            secInput.max = '59';
-            secInput.value = pad2(selectedSecond);
-            if (config.disabled) secInput.disabled = true;
-            secInput.addEventListener('change', () => {
-                selectedSecond = Math.max(0, Math.min(59, parseInt(secInput.value, 10) || 0));
-                secInput.value = pad2(selectedSecond);
-                updateAndRender();
-            });
-            scrollContainer.appendChild(secInput);
-        }
-
-        timeRow.appendChild(scrollContainer);
-        section.appendChild(timeRow);
-        return section;
+    /**
+     * Cascading time inputs: blank = "don't remember". Filling the hour derives
+     * resolution 'hour', the minute 'minute', the second 'second'. Each finer
+     * input stays disabled until its coarser neighbour is filled.
+     */
+    function timeInput(
+        value: number | null,
+        enabled: boolean,
+        ariaLabel: string,
+        onCommit: (value: number | null) => void,
+    ): HTMLInputElement {
+        const input = el('input', {
+            className: 'ottadate-time-input',
+            type: 'number',
+            placeholder: '––',
+            'aria-label': ariaLabel,
+        }) as HTMLInputElement;
+        input.value = value != null ? pad2(value) : '';
+        input.disabled = config.disabled || !enabled;
+        input.addEventListener('change', () => {
+            const raw = input.value.trim();
+            if (raw === '') {
+                onCommit(null);
+            } else {
+                const parsed = parseInt(raw, 10);
+                onCommit(isNaN(parsed) ? null : parsed);
+            }
+            commit();
+        });
+        return input;
     }
 
-    function renderPreview(): HTMLElement {
-        const fuzzy = buildFuzzy();
-        const preview = div('ottadate-fuzzy-preview', `"${fuzzy.label}"`);
-        return preview;
+    function renderTimeSection(): HTMLElement {
+        const section = div('ottadate-fuzzy-section');
+        section.appendChild(labelRow('Time', sel.state.hour == null ? 'if you remember' : 'blank = not sure'));
+
+        const row = div('ottadate-fuzzy-time');
+        row.appendChild(timeInput(sel.state.hour, true, 'Hour', (v) => sel.setHour(v)));
+
+        if (sel.levelAllowed('minute')) {
+            row.appendChild(span('ottadate-time-separator', ':'));
+            row.appendChild(timeInput(sel.state.minute, sel.state.hour != null, 'Minute', (v) => sel.setMinute(v)));
+        }
+        if (sel.levelAllowed('second')) {
+            row.appendChild(span('ottadate-time-separator', ':'));
+            row.appendChild(timeInput(sel.state.second, sel.state.minute != null, 'Second', (v) => sel.setSecond(v)));
+        }
+
+        section.appendChild(row);
+        return section;
     }
 
     function renderFooter(): HTMLElement {
         const footer = div('ottadate-footer');
 
-        const applyBtn = btn('ottadate-footer-btn ottadate-footer-btn--primary', 'Apply', () => {
-            if (config.disabled) return;
-            currentFuzzy = buildFuzzy();
-            updateTriggerText();
-            emitChange();
-            if (!config.inline) closePicker();
-        });
+        const group = div('ottadate-footer-group');
+        group.appendChild(
+            btn('ottadate-footer-btn', 'Today', () => {
+                if (config.disabled) return;
+                sel.setToday();
+                commit();
+            }),
+        );
+        group.appendChild(
+            btn('ottadate-footer-btn', 'Clear', () => {
+                if (config.disabled) return;
+                sel.clear();
+                commit();
+            }),
+        );
+        footer.appendChild(group);
 
-        const clearBtn = btn('ottadate-footer-btn', 'Clear', () => {
-            if (config.disabled) return;
-            currentFuzzy = null;
-            updateTriggerText();
-            emitChange();
-            render();
-        });
+        if (!config.inline) {
+            footer.appendChild(btn('ottadate-footer-btn ottadate-footer-btn--primary', 'Done', () => closePicker()));
+        }
 
-        footer.append(applyBtn, clearBtn);
         return footer;
     }
 
@@ -381,51 +352,24 @@ export function createFuzzyDateTimePicker(
 
         const fuzzyContainer = div('ottadate-fuzzy');
 
-        // 1. Approximation chips
-        fuzzyContainer.appendChild(renderApproximationSection());
-
-        // 2. Resolution chips
-        fuzzyContainer.appendChild(renderResolutionSection());
-
+        fuzzyContainer.appendChild(renderHeadline());
+        fuzzyContainer.appendChild(renderApproxSegment());
         fuzzyContainer.appendChild(el('div', { className: 'ottadate-fuzzy-divider' }));
 
-        // 3. Year selector (always shown)
-        fuzzyContainer.appendChild(renderYearSelector());
-
-        // 4. Month selector (if resolution >= month)
-        if (isResolutionFinerOrEqual(resolution, 'month')) {
-            fuzzyContainer.appendChild(renderMonthSelector());
+        // Progressive drill-down: each level appears only when the previous is filled
+        fuzzyContainer.appendChild(renderYearSection());
+        if (sel.levelAllowed('month')) {
+            fuzzyContainer.appendChild(renderMonthSection());
         }
-
-        // 5. Day selector (if resolution >= day)
-        if (isResolutionFinerOrEqual(resolution, 'day')) {
-            fuzzyContainer.appendChild(renderDaySelector());
+        if (sel.levelAllowed('day') && sel.state.monthSet) {
+            fuzzyContainer.appendChild(renderDaySection());
         }
-
-        // 6. Time selectors (if resolution >= hour)
-        if (isResolutionFinerOrEqual(resolution, 'hour')) {
-            fuzzyContainer.appendChild(renderTimeSelector());
+        if (sel.levelAllowed('hour') && sel.state.daySet) {
+            fuzzyContainer.appendChild(renderTimeSection());
         }
-
-        fuzzyContainer.appendChild(el('div', { className: 'ottadate-fuzzy-divider' }));
-
-        // 7. Preview
-        fuzzyContainer.appendChild(renderPreview());
 
         popover.appendChild(fuzzyContainer);
         popover.appendChild(renderFooter());
-    }
-
-    function updateAndRender() {
-        render();
-    }
-
-    // --- Actions ---
-
-    function emitChange() {
-        if (config.onChange) {
-            config.onChange(currentFuzzy);
-        }
     }
 
     function openPicker() {
@@ -460,6 +404,7 @@ export function createFuzzyDateTimePicker(
 
     triggerClear.addEventListener('click', (e) => {
         e.stopPropagation();
+        sel.clear();
         currentFuzzy = null;
         updateTriggerText();
         emitChange();
@@ -471,6 +416,20 @@ export function createFuzzyDateTimePicker(
     updateTriggerText();
     if (config.inline) render();
 
+    // --- Value plumbing ---
+
+    function applyValue(value: FuzzyDateTime | null) {
+        if (value) {
+            sel.load(value);
+            currentFuzzy = value;
+        } else {
+            sel.clear();
+            currentFuzzy = null;
+        }
+        updateTriggerText();
+        if (isOpen) render();
+    }
+
     // --- Public API ---
 
     return {
@@ -480,47 +439,26 @@ export function createFuzzyDateTimePicker(
             if (isOpen) closePicker();
             else openPicker();
         },
-        setValue(value: FuzzyDateTime | null) {
-            if (value) {
-                const parsed = parseFuzzyDateTime(value);
-                resolution = parsed.resolution;
-                approximation = parsed.approximation;
-                selectedYear = parsed.date.getUTCFullYear();
-                selectedMonth = parsed.date.getUTCMonth();
-                selectedDay = parsed.date.getUTCDate();
-                selectedHour = parsed.date.getUTCHours();
-                selectedMinute = parsed.date.getUTCMinutes();
-                selectedSecond = parsed.date.getUTCSeconds();
-                currentFuzzy = value;
-            } else {
-                currentFuzzy = null;
-            }
-            updateTriggerText();
-            if (isOpen) render();
-        },
+        setValue: applyValue,
         getValue() {
             return currentFuzzy;
         },
         setOptions(newOptions) {
             config = resolveConfig({ ...config, ...newOptions });
-            if (newOptions.value !== undefined) {
-                if (newOptions.value) {
-                    const parsed = parseFuzzyDateTime(newOptions.value);
-                    resolution = parsed.resolution;
-                    approximation = parsed.approximation;
-                    selectedYear = parsed.date.getUTCFullYear();
-                    selectedMonth = parsed.date.getUTCMonth();
-                    selectedDay = parsed.date.getUTCDate();
-                    selectedHour = parsed.date.getUTCHours();
-                    selectedMinute = parsed.date.getUTCMinutes();
-                    selectedSecond = parsed.date.getUTCSeconds();
-                    currentFuzzy = newOptions.value;
-                } else {
-                    currentFuzzy = null;
-                }
+            // Constraint changes need a fresh selection controller
+            if (newOptions.resolutions !== undefined || newOptions.approximations !== undefined) {
+                sel = createFuzzySelection({
+                    resolutions: config.resolutions,
+                    approximations: config.approximations,
+                    value: currentFuzzy,
+                });
             }
-            updateTriggerText();
-            if (isOpen) render();
+            if (newOptions.value !== undefined) {
+                applyValue(newOptions.value);
+            } else {
+                updateTriggerText();
+                if (isOpen) render();
+            }
         },
         destroy() {
             closePicker();

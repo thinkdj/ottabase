@@ -1,16 +1,19 @@
 /**
  * @ottabase/ottadate — FuzzyDateTimeCompact
  *
- * A space-efficient fuzzy date picker using native <select> dropdowns
- * instead of chip grids. Ideal for forms, sidebars, and inline usage
- * where screen real-estate is limited.
+ * Space-efficient fuzzy date picker for forms and sidebars. The controls are a
+ * mad-lib sentence of native <select>s that literally reads as the stored
+ * label, and — like the full picker — the resolution is DERIVED from how much
+ * of the sentence the user fills in (see core/fuzzy-selection.ts):
  *
- * Layout:
- *   [ Sometime in ▾ ]  [ Month ▾ ]     ← two selects: approximation + resolution
- *   [ 2026 ▾ ] [ March ▾ ] [ 29 ▾ ]    ← native selects for date parts (shown based on resolution)
- *   [ 14 ] : [ 30 ]                    ← time inputs (shown if resolution >= hour)
- *   "Sometime in March 2026"            ← live preview label
- *   [ Now ] [ Clear ]                  ← footer
+ *   [ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]         → "Sometime in 2020"
+ *   [ Sometime ▾ ] [ May ▾ ] [ Any day ▾ ] [ 2020 ▾ ] → "Sometime in May 2020"
+ *   [ Around ▾ ]   [ May ▾ ] [ 20 ▾ ] [ 2020 ▾ ]      → "Around May 20, 2020"
+ *   [ 14 ] : [ 30 ]                                    ← time cascade, appears once a day is set
+ *   "Around 14:30 on May 20, 2020"                     ← live preview label
+ *   [ Now ] [ Clear ]                                  ← footer
+ *
+ * Every change auto-applies.
  *
  * Usage:
  *   const picker = OttaDate.createFuzzyDateTimeCompact(container, {
@@ -18,22 +21,15 @@
  *   });
  */
 
-import {
-    APPROXIMATION_LABELS,
-    createFuzzyDateTime,
-    isResolutionFinerOrEqual,
-    parseFuzzyDateTime,
-    RESOLUTION_LABELS,
-    RESOLUTION_ORDER,
-} from '../core/fuzzy';
+import { APPROXIMATION_LABELS } from '../core/fuzzy';
+import { createFuzzySelection, type FuzzySelection } from '../core/fuzzy-selection';
 import type {
     DateApproximation,
-    DateResolution,
     FuzzyDateTime,
     FuzzyDateTimePickerInstance,
     FuzzyDateTimePickerOptions,
 } from '../core/types';
-import { getIntlLocale, getMonthNames, getYearRange, pad2, resolveConfig } from '../core/utils';
+import { getIntlLocale, getMonthNames, pad2, resolveConfig } from '../core/utils';
 import {
     btn,
     clearChildren,
@@ -47,41 +43,25 @@ import {
     span,
 } from '../dom/helpers';
 
+/** Year dropdown range — fuzzy dates are past-heavy, so reach far back */
+const YEARS_AHEAD = 10;
+const YEARS_BACK = 100;
+
 export function createFuzzyDateTimeCompact(
     container: HTMLElement,
     options: FuzzyDateTimePickerOptions = {},
 ): FuzzyDateTimePickerInstance {
     let config = resolveConfig({
         placeholder: 'Select approximate date…',
-        resolutions: [...RESOLUTION_ORDER],
-        approximations: ['exact', 'around', 'sometime'] as DateApproximation[],
         ...options,
     });
 
-    // State
-    let resolution: DateResolution = 'month';
-    let approximation: DateApproximation = 'sometime';
-    let selectedYear = new Date().getFullYear();
-    let selectedMonth = 0;
-    let selectedDay = 1;
-    let selectedHour = 12;
-    let selectedMinute = 0;
-    let selectedSecond = 0;
-    let currentFuzzy: FuzzyDateTime | null = null;
-
-    // Initialize from existing value
-    if (config.value) {
-        const parsed = parseFuzzyDateTime(config.value);
-        resolution = parsed.resolution;
-        approximation = parsed.approximation;
-        selectedYear = parsed.date.getUTCFullYear();
-        selectedMonth = parsed.date.getUTCMonth();
-        selectedDay = parsed.date.getUTCDate();
-        selectedHour = parsed.date.getUTCHours();
-        selectedMinute = parsed.date.getUTCMinutes();
-        selectedSecond = parsed.date.getUTCSeconds();
-        currentFuzzy = config.value;
-    }
+    let sel: FuzzySelection = createFuzzySelection({
+        resolutions: config.resolutions,
+        approximations: config.approximations,
+        value: config.value,
+    });
+    let currentFuzzy: FuzzyDateTime | null = config.value ?? null;
 
     let isOpen = false;
     let removeClickOutside: (() => void) | null = null;
@@ -124,24 +104,40 @@ export function createFuzzyDateTimeCompact(
     if (config.inline) isOpen = true;
     root.appendChild(popover);
 
-    // --- Helpers ---
+    // --- Actions ---
 
-    /** Build a Date from the current selection state */
-    function buildDate(): Date {
-        return new Date(
-            Date.UTC(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute, selectedSecond),
-        );
+    function emitChange() {
+        if (config.onChange) {
+            config.onChange(currentFuzzy);
+        }
     }
 
-    /** Build the current FuzzyDateTime from state */
-    function buildFuzzy(): FuzzyDateTime {
-        return createFuzzyDateTime(buildDate(), resolution, approximation);
+    /** Every change auto-applies — each partial state is a valid fuzzy date */
+    function commit() {
+        currentFuzzy = sel.build();
+        updateTriggerText();
+        emitChange();
+        render();
     }
 
-    /** Create a themed <select>, wrapped with a chevron icon (mirrors ui-shadcn's NativeSelect) */
+    // --- Rendering helpers ---
+
+    function updateTriggerText() {
+        if (currentFuzzy) {
+            triggerText.textContent = currentFuzzy.label;
+            triggerText.classList.remove('ottadate-trigger-placeholder');
+            triggerClear.style.display = '';
+        } else {
+            triggerText.textContent = config.placeholder!;
+            triggerText.classList.add('ottadate-trigger-placeholder');
+            triggerClear.style.display = 'none';
+        }
+    }
+
+    /** Themed <select> with a custom chevron (mirrors ui-shadcn's NativeSelect) */
     function createSelect(
         className: string,
-        optionItems: { value: string; label: string }[],
+        optionItems: { value: string; label: string; disabled?: boolean }[],
         currentValue: string,
         onChange: (value: string) => void,
     ): HTMLElement {
@@ -157,6 +153,7 @@ export function createFuzzyDateTimeCompact(
             const option = el('option', { value: opt.value }) as HTMLOptionElement;
             option.textContent = opt.label;
             if (opt.value === currentValue) option.selected = true;
+            if (opt.disabled) option.disabled = true;
             select.appendChild(option);
         }
 
@@ -169,170 +166,130 @@ export function createFuzzyDateTimeCompact(
         return wrapper;
     }
 
-    // --- Rendering ---
-
-    function updateTriggerText() {
-        if (currentFuzzy) {
-            triggerText.textContent = currentFuzzy.label;
-            triggerText.classList.remove('ottadate-trigger-placeholder');
-            triggerClear.style.display = '';
-        } else {
-            triggerText.textContent = config.placeholder!;
-            triggerText.classList.add('ottadate-trigger-placeholder');
-            triggerClear.style.display = 'none';
-        }
-    }
-
-    /** Row 1: Two side-by-side selects — approximation + resolution */
-    function renderModeSelects(): HTMLElement {
+    /** The sentence row: [approximation] [month?] [day?] [year] */
+    function renderSentenceRow(): HTMLElement {
         const row = div('ottadate-compact-row');
 
-        // Approximation select (Exact / Around / Sometime in)
-        const approxItems = (config.approximations ?? ['exact', 'around', 'sometime']).map((a) => ({
+        // Approximation — 'sometime' greys out once a time is set
+        const approxItems = sel.allowedApprox.map((a) => ({
             value: a,
             label: APPROXIMATION_LABELS[a],
+            disabled: a === 'sometime' && sel.sometimeDisabled(),
         }));
-        const approxSelect = createSelect('ottadate-compact-approx', approxItems, approximation, (val) => {
-            approximation = val as DateApproximation;
-            autoApplyAndRender();
-        });
-        row.appendChild(approxSelect);
-
-        // Resolution select (Year / Month / Day / Hour / Minute / Second)
-        const resItems = (config.resolutions ?? [...RESOLUTION_ORDER]).map((r) => ({
-            value: r,
-            label: RESOLUTION_LABELS[r],
-        }));
-        const resSelect = createSelect('ottadate-compact-res', resItems, resolution, (val) => {
-            resolution = val as DateResolution;
-            autoApplyAndRender();
-        });
-        row.appendChild(resSelect);
-
-        return row;
-    }
-
-    /** Row 2: Description text under the combo */
-    function renderDescription(): HTMLElement {
-        const fuzzy = buildFuzzy();
-        return span('ottadate-compact-desc', fuzzy.label);
-    }
-
-    /** Row 3: Date selectors row (year / month / day — based on resolution) */
-    function renderDateRow(): HTMLElement {
-        const row = div('ottadate-compact-row');
-
-        // Year select — always shown
-        const years = getYearRange(selectedYear, 5);
-        const yearSelect = createSelect(
-            'ottadate-compact-year',
-            years.map((y) => ({ value: String(y), label: String(y) })),
-            String(selectedYear),
-            (val) => {
-                selectedYear = parseInt(val, 10);
-                autoApplyAndRender();
-            },
+        row.appendChild(
+            createSelect('ottadate-compact-approx', approxItems, sel.state.approximation, (val) => {
+                sel.setApproximation(val as DateApproximation);
+                if (sel.state.hasSelection) commit();
+                else render();
+            }),
         );
-        row.appendChild(yearSelect);
 
-        // Month select — if resolution >= month
-        if (isResolutionFinerOrEqual(resolution, 'month')) {
-            const localeStr = getIntlLocale(config.locale);
-            const months = getMonthNames(localeStr);
-            const monthSelect = createSelect(
-                'ottadate-compact-month',
-                months.map((name, idx) => ({ value: String(idx), label: name })),
-                String(selectedMonth),
-                (val) => {
-                    selectedMonth = parseInt(val, 10);
-                    autoApplyAndRender();
-                },
+        // Month — "Any month" keeps the selection at year resolution
+        if (sel.levelAllowed('month')) {
+            const monthRequired = sel.base !== 'year';
+            const months = getMonthNames(getIntlLocale(config.locale));
+            const monthItems = [
+                ...(monthRequired ? [] : [{ value: '', label: 'Any month' }]),
+                ...months.map((name, idx) => ({ value: String(idx), label: name })),
+            ];
+            row.appendChild(
+                createSelect(
+                    'ottadate-compact-month',
+                    monthItems,
+                    sel.state.monthSet ? String(sel.state.month) : '',
+                    (val) => {
+                        if (val === '') sel.clearMonth();
+                        else sel.setMonth(parseInt(val, 10));
+                        commit();
+                    },
+                ),
             );
-            row.appendChild(monthSelect);
         }
 
-        // Day select — if resolution >= day
-        if (isResolutionFinerOrEqual(resolution, 'day')) {
-            const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-            // Clamp selected day
-            if (selectedDay > daysInMonth) selectedDay = daysInMonth;
-            const dayItems: { value: string; label: string }[] = [];
-            for (let d = 1; d <= daysInMonth; d++) {
+        // Day — appears only once a month is chosen
+        if (sel.levelAllowed('day') && sel.state.monthSet) {
+            const dayRequired = sel.base !== 'year' && sel.base !== 'month';
+            const dayItems = [...(dayRequired ? [] : [{ value: '', label: 'Any day' }])];
+            for (let d = 1; d <= sel.daysInMonth(); d++) {
                 dayItems.push({ value: String(d), label: String(d) });
             }
-            const daySelect = createSelect('ottadate-compact-day', dayItems, String(selectedDay), (val) => {
-                selectedDay = parseInt(val, 10);
-                autoApplyAndRender();
-            });
-            row.appendChild(daySelect);
+            row.appendChild(
+                createSelect('ottadate-compact-day', dayItems, sel.state.daySet ? String(sel.state.day) : '', (val) => {
+                    if (val === '') sel.clearDay();
+                    else sel.setDay(parseInt(val, 10));
+                    commit();
+                }),
+            );
+        }
+
+        // Year — most recent first; fuzzy recall is almost always about the past
+        const now = new Date().getFullYear();
+        const yearItems: { value: string; label: string }[] = [];
+        const maxYear = Math.max(now + YEARS_AHEAD, sel.state.year);
+        const minYear = Math.min(now - YEARS_BACK, sel.state.year);
+        for (let y = maxYear; y >= minYear; y--) {
+            yearItems.push({ value: String(y), label: String(y) });
+        }
+        row.appendChild(
+            createSelect('ottadate-compact-year', yearItems, String(sel.state.year), (val) => {
+                sel.setYear(parseInt(val, 10));
+                commit();
+            }),
+        );
+
+        return row;
+    }
+
+    /** Cascading time inputs — blank = "don't remember"; appears once a day is set */
+    function timeInput(
+        value: number | null,
+        enabled: boolean,
+        ariaLabel: string,
+        onCommit: (value: number | null) => void,
+    ): HTMLInputElement {
+        const input = el('input', {
+            className: 'ottadate-time-input',
+            type: 'number',
+            placeholder: '––',
+            'aria-label': ariaLabel,
+        }) as HTMLInputElement;
+        input.value = value != null ? pad2(value) : '';
+        input.disabled = config.disabled || !enabled;
+        input.addEventListener('change', () => {
+            const raw = input.value.trim();
+            if (raw === '') {
+                onCommit(null);
+            } else {
+                const parsed = parseInt(raw, 10);
+                onCommit(isNaN(parsed) ? null : parsed);
+            }
+            commit();
+        });
+        return input;
+    }
+
+    function renderTimeRow(): HTMLElement | null {
+        if (!sel.levelAllowed('hour') || !sel.state.daySet) return null;
+
+        const row = div('ottadate-compact-row');
+        row.appendChild(timeInput(sel.state.hour, true, 'Hour', (v) => sel.setHour(v)));
+
+        if (sel.levelAllowed('minute')) {
+            row.appendChild(span('ottadate-time-separator', ':'));
+            row.appendChild(timeInput(sel.state.minute, sel.state.hour != null, 'Minute', (v) => sel.setMinute(v)));
+        }
+        if (sel.levelAllowed('second')) {
+            row.appendChild(span('ottadate-time-separator', ':'));
+            row.appendChild(timeInput(sel.state.second, sel.state.minute != null, 'Second', (v) => sel.setSecond(v)));
         }
 
         return row;
     }
 
-    /** Row 4: Time inputs — if resolution >= hour */
-    function renderTimeRow(): HTMLElement | null {
-        if (!isResolutionFinerOrEqual(resolution, 'hour')) return null;
-
-        const row = div('ottadate-compact-row');
-
-        // Hour
-        const hourInput = el('input', {
-            className: 'ottadate-time-input',
-            type: 'number',
-        }) as HTMLInputElement;
-        hourInput.min = '0';
-        hourInput.max = '23';
-        hourInput.value = pad2(selectedHour);
-        if (config.disabled) hourInput.disabled = true;
-        hourInput.addEventListener('change', () => {
-            selectedHour = Math.max(0, Math.min(23, parseInt(hourInput.value, 10) || 0));
-            hourInput.value = pad2(selectedHour);
-            autoApplyAndRender();
-        });
-        row.appendChild(hourInput);
-
-        // Minute
-        if (isResolutionFinerOrEqual(resolution, 'minute')) {
-            row.appendChild(span('ottadate-time-separator', ':'));
-
-            const minInput = el('input', {
-                className: 'ottadate-time-input',
-                type: 'number',
-            }) as HTMLInputElement;
-            minInput.min = '0';
-            minInput.max = '59';
-            minInput.value = pad2(selectedMinute);
-            if (config.disabled) minInput.disabled = true;
-            minInput.addEventListener('change', () => {
-                selectedMinute = Math.max(0, Math.min(59, parseInt(minInput.value, 10) || 0));
-                minInput.value = pad2(selectedMinute);
-                autoApplyAndRender();
-            });
-            row.appendChild(minInput);
-        }
-
-        // Second
-        if (isResolutionFinerOrEqual(resolution, 'second')) {
-            row.appendChild(span('ottadate-time-separator', ':'));
-
-            const secInput = el('input', {
-                className: 'ottadate-time-input',
-                type: 'number',
-            }) as HTMLInputElement;
-            secInput.min = '0';
-            secInput.max = '59';
-            secInput.value = pad2(selectedSecond);
-            if (config.disabled) secInput.disabled = true;
-            secInput.addEventListener('change', () => {
-                selectedSecond = Math.max(0, Math.min(59, parseInt(secInput.value, 10) || 0));
-                secInput.value = pad2(selectedSecond);
-                autoApplyAndRender();
-            });
-            row.appendChild(secInput);
-        }
-
-        return row;
+    /** Live preview of the stored label */
+    function renderPreview(): HTMLElement {
+        const preview = sel.build();
+        return span('ottadate-compact-desc', preview ? preview.label : 'Pick what you remember…');
     }
 
     function renderFooter(): HTMLElement {
@@ -340,22 +297,14 @@ export function createFuzzyDateTimeCompact(
 
         const nowBtn = btn('ottadate-footer-btn ottadate-footer-btn--primary', 'Now', () => {
             if (config.disabled) return;
-            const now = new Date();
-            selectedYear = now.getFullYear();
-            selectedMonth = now.getMonth();
-            selectedDay = now.getDate();
-            selectedHour = now.getHours();
-            selectedMinute = now.getMinutes();
-            selectedSecond = now.getSeconds();
-            autoApplyAndRender();
+            sel.setNow();
+            commit();
         });
 
         const clearBtn = btn('ottadate-footer-btn', 'Clear', () => {
             if (config.disabled) return;
-            currentFuzzy = null;
-            updateTriggerText();
-            emitChange();
-            render();
+            sel.clear();
+            commit();
         });
 
         footer.append(nowBtn, clearBtn);
@@ -366,38 +315,15 @@ export function createFuzzyDateTimeCompact(
         clearChildren(popover);
 
         const wrapper = div('ottadate-compact-wrapper');
+        wrapper.appendChild(renderSentenceRow());
 
-        // 1. Approximation + Resolution selects (two dropdowns side-by-side)
-        wrapper.appendChild(renderModeSelects());
-
-        // 2. Description text
-        wrapper.appendChild(renderDescription());
-
-        // 3. Date selectors row
-        wrapper.appendChild(renderDateRow());
-
-        // 4. Time row (if resolution >= hour)
         const timeRow = renderTimeRow();
         if (timeRow) wrapper.appendChild(timeRow);
 
+        wrapper.appendChild(renderPreview());
+
         popover.appendChild(wrapper);
         popover.appendChild(renderFooter());
-    }
-
-    /** Auto-apply on every change (compact mode = immediate feedback) */
-    function autoApplyAndRender() {
-        currentFuzzy = buildFuzzy();
-        updateTriggerText();
-        emitChange();
-        render();
-    }
-
-    // --- Actions ---
-
-    function emitChange() {
-        if (config.onChange) {
-            config.onChange(currentFuzzy);
-        }
     }
 
     function openPicker() {
@@ -432,6 +358,7 @@ export function createFuzzyDateTimeCompact(
 
     triggerClear.addEventListener('click', (e) => {
         e.stopPropagation();
+        sel.clear();
         currentFuzzy = null;
         updateTriggerText();
         emitChange();
@@ -443,6 +370,20 @@ export function createFuzzyDateTimeCompact(
     updateTriggerText();
     if (config.inline) render();
 
+    // --- Value plumbing ---
+
+    function applyValue(value: FuzzyDateTime | null) {
+        if (value) {
+            sel.load(value);
+            currentFuzzy = value;
+        } else {
+            sel.clear();
+            currentFuzzy = null;
+        }
+        updateTriggerText();
+        if (isOpen) render();
+    }
+
     // --- Public API ---
 
     return {
@@ -452,47 +393,26 @@ export function createFuzzyDateTimeCompact(
             if (isOpen) closePicker();
             else openPicker();
         },
-        setValue(value: FuzzyDateTime | null) {
-            if (value) {
-                const parsed = parseFuzzyDateTime(value);
-                resolution = parsed.resolution;
-                approximation = parsed.approximation;
-                selectedYear = parsed.date.getUTCFullYear();
-                selectedMonth = parsed.date.getUTCMonth();
-                selectedDay = parsed.date.getUTCDate();
-                selectedHour = parsed.date.getUTCHours();
-                selectedMinute = parsed.date.getUTCMinutes();
-                selectedSecond = parsed.date.getUTCSeconds();
-                currentFuzzy = value;
-            } else {
-                currentFuzzy = null;
-            }
-            updateTriggerText();
-            if (isOpen) render();
-        },
+        setValue: applyValue,
         getValue() {
             return currentFuzzy;
         },
         setOptions(newOptions) {
             config = resolveConfig({ ...config, ...newOptions });
-            if (newOptions.value !== undefined) {
-                if (newOptions.value) {
-                    const parsed = parseFuzzyDateTime(newOptions.value);
-                    resolution = parsed.resolution;
-                    approximation = parsed.approximation;
-                    selectedYear = parsed.date.getUTCFullYear();
-                    selectedMonth = parsed.date.getUTCMonth();
-                    selectedDay = parsed.date.getUTCDate();
-                    selectedHour = parsed.date.getUTCHours();
-                    selectedMinute = parsed.date.getUTCMinutes();
-                    selectedSecond = parsed.date.getUTCSeconds();
-                    currentFuzzy = newOptions.value;
-                } else {
-                    currentFuzzy = null;
-                }
+            // Constraint changes need a fresh selection controller
+            if (newOptions.resolutions !== undefined || newOptions.approximations !== undefined) {
+                sel = createFuzzySelection({
+                    resolutions: config.resolutions,
+                    approximations: config.approximations,
+                    value: currentFuzzy,
+                });
             }
-            updateTriggerText();
-            if (isOpen) render();
+            if (newOptions.value !== undefined) {
+                applyValue(newOptions.value);
+            } else {
+                updateTriggerText();
+                if (isOpen) render();
+            }
         },
         destroy() {
             closePicker();

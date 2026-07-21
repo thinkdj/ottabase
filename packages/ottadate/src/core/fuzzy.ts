@@ -32,24 +32,40 @@ export function isResolutionFinerOrEqual(a: DateResolution, b: DateResolution): 
     return resolutionIndex(a) >= resolutionIndex(b);
 }
 
+/**
+ * Coarsest ("base") and finest resolution of an allowed-resolutions list.
+ * The base is the minimum precision a selection must reach; the finest is how
+ * deep the picker lets the user drill. Falls back to the full year→second range.
+ */
+export function resolutionBounds(allowed?: DateResolution[]): { base: DateResolution; finest: DateResolution } {
+    const list = allowed && allowed.length ? allowed : RESOLUTION_ORDER;
+    let base = list[0];
+    let finest = list[0];
+    for (const res of list) {
+        if (resolutionIndex(res) < resolutionIndex(base)) base = res;
+        if (resolutionIndex(res) > resolutionIndex(finest)) finest = res;
+    }
+    return { base, finest };
+}
+
 // ---------------------------------------------------------------------------
 // Human-readable labels
 // ---------------------------------------------------------------------------
 
-const APPROX_LABELS: Record<DateApproximation, string> = {
-    exact: '',
-    around: 'Around',
-    sometime: 'Sometime in',
-};
-
 /**
  * Build a human-readable label for a FuzzyDateTime.
+ *
+ * The preposition adapts to the resolution so the sentence stays natural:
+ * "Sometime in May 2020" (in a period), "Sometime on May 20, 2025" (on a day),
+ * "Around 11:30 on May 20, 2025" (time of day — 'sometime' collapses to 'around'
+ * here, since "sometime at 11:30" is a contradiction).
  *
  * Examples:
  *   { resolution: 'year',   approximation: 'sometime', ... } → "Sometime in 2018"
  *   { resolution: 'month',  approximation: 'sometime', ... } → "Sometime in May 2020"
+ *   { resolution: 'day',    approximation: 'sometime', ... } → "Sometime on May 20, 2025"
  *   { resolution: 'day',    approximation: 'around',   ... } → "Around May 20, 2025"
- *   { resolution: 'hour',   approximation: 'around',   ... } → "Around 11:00, May 20, 2025"
+ *   { resolution: 'hour',   approximation: 'around',   ... } → "Around 11:00 on May 20, 2025"
  *   { resolution: 'minute', approximation: 'exact',    ... } → "May 20, 2025 at 11:30"
  *   { resolution: 'second', approximation: 'exact',    ... } → "May 20, 2025 at 11:30:45"
  */
@@ -61,38 +77,35 @@ export function buildFuzzyLabel(date: Date, resolution: DateResolution, approxim
     const minutes = pad2(date.getUTCMinutes());
     const seconds = pad2(date.getUTCSeconds());
 
-    const prefix = APPROX_LABELS[approximation];
+    const approx = approximation !== 'exact';
 
     switch (resolution) {
         case 'year':
-            return prefix ? `${prefix} ${year}` : `${year}`;
+            if (approximation === 'sometime') return `Sometime in ${year}`;
+            return approx ? `Around ${year}` : `${year}`;
 
         case 'month':
-            return prefix ? `${prefix} ${monthName} ${year}` : `${monthName} ${year}`;
+            if (approximation === 'sometime') return `Sometime in ${monthName} ${year}`;
+            return approx ? `Around ${monthName} ${year}` : `${monthName} ${year}`;
 
         case 'day':
-            if (prefix && approximation !== 'exact') {
-                return `${prefix} ${monthName} ${day}, ${year}`;
-            }
-            return `${monthName} ${day}, ${year}`;
+            if (approximation === 'sometime') return `Sometime on ${monthName} ${day}, ${year}`;
+            return approx ? `Around ${monthName} ${day}, ${year}` : `${monthName} ${day}, ${year}`;
 
         case 'hour':
-            if (prefix && approximation !== 'exact') {
-                return `${prefix} ${hours}:00, ${monthName} ${day}, ${year}`;
-            }
-            return `${monthName} ${day}, ${year} at ${hours}:00`;
+            return approx
+                ? `Around ${hours}:00 on ${monthName} ${day}, ${year}`
+                : `${monthName} ${day}, ${year} at ${hours}:00`;
 
         case 'minute':
-            if (prefix && approximation !== 'exact') {
-                return `${prefix} ${hours}:${minutes}, ${monthName} ${day}, ${year}`;
-            }
-            return `${monthName} ${day}, ${year} at ${hours}:${minutes}`;
+            return approx
+                ? `Around ${hours}:${minutes} on ${monthName} ${day}, ${year}`
+                : `${monthName} ${day}, ${year} at ${hours}:${minutes}`;
 
         case 'second':
-            if (prefix && approximation !== 'exact') {
-                return `${prefix} ${hours}:${minutes}:${seconds}, ${monthName} ${day}, ${year}`;
-            }
-            return `${monthName} ${day}, ${year} at ${hours}:${minutes}:${seconds}`;
+            return approx
+                ? `Around ${hours}:${minutes}:${seconds} on ${monthName} ${day}, ${year}`
+                : `${monthName} ${day}, ${year} at ${hours}:${minutes}:${seconds}`;
 
         default:
             return `${monthName} ${day}, ${year}`;
@@ -194,25 +207,8 @@ export const RESOLUTION_LABELS: Record<DateResolution, string> = {
 export const APPROXIMATION_LABELS: Record<DateApproximation, string> = {
     exact: 'Exactly',
     around: 'Around',
-    sometime: 'Sometime in',
+    sometime: 'Sometime',
 };
 
-/** Get user-friendly description of resolution + approximation combo */
-export function getResolutionDescription(resolution: DateResolution): string {
-    switch (resolution) {
-        case 'year':
-            return 'I remember the year';
-        case 'month':
-            return 'I remember the month and year';
-        case 'day':
-            return 'I remember the exact date';
-        case 'hour':
-            return 'I remember the approximate hour';
-        case 'minute':
-            return 'I remember the time';
-        case 'second':
-            return 'I know the exact second';
-        default:
-            return '';
-    }
-}
+/** Canonical coarse→precise display order for approximation controls */
+export const APPROXIMATION_ORDER: DateApproximation[] = ['sometime', 'around', 'exact'];

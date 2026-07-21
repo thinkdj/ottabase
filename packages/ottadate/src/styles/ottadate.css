@@ -456,6 +456,15 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
+.ottadate-time-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ottadate-time-input::placeholder {
+    color: var(--od-muted-fg);
+}
+
 .ottadate-time-separator {
     font-weight: 600;
     color: var(--od-muted-fg);
@@ -636,7 +645,9 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Fuzzy Date Picker
+ * Fuzzy Date Picker — progressive "fill in what you remember" drill-down.
+ * The live sentence headline sits on top; year → month → day → time sections
+ * appear one level at a time as the previous level is filled.
  * --------------------------------------------------------------------------- */
 
 .ottadate-fuzzy {
@@ -651,8 +662,69 @@
     gap: 0.375rem;
 }
 
+/* Live sentence headline — the result, promoted to the top as a quiet well. */
+.ottadate-fuzzy-headline {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--od-tint);
+    border-radius: var(--od-radius-inner);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.ottadate-fuzzy-headline--empty {
+    color: var(--od-muted-fg);
+    font-weight: 400;
+}
+
+/* Approximation segment (Sometime / Around / Exactly) — muted-tint track; the
+   active button lifts onto --od-bg with a hairline ring (canonical segment pattern). */
+.ottadate-fuzzy-approx {
+    display: flex;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    background: var(--od-tint);
+    border-radius: var(--od-radius-pill);
+}
+
+.ottadate-fuzzy-approx-btn {
+    flex: 1;
+    padding: 0.3125rem 0.5rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: var(--od-radius-pill);
+    font-size: var(--od-font-size-sm);
+    font-family: var(--od-font);
+    color: var(--od-muted-fg);
+    line-height: 1.4;
+    transition:
+        background var(--od-transition),
+        color var(--od-transition),
+        box-shadow var(--od-transition);
+}
+
+.ottadate-fuzzy-approx-btn:hover:not(.ottadate-fuzzy-approx-btn--active):not(.ottadate-fuzzy-approx-btn--disabled) {
+    color: var(--od-fg);
+}
+
+.ottadate-fuzzy-approx-btn--active {
+    background: var(--od-bg);
+    color: var(--od-fg);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px var(--od-border);
+}
+
+.ottadate-fuzzy-approx-btn--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
 /* Year is a single field here (not a range to browse), so it's a compact stepper
-   rather than the multi-row grid DatePicker's year-browse view uses. */
+   with a directly editable value — type "1994" instead of clicking 30 times. */
 .ottadate-fuzzy-year-stepper {
     display: flex;
     align-items: center;
@@ -660,12 +732,38 @@
     gap: 0.5rem;
 }
 
-.ottadate-fuzzy-year-value {
+.ottadate-fuzzy-year-input {
     flex: 1;
+    min-width: 0;
     text-align: center;
+    padding: 0.25rem;
+    border: none;
+    background: transparent;
+    outline: none;
+    border-radius: var(--od-radius-inner);
+    font-family: var(--od-font);
     font-size: var(--od-font-size);
     font-weight: 600;
     color: var(--od-fg);
+    transition:
+        background var(--od-transition),
+        box-shadow var(--od-transition);
+    -moz-appearance: textfield;
+}
+
+.ottadate-fuzzy-year-input::-webkit-inner-spin-button,
+.ottadate-fuzzy-year-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.ottadate-fuzzy-year-input:hover {
+    background: var(--od-tint);
+}
+
+.ottadate-fuzzy-year-input:focus {
+    background: var(--od-tint);
+    box-shadow: inset 0 0 0 1px var(--od-border);
 }
 
 /* Tighter month grid scoped to the fuzzy picker only — DatePicker's own month/year
@@ -680,6 +778,14 @@
     font-size: var(--od-font-size-sm);
 }
 
+/* Section label row: micro-label left, teaching hint right. */
+.ottadate-fuzzy-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
 .ottadate-fuzzy-label {
     /* Micro-label recipe: xs / medium / uppercase / tracking-wide / muted. */
     font-size: var(--od-font-size-xs);
@@ -689,50 +795,18 @@
     text-transform: uppercase;
 }
 
-.ottadate-fuzzy-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
-}
-
-/* Fuzzy chips — background pill with a hairline ring at rest; active = filled primary. */
-.ottadate-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.625rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius-pill);
-    font-size: var(--od-font-size-sm);
-    cursor: pointer;
-    background: var(--od-bg);
+/* Hint ("if you remember" / "tap again to clear") — quiet, lowercase. */
+.ottadate-fuzzy-hint {
+    font-size: var(--od-font-size-xs);
     color: var(--od-muted-fg);
-    transition:
-        background var(--od-transition),
-        color var(--od-transition),
-        border-color var(--od-transition);
-    user-select: none;
+    opacity: 0.8;
 }
 
-.ottadate-chip:hover {
-    background: var(--od-tint-hover);
-    color: var(--od-fg);
-}
-
-.ottadate-chip--active {
-    background: var(--od-primary) !important;
-    color: var(--od-primary-fg) !important;
-    border-color: var(--od-primary) !important;
-}
-
-/* Preview readout — a quiet muted-tint well. */
-.ottadate-fuzzy-preview {
-    padding: 0.625rem 0.75rem;
-    background: var(--od-tint);
-    border-radius: var(--od-radius-inner);
-    font-size: var(--od-font-size);
-    color: var(--od-fg);
-    font-style: italic;
-    text-align: center;
+/* Cascading time inputs (blank = "don't remember"). */
+.ottadate-fuzzy-time {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
 }
 
 .ottadate-fuzzy-divider {
@@ -753,6 +827,13 @@
     margin-top: 0.5rem;
     border-top: 1px solid var(--od-border);
     gap: 0.5rem;
+}
+
+/* Groups related footer actions (e.g. Today + Clear) on one side of the footer. */
+.ottadate-footer-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .ottadate-footer-btn {
@@ -899,9 +980,10 @@
     margin: 0.125rem 0;
 }
 
-.ottadate--inline .ottadate-fuzzy-preview {
+.ottadate--inline .ottadate-fuzzy-headline {
+    min-height: 2.125rem;
     padding: 0.375rem 0.625rem;
-    font-size: var(--od-font-size-sm);
+    font-size: var(--od-font-size);
 }
 
 /* ---------------------------------------------------------------------------
@@ -922,18 +1004,13 @@
     align-items: center;
 }
 
-/* Approximation select (Exact / Around / Sometime in) */
+/* Approximation select (Sometime / Around / Exactly) — first word of the sentence */
 .ottadate-compact-approx {
     flex: 1;
-    min-width: 6rem;
+    min-width: 6.25rem;
 }
 
-/* Resolution select (Year / Month / Day / Hour / Minute / Second) */
-.ottadate-compact-res {
-    flex: 1;
-    min-width: 5rem;
-}
-
+/* Live preview of the stored label */
 .ottadate-compact-desc {
     font-size: var(--od-font-size-sm);
     color: var(--od-muted-fg);
@@ -992,16 +1069,16 @@
 }
 
 .ottadate-compact-year {
-    width: 5.5rem;
+    width: 5rem;
 }
 
 .ottadate-compact-month {
     flex: 1;
-    min-width: 6rem;
+    min-width: 6.5rem;
 }
 
 .ottadate-compact-day {
-    width: 4rem;
+    width: 4.75rem;
 }
 
 /* ---------------------------------------------------------------------------

@@ -49,15 +49,20 @@ export { detectTimezone, formatDate, fromDate, resolveTimezone, toDate } from '.
 // FuzzyDateTime utilities
 export {
     APPROXIMATION_LABELS,
+    APPROXIMATION_ORDER,
     buildFuzzyLabel,
     createFuzzyDateTime,
-    getResolutionDescription,
     parseFuzzyDateTime,
     refreshFuzzyLabel,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
+    resolutionBounds,
     snapToResolution,
 } from './core/fuzzy';
+
+// Headless fuzzy selection-state controller (build custom fuzzy UIs on top)
+export { createFuzzySelection } from './core/fuzzy-selection';
+export type { FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
 
 // Range presets
 export { getDefaultRangePresets } from './core/range-presets';

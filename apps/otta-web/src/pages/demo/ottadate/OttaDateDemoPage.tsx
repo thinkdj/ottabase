@@ -227,8 +227,9 @@ function FuzzyDateTimeDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime Picker</CardTitle>
                 <CardDescription>
-                    For dates you don't remember exactly. Choose resolution (year, month, day, hour…) and approximation
-                    (exact, around, sometime).
+                    For dates you only partially remember. Fill in what you know — year, then optionally month, day, and
+                    time — and the precision is derived from how deep you go. Re-tap a level to clear it. Every change
+                    applies immediately.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -269,7 +270,8 @@ function FuzzyDateTimeInlineDemo() {
                     Fuzzy DateTime (Inline, Limited Options)
                 </CardTitle>
                 <CardDescription>
-                    Inline mode with restricted resolutions (year/month/day) and approximations (sometime/around).
+                    Inline mode with the drill-down capped at day resolution and approximations limited to
+                    sometime/around — the time step never appears.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -301,7 +303,8 @@ function FuzzyCompactDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Compact)</CardTitle>
                 <CardDescription>
-                    Native &lt;select&gt; based layout — space-efficient for forms and sidebars. Auto-applies on change.
+                    Sentence-style native selects that read like the stored label — "Sometime · May · 2020". Pick "Any
+                    month" / "Any day" to stay coarse. Space-efficient for forms and sidebars; auto-applies on change.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -340,7 +343,7 @@ function FuzzyCompactInlineDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy Compact (Inline)</CardTitle>
                 <CardDescription>
-                    Inline compact mode with limited resolutions. Minimal footprint for embedded forms.
+                    Inline compact mode capped at day resolution. Minimal footprint for embedded forms.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

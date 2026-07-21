@@ -7,12 +7,12 @@ import {
     APPROXIMATION_LABELS,
     buildFuzzyLabel,
     createFuzzyDateTime,
-    getResolutionDescription,
     isResolutionFinerOrEqual,
     parseFuzzyDateTime,
     refreshFuzzyLabel,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
+    resolutionBounds,
     resolutionIndex,
     snapToResolution,
 } from '../core/fuzzy';
@@ -124,9 +124,19 @@ describe('buildFuzzyLabel', () => {
         expect(buildFuzzyLabel(d, 'day', 'around')).toBe('Around May 20, 2025');
     });
 
-    it('builds hour label with around', () => {
+    it('builds day label with sometime using "on"', () => {
+        const d = new Date(Date.UTC(2025, 4, 20));
+        expect(buildFuzzyLabel(d, 'day', 'sometime')).toBe('Sometime on May 20, 2025');
+    });
+
+    it('builds hour label with around using "on"', () => {
         const d = new Date(Date.UTC(2025, 4, 20, 11, 0, 0));
-        expect(buildFuzzyLabel(d, 'hour', 'around')).toBe('Around 11:00, May 20, 2025');
+        expect(buildFuzzyLabel(d, 'hour', 'around')).toBe('Around 11:00 on May 20, 2025');
+    });
+
+    it("collapses 'sometime' to 'Around' at time-of-day resolutions", () => {
+        const d = new Date(Date.UTC(2025, 4, 20, 11, 30, 0));
+        expect(buildFuzzyLabel(d, 'minute', 'sometime')).toBe('Around 11:30 on May 20, 2025');
     });
 
     it('builds minute label with exact', () => {
@@ -142,6 +152,18 @@ describe('buildFuzzyLabel', () => {
     it('builds year label with exact (no prefix)', () => {
         const d = new Date(Date.UTC(2018, 0, 1));
         expect(buildFuzzyLabel(d, 'year', 'exact')).toBe('2018');
+    });
+});
+
+describe('resolutionBounds', () => {
+    it('returns coarsest as base and finest regardless of list order', () => {
+        expect(resolutionBounds(['day', 'year', 'month'])).toEqual({ base: 'year', finest: 'day' });
+        expect(resolutionBounds(['minute', 'hour'])).toEqual({ base: 'hour', finest: 'minute' });
+    });
+
+    it('falls back to the full range for empty/undefined input', () => {
+        expect(resolutionBounds()).toEqual({ base: 'year', finest: 'second' });
+        expect(resolutionBounds([])).toEqual({ base: 'year', finest: 'second' });
     });
 });
 
@@ -206,16 +228,6 @@ describe('APPROXIMATION_LABELS', () => {
         const approxes: DateApproximation[] = ['exact', 'around', 'sometime'];
         for (const a of approxes) {
             expect(APPROXIMATION_LABELS[a]).toBeDefined();
-        }
-    });
-});
-
-describe('getResolutionDescription', () => {
-    it('returns a description string for each resolution', () => {
-        for (const res of RESOLUTION_ORDER) {
-            const desc = getResolutionDescription(res);
-            expect(typeof desc).toBe('string');
-            expect(desc.length).toBeGreaterThan(0);
         }
     });
 });

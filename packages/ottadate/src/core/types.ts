@@ -139,11 +139,15 @@ export interface DateTimePickerOptions extends OttaDateConfig {
 export interface FuzzyDateTimePickerOptions extends OttaDateConfig {
     /** Current fuzzy date value */
     value?: FuzzyDateTime | null;
-    /** Called when the user selects/changes a fuzzy date */
+    /** Called when the user selects/changes a fuzzy date (fires on every change — pickers auto-apply) */
     onChange?: (value: FuzzyDateTime | null) => void;
-    /** Allowed resolutions. Default: all */
+    /**
+     * Bounds for the drill-down. The coarsest entry is the required baseline
+     * (always filled), the finest entry caps how deep the picker goes.
+     * Default: all (year baseline, drill down to second).
+     */
     resolutions?: DateResolution[];
-    /** Allowed approximations. Default: all */
+    /** Allowed approximations. Default: all (sometime, around, exact) */
     approximations?: DateApproximation[];
 }
 
