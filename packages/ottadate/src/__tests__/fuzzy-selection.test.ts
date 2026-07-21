@@ -1,9 +1,9 @@
 /**
- * @ottabase/ottadate — Tests for the headless fuzzy-selection controller
+ * @ottabase/ottadate — Tests for the headless fuzzy-selection controller (v2)
  *
  * Locks in the derived-resolution model: the resolution is the deepest level
- * the user filled in, levels clear in cascade, and 'sometime' auto-swaps with
- * 'around' as the selection crosses into/out of time-of-day precision.
+ * the user filled in, levels clear in cascade, parts are terminal refinements
+ * bound to one level, and `approximate` widens the stored interval.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -39,19 +39,16 @@ describe('createFuzzySelection — derived resolution', () => {
         expect(sel.resolution()).toBe('second');
     });
 
-    it('builds a snapped FuzzyDateTime with a natural label', () => {
+    it('builds a FuzzyDateTime with label and interval', () => {
         const sel = createFuzzySelection();
         sel.setYear(2020);
         sel.setMonth(4);
 
         const fuzzy = sel.build()!;
         expect(fuzzy.resolution).toBe('month');
-        expect(fuzzy.approximation).toBe('sometime');
         expect(fuzzy.label).toBe('Sometime in May 2020');
-        const date = new Date(fuzzy.timestamp * 1000);
-        expect(date.getUTCFullYear()).toBe(2020);
-        expect(date.getUTCMonth()).toBe(4);
-        expect(date.getUTCDate()).toBe(1);
+        expect(fuzzy.timestamp).toBe(Math.floor(Date.UTC(2020, 4, 1) / 1000));
+        expect(fuzzy.latest).toBe(Math.floor(Date.UTC(2020, 5, 1) / 1000) - 1);
     });
 });
 
@@ -69,19 +66,6 @@ describe('createFuzzySelection — toggling and cascade clearing', () => {
         expect(sel.state.daySet).toBe(false);
         expect(sel.state.hour).toBeNull();
         expect(sel.resolution()).toBe('year');
-    });
-
-    it('re-selecting the active day clears day and time but keeps the month', () => {
-        const sel = createFuzzySelection();
-        sel.toggleMonth(4);
-        sel.toggleDay(20);
-        sel.setHour(11);
-
-        sel.toggleDay(20); // toggle off
-        expect(sel.state.monthSet).toBe(true);
-        expect(sel.state.daySet).toBe(false);
-        expect(sel.state.hour).toBeNull();
-        expect(sel.resolution()).toBe('month');
     });
 
     it('clearing the hour clears minutes and seconds too', () => {
@@ -108,6 +92,131 @@ describe('createFuzzySelection — toggling and cascade clearing', () => {
     });
 });
 
+describe('createFuzzySelection — parts', () => {
+    it('offers parts for the current derived level', () => {
+        const sel = createFuzzySelection();
+        expect(sel.partOptions()).toEqual(['early', 'mid', 'late', 'spring', 'summer', 'autumn', 'winter']);
+
+        sel.toggleMonth(4);
+        expect(sel.partOptions()).toEqual(['early', 'mid', 'late']);
+
+        sel.toggleDay(20);
+        expect(sel.partOptions()).toEqual(['morning', 'afternoon', 'evening', 'night']);
+
+        sel.setHour(11);
+        expect(sel.partOptions()).toEqual([]);
+    });
+
+    it('keeps the resolution at the named level and reflects the part in the build', () => {
+        const sel = createFuzzySelection();
+        sel.setYear(1998);
+        sel.setPart('summer');
+        expect(sel.resolution()).toBe('year');
+
+        const fuzzy = sel.build()!;
+        expect(fuzzy.part).toBe('summer');
+        expect(fuzzy.label).toBe('Summer 1998');
+    });
+
+    it('clears the part when the selection depth changes (terminal rule)', () => {
+        const sel = createFuzzySelection();
+        sel.setYear(1998);
+        sel.setPart('summer');
+
+        sel.setMonth(6); // naming July supersedes "summer"
+        expect(sel.state.part).toBeNull();
+        expect(sel.resolution()).toBe('month');
+    });
+
+    it('keeps the part when only the value at the same level changes', () => {
+        const sel = createFuzzySelection();
+        sel.setYear(1998);
+        sel.setPart('summer');
+        sel.setYear(1999); // still year-level
+        expect(sel.state.part).toBe('summer');
+        expect(sel.build()!.label).toBe('Summer 1999');
+    });
+
+    it('toggles a part off when re-selected and rejects invalid parts', () => {
+        const sel = createFuzzySelection();
+        sel.setYear(1998);
+        sel.togglePart('summer');
+        expect(sel.state.part).toBe('summer');
+        sel.togglePart('summer');
+        expect(sel.state.part).toBeNull();
+
+        sel.setPart('night'); // not valid at year level
+        expect(sel.state.part).toBeNull();
+    });
+
+    it('offers no parts when disabled via options', () => {
+        const sel = createFuzzySelection({ parts: false });
+        sel.setYear(1998);
+        expect(sel.partOptions()).toEqual([]);
+    });
+});
+
+describe('createFuzzySelection — approximate', () => {
+    it('marks the build as approximate and widens the interval', () => {
+        const sel = createFuzzySelection();
+        sel.setYear(1996);
+        sel.setApproximate(true);
+
+        const fuzzy = sel.build()!;
+        expect(fuzzy.approximate).toBe(true);
+        expect(fuzzy.label).toBe('Around 1996');
+        expect(fuzzy.earliest).toBe(Math.floor(Date.UTC(1995, 0, 1) / 1000));
+
+        sel.toggleApproximate();
+        expect(sel.build()!.approximate).toBeUndefined();
+    });
+});
+
+describe('createFuzzySelection — decade mode', () => {
+    const opts = { resolutions: ['decade', 'year', 'month'] as const };
+
+    it('starts at decade resolution with the year un-named', () => {
+        const sel = createFuzzySelection({ resolutions: [...opts.resolutions] });
+        expect(sel.base).toBe('decade');
+        expect(sel.state.yearSet).toBe(false);
+        expect(sel.resolution()).toBe('decade');
+        expect(sel.partOptions()).toEqual(['early', 'mid', 'late']);
+    });
+
+    it('names and un-names a year within the decade', () => {
+        const sel = createFuzzySelection({ resolutions: [...opts.resolutions] });
+        sel.toggleYear(1996);
+        expect(sel.state.yearSet).toBe(true);
+        expect(sel.resolution()).toBe('year');
+
+        sel.toggleYear(1996); // un-name
+        expect(sel.state.yearSet).toBe(false);
+        expect(sel.state.year).toBe(1990); // back to the decade start
+        expect(sel.resolution()).toBe('decade');
+    });
+
+    it('steps decades preserving a decade-level part', () => {
+        const sel = createFuzzySelection({ resolutions: [...opts.resolutions] });
+        sel.setPart('early');
+        sel.stepDecade(-3);
+        expect(sel.state.part).toBe('early');
+        const fuzzy = sel.build()!;
+        expect(fuzzy.resolution).toBe('decade');
+        expect(fuzzy.label).toContain('Early');
+    });
+
+    it('builds "Early 1990s" style values', () => {
+        const sel = createFuzzySelection({ resolutions: [...opts.resolutions] });
+        const currentDecade = new Date().getFullYear() - (new Date().getFullYear() % 10);
+        sel.stepDecade((1990 - currentDecade) / 10);
+        sel.setPart('early');
+        const fuzzy = sel.build()!;
+        expect(fuzzy.label).toBe('Early 1990s');
+        expect(fuzzy.earliest).toBe(Math.floor(Date.UTC(1990, 0, 1) / 1000));
+        expect(fuzzy.latest).toBe(Math.floor(Date.UTC(1994, 0, 1) / 1000) - 1);
+    });
+});
+
 describe('createFuzzySelection — resolution bounds', () => {
     it('treats the coarsest allowed resolution as a required baseline', () => {
         const sel = createFuzzySelection({ resolutions: ['month', 'day'] });
@@ -127,56 +236,25 @@ describe('createFuzzySelection — resolution bounds', () => {
     });
 });
 
-describe('createFuzzySelection — approximation handling', () => {
-    it("auto-swaps 'sometime' to 'around' when a time is set, and restores it after", () => {
-        const sel = createFuzzySelection();
-        sel.toggleMonth(4);
-        sel.toggleDay(20);
-        expect(sel.build()!.approximation).toBe('sometime');
-
-        sel.setHour(11);
-        expect(sel.build()!.approximation).toBe('around');
-        expect(sel.sometimeDisabled()).toBe(true);
-
-        sel.setHour(null);
-        expect(sel.build()!.approximation).toBe('sometime');
-        expect(sel.sometimeDisabled()).toBe(false);
-    });
-
-    it('does not restore sometime after an explicit approximation choice', () => {
-        const sel = createFuzzySelection();
-        sel.toggleMonth(4);
-        sel.toggleDay(20);
-        sel.setHour(11); // auto-swap to 'around'
-        sel.setApproximation('exact'); // explicit choice
-        sel.setHour(null);
-        expect(sel.build()!.approximation).toBe('exact');
-    });
-
-    it('ignores approximations outside the allowed list', () => {
-        const sel = createFuzzySelection({ approximations: ['sometime', 'around'] });
-        sel.setApproximation('exact');
-        expect(sel.state.approximation).toBe('sometime');
-    });
-});
-
 describe('createFuzzySelection — shortcuts and lifecycle', () => {
-    it('setToday selects today at day resolution without a time', () => {
+    it('setToday selects today at day resolution without a time or part', () => {
         const sel = createFuzzySelection();
+        sel.setPart('summer');
         sel.setToday();
         const now = new Date();
         expect(sel.state.year).toBe(now.getFullYear());
-        expect(sel.state.month).toBe(now.getMonth());
         expect(sel.state.day).toBe(now.getDate());
         expect(sel.state.hour).toBeNull();
+        expect(sel.state.part).toBeNull();
         expect(sel.resolution()).toBe('day');
     });
 
-    it('setNow fills to the finest allowed depth and switches to exact', () => {
+    it('setNow fills to the finest allowed depth and is not approximate', () => {
         const sel = createFuzzySelection();
+        sel.setApproximate(true);
         sel.setNow();
         expect(sel.resolution()).toBe('second');
-        expect(sel.state.approximation).toBe('exact');
+        expect(sel.state.approximate).toBe(false);
 
         const bounded = createFuzzySelection({ resolutions: ['year', 'month', 'day'] });
         bounded.setNow();
@@ -187,31 +265,34 @@ describe('createFuzzySelection — shortcuts and lifecycle', () => {
     it('clear resets to the empty state', () => {
         const sel = createFuzzySelection();
         sel.setNow();
+        sel.setPart('night');
         sel.clear();
         expect(sel.state.hasSelection).toBe(false);
-        expect(sel.state.monthSet).toBe(false);
+        expect(sel.state.part).toBeNull();
+        expect(sel.state.approximate).toBe(false);
         expect(sel.build()).toBeNull();
     });
 
-    it('load restores every level from an existing FuzzyDateTime', () => {
-        const value = createFuzzyDateTime(new Date(Date.UTC(2020, 4, 20, 11, 30, 0)), 'minute', 'exact');
+    it('load restores levels, part, and approximate from an existing value', () => {
+        const value = createFuzzyDateTime(new Date(Date.UTC(1998, 0, 1)), 'year', {
+            part: 'summer',
+            approximate: true,
+        });
         const sel = createFuzzySelection({ value });
-        expect(sel.state.year).toBe(2020);
-        expect(sel.state.month).toBe(4);
-        expect(sel.state.day).toBe(20);
-        expect(sel.state.hour).toBe(11);
+        expect(sel.state.year).toBe(1998);
+        expect(sel.state.monthSet).toBe(false);
+        expect(sel.state.part).toBe('summer');
+        expect(sel.state.approximate).toBe(true);
+        expect(sel.resolution()).toBe('year');
+        expect(sel.build()!.label).toBe('Around summer 1998');
+    });
+
+    it('load of a fine value leaves parts clear and time populated', () => {
+        const value = createFuzzyDateTime(new Date(Date.UTC(2010, 4, 21, 14, 30, 0)), 'minute');
+        const sel = createFuzzySelection({ value });
+        expect(sel.state.hour).toBe(14);
         expect(sel.state.minute).toBe(30);
         expect(sel.state.second).toBeNull();
         expect(sel.resolution()).toBe('minute');
-        expect(sel.state.hasSelection).toBe(true);
-    });
-
-    it('load of a coarse value leaves finer levels unset', () => {
-        const value = createFuzzyDateTime(new Date(Date.UTC(2018, 0, 1)), 'year', 'sometime');
-        const sel = createFuzzySelection({ value });
-        expect(sel.state.monthSet).toBe(false);
-        expect(sel.state.daySet).toBe(false);
-        expect(sel.resolution()).toBe('year');
-        expect(sel.build()!.label).toBe('Sometime in 2018');
     });
 });

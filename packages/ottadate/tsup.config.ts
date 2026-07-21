@@ -5,6 +5,7 @@ export default defineConfig({
         index: 'src/index.ts',
         core: 'src/core.ts',
         fuzzy: 'src/fuzzy.ts',
+        parse: 'src/parse.ts',
     },
     format: ['cjs', 'esm'],
     dts: true,

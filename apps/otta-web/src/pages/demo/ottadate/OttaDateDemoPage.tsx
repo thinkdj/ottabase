@@ -12,11 +12,14 @@
 
 import {
     OttaDate,
+    encodeFuzzyDateTime,
     getDefaultRangePresets,
+    parseFuzzyInput,
     type DatePickerInstance,
     type DateRange,
     type FuzzyDateTime,
 } from '@ottabase/ottadate';
+import { Input } from '@ottabase/ui-shadcn/input';
 import { Button } from '@ottabase/ui-shadcn/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn/card';
 import { useEffect, useRef, useState } from 'react';
@@ -227,9 +230,9 @@ function FuzzyDateTimeDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime Picker</CardTitle>
                 <CardDescription>
-                    For dates you only partially remember. Fill in what you know — year, then optionally month, day, and
-                    time — and the precision is derived from how deep you go. Re-tap a level to clear it. Every change
-                    applies immediately.
+                    For dates you only partially remember. Each step asks "when in X?" — name the sub-unit, pick a part
+                    chip (early/mid/late, seasons, day-parts), or stop. Precision is derived from how deep you go, and
+                    the stored value carries a queryable [earliest, latest] interval. Every change applies immediately.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -257,8 +260,7 @@ function FuzzyDateTimeInlineDemo() {
             OttaDate.createFuzzyDateTimePicker(el, {
                 inline: true,
                 onChange: (v) => setFuzzy(v),
-                resolutions: ['year', 'month', 'day'],
-                approximations: ['sometime', 'around'],
+                resolutions: ['decade', 'year', 'month', 'day'],
             }),
         [],
     );
@@ -266,12 +268,11 @@ function FuzzyDateTimeInlineDemo() {
     return (
         <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
             <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">
-                    Fuzzy DateTime (Inline, Limited Options)
-                </CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Inline, Decades)</CardTitle>
                 <CardDescription>
-                    Inline mode with the drill-down capped at day resolution and approximations limited to
-                    sometime/around — the time step never appears.
+                    Inline "memory mode": decade opt-in via resolutions, capped at day. Try "Early 1990s", "Summer
+                    1998", or "Late May 2010" — part chips are the coarse answer to each "when in X?" step, and the ~
+                    toggle marks the whole thing as rough.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -303,8 +304,9 @@ function FuzzyCompactDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Compact)</CardTitle>
                 <CardDescription>
-                    Sentence-style native selects that read like the stored label — "Sometime · May · 2020". Pick "Any
-                    month" / "Any day" to stay coarse. Space-efficient for forms and sidebars; auto-applies on change.
+                    Sentence-style native selects that read like the stored label — "Summer · 1998", "Late · May ·
+                    2010". "Sometime" is the no-part state; "Any month" / "Any day" stay coarse; the ~ chip marks it
+                    rough. Space-efficient for forms and sidebars; auto-applies on change.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -333,7 +335,6 @@ function FuzzyCompactInlineDemo() {
                 inline: true,
                 onChange: (v) => setFuzzy(v),
                 resolutions: ['year', 'month', 'day'],
-                approximations: ['sometime', 'around'],
             }),
         [],
     );
@@ -352,6 +353,50 @@ function FuzzyCompactInlineDemo() {
                     <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
                         {JSON.stringify(fuzzy, null, 2)}
                     </pre>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+/** Type-to-parse: free-text memories → FuzzyDateTime via parseFuzzyInput */
+function FuzzyParseDemo() {
+    const [input, setInput] = useState('early 90s');
+    const parsed = parseFuzzyInput(input);
+
+    return (
+        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <CardHeader>
+                <CardTitle className="text-[0.9375rem] font-semibold">Type a Memory (parseFuzzyInput)</CardTitle>
+                <CardDescription>
+                    Free-text front-end to the same vocabulary — try "early 90s", "summer 98", "late may 2010", "21 july
+                    2026 9pm", "1996ish", "last night". Strict: anything unrecognized returns null instead of guessing.
+                    The full fuzzy picker embeds this as its quick-entry field.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="early 90s · summer 98 · 21 jul 2010…"
+                    className="max-w-sm"
+                />
+                {parsed ? (
+                    <div className="space-y-2">
+                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
+                            "{parsed.label}" <span className="not-italic text-muted-foreground">·</span>{' '}
+                            <code className="not-italic text-xs text-muted-foreground">
+                                {encodeFuzzyDateTime(parsed)}
+                            </code>
+                        </div>
+                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
+                            {JSON.stringify(parsed, null, 2)}
+                        </pre>
+                    </div>
+                ) : (
+                    <div className="rounded-lg bg-background p-3 text-sm text-muted-foreground ring-1 ring-border">
+                        {input.trim() ? 'Could not parse that memory.' : 'Type something…'}
+                    </div>
                 )}
             </CardContent>
         </Card>
@@ -461,6 +506,9 @@ export function OttaDateDemoPage() {
 
             {/* Fuzzy Compact Inline */}
             <FuzzyCompactInlineDemo />
+
+            {/* Type-to-parse */}
+            <FuzzyParseDemo />
 
             {/* Programmatic API */}
             <ProgrammaticApiDemo />

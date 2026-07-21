@@ -25,7 +25,7 @@
 
 // Core types — re-export everything
 export type {
-    DateApproximation,
+    DatePart,
     DatePickerInstance,
     DatePickerOptions,
     DateRange,
@@ -38,6 +38,8 @@ export type {
     FuzzyDateTime,
     FuzzyDateTimePickerInstance,
     FuzzyDateTimePickerOptions,
+    FuzzyLabelFormatter,
+    Hemisphere,
     OttaDateConfig,
     PickerInstance,
     TimestampFormat,
@@ -48,11 +50,14 @@ export { detectTimezone, formatDate, fromDate, resolveTimezone, toDate } from '.
 
 // FuzzyDateTime utilities
 export {
-    APPROXIMATION_LABELS,
-    APPROXIMATION_ORDER,
     buildFuzzyLabel,
     createFuzzyDateTime,
+    decodeFuzzyDateTime,
+    DEFAULT_RESOLUTIONS,
+    encodeFuzzyDateTime,
     parseFuzzyDateTime,
+    PART_LABELS,
+    partsForResolution,
     refreshFuzzyLabel,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
@@ -63,6 +68,10 @@ export {
 // Headless fuzzy selection-state controller (build custom fuzzy UIs on top)
 export { createFuzzySelection } from './core/fuzzy-selection';
 export type { FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
+
+// Type-to-parse ("early 90s", "summer 98", "21 july 2026" → FuzzyDateTime)
+export { parseFuzzyInput } from './core/parse';
+export type { ParseFuzzyOptions } from './core/parse';
 
 // Range presets
 export { getDefaultRangePresets } from './core/range-presets';
@@ -81,10 +90,13 @@ export { createFuzzyDateTimePicker } from './pickers/FuzzyDateTimePicker';
 import {
     buildFuzzyLabel,
     createFuzzyDateTime,
+    decodeFuzzyDateTime,
+    encodeFuzzyDateTime,
     parseFuzzyDateTime,
     refreshFuzzyLabel,
     snapToResolution,
 } from './core/fuzzy';
+import { parseFuzzyInput } from './core/parse';
 import { getDefaultRangePresets } from './core/range-presets';
 import { detectTimezone, formatDate, fromDate, resolveTimezone, toDate } from './core/utils';
 import { createDatePicker } from './pickers/DatePicker';
@@ -129,4 +141,7 @@ export const OttaDate = {
     refreshFuzzyLabel,
     buildFuzzyLabel,
     snapToResolution,
+    encodeFuzzyDateTime,
+    decodeFuzzyDateTime,
+    parseFuzzyInput,
 } as const;

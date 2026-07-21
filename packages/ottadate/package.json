@@ -28,6 +28,11 @@
             "import": "./dist/fuzzy.mjs",
             "require": "./dist/fuzzy.js"
         },
+        "./parse": {
+            "types": "./dist/parse.d.ts",
+            "import": "./dist/parse.mjs",
+            "require": "./dist/parse.js"
+        },
         "./styles.css": "./dist/styles.css"
     },
     "scripts": {

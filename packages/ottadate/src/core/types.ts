@@ -8,28 +8,60 @@
 // Resolution & Fuzzy types
 // ---------------------------------------------------------------------------
 
-/** Precision level for fuzzy date selection */
-export type DateResolution = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
-
-/** How approximate the date is */
-export type DateApproximation = 'exact' | 'around' | 'sometime';
+/** Precision level for fuzzy date selection (decade is opt-in for the pickers) */
+export type DateResolution = 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
 
 /**
- * FuzzyDateTime — stores a date with known precision level.
+ * Part-of-period refinement — the coarse human answer to "when in X?".
+ * A part is TERMINAL: it refines the deepest named level instead of naming the
+ * next one ("early 1996" instead of picking a month).
  *
- * Example: "Sometime in May 2020"
- *   → { timestamp: 1588291200, resolution: 'month', approximation: 'sometime' }
+ *   decade / year / month → early | mid | late
+ *   year                  → also spring | summer | autumn | winter
+ *   day                   → morning | afternoon | evening | night
+ */
+export type DatePart =
+    | 'early'
+    | 'mid'
+    | 'late'
+    | 'spring'
+    | 'summer'
+    | 'autumn'
+    | 'winter'
+    | 'morning'
+    | 'afternoon'
+    | 'evening'
+    | 'night';
+
+/** Which hemisphere season months map to (affects spring/summer/autumn/winter) */
+export type Hemisphere = 'north' | 'south';
+
+/** Override hook for label generation — receives everything except the label itself */
+export type FuzzyLabelFormatter = (fuzzy: Omit<FuzzyDateTime, 'label'>) => string;
+
+/**
+ * FuzzyDateTime — a date with known precision, stored as a queryable interval.
  *
- * The `timestamp` is stored as UTC unix seconds at the start of the resolved period
- * (e.g. resolution 'month' → first day of that month at 00:00 UTC).
+ * Example: "Late May 2010"
+ *   → { resolution: 'month', part: 'late', timestamp: <May 21>, earliest: <May 21>, latest: <May 31 23:59:59> }
+ *
+ * `timestamp` is the start of the (part-narrowed) core window — a stable sort
+ * anchor. `earliest`/`latest` are the inclusive uncertainty bounds; `approximate`
+ * widens them beyond the named period ("Around 1996" → 1995…1997).
  */
 export interface FuzzyDateTime {
-    /** UTC unix timestamp in seconds (start of the resolved period) */
+    /** UTC unix seconds — start of the core window (period start, narrowed by `part`) */
     timestamp: number;
     /** The finest unit the user actually specified */
     resolution: DateResolution;
-    /** How approximate — 'exact' | 'around' | 'sometime' */
-    approximation: DateApproximation;
+    /** Terminal part-of-period refinement ("early", "summer", "night"), if any */
+    part?: DatePart;
+    /** "~ish" — the boundary itself is soft; widens earliest/latest by ~1 unit */
+    approximate?: boolean;
+    /** Inclusive window start (UTC unix seconds) — the machine-usable truth */
+    earliest: number;
+    /** Inclusive window end (UTC unix seconds) */
+    latest: number;
     /** Pre-rendered human-readable label, e.g. "Sometime in May 2020" */
     label: string;
 }
@@ -144,11 +176,22 @@ export interface FuzzyDateTimePickerOptions extends OttaDateConfig {
     /**
      * Bounds for the drill-down. The coarsest entry is the required baseline
      * (always filled), the finest entry caps how deep the picker goes.
-     * Default: all (year baseline, drill down to second).
+     * Default: year baseline down to second — `decade` is opt-in.
      */
     resolutions?: DateResolution[];
-    /** Allowed approximations. Default: all (sometime, around, exact) */
-    approximations?: DateApproximation[];
+    /** Offer part-of-period chips (early/mid/late, seasons, day-parts). Default: true */
+    parts?: boolean;
+    /** Offer the "~ Roughly" toggle that widens the window. Default: true */
+    allowApproximate?: boolean;
+    /**
+     * Type-to-parse field at the top of the full picker ("early 90s",
+     * "summer 98", "21 jul 2010" → parsed into the selection). Default: true
+     */
+    quickEntry?: boolean;
+    /** Hemisphere for season → month mapping. Default: 'north' */
+    hemisphere?: Hemisphere;
+    /** Override label generation (e.g. "Watched in 1996" instead of "Sometime in 1996") */
+    formatLabel?: FuzzyLabelFormatter;
 }
 
 // ---------------------------------------------------------------------------

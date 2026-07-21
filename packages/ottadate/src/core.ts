@@ -6,7 +6,7 @@
  */
 
 export type {
-    DateApproximation,
+    DatePart,
     DatePickerOptions,
     DateRange,
     DateRangePickerOptions,
@@ -14,6 +14,8 @@ export type {
     DateTimePickerOptions,
     FuzzyDateTime,
     FuzzyDateTimePickerOptions,
+    FuzzyLabelFormatter,
+    Hemisphere,
     OttaDateConfig,
     TimestampFormat,
 } from './core/types';
@@ -47,14 +49,18 @@ export {
 } from './core/utils';
 
 export {
-    APPROXIMATION_LABELS,
-    APPROXIMATION_ORDER,
+    DEFAULT_RESOLUTIONS,
+    PART_LABELS,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
     buildFuzzyLabel,
     createFuzzyDateTime,
+    decodeFuzzyDateTime,
+    encodeFuzzyDateTime,
     isResolutionFinerOrEqual,
+    isValidPart,
     parseFuzzyDateTime,
+    partsForResolution,
     refreshFuzzyLabel,
     resolutionBounds,
     resolutionIndex,

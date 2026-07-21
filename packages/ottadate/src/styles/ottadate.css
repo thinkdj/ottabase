@@ -662,8 +662,49 @@
     gap: 0.375rem;
 }
 
+/* Type-to-parse field — "early 90s" / "summer 98" / "21 jul 2010" straight in. */
+.ottadate-fuzzy-entry {
+    width: 100%;
+    padding: 0.4375rem 0.625rem;
+    border: 1px solid var(--od-border);
+    border-radius: var(--od-radius-inner);
+    font-size: var(--od-font-size);
+    font-family: var(--od-font);
+    color: var(--od-fg);
+    background: var(--od-bg);
+    outline: none;
+    box-shadow: var(--od-shadow-xs);
+    transition:
+        border-color var(--od-transition),
+        box-shadow var(--od-transition);
+}
+
+.ottadate-fuzzy-entry::placeholder {
+    color: var(--od-muted-fg);
+    opacity: 0.8;
+}
+
+.ottadate-fuzzy-entry:focus {
+    border-color: var(--od-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
+}
+
+/* Unparseable or out-of-bounds entry — a red ring, never a silent guess. */
+.ottadate-fuzzy-entry--invalid {
+    border-color: var(--od-destructive);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-destructive) 25%, transparent);
+}
+
+/* Headline row: the live sentence + the "~ Roughly" toggle. */
+.ottadate-fuzzy-headline-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.375rem;
+}
+
 /* Live sentence headline — the result, promoted to the top as a quiet well. */
 .ottadate-fuzzy-headline {
+    flex: 1;
     display: flex;
     align-items: center;
     min-height: 2.5rem;
@@ -680,56 +721,90 @@
     font-weight: 400;
 }
 
-/* Approximation segment (Sometime / Around / Exactly) — muted-tint track; the
-   active button lifts onto --od-bg with a hairline ring (canonical segment pattern). */
-.ottadate-fuzzy-approx {
-    display: flex;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    background: var(--od-tint);
+/* "~ Roughly" toggle — marks the whole selection as approximate (soft boundary). */
+.ottadate-fuzzy-approx-toggle {
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0.3125rem 0.625rem;
+    border: 1px solid var(--od-border);
     border-radius: var(--od-radius-pill);
-}
-
-.ottadate-fuzzy-approx-btn {
-    flex: 1;
-    padding: 0.3125rem 0.5rem;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    border-radius: var(--od-radius-pill);
+    background: var(--od-bg);
+    color: var(--od-muted-fg);
     font-size: var(--od-font-size-sm);
     font-family: var(--od-font);
-    color: var(--od-muted-fg);
-    line-height: 1.4;
+    cursor: pointer;
+    white-space: nowrap;
     transition:
         background var(--od-transition),
         color var(--od-transition),
-        box-shadow var(--od-transition);
+        border-color var(--od-transition);
 }
 
-.ottadate-fuzzy-approx-btn:hover:not(.ottadate-fuzzy-approx-btn--active):not(.ottadate-fuzzy-approx-btn--disabled) {
+.ottadate-fuzzy-approx-toggle:hover:not(.ottadate-fuzzy-approx-toggle--active) {
+    background: var(--od-tint-hover);
     color: var(--od-fg);
 }
 
-.ottadate-fuzzy-approx-btn--active {
+.ottadate-fuzzy-approx-toggle--active {
+    background: var(--od-primary);
+    color: var(--od-primary-fg);
+    border-color: var(--od-primary);
+}
+
+/* Part chips (Early / Mid / Late, seasons, day-parts) — the coarse terminal
+   answers to "when in X?". Pill with a hairline ring; active = filled primary. */
+.ottadate-fuzzy-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.ottadate-part-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--od-border);
+    border-radius: var(--od-radius-pill);
+    font-size: var(--od-font-size-sm);
+    font-family: var(--od-font);
+    cursor: pointer;
     background: var(--od-bg);
+    color: var(--od-muted-fg);
+    transition:
+        background var(--od-transition),
+        color var(--od-transition),
+        border-color var(--od-transition);
+    user-select: none;
+}
+
+.ottadate-part-chip:hover:not(.ottadate-part-chip--active) {
+    background: var(--od-tint-hover);
     color: var(--od-fg);
-    font-weight: 500;
-    box-shadow: inset 0 0 0 1px var(--od-border);
 }
 
-.ottadate-fuzzy-approx-btn--disabled {
-    opacity: 0.4;
-    pointer-events: none;
+.ottadate-part-chip--active {
+    background: var(--od-primary);
+    color: var(--od-primary-fg);
+    border-color: var(--od-primary);
 }
 
-/* Year is a single field here (not a range to browse), so it's a compact stepper
-   with a directly editable value — type "1994" instead of clicking 30 times. */
+/* Year/decade is a single field here (not a range to browse), so it's a compact
+   stepper — the year value is directly editable (type "1994" instead of clicking
+   30 times); the decade value is stepped in 10-year jumps. */
 .ottadate-fuzzy-year-stepper {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+}
+
+/* Read-only stepper value (the decade display, e.g. "1990s") */
+.ottadate-fuzzy-stepper-value {
+    flex: 1;
+    text-align: center;
+    font-size: var(--od-font-size);
+    font-weight: 600;
+    color: var(--od-fg);
 }
 
 .ottadate-fuzzy-year-input {
@@ -1004,10 +1079,20 @@
     align-items: center;
 }
 
-/* Approximation select (Sometime / Around / Exactly) — first word of the sentence */
-.ottadate-compact-approx {
-    flex: 1;
+/* Part select ("Sometime" / Early / Summer / Night…) — first word of the sentence */
+.ottadate-compact-part {
     min-width: 6.25rem;
+}
+
+/* Decade select (decade mode) — leads the sentence and pages the year select */
+.ottadate-compact-decade {
+    width: 5.25rem;
+}
+
+/* "~" approximate chip in the compact sentence row */
+.ottadate-compact-approx-chip {
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
 }
 
 /* Live preview of the stored label */
@@ -1069,7 +1154,7 @@
 }
 
 .ottadate-compact-year {
-    width: 5rem;
+    min-width: 5.5rem;
 }
 
 .ottadate-compact-month {

@@ -9,10 +9,11 @@ JS — no React, Vue, or Angular required.
 - **DateRangePicker** — Two-calendar layout for start/end range selection
 - **DateRangePicker (with Presets)** — Sidebar with quick-select presets + Apply/Cancel footer
 - **DateTimePicker** — Calendar + time inputs (hours, minutes, optional seconds, 12h/24h toggle)
-- **FuzzyDateTimePicker** — Approximate dates via a progressive "fill in what you remember" drill-down; the resolution
-  is derived from how deep the user goes, never declared upfront
+- **FuzzyDateTimePicker** — Half-remembered dates ("Early 1990s", "Summer 1998", "Late May 2010") via a recursive "when
+  in X?" drill-down: precision is derived from how deep the user goes, part chips give the coarse human answers, and
+  every value stores a queryable `[earliest, latest]` interval
 - **FuzzyDateTimeCompact** — Space-efficient fuzzy picker: sentence-style native `<select>`s that read like the stored
-  label ("Sometime · May · 2020")
+  label ("Summer · 1998", "Late · May · 2010")
 - **UTC-first** — Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
   objects
 - **Auto timezone** — Displays dates in user's detected timezone automatically
@@ -150,60 +151,72 @@ const dt = OttaDate.createDateTimePicker(container, {
 
 ### `OttaDate.createFuzzyDateTimePicker(container, options)`
 
-For dates the user only partially remembers. There is no upfront "pick your precision" step — the picker is a
-progressive drill-down and **the resolution is derived from how deep the user fills in**:
+For dates the user only partially remembers — "early 90s", "1996", "Summer 1998", "Late May 2010", "21 July 2026 at
+14:30". There is no upfront "pick your precision" step. Every section asks the same recursive question — **"when in
+X?"** — answerable at three fidelities:
 
-- **Year** is always present (editable value + prev/next steppers — type `1994` directly).
-- **Month** is a 12-cell grid marked "if you remember". Picking one refines the resolution to `month`; tapping the
-  active month again clears it (and everything finer).
-- **Day** appears only once a month is chosen; same toggle-to-clear behavior.
-- **Time** appears only once a day is chosen: cascading `hh : mm : ss` inputs where blank means "don't remember".
-  Filling the hour derives `hour`, the minute `minute`, the second `second`.
+1. **Name the sub-unit** (pick a year / month / day / time) — drills one level deeper.
+2. **Pick a part chip** — the coarse terminal answer: early / mid / late (decades, years, months), seasons (years),
+   morning / afternoon / evening / night (days). A part is terminal: naming a deeper unit clears it.
+3. **Stop** — the resolution is simply the deepest level filled.
 
-The live sentence headline at the top shows exactly what will be stored ("Sometime in May 2020"), with a small Sometime
-/ Around / Exactly segment beneath it. 'Sometime' is disabled once a time is set ("sometime at 11:30" is a
-contradiction) and auto-swaps to 'Around', restoring itself if the time is removed. **Every change applies immediately**
-— there is no Apply step; the footer offers Today / Clear plus Done (popover mode) to close.
+The live sentence headline shows exactly what will be stored ("Early 1990s", "Sometime in May 2010"), next to a single
+**~ Roughly** toggle that marks the boundary itself as soft ("Around 1996" → could be 1995 or 1997). Tapping an active
+month/day/part again clears it; time is a cascading `hh : mm : ss` row where blank means "don't remember". **Every
+change applies immediately**; the footer offers Today / Clear plus Done (popover mode).
 
 ```typescript
 const fuzzy = OttaDate.createFuzzyDateTimePicker(container, {
-    value: {
-        timestamp: 1588291200,
-        resolution: 'month',
-        approximation: 'sometime',
-        label: 'Sometime in May 2020',
-    },
     onChange: (fuzzyDate) => console.log(fuzzyDate),
-    resolutions: ['year', 'month', 'day', 'hour', 'minute', 'second'],
-    approximations: ['sometime', 'around', 'exact'],
+    resolutions: ['decade', 'year', 'month', 'day'], // decade is opt-in; default is year → second
+    parts: true, // part chips (default: true)
+    allowApproximate: true, // the ~ Roughly toggle (default: true)
+    hemisphere: 'north', // season → month mapping (default: 'north')
     inline: true, // Works great inline
+});
+```
+
+Apps can re-voice labels without touching internals via `formatLabel`, which receives everything but the label:
+
+```typescript
+import { buildFuzzyLabel } from '@ottabase/ottadate/fuzzy';
+
+const journal = OttaDate.createFuzzyDateTimePicker(container, {
+    formatLabel: (f) =>
+        `Watched ${buildFuzzyLabel(new Date(f.timestamp * 1000), f.resolution, {
+            part: f.part,
+            approximate: f.approximate,
+        }).toLowerCase()}`,
+    onChange: console.log,
 });
 ```
 
 **`resolutions` semantics:** the list bounds the drill-down. The _coarsest_ entry is the required baseline (e.g.
 `['month', 'day']` keeps a month always selected), and the _finest_ entry caps how deep the UI goes (e.g.
-`['year', 'month', 'day']` never shows the time step).
+`['year', 'month', 'day']` never shows the time step). Pass `'decade'` to start the drill-down at decades.
 
 ### `OttaDate.createFuzzyDateTimeCompact(container, options)`
 
 Space-efficient fuzzy date picker for forms and sidebars. Same derived-resolution model, rendered as a **sentence of
-native `<select>`s that reads like the stored label**:
+native `<select>`s that reads like the stored label** — the first select is the part ("Sometime" = none), and a small
+`~` chip marks the value as approximate:
 
 ```text
-[ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]          → "Sometime in 2020"
-[ Sometime ▾ ] [ May ▾ ] [ Any day ▾ ] [ 2020 ▾ ]  → "Sometime in May 2020"
-[ Around ▾ ]   [ May ▾ ] [ 20 ▾ ] [ 2020 ▾ ]       → "Around May 20, 2020"
+[ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]        → "Sometime in 2020"
+[ Summer ▾ ]   [ Any month ▾ ] [ 1998 ▾ ]        → "Summer 1998"
+[ Late ▾ ] [ May ▾ ] [ Any day ▾ ] [ 2010 ▾ ]    → "Late May 2010"
+[ Sometime ▾ ] [ 1990s ▾ ] [ Any year ▾ ]        → "Sometime in the 1990s"  (decade mode)
 ```
 
-Choosing "Any month" / "Any day" keeps the selection coarse; picking a real value refines it. Time inputs cascade in
-once a day is set. The year dropdown spans 10 years ahead to 100 years back (fuzzy recall is past-heavy). Footer: Now
-(fills the current date-time at the finest allowed depth, approximation 'exact') and Clear. Auto-applies on change.
+Choosing "Any month" / "Any day" / "Any year" keeps the selection coarse; picking a real value refines it. Time inputs
+cascade in once a day is set. The year dropdown spans 10 years ahead to 100 years back (fuzzy recall is past-heavy); in
+decade mode the decade select pages the year select. Footer: Now (current date-time at the finest allowed depth, not
+approximate) and Clear. Auto-applies on change.
 
 ```typescript
 const compact = OttaDate.createFuzzyDateTimeCompact(container, {
     onChange: (fuzzyDate) => console.log(fuzzyDate),
     resolutions: ['year', 'month', 'day'],
-    approximations: ['sometime', 'around'],
     inline: true,
 });
 ```
@@ -212,26 +225,72 @@ const compact = OttaDate.createFuzzyDateTimeCompact(container, {
 
 ```typescript
 interface FuzzyDateTime {
-    timestamp: number; // UTC unix seconds, snapped to resolution start
-    resolution: 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
-    approximation: 'exact' | 'around' | 'sometime';
-    label: string; // "Sometime in May 2020"
+    timestamp: number; // UTC unix seconds — start of the (part-narrowed) core window; stable sort anchor
+    resolution: 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
+    part?: DatePart; // terminal refinement: early/mid/late, seasons, day-parts
+    approximate?: boolean; // "~ish" — soft boundary
+    earliest: number; // inclusive interval bounds (UTC unix seconds) —
+    latest: number; //   the machine-usable truth: range queries, timeline bands
+    label: string; // "Early 1990s", "Summer 1998", "Sometime in May 2010"
 }
 ```
 
-**Resolution behavior:**
+**Interval behavior (the machine-usable core):** every value carries `[earliest, latest]`. Sort a journal by
+`timestamp`, filter "everything in the 90s" with an overlap query (`earliest <= rangeEnd AND latest >= rangeStart`),
+render precise entries as points and fuzzy ones as bands.
 
-| Resolution | Stored timestamp          | Example label                  |
-| ---------- | ------------------------- | ------------------------------ |
-| `year`     | Jan 1 of that year, UTC   | "Sometime in 2018"             |
-| `month`    | 1st of that month, UTC    | "Sometime in May 2020"         |
-| `day`      | Start of that day, UTC    | "Sometime on May 20, 2025"     |
-| `hour`     | Start of that hour, UTC   | "Around 11:00 on May 20, 2025" |
-| `minute`   | Start of that minute, UTC | "May 20, 2025 at 11:30"        |
-| `second`   | Exact second, UTC         | "May 20, 2025 at 11:30:45"     |
+| Selection        | Label                          | Interval                        |
+| ---------------- | ------------------------------ | ------------------------------- |
+| decade           | "Sometime in the 1990s"        | 1990-01-01 → 1999-12-31         |
+| decade + `early` | "Early 1990s"                  | 1990 → 1993 (mid 4–6, late 7–9) |
+| year             | "Sometime in 1996"             | the calendar year               |
+| year + `summer`  | "Summer 1998"                  | Jun–Aug (north; south Dec–Feb)  |
+| year + `~`       | "Around 1996"                  | 1995 → 1997 (±1 year)           |
+| month + `late`   | "Late May 2010"                | May 21 → May 31                 |
+| day + `night`    | "Night of May 21, 2010"        | 21:00 → 23:59                   |
+| minute           | "May 21, 2010 at 14:30"        | that minute                     |
+| minute + `~`     | "Around 14:30 on May 21, 2010" | ±15 minutes                     |
 
-Label grammar adapts to the resolution: "in" a period (year/month), "on" a day, "at" a time. At time-of-day resolutions
-the 'sometime' approximation renders as "Around" — "sometime at 11:30" would be a contradiction.
+Part conventions: decade thirds are 0–3 / 4–6 / 7–9; year thirds are Jan–Apr / May–Aug / Sep–Dec; month thirds are 1–10
+/ 11–20 / 21–end; day-parts are morning 05–11, afternoon 12–16, evening 17–20, night 21–23 (same date). "Winter 1998"
+belongs to the year it starts in (Dec 1998 – Feb 1999). The `approximate` widening table: decade ±3y (±1y with a part),
+year ±1y (±1mo), month ±1mo (±3d), day ±1d (±2h), hour ±1h, minute/second ±15.
+
+### Serialization
+
+A compact canonical string encoding (EDTF-inspired) for storing a fuzzy date in one column and round-tripping it:
+
+```typescript
+import { encodeFuzzyDateTime, decodeFuzzyDateTime } from '@ottabase/ottadate/fuzzy';
+
+encodeFuzzyDateTime(fuzzy); // "199X:early~", "1998:summer", "2010-05:late", "2010-05-21T14:30"
+decodeFuzzyDateTime('1998:summer'); // full FuzzyDateTime with label + interval, or null if malformed
+```
+
+`199X` is a decade, `:part` suffixes the named period, a trailing `~` marks approximate, and `T` starts a time (parts
+never apply at time resolutions).
+
+### Type-to-parse
+
+`parseFuzzyInput` turns typed memories into FuzzyDateTime values — the text front-end to the same vocabulary. The full
+fuzzy picker embeds it as a quick-entry field at the top (disable with `quickEntry: false`):
+
+```typescript
+import { parseFuzzyInput } from '@ottabase/ottadate/parse';
+
+parseFuzzyInput('early 90s'); // "Early 1990s" (decade + part)
+parseFuzzyInput('summer 98'); // "Summer 1998"
+parseFuzzyInput('late may 2010'); // "Late May 2010"
+parseFuzzyInput('21 july 2026 9pm'); // "July 21, 2026 at 21:00"
+parseFuzzyInput('1996ish'); // "Around 1996" (approximate)
+parseFuzzyInput('last night'); // "Night of <yesterday>"
+parseFuzzyInput('banana'); // null — strict: unknown tokens never guess
+```
+
+Conventions: English-only for now; "may 10" reads as May 10 of the current year (a day, not 2010); 2-digit years and
+decades resolve to the most recent past occurrence ("98" → 1998, "30s" → 1930s); relative words (today, yesterday,
+tonight, last night, this morning) cover the journaling hot path; a time requires a full date. Pass `{ now }` for a
+deterministic reference date.
 
 ## Shared Options (all pickers)
 
@@ -283,6 +342,9 @@ import { createFuzzyDateTime, snapToResolution, buildFuzzyLabel } from '@ottabas
 // Headless fuzzy selection-state controller — the derived-resolution state
 // machine both fuzzy pickers render from. Use it to build custom fuzzy UIs.
 import { createFuzzySelection } from '@ottabase/ottadate/fuzzy';
+
+// Type-to-parse (no DOM): "early 90s" / "summer 98" → FuzzyDateTime
+import { parseFuzzyInput } from '@ottabase/ottadate/parse';
 
 // Stylesheet
 import '@ottabase/ottadate/styles.css';

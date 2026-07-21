@@ -5,26 +5,30 @@
  * FuzzyDateTimeCompact). No DOM — the pickers are thin views over this.
  *
  * Interaction model: RESOLUTION IS DERIVED, NEVER DECLARED.
- * The user fills in the parts of the date they remember — year, then optionally
- * month, then day, then time — and the resolution is simply the deepest level
- * they filled. Clearing a level clears everything finer than it (you can't
- * remember the day without the month).
+ * Every level answers the recursive question "when in X?" with one of three
+ * moves — name the sub-unit (drill deeper), pick a PART (a coarse terminal
+ * refinement like "early" / "summer" / "night"), or stop:
  *
- *   year only            → resolution 'year'
- *   + month              → resolution 'month'
- *   + day                → resolution 'day'
- *   + hour / min / sec   → resolution 'hour' / 'minute' / 'second'
+ *   decade only               → resolution 'decade'   ("Sometime in the 1990s")
+ *   decade + part 'early'     → resolution 'decade'   ("Early 1990s")
+ *   + year                    → resolution 'year'
+ *   + year part 'summer'      → resolution 'year'     ("Summer 1998")
+ *   + month / day / time      → 'month' / 'day' / 'hour' / 'minute' / 'second'
+ *
+ * A part is TERMINAL: naming a deeper unit clears it (knowing "May" supersedes
+ * "early 1996"). Clearing a level clears everything finer than it. The
+ * `approximate` flag ("~ish") is orthogonal and widens the stored interval.
  *
  * The `resolutions` option bounds this drill-down: the coarsest allowed value
  * is the required baseline (always filled), the finest is how deep the UI goes.
  */
 
-import type { DateApproximation, DateResolution, FuzzyDateTime } from './types';
+import type { DatePart, DateResolution, FuzzyDateTime, FuzzyLabelFormatter, Hemisphere } from './types';
 import {
-    APPROXIMATION_ORDER,
     createFuzzyDateTime,
     isResolutionFinerOrEqual,
     parseFuzzyDateTime,
+    partsForResolution,
     resolutionBounds,
     resolutionIndex,
 } from './fuzzy';
@@ -32,22 +36,32 @@ import {
 export interface FuzzySelectionOptions {
     /** Allowed resolutions — coarsest = required baseline, finest = max drill depth */
     resolutions?: DateResolution[];
-    /** Allowed approximations. Default: sometime, around, exact */
-    approximations?: DateApproximation[];
+    /** Offer part-of-period refinements. Default: true */
+    parts?: boolean;
+    /** Season → month mapping. Default: 'north' */
+    hemisphere?: Hemisphere;
+    /** Override label generation */
+    formatLabel?: FuzzyLabelFormatter;
     /** Initial value to load */
     value?: FuzzyDateTime | null;
 }
 
 export interface FuzzySelectionState {
+    /** Concrete year (the decade's first year while only the decade is known) */
     year: number;
     month: number; // 0-indexed
     day: number;
     hour: number | null;
     minute: number | null;
     second: number | null;
+    /** Whether the user has NAMED the year (false = decade-only, when decade is in play) */
+    yearSet: boolean;
     monthSet: boolean;
     daySet: boolean;
-    approximation: DateApproximation;
+    /** Terminal part refinement of the deepest named level, if any */
+    part: DatePart | null;
+    /** "~ish" — soft boundary, widens the stored interval */
+    approximate: boolean;
     /** False until the user has made any selection (or a value was loaded) */
     hasSelection: boolean;
 }
@@ -56,19 +70,24 @@ export interface FuzzySelection {
     state: FuzzySelectionState;
     base: DateResolution;
     finest: DateResolution;
-    allowedApprox: DateApproximation[];
     /** Whether the drill-down may go at least this deep */
     levelAllowed(level: DateResolution): boolean;
     /** The derived resolution of the current selection */
     resolution(): DateResolution;
     /** Days in the currently selected year/month */
     daysInMonth(): number;
-    /** 'sometime' is nonsense at time-of-day precision — segment should disable it */
-    sometimeDisabled(): boolean;
+    /** First year of the current decade */
+    decadeStart(): number;
+    /** Valid parts for the current derived resolution (empty when parts are disabled) */
+    partOptions(): DatePart[];
     /** Build the FuzzyDateTime for the current selection (null when nothing selected) */
     build(): FuzzyDateTime | null;
+    /** Step the decade by ±1 (10 years) */
+    stepDecade(delta: number): void;
     setYear(year: number): void;
     stepYear(delta: number): void;
+    /** Name a year within the decade, or un-name it when re-selecting the active one (decade base only) */
+    toggleYear(year: number): void;
     /** Select a month, or clear it (and everything finer) when re-selecting the active one */
     toggleMonth(index: number): void;
     toggleDay(day: number): void;
@@ -80,10 +99,15 @@ export interface FuzzySelection {
     setHour(hour: number | null): void;
     setMinute(minute: number | null): void;
     setSecond(second: number | null): void;
-    setApproximation(approx: DateApproximation): void;
-    /** Today's date, no time — the common "it happened today" shortcut */
+    /** Set/clear the terminal part refinement (validated against partOptions) */
+    setPart(part: DatePart | null): void;
+    /** Toggle a part chip — re-selecting the active part clears it */
+    togglePart(part: DatePart): void;
+    setApproximate(approximate: boolean): void;
+    toggleApproximate(): void;
+    /** Today's date, no time or part — the common "it happened today" shortcut */
     setToday(): void;
-    /** Full current date+time at the finest allowed depth, approximation 'exact' */
+    /** Full current date+time at the finest allowed depth, not approximate */
     setNow(): void;
     /** Reset to the empty state */
     clear(): void;
@@ -95,9 +119,9 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 
 export function createFuzzySelection(options: FuzzySelectionOptions = {}): FuzzySelection {
     const { base, finest } = resolutionBounds(options.resolutions);
-    const allowedApprox: DateApproximation[] = APPROXIMATION_ORDER.filter((a) =>
-        options.approximations?.length ? options.approximations.includes(a) : true,
-    );
+    const partsEnabled = options.parts !== false;
+    const hemisphere = options.hemisphere ?? 'north';
+    const formatLabel = options.formatLabel;
 
     const state: FuzzySelectionState = {
         year: new Date().getFullYear(),
@@ -106,20 +130,23 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         hour: null,
         minute: null,
         second: null,
+        yearSet: false,
         monthSet: false,
         daySet: false,
-        approximation: allowedApprox.includes('sometime') ? 'sometime' : allowedApprox[0],
+        part: null,
+        approximate: false,
         hasSelection: false,
     };
 
-    // Tracks whether 'sometime' was auto-swapped to 'around' when the user added
-    // a time, so it can be restored if they remove the time again.
-    let sometimeAutoSwitched = false;
+    // The level the current part refines — used to invalidate it when the
+    // selection depth changes (a part is terminal at exactly one level).
+    let partLevel: DateResolution | null = null;
 
     const levelAllowed = (level: DateResolution) => isResolutionFinerOrEqual(finest, level);
 
     /** Base levels are the required minimum — keep them filled at all times */
     function applyBaseFloor() {
+        if (isResolutionFinerOrEqual(base, 'year')) state.yearSet = true;
         if (isResolutionFinerOrEqual(base, 'month')) state.monthSet = true;
         if (isResolutionFinerOrEqual(base, 'day')) state.daySet = true;
         if (isResolutionFinerOrEqual(base, 'hour') && state.hour == null) state.hour = 0;
@@ -136,8 +163,13 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         if (state.day > max) state.day = max;
     }
 
+    function decadeStart(): number {
+        return state.year - (state.year % 10);
+    }
+
     function resolution(): DateResolution {
-        let res: DateResolution = 'year';
+        let res: DateResolution = 'decade';
+        if (state.yearSet) res = 'year';
         if (state.monthSet) res = 'month';
         if (state.daySet) res = 'day';
         if (state.hour != null) res = 'hour';
@@ -149,23 +181,15 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         return res;
     }
 
-    function sometimeDisabled(): boolean {
-        return isResolutionFinerOrEqual(resolution(), 'hour');
+    function partOptions(): DatePart[] {
+        return partsEnabled ? partsForResolution(resolution()) : [];
     }
 
-    /** Swap 'sometime' ↔ 'around' as the selection crosses into/out of time-of-day */
-    function normalizeApproximation() {
-        if (sometimeDisabled()) {
-            if (state.approximation === 'sometime') {
-                const fallback = allowedApprox.find((a) => a !== 'sometime');
-                if (fallback) {
-                    state.approximation = fallback;
-                    sometimeAutoSwitched = true;
-                }
-            }
-        } else if (sometimeAutoSwitched && allowedApprox.includes('sometime')) {
-            state.approximation = 'sometime';
-            sometimeAutoSwitched = false;
+    /** A part is bound to one level — drop it whenever the selection depth changes */
+    function sanitizePart() {
+        if (state.part && partLevel !== resolution()) {
+            state.part = null;
+            partLevel = null;
         }
     }
 
@@ -177,18 +201,44 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
 
     function build(): FuzzyDateTime | null {
         if (!state.hasSelection) return null;
-        normalizeApproximation();
         const date = new Date(
             Date.UTC(state.year, state.month, state.day, state.hour ?? 0, state.minute ?? 0, state.second ?? 0),
         );
-        return createFuzzyDateTime(date, resolution(), state.approximation);
+        return createFuzzyDateTime(date, resolution(), {
+            part: state.part,
+            approximate: state.approximate,
+            hemisphere,
+            formatLabel,
+        });
+    }
+
+    function setYear(year: number) {
+        state.year = clamp(Math.round(year), 1, 9999);
+        state.yearSet = true;
+        clampDay();
+        state.hasSelection = true;
+        applyBaseFloor();
+        sanitizePart();
+    }
+
+    function clearYearName() {
+        if (isResolutionFinerOrEqual(base, 'year')) return; // year is required unless decade is the base
+        state.year = decadeStart();
+        state.yearSet = false;
+        state.monthSet = false;
+        state.daySet = false;
+        clearTime();
+        state.hasSelection = true;
+        sanitizePart();
     }
 
     function setMonth(index: number) {
         state.month = clamp(index, 0, 11);
         state.monthSet = true;
+        state.yearSet = true;
         clampDay();
         state.hasSelection = true;
+        sanitizePart();
     }
 
     function clearMonth() {
@@ -198,12 +248,14 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         clearTime();
         applyBaseFloor();
         state.hasSelection = true;
+        sanitizePart();
     }
 
     function setDay(day: number) {
         state.day = clamp(day, 1, daysInMonth());
         state.daySet = true;
         state.hasSelection = true;
+        sanitizePart();
     }
 
     function clearDay() {
@@ -212,38 +264,13 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         clearTime();
         applyBaseFloor();
         state.hasSelection = true;
-    }
-
-    applyBaseFloor();
-
-    function load(value: FuzzyDateTime) {
-        const parsed = parseFuzzyDateTime(value);
-        const ri = resolutionIndex(parsed.resolution);
-        state.approximation = parsed.approximation;
-        state.year = parsed.date.getUTCFullYear();
-        state.month = parsed.date.getUTCMonth();
-        state.day = parsed.date.getUTCDate();
-        state.monthSet = ri >= resolutionIndex('month');
-        state.daySet = ri >= resolutionIndex('day');
-        state.hour = ri >= resolutionIndex('hour') ? parsed.date.getUTCHours() : null;
-        state.minute = ri >= resolutionIndex('minute') ? parsed.date.getUTCMinutes() : null;
-        state.second = ri >= resolutionIndex('second') ? parsed.date.getUTCSeconds() : null;
-        applyBaseFloor();
-        state.hasSelection = true;
-        sometimeAutoSwitched = false;
-    }
-
-    if (options.value) load(options.value);
-
-    function setYear(year: number) {
-        state.year = clamp(Math.round(year), 1, 9999);
-        clampDay();
-        state.hasSelection = true;
+        sanitizePart();
     }
 
     function setToday() {
         const now = new Date();
         state.year = now.getFullYear();
+        state.yearSet = true;
         if (levelAllowed('month')) {
             state.month = now.getMonth();
             state.monthSet = true;
@@ -253,24 +280,79 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
             state.daySet = true;
         }
         clearTime();
+        state.part = null;
+        partLevel = null;
         applyBaseFloor();
         state.hasSelection = true;
     }
+
+    function load(value: FuzzyDateTime) {
+        const parsed = parseFuzzyDateTime(value);
+        const ri = resolutionIndex(parsed.resolution);
+        state.year = parsed.date.getUTCFullYear();
+        state.month = parsed.date.getUTCMonth();
+        state.day = parsed.date.getUTCDate();
+        state.yearSet = ri >= resolutionIndex('year');
+        state.monthSet = ri >= resolutionIndex('month');
+        state.daySet = ri >= resolutionIndex('day');
+        state.hour = ri >= resolutionIndex('hour') ? parsed.date.getUTCHours() : null;
+        state.minute = ri >= resolutionIndex('minute') ? parsed.date.getUTCMinutes() : null;
+        state.second = ri >= resolutionIndex('second') ? parsed.date.getUTCSeconds() : null;
+        state.approximate = parsed.approximate;
+        state.part = parsed.part;
+        partLevel = parsed.part ? parsed.resolution : null;
+        applyBaseFloor();
+        sanitizePart();
+        state.hasSelection = true;
+    }
+
+    function setPart(part: DatePart | null) {
+        if (part == null) {
+            state.part = null;
+            partLevel = null;
+        } else {
+            if (!partOptions().includes(part)) return;
+            state.part = part;
+            partLevel = resolution();
+        }
+        state.hasSelection = true;
+    }
+
+    function setApproximate(approximate: boolean) {
+        state.approximate = approximate;
+        if (approximate) state.hasSelection = true;
+    }
+
+    applyBaseFloor();
+    if (options.value) load(options.value);
 
     return {
         state,
         base,
         finest,
-        allowedApprox,
         levelAllowed,
         resolution,
         daysInMonth,
-        sometimeDisabled,
+        decadeStart,
+        partOptions,
         build,
 
+        stepDecade(delta: number) {
+            state.year = clamp(state.year + delta * 10, 1, 9999);
+            clampDay();
+            state.hasSelection = true;
+            sanitizePart();
+        },
         setYear,
         stepYear(delta: number) {
             setYear(state.year + delta);
+        },
+        toggleYear(year: number) {
+            if (state.yearSet && state.year === year && !isResolutionFinerOrEqual(base, 'year')) {
+                clearYearName();
+            } else {
+                setYear(year);
+            }
         },
         setMonth,
         clearMonth,
@@ -298,6 +380,7 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
                 state.hour = clamp(hour, 0, 23);
             }
             state.hasSelection = true;
+            sanitizePart();
         },
         setMinute(minute: number | null) {
             if (minute == null) {
@@ -309,6 +392,7 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
                 state.minute = clamp(minute, 0, 59);
             }
             state.hasSelection = true;
+            sanitizePart();
         },
         setSecond(second: number | null) {
             if (second == null) {
@@ -320,11 +404,15 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
                 state.second = clamp(second, 0, 59);
             }
             state.hasSelection = true;
+            sanitizePart();
         },
-        setApproximation(approx: DateApproximation) {
-            if (!allowedApprox.includes(approx)) return;
-            state.approximation = approx;
-            sometimeAutoSwitched = false;
+        setPart,
+        togglePart(part: DatePart) {
+            setPart(state.part === part ? null : part);
+        },
+        setApproximate,
+        toggleApproximate() {
+            setApproximate(!state.approximate);
         },
         setToday,
         setNow() {
@@ -333,21 +421,21 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
             if (levelAllowed('hour')) state.hour = now.getHours();
             if (levelAllowed('minute')) state.minute = now.getMinutes();
             if (levelAllowed('second')) state.second = now.getSeconds();
-            if (allowedApprox.includes('exact')) {
-                state.approximation = 'exact';
-                sometimeAutoSwitched = false;
-            }
+            state.approximate = false;
         },
         clear() {
             state.hasSelection = false;
             state.year = new Date().getFullYear();
             state.month = 0;
             state.day = 1;
+            state.yearSet = false;
             state.monthSet = false;
             state.daySet = false;
             clearTime();
+            state.part = null;
+            partLevel = null;
+            state.approximate = false;
             applyBaseFloor();
-            sometimeAutoSwitched = false;
         },
         load,
     };

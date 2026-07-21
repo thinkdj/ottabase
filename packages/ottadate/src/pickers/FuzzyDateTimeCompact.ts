@@ -2,18 +2,18 @@
  * @ottabase/ottadate — FuzzyDateTimeCompact
  *
  * Space-efficient fuzzy date picker for forms and sidebars. The controls are a
- * mad-lib sentence of native <select>s that literally reads as the stored
- * label, and — like the full picker — the resolution is DERIVED from how much
- * of the sentence the user fills in (see core/fuzzy-selection.ts):
+ * mad-lib sentence of native <select>s that reads like the stored label, and —
+ * like the full picker — the resolution is DERIVED from how much of the
+ * sentence the user fills in (see core/fuzzy-selection.ts):
  *
  *   [ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]         → "Sometime in 2020"
- *   [ Sometime ▾ ] [ May ▾ ] [ Any day ▾ ] [ 2020 ▾ ] → "Sometime in May 2020"
- *   [ Around ▾ ]   [ May ▾ ] [ 20 ▾ ] [ 2020 ▾ ]      → "Around May 20, 2020"
- *   [ 14 ] : [ 30 ]                                    ← time cascade, appears once a day is set
- *   "Around 14:30 on May 20, 2020"                     ← live preview label
- *   [ Now ] [ Clear ]                                  ← footer
+ *   [ Summer ▾ ]   [ Any month ▾ ] [ 1998 ▾ ]         → "Summer 1998"
+ *   [ Late ▾ ]     [ May ▾ ] [ Any day ▾ ] [ 2010 ▾ ] → "Late May 2010"
+ *   [ 14 ] : [ 30 ]                                    ← time cascade, once a day is set
  *
- * Every change auto-applies.
+ * The first select is the PART ("Sometime" = none); a small "~" chip marks the
+ * whole thing as approximate. With `resolutions: ['decade', …]` a decade
+ * select leads the sentence. Every change auto-applies.
  *
  * Usage:
  *   const picker = OttaDate.createFuzzyDateTimeCompact(container, {
@@ -21,14 +21,9 @@
  *   });
  */
 
-import { APPROXIMATION_LABELS } from '../core/fuzzy';
+import { PART_LABELS } from '../core/fuzzy';
 import { createFuzzySelection, type FuzzySelection } from '../core/fuzzy-selection';
-import type {
-    DateApproximation,
-    FuzzyDateTime,
-    FuzzyDateTimePickerInstance,
-    FuzzyDateTimePickerOptions,
-} from '../core/types';
+import type { DatePart, FuzzyDateTime, FuzzyDateTimePickerInstance, FuzzyDateTimePickerOptions } from '../core/types';
 import { getIntlLocale, getMonthNames, pad2, resolveConfig } from '../core/utils';
 import {
     btn,
@@ -46,6 +41,7 @@ import {
 /** Year dropdown range — fuzzy dates are past-heavy, so reach far back */
 const YEARS_AHEAD = 10;
 const YEARS_BACK = 100;
+const DECADES_BACK = 12;
 
 export function createFuzzyDateTimeCompact(
     container: HTMLElement,
@@ -56,11 +52,17 @@ export function createFuzzyDateTimeCompact(
         ...options,
     });
 
-    let sel: FuzzySelection = createFuzzySelection({
-        resolutions: config.resolutions,
-        approximations: config.approximations,
-        value: config.value,
-    });
+    function buildSelection(value: FuzzyDateTime | null): FuzzySelection {
+        return createFuzzySelection({
+            resolutions: config.resolutions,
+            parts: config.parts,
+            hemisphere: config.hemisphere,
+            formatLabel: config.formatLabel,
+            value,
+        });
+    }
+
+    let sel = buildSelection(config.value ?? null);
     let currentFuzzy: FuzzyDateTime | null = config.value ?? null;
 
     let isOpen = false;
@@ -137,7 +139,7 @@ export function createFuzzyDateTimeCompact(
     /** Themed <select> with a custom chevron (mirrors ui-shadcn's NativeSelect) */
     function createSelect(
         className: string,
-        optionItems: { value: string; label: string; disabled?: boolean }[],
+        optionItems: { value: string; label: string }[],
         currentValue: string,
         onChange: (value: string) => void,
     ): HTMLElement {
@@ -153,7 +155,6 @@ export function createFuzzyDateTimeCompact(
             const option = el('option', { value: opt.value }) as HTMLOptionElement;
             option.textContent = opt.label;
             if (opt.value === currentValue) option.selected = true;
-            if (opt.disabled) option.disabled = true;
             select.appendChild(option);
         }
 
@@ -166,27 +167,81 @@ export function createFuzzyDateTimeCompact(
         return wrapper;
     }
 
-    /** The sentence row: [approximation] [month?] [day?] [year] */
+    /** The sentence row: [part] [decade?] [month?] [day?] [year] [~] */
     function renderSentenceRow(): HTMLElement {
         const row = div('ottadate-compact-row');
 
-        // Approximation — 'sometime' greys out once a time is set
-        const approxItems = sel.allowedApprox.map((a) => ({
-            value: a,
-            label: APPROXIMATION_LABELS[a],
-            disabled: a === 'sometime' && sel.sometimeDisabled(),
-        }));
-        row.appendChild(
-            createSelect('ottadate-compact-approx', approxItems, sel.state.approximation, (val) => {
-                sel.setApproximation(val as DateApproximation);
-                if (sel.state.hasSelection) commit();
-                else render();
-            }),
-        );
+        // Part — "Sometime" is the no-part state; options track the current level
+        const partChoices = sel.partOptions();
+        if (partChoices.length || sel.state.part) {
+            const partItems = [
+                { value: '', label: 'Sometime' },
+                ...partChoices.map((p) => ({ value: p, label: PART_LABELS[p] })),
+            ];
+            row.appendChild(
+                createSelect('ottadate-compact-part', partItems, sel.state.part ?? '', (val) => {
+                    sel.setPart(val === '' ? null : (val as DatePart));
+                    commit();
+                }),
+            );
+        }
+
+        const decadeMode = sel.base === 'decade';
+
+        // Decade — leads the sentence in decade mode, and pages the year select
+        if (decadeMode) {
+            const currentDecade = new Date().getFullYear() - (new Date().getFullYear() % 10);
+            const first = Math.max(currentDecade + 10, sel.decadeStart());
+            const last = Math.min(currentDecade - DECADES_BACK * 10, sel.decadeStart());
+            const decadeItems: { value: string; label: string }[] = [];
+            for (let d = first; d >= last; d -= 10) {
+                decadeItems.push({ value: String(d), label: `${d}s` });
+            }
+            row.appendChild(
+                createSelect('ottadate-compact-decade', decadeItems, String(sel.decadeStart()), (val) => {
+                    sel.stepDecade((parseInt(val, 10) - sel.decadeStart()) / 10);
+                    commit();
+                }),
+            );
+        }
+
+        // Year — "Any year" keeps a decade-mode selection at decade resolution
+        if (sel.levelAllowed('year')) {
+            const yearItems: { value: string; label: string }[] = [];
+            if (decadeMode) {
+                yearItems.push({ value: '', label: 'Any year' });
+                const start = sel.decadeStart();
+                for (let y = start + 9; y >= start; y--) {
+                    yearItems.push({ value: String(y), label: String(y) });
+                }
+            } else {
+                const now = new Date().getFullYear();
+                const maxYear = Math.max(now + YEARS_AHEAD, sel.state.year);
+                const minYear = Math.min(now - YEARS_BACK, sel.state.year);
+                for (let y = maxYear; y >= minYear; y--) {
+                    yearItems.push({ value: String(y), label: String(y) });
+                }
+            }
+            row.appendChild(
+                createSelect(
+                    'ottadate-compact-year',
+                    yearItems,
+                    sel.state.yearSet ? String(sel.state.year) : '',
+                    (val) => {
+                        if (val === '') {
+                            if (sel.state.yearSet) sel.toggleYear(sel.state.year);
+                        } else {
+                            sel.setYear(parseInt(val, 10));
+                        }
+                        commit();
+                    },
+                ),
+            );
+        }
 
         // Month — "Any month" keeps the selection at year resolution
-        if (sel.levelAllowed('month')) {
-            const monthRequired = sel.base !== 'year';
+        if (sel.levelAllowed('month') && sel.state.yearSet) {
+            const monthRequired = sel.base !== 'decade' && sel.base !== 'year';
             const months = getMonthNames(getIntlLocale(config.locale));
             const monthItems = [
                 ...(monthRequired ? [] : [{ value: '', label: 'Any month' }]),
@@ -208,7 +263,7 @@ export function createFuzzyDateTimeCompact(
 
         // Day — appears only once a month is chosen
         if (sel.levelAllowed('day') && sel.state.monthSet) {
-            const dayRequired = sel.base !== 'year' && sel.base !== 'month';
+            const dayRequired = sel.base !== 'decade' && sel.base !== 'year' && sel.base !== 'month';
             const dayItems = [...(dayRequired ? [] : [{ value: '', label: 'Any day' }])];
             for (let d = 1; d <= sel.daysInMonth(); d++) {
                 dayItems.push({ value: String(d), label: String(d) });
@@ -222,20 +277,18 @@ export function createFuzzyDateTimeCompact(
             );
         }
 
-        // Year — most recent first; fuzzy recall is almost always about the past
-        const now = new Date().getFullYear();
-        const yearItems: { value: string; label: string }[] = [];
-        const maxYear = Math.max(now + YEARS_AHEAD, sel.state.year);
-        const minYear = Math.min(now - YEARS_BACK, sel.state.year);
-        for (let y = maxYear; y >= minYear; y--) {
-            yearItems.push({ value: String(y), label: String(y) });
-        }
-        row.appendChild(
-            createSelect('ottadate-compact-year', yearItems, String(sel.state.year), (val) => {
-                sel.setYear(parseInt(val, 10));
+        // "~" — approximate chip
+        if (config.allowApproximate !== false) {
+            const approxChip = btn('ottadate-part-chip ottadate-compact-approx-chip', '~', () => {
+                if (config.disabled) return;
+                sel.toggleApproximate();
                 commit();
-            }),
-        );
+            });
+            approxChip.title = 'Roughly — widens the stored range';
+            approxChip.setAttribute('aria-label', 'Approximate');
+            if (sel.state.approximate) approxChip.classList.add('ottadate-part-chip--active');
+            row.appendChild(approxChip);
+        }
 
         return row;
     }
@@ -400,12 +453,13 @@ export function createFuzzyDateTimeCompact(
         setOptions(newOptions) {
             config = resolveConfig({ ...config, ...newOptions });
             // Constraint changes need a fresh selection controller
-            if (newOptions.resolutions !== undefined || newOptions.approximations !== undefined) {
-                sel = createFuzzySelection({
-                    resolutions: config.resolutions,
-                    approximations: config.approximations,
-                    value: currentFuzzy,
-                });
+            if (
+                newOptions.resolutions !== undefined ||
+                newOptions.parts !== undefined ||
+                newOptions.hemisphere !== undefined ||
+                newOptions.formatLabel !== undefined
+            ) {
+                sel = buildSelection(currentFuzzy);
             }
             if (newOptions.value !== undefined) {
                 applyValue(newOptions.value);

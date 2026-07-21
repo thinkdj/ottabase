@@ -5,17 +5,21 @@
  * No DOM dependencies — safe for server-side usage.
  */
 
-export type { DateApproximation, DateResolution, FuzzyDateTime } from './core/types';
+export type { DatePart, DateResolution, FuzzyDateTime, FuzzyLabelFormatter, Hemisphere } from './core/types';
 
 export {
-    APPROXIMATION_LABELS,
-    APPROXIMATION_ORDER,
+    DEFAULT_RESOLUTIONS,
+    PART_LABELS,
     RESOLUTION_LABELS,
     RESOLUTION_ORDER,
     buildFuzzyLabel,
     createFuzzyDateTime,
+    decodeFuzzyDateTime,
+    encodeFuzzyDateTime,
     isResolutionFinerOrEqual,
+    isValidPart,
     parseFuzzyDateTime,
+    partsForResolution,
     refreshFuzzyLabel,
     resolutionBounds,
     resolutionIndex,
