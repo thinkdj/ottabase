@@ -14,7 +14,7 @@ with pre-built themes and configuration utilities.
 ## Installation
 
 ```bash
-npm install @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
+pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 # or
 pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 ```

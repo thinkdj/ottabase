@@ -2,7 +2,7 @@
 
 Cloudflare Workers Analytics Engine (WAE) wrapper — track events, query aggregated data, and analyze user behavior.
 
-## Install
+## Installation
 
 ```json
 { "@ottabase/analytics": "workspace:*" }

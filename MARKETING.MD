@@ -124,7 +124,8 @@ Everything worth mentioning, grouped so you can pull just the section you need.
 - **Blog and CMS (OttaBlog).** Posts, categories, tags, series, and versioning, plus a Blog Studio admin.
 - **Threaded comments.** Nested replies as a drop-in package.
 - **Media library.** Upload, browse, and manage images and files.
-- **Rich editor (OttaEditor).** An EditorJS wrapper with 15+ blocks, including custom ones like Spoiler, CTA, and Review.
+- **Rich editor (OttaEditor).** An EditorJS wrapper with 30 blocks (13 EditorJS plus 17 custom), including custom ones
+  like Spoiler, CTA, and Review.
 - **Layout presets (OttaLayout).** Ready-made page layouts with slots you can swap.
 
 ### Growth and infrastructure
@@ -146,7 +147,8 @@ Everything worth mentioning, grouped so you can pull just the section you need.
   select/combobox.
 - A tiny vanilla JavaScript image cropper (around 3 to 4 KB, zero dependencies).
 - Auto-generated CRUD forms from your OttaORM models.
-- OttaDate, a fuzzy date picker where you can type something like "next friday" and it resolves the date.
+- OttaDate, a framework-agnostic date picker with range, datetime, and fuzzy modes. The fuzzy mode captures
+  half-remembered dates like "Summer 1998" or "Early 1990s" and still stores a real, queryable date range.
 - A markdown docs viewer for in-app documentation.
 
 ### Developer experience
@@ -218,8 +220,8 @@ Read for the highlights, not the raw commits. Grouped by what a user or reader w
 
 ### Newest first (July 2026)
 
-- **OttaDate, a fuzzy date picker (Jul 21).** A new date picker you can type into naturally. It reads phrases and
-  resolves them to real dates with a small parser and a derived-resolution model.
+- **OttaDate, a fuzzy date picker (Jul 21).** A new framework-agnostic date picker with range and datetime modes, plus a
+  fuzzy mode for half-remembered dates like "Summer 1998" that still resolve to a real, queryable date range.
 - **Leaner, Cloudflare-only stack (Jul 19).** Removed dead Prisma and MongoDB backends and dropped Prisma from the
   install graph entirely. The framework is now cleanly edge-native with nothing to trip over.
 - **Big multi-tenant security pass (Jul 14 to Jul 19).** A major hardening wave. Access control now checks real

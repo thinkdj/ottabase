@@ -13,7 +13,7 @@ and base styles.
 ## Installation
 
 ```bash
-npm install @ottabase/ui-base
+pnpm add @ottabase/ui-base
 # or
 pnpm add @ottabase/ui-base
 ```
