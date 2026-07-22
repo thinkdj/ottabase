@@ -553,7 +553,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
         const perPage = Math.min(50, Math.max(1, parseInt(url.searchParams.get('perPage') || '15', 10)));
-        const appId = url.searchParams.get('appId') || null;
+        // Always app-scoped (param → x-app-id → config default): on a shared
+        // multi-app database, one app's public list must never serve another's.
+        const appId = resolveAppId(context);
         const contentType = url.searchParams.get('contentType') || null;
         const seriesId = url.searchParams.get('seriesId') || null;
         const categoryId = url.searchParams.get('categoryId') || null;
@@ -850,7 +852,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = url.searchParams.get('appId') || null;
+        const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         const limit = Math.min(10, Math.max(1, parseInt(url.searchParams.get('limit') || '4', 10)));
 
@@ -866,7 +868,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const related = await Post.related(postId, {
             categoryIds,
             contentType: post.get('contentType') as string,
-            appId: appId ?? undefined,
+            appId,
             organizationId,
             limit,
         });
@@ -886,7 +888,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = url.searchParams.get('appId') || null;
+        const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         const contentType = url.searchParams.get('contentType') || null;
         const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '25', 10)));
@@ -994,7 +996,7 @@ ${items}
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = url.searchParams.get('appId') || null;
+        const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         // Bounded: unbounded full-corpus loads (every column incl. content JSON)
         // degrade linearly and risk isolate memory at a few thousand posts. The
@@ -1062,6 +1064,8 @@ ${urls}
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
+        // Deliberately cross-app when no ?appId is given: one shared-DB cron
+        // publishes every app's due posts. Pass ?appId= to restrict a run.
         const appId = url.searchParams.get('appId') || null;
         const published = await Post.publishScheduled({ appId: appId ?? undefined });
 

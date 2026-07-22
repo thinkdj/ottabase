@@ -130,6 +130,44 @@ describe('RLS Registry', () => {
         });
     });
 
+    describe('posts policy filter (editorial + platform blog)', () => {
+        const postsConfig = MODEL_POLICIES.find((p) => p.model === 'posts')!;
+        const filter = postsConfig.policy.filter!;
+
+        it('denies without a user, and without a tenant for non-platform-admins', () => {
+            expect(filter({})).toBeNull();
+            expect(filter({ userId: 'u1' })).toBeNull();
+            expect(filter({ userId: 'u1', organizationId: null })).toBeNull();
+        });
+
+        it('confines authors (no manage grant) to their own posts in their org', () => {
+            const ctx: SecurityContext = {
+                userId: 'u1',
+                organizationId: 'org-1',
+                appId: 'web',
+                permissions: ['posts:create', 'posts:update', '*:read'],
+            };
+            expect(filter(ctx)).toEqual({ organizationId: 'org-1', appId: 'web', userId: 'u1' });
+        });
+
+        it('gives manage-grade grants (posts:manage / org:admin) org-wide scope', () => {
+            for (const perm of ['posts:manage', 'posts:*', 'org:admin', '*:*']) {
+                const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1', permissions: [perm] };
+                expect(filter(ctx), perm).toEqual({ organizationId: 'org-1' });
+            }
+        });
+
+        it('scopes a platform admin WITHOUT an active org to the PLATFORM blog (organizationId null)', () => {
+            const ctx: SecurityContext = { userId: 'u1', organizationId: null, appId: 'web', platformAdmin: true };
+            expect(filter(ctx)).toEqual({ organizationId: null, appId: 'web' });
+        });
+
+        it('keeps a platform admin WITH an active org scoped to that org', () => {
+            const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-2', platformAdmin: true };
+            expect(filter(ctx)).toEqual({ organizationId: 'org-2' });
+        });
+    });
+
     describe('registerAllPolicies', () => {
         it('registers all policies into the global engine', () => {
             registerAllPolicies();

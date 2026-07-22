@@ -193,6 +193,29 @@ describe('createBlogHandlers', () => {
             const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
             expect('organizationId' in where).toBe(false);
         });
+
+        it('always scopes the public list to the resolved app (shared-DB multi-app safety)', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            // No ?appId → falls back to the app's configured default.
+            await handlers.handleBlogPostsList(ctxFor('/posts'));
+            let where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
+            expect(where.appId).toBe('test-app');
+
+            // Explicit ?appId still wins.
+            await handlers.handleBlogPostsList(ctxFor('/posts?appId=other-app'));
+            where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
+            expect(where.appId).toBe('other-app');
+        });
+
+        it('scopes related posts to the resolved app', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            vi.mocked(Post.find).mockResolvedValueOnce({ get: () => 'blog' } as any);
+
+            await handlers.handleBlogRelatedPosts(ctxFor('/posts/p1/related'), 'p1');
+
+            expect(Post.related).toHaveBeenCalledWith('p1', expect.objectContaining({ appId: 'test-app' }));
+        });
     });
 
     describe('org mode', () => {

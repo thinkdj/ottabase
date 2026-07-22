@@ -202,6 +202,17 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             filter: (context) => {
                 if (!context.userId) return null; // fail closed without a user
                 if (context.organizationId === undefined || context.organizationId === null) {
+                    // THE PLATFORM'S OWN BLOG: rows with organizationId NULL are
+                    // platform-owned (org mode serves them at the apex; each tenant's
+                    // blog is org-scoped). A PLATFORM ADMIN acting without an active
+                    // org manages exactly that scope — create-injection via
+                    // contextFields stamps the null org, so their posts stay
+                    // platform-owned. Everyone else still fails closed.
+                    if (context.platformAdmin === true) {
+                        const filter: Record<string, any> = { organizationId: null };
+                        if (context.appId) filter.appId = context.appId;
+                        return filter;
+                    }
                     return null; // tenant required (single-founder mode uses allowNullTenant paths)
                 }
                 const filter: Record<string, any> = { organizationId: context.organizationId };
