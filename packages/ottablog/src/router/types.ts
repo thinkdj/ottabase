@@ -70,6 +70,19 @@ export interface BlogRouterConfig<Env = unknown> {
     verifyPassword: (password: string, hash: string) => Promise<boolean>;
 
     /**
+     * Secret for signed draft-preview tokens. When absent, `?preview=` on the
+     * by-slug route is ignored and the mint endpoint responds 404.
+     */
+    previewTokenSecret?: (env: Env) => string | null;
+
+    /**
+     * Guard for the preview-token mint endpoint — an EDITORIAL gate (someone
+     * allowed to edit posts), typically looser than {@link requireAdmin}.
+     * Falls back to `requireAdmin` when not provided.
+     */
+    requireContentEditor?: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
+
+    /**
      * EditorJS content for the demo kitchensink post. When omitted, POST /kitchensink
      * responds 404 — apps opt into the demo by supplying content.
      */
@@ -97,4 +110,5 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogSitemap(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPublishScheduled(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogKitchensink(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogPreviewTokenMint(ctx: BlogRequestContext<Env>): Promise<Response>;
 }

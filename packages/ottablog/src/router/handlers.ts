@@ -17,6 +17,7 @@ import {
     PostTag,
     PostTagLink,
 } from '../ottaorm-models';
+import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
 import type { BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
 
@@ -455,15 +456,36 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         });
     }
 
+    /**
+     * Signed draft preview: when a valid, unexpired `?preview=` token matches this
+     * slug + appId, load the post WITHOUT the published-status filter. The token's
+     * own org scope drives the lookup (it was bound at mint time), so a token can
+     * never reach across tenants. Returns null when preview does not apply.
+     */
+    async function findPostForPreview(context: Ctx, slug: string, appId: string): Promise<Post | null> {
+        const token = context.url.searchParams.get('preview');
+        if (!token) return null;
+        const secret = config.previewTokenSecret?.(context.env);
+        if (!secret) return null;
+
+        const payload = await verifyPreviewToken(secret, token);
+        if (!payload || payload.slug !== slug || payload.appId !== appId) return null;
+
+        const where: Record<string, unknown> = { slug, appId };
+        if (payload.organizationId !== undefined) where.organizationId = payload.organizationId;
+        return Post.first(where);
+    }
+
     async function handleBlogPostBySlug(context: Ctx, slug: string): Promise<Response> {
         const { env, url } = context;
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
+        const preview = await findPostForPreview(context, slug, appId);
+        const organizationId = preview ? undefined : await resolveTenant(context);
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
+        const record = preview ?? (await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId));
 
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
@@ -479,12 +501,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // Call POST /api/blog/posts/:slug/track-view explicitly when needed.
 
         const data = await publicPostJson(record, {
+            // A preview link is the review artifact — the token grants content access
+            // (password-protection stripping still applies to normal public reads).
+            includeContent: !!preview,
             enrichTags: true,
             enrichCategory: true,
             enrichSeries: true,
             enrichAuthor: true,
         });
-        return jsonResponse(data);
+        return jsonResponse(preview ? { ...data, preview: true } : data);
     }
 
     async function handleBlogPostUnlock(context: Ctx): Promise<Response> {
@@ -924,6 +949,55 @@ ${urls}
         return jsonResponse({ status: 'created', id: post.get('id'), slug: post.get('slug') });
     }
 
+    /**
+     * POST /posts/preview-token — mint a signed draft-preview link.
+     * Gated by the editorial guard (requireContentEditor, falling back to
+     * requireAdmin). 404 when no preview secret is configured.
+     */
+    async function handleBlogPreviewTokenMint(context: Ctx): Promise<Response> {
+        const guard = config.requireContentEditor ?? config.requireAdmin;
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const secret = config.previewTokenSecret?.(context.env);
+        if (!secret) {
+            return errorResponse('Preview tokens are not configured', 404, { code: 'NOT_FOUND' });
+        }
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const body = await readJson<{ slug?: string; ttlMs?: number }>(context.request);
+        const slug = body?.slug?.trim();
+        if (!slug) {
+            return errorResponse('slug is required', 400, { code: 'VALIDATION_ERROR' });
+        }
+
+        const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
+
+        // The post must exist in the caller's scope (any status — that is the point).
+        const where: Record<string, unknown> = { slug, appId };
+        if (organizationId !== undefined) where.organizationId = organizationId;
+        const post = await Post.first(where);
+        if (!post) {
+            return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        }
+
+        // Clamp TTL to [1 minute, 7 days]; default 24h lives in signPreviewToken.
+        const ttlMs =
+            typeof body?.ttlMs === 'number' && Number.isFinite(body.ttlMs)
+                ? Math.min(7 * 24 * 60 * 60 * 1000, Math.max(60 * 1000, body.ttlMs))
+                : undefined;
+
+        const { token, expiresAt } = await signPreviewToken(secret, { slug, appId, organizationId, ttlMs });
+        return jsonResponse({
+            token,
+            expiresAt,
+            path: `/blog/${encodeURIComponent(slug)}?preview=${encodeURIComponent(token)}`,
+        });
+    }
+
     return {
         handleBlogStudioState,
         handleBlogStudioActivateTheme,
@@ -940,5 +1014,6 @@ ${urls}
         handleBlogSitemap,
         handleBlogPublishScheduled,
         handleBlogKitchensink,
+        handleBlogPreviewTokenMint,
     };
 }

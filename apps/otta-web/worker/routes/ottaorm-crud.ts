@@ -335,8 +335,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
     // App-global taxonomy writes require an authenticated content administrator — see
     // APP_TAXONOMY_MODELS. Reads (GET) fall through unchanged so the blog editor can list them.
+    // taxonomy:manage is the named editorial capability; org:admin keeps passing (owners/admins).
     if (APP_TAXONOMY_MODELS.has(crudRequest.model) && CRUD_WRITE_METHODS.has(crudRequest.method)) {
-        if (!permissionMatches(securityContext.permissions as string[] | undefined, 'org:admin')) {
+        const perms = securityContext.permissions as string[] | undefined;
+        if (!permissionMatches(perms, 'org:admin') && !permissionMatches(perms, 'taxonomy:manage')) {
             return errorResponse('Blog taxonomy changes require an organization administrator', 403, {
                 code: 'FORBIDDEN',
             });
@@ -380,6 +382,28 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         const body = crudRequest.body as Record<string, unknown>;
         delete body.plan;
         delete body.status;
+    }
+
+    // Publishing is a distinct editorial capability, not implied by write access: moving a post
+    // to 'published' or 'scheduled' requires the posts:publish permission (org-scoped; a platform
+    // admin passes via *:*). Authors without it can create and edit drafts but not ship them.
+    // PUT is included deliberately — secure CRUD treats PUT as a full update like PATCH, so a
+    // POST/PATCH-only gate would leave PUT as a silent bypass.
+    if (
+        crudRequest.model === 'posts' &&
+        crudRequest.body &&
+        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH' || crudRequest.method === 'PUT')
+    ) {
+        const requestedStatus = (crudRequest.body as Record<string, unknown>).status;
+        if (
+            (requestedStatus === 'published' || requestedStatus === 'scheduled') &&
+            !securityContext.platformAdmin &&
+            !permissionMatches(securityContext.permissions as string[] | undefined, 'posts:publish')
+        ) {
+            return errorResponse('Publishing posts requires the posts:publish permission', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
     }
 
     if (

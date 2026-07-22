@@ -190,10 +190,34 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // CUSTOM POLICIES (Examples)
     // ========================================
 
-    // Example: Posts that belong to org AND created by user
+    // Posts: tenant + app scoped for everyone; the USER dimension is editorial.
+    // Authors (no manage grant) are confined to their own posts; a caller whose merged
+    // permissions carry posts:manage / posts:* / org:admin / *:* — or a platform admin —
+    // operates on every post in the org. Permission + scope, never role names.
     {
         model: 'posts',
-        policy: RLSPolicies.Hierarchical(false), // Tenant + User scoped
+        policy: {
+            level: 'custom',
+            allowNullTenant: false,
+            filter: (context) => {
+                if (!context.userId) return null; // fail closed without a user
+                if (context.organizationId === undefined || context.organizationId === null) {
+                    return null; // tenant required (single-founder mode uses allowNullTenant paths)
+                }
+                const filter: Record<string, any> = { organizationId: context.organizationId };
+                if (context.appId) filter.appId = context.appId;
+
+                const permissions = context.permissions ?? [];
+                const canManageAll =
+                    context.platformAdmin === true ||
+                    permissions.includes('posts:manage') ||
+                    permissions.includes('posts:*') ||
+                    permissions.includes('org:admin') ||
+                    permissions.includes('*:*');
+                if (!canManageAll) filter.userId = context.userId;
+                return filter;
+            },
+        },
         contextFields: ['organizationId', 'appId', 'userId'],
         auditEnabled: true,
     },

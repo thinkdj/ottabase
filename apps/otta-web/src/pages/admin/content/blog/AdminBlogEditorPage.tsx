@@ -5,6 +5,7 @@
  * hero image upload, SEO settings, and all post fields.
  */
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
+import { useBlogSurface } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
@@ -284,6 +285,7 @@ interface BlogEditorFormProps {
 }
 
 function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }: BlogEditorFormProps) {
+    const surface = useBlogSurface();
     const navigate = useNavigate();
     const { user } = useSession({ skipAutoSync: true });
 
@@ -1118,9 +1120,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 // Mark as intentional so the navigation guard doesn't block the redirect.
                 allowNavigateRef.current = true;
                 if (newPostId) {
-                    navigate({ to: '/admin/content/blog/$postId/edit', params: { postId: newPostId } });
+                    navigate({ to: surface.editPath(newPostId) });
                 } else {
-                    navigate({ to: '/admin/content/blog' });
+                    navigate({ to: surface.contentPath });
                 }
             }
         } catch (error) {
@@ -1178,7 +1180,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 await deletePost.mutateAsync(postId);
                 // Post is gone — no unsaved changes to warn about.
                 allowNavigateRef.current = true;
-                navigate({ to: '/admin/content/blog' });
+                navigate({ to: surface.contentPath });
             } catch (error) {
                 console.error('Failed to delete post:', error);
                 setAlertDialog({
@@ -1198,7 +1200,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link to="/admin/content/blog">
+                        <Link to={surface.contentPath}>
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>

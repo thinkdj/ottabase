@@ -56,6 +56,7 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogSitemap: named('sitemap'),
         handleBlogPublishScheduled: named('publish-scheduled'),
         handleBlogKitchensink: named('kitchensink'),
+        handleBlogPreviewTokenMint: named('preview-mint'),
     };
 }
 
@@ -98,6 +99,7 @@ describe('buildBlogRouter', () => {
             ['POST', '/studio/plugin/enable', 'plugin-enable'],
             ['POST', '/studio/plugin/config', 'plugin-config'],
             ['POST', '/posts/unlock', 'post-unlock'],
+            ['POST', '/posts/preview-token', 'preview-mint'],
             ['POST', '/publish-scheduled', 'publish-scheduled'],
             ['POST', '/kitchensink', 'kitchensink'],
         ];
@@ -253,6 +255,110 @@ describe('createBlogHandlers', () => {
             await handlers.handleBlogPostsList({ ...ctxFor('/posts'), env: { marker: 'env-b' } });
 
             expect(seenModes).toEqual(['env-a', 'env-b']);
+        });
+    });
+
+    describe('draft preview', () => {
+        const SECRET = 'preview-secret-32-characters-long!!!';
+        const previewConfig = {
+            ...baseConfig,
+            previewTokenSecret: () => SECRET,
+        };
+
+        async function mintToken(handlers: ReturnType<typeof createBlogHandlers<Env>>, slug: string) {
+            vi.mocked(Post.first).mockResolvedValueOnce({ get: () => slug } as any);
+            const response = await handlers.handleBlogPreviewTokenMint({
+                ...ctxFor('/posts/preview-token', {
+                    method: 'POST',
+                    body: JSON.stringify({ slug }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            });
+            expect(response.status).toBe(200);
+            return (await response.json()) as { token: string; expiresAt: number; path: string };
+        }
+
+        it('mint responds 404 when no preview secret is configured', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            const response = await handlers.handleBlogPreviewTokenMint(
+                ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 's' }) }),
+            );
+            expect(response.status).toBe(404);
+        });
+
+        it('mint uses the content-editor guard when provided, admin guard otherwise', async () => {
+            const denial = new Response('editor-denied', { status: 403 });
+            const requireContentEditor = vi.fn(async () => denial);
+            const requireAdmin = vi.fn(async () => ({ session: null }));
+            const handlers = createBlogHandlers<Env>({
+                ...previewConfig,
+                requireAdmin,
+                requireContentEditor,
+            });
+
+            const response = await handlers.handleBlogPreviewTokenMint(
+                ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 's' }) }),
+            );
+
+            expect(response).toBe(denial);
+            expect(requireContentEditor).toHaveBeenCalled();
+            expect(requireAdmin).not.toHaveBeenCalled();
+        });
+
+        it('a minted token unlocks the unpublished post on the by-slug route', async () => {
+            const handlers = createBlogHandlers<Env>(previewConfig);
+            const { token, path } = await mintToken(handlers, 'my-draft');
+            expect(path).toContain('preview=');
+
+            const draft = {
+                get: (k: string) =>
+                    (({ slug: 'my-draft', title: 'Draft', status: 'draft', contentType: 'blog' }) as any)[k] ?? null,
+                toJson: () => ({ id: 'p1', slug: 'my-draft', title: 'Draft', status: 'draft', contentType: 'blog' }),
+                author: async () => null,
+                tags: async () => [],
+            };
+            vi.mocked(Post.first).mockResolvedValueOnce(draft as any);
+
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor(`/posts/by-slug/my-draft?preview=${encodeURIComponent(token)}`),
+                'my-draft',
+            );
+
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as Record<string, unknown>;
+            expect(body.preview).toBe(true);
+            // The preview lookup must NOT filter by published status.
+            const previewWhere = vi.mocked(Post.first).mock.calls.at(-1)![0] as Record<string, unknown>;
+            expect('status' in previewWhere).toBe(false);
+        });
+
+        it('an invalid preview token falls back to the published-only lookup', async () => {
+            const handlers = createBlogHandlers<Env>(previewConfig);
+            vi.mocked(Post.first).mockResolvedValue(null as any);
+
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor('/posts/by-slug/my-draft?preview=garbage.token'),
+                'my-draft',
+            );
+
+            expect(response.status).toBe(404);
+            const lastWhere = vi.mocked(Post.first).mock.calls.at(-1)![0] as Record<string, unknown>;
+            expect(lastWhere.status).toBe('published');
+        });
+
+        it('a token minted for one slug does not unlock another', async () => {
+            const handlers = createBlogHandlers<Env>(previewConfig);
+            const { token } = await mintToken(handlers, 'my-draft');
+
+            vi.mocked(Post.first).mockResolvedValue(null as any);
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor(`/posts/by-slug/other-post?preview=${encodeURIComponent(token)}`),
+                'other-post',
+            );
+
+            expect(response.status).toBe(404);
+            const lastWhere = vi.mocked(Post.first).mock.calls.at(-1)![0] as Record<string, unknown>;
+            expect(lastWhere.status).toBe('published');
         });
     });
 });

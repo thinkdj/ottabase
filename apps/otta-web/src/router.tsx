@@ -139,6 +139,41 @@ function makeAdminRoute(
     });
 }
 
+/**
+ * Studio route: the writing-first editorial surface at /studio. Gated by CONTENT
+ * permissions (posts:update — held by author/editor roles, org admins via *:update,
+ * and the platform owner via *:*), never by org:admin or platform admin. Reuses the
+ * blog admin pages inside the StudioShell chrome; the pages resolve their internal
+ * links against the active surface (see blogAdminPaths.ts).
+ */
+function makeStudioRoute(
+    path: string,
+    loader: () => Promise<Record<string, ComponentType>>,
+    exportName: string,
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown }> = {},
+) {
+    return new Route({
+        getParentRoute: () => rootRoute,
+        path,
+        component: lazyRouteComponent(() =>
+            Promise.all([loader(), import('@/pages/studio/StudioShell')]).then(([m, shell]) => {
+                const Comp = m[exportName]!;
+                const { StudioShell } = shell;
+                return {
+                    default: () => (
+                        <ProtectedRoute requiredPermissions={['posts:update']} fallback={<AdminPrivilegeFallback />}>
+                            <StudioShell>
+                                <Comp />
+                            </StudioShell>
+                        </ProtectedRoute>
+                    ),
+                };
+            }),
+        ),
+        ...(options.validateSearch ? { validateSearch: options.validateSearch } : {}),
+    });
+}
+
 // ─── Marketing / app surface ─────────────────────────────────────────────────
 
 const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
@@ -310,6 +345,49 @@ const adminBlogSeriesRoute = makeAdminRoute(
     'AdminBlogSeriesPage',
     { scope: 'org' },
 );
+// ─── /studio — writing-first editorial surface (content-permission gated) ────
+
+const studioRoute = makeStudioRoute(
+    '/studio',
+    () => import('@/pages/admin/content/blog/AdminBlogListPage'),
+    'AdminBlogListPage',
+);
+const studioNewRoute = makeStudioRoute(
+    '/studio/new',
+    () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
+    'AdminBlogEditorPage',
+    {
+        validateSearch: (search: Record<string, unknown>) => ({
+            contentType: typeof search.contentType === 'string' ? search.contentType : undefined,
+        }),
+    },
+);
+const studioEditRoute = makeStudioRoute(
+    '/studio/$postId/edit',
+    () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
+    'AdminBlogEditorPage',
+);
+const studioTagsRoute = makeStudioRoute(
+    '/studio/tags',
+    () => import('@/pages/admin/content/blog/AdminBlogTagsPage'),
+    'AdminBlogTagsPage',
+);
+const studioCategoriesRoute = makeStudioRoute(
+    '/studio/categories',
+    () => import('@/pages/admin/content/blog/AdminBlogCategoriesPage'),
+    'AdminBlogCategoriesPage',
+);
+const studioSeriesRoute = makeStudioRoute(
+    '/studio/series',
+    () => import('@/pages/admin/content/blog/AdminBlogSeriesPage'),
+    'AdminBlogSeriesPage',
+);
+const studioThemesRoute = makeStudioRoute(
+    '/studio/themes',
+    () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
+    'AdminBlogStudioPage',
+);
+
 const adminChangelogRoute = makeAdminRoute(
     '/admin/content/changelog',
     () => import('@/pages/admin/content/changelog/AdminChangelogListPage'),
@@ -628,6 +706,13 @@ const packageRoutes = [
     { route: adminBlogTagsRoute, pkg: 'ottablog' as const },
     { route: adminBlogCategoriesRoute, pkg: 'ottablog' as const },
     { route: adminBlogSeriesRoute, pkg: 'ottablog' as const },
+    { route: studioRoute, pkg: 'ottablog' as const },
+    { route: studioNewRoute, pkg: 'ottablog' as const },
+    { route: studioEditRoute, pkg: 'ottablog' as const },
+    { route: studioTagsRoute, pkg: 'ottablog' as const },
+    { route: studioCategoriesRoute, pkg: 'ottablog' as const },
+    { route: studioSeriesRoute, pkg: 'ottablog' as const },
+    { route: studioThemesRoute, pkg: 'ottablog' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
 ];
 

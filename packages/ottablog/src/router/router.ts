@@ -48,6 +48,7 @@ export function buildBlogRouter<Env = unknown>(
     r.post('/studio/plugin/enable', (c) => handlers.handleBlogStudioPluginEnable(ctxOf(c)));
     r.post('/studio/plugin/config', (c) => handlers.handleBlogStudioPluginConfig(ctxOf(c)));
     r.post('/posts/unlock', (c) => handlers.handleBlogPostUnlock(ctxOf(c)));
+    r.post('/posts/preview-token', (c) => handlers.handleBlogPreviewTokenMint(ctxOf(c)));
     r.post('/publish-scheduled', (c) => handlers.handleBlogPublishScheduled(ctxOf(c)));
     r.post('/kitchensink', (c) => handlers.handleBlogKitchensink(ctxOf(c)));
 

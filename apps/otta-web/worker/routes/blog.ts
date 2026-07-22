@@ -18,6 +18,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import kitchensinkContentTemplate from '../fixtures/kitchensink-content.json';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { requireContentPermission } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
 
 export interface BlogRouteContext {
@@ -82,6 +83,15 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     resolveOrganizationId: resolveBlogOrganizationId,
     defaultAppId: (env) => getOttabaseConfig(env).appId,
     requireAdmin: (ctx) => requireAdminAccess(ctx as any, { scope: 'system' }),
+    // Editorial gate for preview-token minting: any caller who may edit posts
+    // (author/editor/org admin/platform owner), not only platform admins.
+    requireContentEditor: (ctx) => requireContentPermission(ctx, 'posts:update'),
+    // Dedicated BLOG_PREVIEW_SECRET wins; AUTH_SECRET is the pragmatic default
+    // so preview links work out of the box on any configured deployment.
+    previewTokenSecret: (env) => {
+        const secrets = env as { BLOG_PREVIEW_SECRET?: string; AUTH_SECRET?: string };
+        return secrets.BLOG_PREVIEW_SECRET || secrets.AUTH_SECRET || null;
+    },
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
     kitchensinkContent: kitchensinkContentTemplate as Record<string, unknown>,
@@ -103,4 +113,5 @@ export const {
     handleBlogSitemap,
     handleBlogPublishScheduled,
     handleBlogKitchensink,
+    handleBlogPreviewTokenMint,
 } = handlers;

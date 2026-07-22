@@ -43,6 +43,11 @@ export const ORG_OWNER_PERMISSIONS: string[] = [
     'media:*',
     'comments:moderate',
     'audit:read',
+    // Editorial capabilities are explicit permissions, never implied by a role name:
+    // posts:publish gates the draft→published/scheduled transition; posts:manage waives
+    // the own-posts-only RLS dimension (edit anyone's post in the org).
+    'posts:publish',
+    'posts:manage',
 ];
 
 /**
@@ -272,8 +277,13 @@ export class Role extends BaseModel {
         },
         {
             name: 'editor',
-            description: 'Can create and edit content',
-            permissions: ['*:read', '*:create', '*:update'],
+            description: 'Can create, edit, and publish any post in the organization',
+            permissions: ['*:read', '*:create', '*:update', 'posts:publish', 'posts:manage'],
+        },
+        {
+            name: 'author',
+            description: 'Can write and edit their own posts; publishing requires an editor or admin',
+            permissions: ['*:read', 'posts:create', 'posts:update', 'media:create', 'media:read'],
         },
         {
             name: 'viewer',

@@ -6,17 +6,21 @@
  */
 import { Link, useLocation } from '@tanstack/react-router';
 import { FileText, FolderTree, Layers, Palette, Tag } from 'lucide-react';
-
-const NAV_ITEMS = [
-    { to: '/admin/content/blog', label: 'Content', icon: FileText, exact: true },
-    { to: '/admin/content/blog/tags', label: 'Tag', icon: Tag },
-    { to: '/admin/content/blog/categories', label: 'Category', icon: FolderTree },
-    { to: '/admin/content/blog/series', label: 'Series', icon: Layers },
-    { to: '/admin/content/blog/studio', label: 'Content Studio', icon: Palette },
-] as const;
+import { useBlogSurface } from './blogAdminPaths';
 
 export function BlogAdminNav() {
     const { pathname } = useLocation();
+    const surface = useBlogSurface();
+
+    // Links resolve against the active surface (/admin/content/blog or /studio),
+    // so the same nav serves both the control plane and the editorial studio.
+    const NAV_ITEMS = [
+        { to: surface.contentPath, label: 'Content', icon: FileText, exact: true },
+        { to: surface.tagsPath, label: 'Tag', icon: Tag, exact: false },
+        { to: surface.categoriesPath, label: 'Category', icon: FolderTree, exact: false },
+        { to: surface.seriesPath, label: 'Series', icon: Layers, exact: false },
+        { to: surface.themesPath, label: 'Content Studio', icon: Palette, exact: false },
+    ] as const;
 
     const isActive = (to: string, exact?: boolean) => {
         if (exact) return pathname === to;

@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+import { useBlogSurface } from './blogAdminPaths';
 
 /** Debounce delay for search input (ms) */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -99,6 +100,7 @@ const CONTENT_TYPE_TABS: Array<{ value: ContentType | 'all'; label: string }> = 
 ];
 
 export function AdminBlogListPage() {
+    const surface = useBlogSurface();
     const [searchInput, setSearchInput] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
@@ -306,7 +308,7 @@ export function AdminBlogListPage() {
                         <DropdownMenuContent align="end">
                             {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
                                 <DropdownMenuItem key={value} asChild>
-                                    <Link to="/admin/content/blog/new" search={{ contentType: value }}>
+                                    <Link to={surface.newPath} search={{ contentType: value }}>
                                         {label}
                                     </Link>
                                 </DropdownMenuItem>
@@ -408,7 +410,7 @@ export function AdminBlogListPage() {
                         {totalCount === 0 && (
                             <Button asChild className="mt-4">
                                 <Link
-                                    to="/admin/content/blog/new"
+                                    to={surface.newPath}
                                     search={
                                         contentTypeFilter !== 'all' ? { contentType: contentTypeFilter } : undefined
                                     }
@@ -469,8 +471,7 @@ export function AdminBlogListPage() {
                                                 </button>
                                                 <div className="min-w-0">
                                                     <Link
-                                                        to="/admin/content/blog/$postId/edit"
-                                                        params={{ postId: post.id }}
+                                                        to={surface.editPath(post.id)}
                                                         className="font-medium hover:underline line-clamp-1"
                                                     >
                                                         {post.title}
@@ -514,10 +515,7 @@ export function AdminBlogListPage() {
                                                     </a>
                                                 </Button>
                                                 <Button variant="ghost" size="icon" asChild>
-                                                    <Link
-                                                        to="/admin/content/blog/$postId/edit"
-                                                        params={{ postId: post.id }}
-                                                    >
+                                                    <Link to={surface.editPath(post.id)}>
                                                         <Edit className="h-4 w-4" />
                                                     </Link>
                                                 </Button>

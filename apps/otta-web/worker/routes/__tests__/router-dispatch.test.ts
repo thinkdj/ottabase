@@ -100,6 +100,7 @@ vi.mock('../blog', () => ({
     handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
     handleBlogPostUnlock: handlerMock('handleBlogPostUnlock'),
     handleBlogPostsList: handlerMock('handleBlogPostsList'),
+    handleBlogPreviewTokenMint: handlerMock('handleBlogPreviewTokenMint'),
     handleBlogPublishScheduled: handlerMock('handleBlogPublishScheduled'),
     handleBlogRelatedPosts: handlerMock('handleBlogRelatedPosts'),
     handleBlogRssFeed: handlerMock('handleBlogRssFeed'),
@@ -272,6 +273,7 @@ import {
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
+    handleBlogPreviewTokenMint,
     handleBlogPublishScheduled,
     handleBlogRelatedPosts,
     handleBlogRssFeed,
@@ -657,6 +659,13 @@ describe('router dispatch parity', () => {
             expect(handleBlogRelatedPosts).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }), 'p1');
             expect(handleBlogPostsList).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleBlogRelatedPosts');
+        });
+
+        it('POST /api/blog/posts/preview-token dispatches to the preview mint', async () => {
+            const { response } = await dispatch('POST', '/api/blog/posts/preview-token');
+            expect(handleBlogPreviewTokenMint).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(handleBlogPostUnlock).not.toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleBlogPreviewTokenMint');
         });
     });
 
