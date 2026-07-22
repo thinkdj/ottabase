@@ -49,6 +49,13 @@ export interface AutoInitConfig {
     customMigrations?: Migration[];
 
     /**
+     * Index names the ensure step must NOT (re)create even though the schema
+     * declares them — for indexes a tracked custom migration deliberately drops
+     * (see runtime-generator suppressIndexes).
+     */
+    suppressIndexes?: string[];
+
+    /**
      * Enable verbose logging
      * Default: true
      */
@@ -103,7 +110,15 @@ export async function autoInit(config: AutoInitConfig): Promise<{
     };
     timestamp: number;
 }> {
-    const { driver, schema, customMigrations = [], verbose = true, allowDestructive = false, renameMap = {} } = config;
+    const {
+        driver,
+        schema,
+        customMigrations = [],
+        verbose = true,
+        allowDestructive = false,
+        renameMap = {},
+        suppressIndexes,
+    } = config;
 
     // Basic runtime validation of the schema object to avoid crashes
     const isObject = schema !== null && typeof schema === 'object' && !Array.isArray(schema);
@@ -151,6 +166,7 @@ export async function autoInit(config: AutoInitConfig): Promise<{
     const result = await runAutoMigrations(driver, schema, customMigrations, {
         allowDestructive,
         renameMap,
+        suppressIndexes,
     });
 
     if (verbose) {

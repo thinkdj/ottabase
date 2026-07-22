@@ -25,6 +25,36 @@ below). Gap 5 items remain open. Items marked "(Recommended)" are the option tha
   worker/lib/blog-seo-inject.ts). Remaining: a blog surface for otta-landing.
 - Gap 5: OPEN (import/export, author archives, content i18n, subscriptions, search quality, per-post analytics).
 
+## Post-implementation review outcomes (adversarial security + perf passes)
+
+Fixed on this branch:
+
+- SECURITY (high): preview-token mint now enforces OBJECT-level authorization — authors mint only their own posts;
+  anything else requires the app's `canManagePost` check evaluated in the POST ROW's org (never a request-supplied org
+  hint), denials answer 404 to avoid a slug-existence oracle, and the token binds the post row's org scope.
+- SECURITY (high): org mode's dropped strict slug indexes can no longer be silently restored by a re-run of
+  `/api/ottaorm/init` — autoInit gained `suppressIndexes` (migration-owned index names skipped by the ensure step),
+  wired env-aware in the init route together with env-aware package migrations (`buildAppMigrations`).
+- SECURITY (medium): the public studio-state endpoint now serves a rendering shape (active theme + enabled plugin
+  configs; disabled plugins keep only the {pluginId, enabled:false} deactivation signal). The full payload requires
+  `?full=1` plus the admin gate — org mode is no longer an anonymous per-tenant config enumeration surface.
+- SECURITY (low): studio default-row seeding is unique-violation tolerant (concurrent admin loads no longer 500).
+- PERF: posts-list enrichment batched (~5 D1 queries per post → 6 flat queries per page); junction (tag/category)
+  filtering pushed into SQL with a chunked fallback for >100-id tags instead of fetching the whole published corpus;
+  search uses a single searchPaginate round-trip instead of a double scan; sitemap bounded (default 5000, cap 50000);
+  Post.related's per-category loop collapsed to one array-where query with a chunked whereIn (fixes the >100-candidate
+  crash); the SEO and theme injectors share one per-request org resolution (WeakMap memo); BaseModel.whereIn now
+  actually implements its `select` projection (it was silently ignored — the RSS author batch transferred full rows).
+
+Deferred (recorded, not built — recipes in the perf review):
+
+- KV read-through cache for studio state + active blog theme (biggest remaining win: 2-3 D1 reads per document
+  navigation sitewide). Needs a KV seam in BlogRouterConfig plus eager invalidation in the four studio mutation
+  handlers, mirroring the membership cache (worker/lib/auth-utils.ts) — do it with the parity contract in mind so the
+  edge-injected theme CSS and the client-applied CSS never diverge.
+- KV slug→orgId cache for org-mode subdomain resolution (per-request D1 lookup today, memoized only within a request).
+- Sitemap-index pagination beyond ~10k posts; single-post by-slug/unlock enrichment stays per-post (N=1, fine).
+
 ---
 
 ## Decision: integration posture (settled, do not reopen)

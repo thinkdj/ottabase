@@ -70,6 +70,16 @@ export interface RuntimeMigrationConfig {
      * { posts: { old_col_name: 'new_col_name' } }
      */
     renameMap?: Record<string, Record<string, string>>;
+
+    /**
+     * Index names the ensure step must NOT (re)create, even though the Drizzle
+     * schema declares them. Needed when a tracked custom migration deliberately
+     * DROPS a schema-declared index (e.g. ottablog org mode swaps app-scoped
+     * unique slug indexes for org-aware partials): the migration runs once, but
+     * the ensure loop runs every init — without suppression it would silently
+     * restore the dropped index on the next run.
+     */
+    suppressIndexes?: string[];
 }
 
 /**
@@ -275,7 +285,16 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     tablesSkipped: string[];
     errors: string[];
 }> {
-    const { driver, tables, customMigrations = [], verbose = false, allowDestructive = false, renameMap = {} } = config;
+    const {
+        driver,
+        tables,
+        customMigrations = [],
+        verbose = false,
+        allowDestructive = false,
+        renameMap = {},
+        suppressIndexes = [],
+    } = config;
+    const suppressedIndexNames = new Set(suppressIndexes);
 
     const result = {
         tablesCreated: [] as string[],
@@ -474,6 +493,12 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
         for (const table of Object.values(tables)) {
             const tableName = getTableConfig(table).name;
             for (const { name, sql } of generateIndexStatements(table)) {
+                if (suppressedIndexNames.has(name)) {
+                    if (verbose) {
+                        console.log(`\n⏭️  Skipping suppressed index ${name} on ${tableName} (migration-owned)`);
+                    }
+                    continue;
+                }
                 if (verbose) {
                     console.log(`\n🔎 Ensuring index ${name} on ${tableName}`);
                     console.log(sql);
@@ -558,7 +583,11 @@ export async function runAutoMigrations(
         name: string;
         up: (db: DbDriver) => Promise<void>;
     }>,
-    options?: { allowDestructive?: boolean; renameMap?: Record<string, Record<string, string>> },
+    options?: {
+        allowDestructive?: boolean;
+        renameMap?: Record<string, Record<string, string>>;
+        suppressIndexes?: string[];
+    },
 ): Promise<{
     success: boolean;
     message: string;
@@ -579,6 +608,7 @@ export async function runAutoMigrations(
         verbose: true,
         allowDestructive: options?.allowDestructive,
         renameMap: options?.renameMap,
+        suppressIndexes: options?.suppressIndexes,
     });
 
     const { tablesCreated, columnsAdded, customMigrationsRun, errors } = result;

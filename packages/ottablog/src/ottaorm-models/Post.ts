@@ -969,23 +969,31 @@ export class Post extends BaseModel {
         // 1. Same categories via junction table (best signal)
         const catIds = options?.categoryIds?.length ? options.categoryIds : [];
         if (catIds.length > 0) {
-            // Find other posts sharing any of the same categories
+            // Find other posts sharing any of the same categories — single
+            // array-where query (inArray) instead of one query per category.
             const { PostCategoryLink } = await import('./PostCategoryLink');
-            const allCatLinks: InstanceType<typeof PostCategoryLink>[] = [];
-            for (const cid of catIds) {
-                const links = await PostCategoryLink.where({ categoryId: cid });
-                allCatLinks.push(...links);
-            }
+            const allCatLinks = await PostCategoryLink.where({ categoryId: catIds });
             const candidateIds = [
                 ...new Set(allCatLinks.map((l) => l.get('postId') as string).filter((id) => !seenIds.has(id))),
             ];
 
             if (candidateIds.length > 0) {
-                const candidates = await this.whereIn('id', candidateIds, {
-                    orderBy: 'publishedAt',
-                    orderDirection: 'desc',
-                    limit: limit + 1,
-                });
+                // Chunk at 100 ids per query (D1 bound-parameter limit); a popular
+                // category previously overflowed the single whereIn and threw.
+                const candidates: InstanceType<typeof BaseModel>[] = [];
+                for (let i = 0; i < candidateIds.length; i += 100) {
+                    candidates.push(
+                        ...(await this.whereIn('id', candidateIds.slice(i, i + 100), {
+                            orderBy: 'publishedAt',
+                            orderDirection: 'desc',
+                            limit: limit + 1,
+                        })),
+                    );
+                }
+                // Re-sort merged chunks so cross-chunk ordering matches a single query.
+                candidates.sort(
+                    (a, b) => ((b.get('publishedAt') as number) ?? 0) - ((a.get('publishedAt') as number) ?? 0),
+                );
                 for (const p of candidates) {
                     if (
                         !seenIds.has(p.get('id') as string) &&

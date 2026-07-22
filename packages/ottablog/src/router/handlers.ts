@@ -57,6 +57,127 @@ async function findPublishedPostBySlug(
     return Post.first(primary);
 }
 
+/** Conservative D1 bound-parameter chunk size for IN (...) lists. */
+const D1_IN_CHUNK = 100;
+
+function chunkIds(ids: string[], size = D1_IN_CHUNK): string[][] {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
+    return chunks;
+}
+
+/** Run an id-list query in D1-safe chunks and concatenate the results. */
+async function chunkedFetch<M>(ids: string[], fetch: (chunk: string[]) => Promise<M[]>): Promise<M[]> {
+    const results: M[] = [];
+    for (const chunk of chunkIds(ids)) {
+        results.push(...(await fetch(chunk)));
+    }
+    return results;
+}
+
+/**
+ * Batch enrichment for a page of posts — flat queries instead of ~5 per post.
+ * Output per post is shape-identical to publicPostJson's enriched object
+ * (privateNotes stripped, protected content stripped, tags[], categories[],
+ * legacy categoryName/categorySlug, seriesTitle, author{}). Query count is
+ * bounded: 6 flat queries per page (each id list chunked at 100 for D1's
+ * bound-parameter limit), matching the RSS handler's whereIn batching pattern.
+ */
+async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unknown>[]> {
+    if (records.length === 0) return [];
+
+    const postIds = records.map((r) => r.get('id') as string);
+
+    // Tags: links → tag rows
+    const tagLinks = await chunkedFetch(postIds, (ids) => PostTagLink.where({ postId: ids }));
+    const tagIdsByPost = new Map<string, string[]>();
+    for (const link of tagLinks) {
+        const pid = link.get('postId') as string;
+        const tid = link.get('tagId') as string;
+        if (!tagIdsByPost.has(pid)) tagIdsByPost.set(pid, []);
+        tagIdsByPost.get(pid)!.push(tid);
+    }
+    const uniqueTagIds = [...new Set(tagLinks.map((l) => l.get('tagId') as string))];
+    const tagRows = await chunkedFetch(uniqueTagIds, (ids) => PostTag.whereIn('id', ids));
+    const tagJsonById = new Map(tagRows.map((t) => [t.get('id') as string, t.toJson()]));
+
+    // Categories: junction links plus legacy single-category column
+    const catLinks = await chunkedFetch(postIds, (ids) => PostCategoryLink.where({ postId: ids }));
+    const catIdsByPost = new Map<string, string[]>();
+    for (const link of catLinks) {
+        const pid = link.get('postId') as string;
+        const cid = link.get('categoryId') as string;
+        if (!catIdsByPost.has(pid)) catIdsByPost.set(pid, []);
+        catIdsByPost.get(pid)!.push(cid);
+    }
+    const legacyCatIds = records.map((r) => r.get('categoryId') as string | null).filter(Boolean) as string[];
+    const uniqueCatIds = [...new Set([...catLinks.map((l) => l.get('categoryId') as string), ...legacyCatIds])];
+    const catRows = await chunkedFetch(uniqueCatIds, (ids) => PostCategory.whereIn('id', ids));
+    const catById = new Map(
+        catRows.map((c) => [
+            c.get('id') as string,
+            { id: c.get('id') as string, name: c.get('name') as string, slug: c.get('slug') as string },
+        ]),
+    );
+
+    // Authors (public-safe projection only)
+    const uniqueAuthorIds = [
+        ...new Set(records.map((r) => r.get('authorId') as string | null).filter(Boolean)),
+    ] as string[];
+    const authorById = new Map<string, { id: unknown; name: unknown; email: unknown; image: unknown }>();
+    if (uniqueAuthorIds.length > 0) {
+        try {
+            const { User } = await import('@ottabase/ottaorm');
+            const authors = await chunkedFetch(uniqueAuthorIds, (ids) =>
+                User.whereIn('id', ids, { select: ['id', 'name', 'email', 'image'] }),
+            );
+            for (const author of authors) {
+                authorById.set(author.get('id') as string, {
+                    id: author.get('id'),
+                    name: author.get('name'),
+                    email: author.get('email'),
+                    image: author.get('image'),
+                });
+            }
+        } catch {
+            // Author enrichment is best-effort, same as publicPostJson.
+        }
+    }
+
+    // Series titles
+    const uniqueSeriesIds = [
+        ...new Set(records.map((r) => r.get('seriesId') as string | null).filter(Boolean)),
+    ] as string[];
+    const seriesTitleById = new Map<string, string | null>();
+    if (uniqueSeriesIds.length > 0) {
+        const seriesRows = await chunkedFetch(uniqueSeriesIds, (ids) => PostSeries.whereIn('id', ids));
+        for (const s of seriesRows) seriesTitleById.set(s.get('id') as string, (s.get('title') as string) ?? null);
+    }
+
+    return records.map((record) => {
+        const j = record.toJson() as Record<string, unknown>;
+        const { privateNotes, ...rest } = j;
+
+        if (rest.isProtected) {
+            rest.content = null;
+            rest.footnotes = null;
+        }
+
+        const postId = rest.id as string;
+        rest.author = rest.authorId ? (authorById.get(rest.authorId as string) ?? null) : null;
+        rest.tags = (tagIdsByPost.get(postId) ?? []).map((tid) => tagJsonById.get(tid)).filter(Boolean);
+        rest.categories = (catIdsByPost.get(postId) ?? []).map((cid) => catById.get(cid)).filter(Boolean);
+        if (rest.categoryId) {
+            const legacy = catById.get(rest.categoryId as string);
+            rest.categoryName = legacy ? legacy.name : null;
+            rest.categorySlug = legacy ? legacy.slug : null;
+        }
+        rest.seriesTitle = rest.seriesId ? (seriesTitleById.get(rest.seriesId as string) ?? null) : null;
+
+        return rest;
+    });
+}
+
 /**
  * Convert a Post model to a public-safe JSON object.
  * Strips privateNotes. Strips content from protected posts unless explicitly included.
@@ -180,6 +301,25 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return resolved ?? null;
     }
 
+    /**
+     * Public rendering shape of the studio state: the active theme (the only
+     * one visitors render) and enabled plugins with config, plus bare
+     * {pluginId, enabled:false} skeletons for disabled rows so the client can
+     * deactivate statically-registered defaults. Inactive themes' rows (and
+     * their tokens/config) and disabled plugins' configs stay admin-only —
+     * in org mode this endpoint is reachable for ANY org via request-supplied
+     * scope, so the full payload must not be an anonymous enumeration surface.
+     */
+    function toPublicStudioState(state: Awaited<ReturnType<typeof StudioManager.getState>>) {
+        return {
+            activeThemeId: state.activeThemeId,
+            themes: state.themes.filter((t) => t.isActive),
+            plugins: state.plugins.map((p) =>
+                p.enabled ? p : { ...p, config: null, description: null, name: p.pluginId },
+            ),
+        };
+    }
+
     async function handleBlogStudioState(context: Ctx): Promise<Response> {
         // Public endpoint: the runtime needs active theme + enabled plugin config to render blog pages
         // for every visitor (BlogStudioProvider is mounted globally). Mutation endpoints below remain
@@ -191,17 +331,38 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         const orgScope = organizationId !== undefined ? { organizationId } : {};
-        const state = await StudioManager.getState(appId, organizationId);
+
+        // requireAdmin resolves the full session context — memoize so seeding
+        // and the ?full=1 payload decision cost at most one resolution.
+        let adminMemo: boolean | null = null;
+        const callerIsAdmin = async (): Promise<boolean> => {
+            if (adminMemo === null) {
+                const admin = await config.requireAdmin(context);
+                adminMemo = !(admin instanceof Response);
+            }
+            return adminMemo;
+        };
+
+        let state = await StudioManager.getState(appId, organizationId);
 
         const needsSeeding = state.themes.length === 0 || state.plugins.length === 0;
-        if (needsSeeding) {
+        if (needsSeeding && (await callerIsAdmin())) {
             // Only seed default theme/plugin rows if the caller is an admin — avoids any unauthenticated
             // visitor triggering DB writes. Non-admins get the current (possibly empty) state; the client
             // falls back to in-memory defaults registered by registerBlogThemesAndPlugins().
-            const admin = await config.requireAdmin(context);
-            if (!(admin instanceof Response)) {
-                if (state.themes.length === 0) {
-                    await OttablogTheme.create({
+            // Unique-violation tolerant: two concurrent admin loads may race the same
+            // seed inserts; the loser's constraint error is benign (the row exists).
+            const seedTolerant = async (create: () => Promise<unknown>) => {
+                try {
+                    await create();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    if (!/unique|constraint|duplicate/i.test(message)) throw error;
+                }
+            };
+            if (state.themes.length === 0) {
+                await seedTolerant(() =>
+                    OttablogTheme.create({
                         themeId: 'default',
                         name: 'Default',
                         description: 'Clean, modern default theme with dark mode support',
@@ -209,8 +370,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                         appId,
                         ...orgScope,
                         isActive: true,
-                    });
-                    await OttablogTheme.create({
+                    }),
+                );
+                await seedTolerant(() =>
+                    OttablogTheme.create({
                         themeId: 'minimal',
                         name: 'Minimal',
                         description: 'Clean, minimalist theme focused on typography and readability',
@@ -219,24 +382,31 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                         appId,
                         ...orgScope,
                         isActive: false,
-                    });
-                }
-                if (state.plugins.length === 0) {
-                    await OttablogPlugin.create({
+                    }),
+                );
+            }
+            if (state.plugins.length === 0) {
+                await seedTolerant(() =>
+                    OttablogPlugin.create({
                         pluginId: 'content-injector-plugin',
                         name: 'Content Injector Plugin',
                         description: 'Injects custom content into posts',
                         appId,
                         ...orgScope,
                         enabled: false,
-                    });
-                }
-                const finalState = await StudioManager.getState(appId, organizationId);
-                return jsonResponse(finalState);
+                    }),
+                );
             }
+            state = await StudioManager.getState(appId, organizationId);
         }
 
-        return jsonResponse(state);
+        // Full state (inactive themes, disabled-plugin configs) is the admin
+        // Studio's payload — explicit opt-in via ?full=1 plus the admin gate.
+        // Everyone else gets the public rendering shape.
+        if (context.url.searchParams.get('full') === '1' && (await callerIsAdmin())) {
+            return jsonResponse(state);
+        }
+        return jsonResponse(toPublicStudioState(state));
     }
 
     async function handleBlogStudioActivateTheme(context: Ctx): Promise<Response> {
@@ -425,67 +595,82 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             }
         }
 
-        // Combine junction-based filters (tag + category)
-        const junctionFilter = (postId: string) => {
-            if (tagFilterPostIds && !tagFilterPostIds.includes(postId)) return false;
-            if (categoryFilterPostIds && !categoryFilterPostIds.includes(postId)) return false;
-            return true;
-        };
+        // Combine junction-based filters (tag ∩ category) into one id set.
         const hasJunctionFilter = tagFilterPostIds !== null || categoryFilterPostIds !== null;
+        let junctionIds: string[] | null = null;
+        if (hasJunctionFilter) {
+            if (tagFilterPostIds && categoryFilterPostIds) {
+                const catSet = new Set(categoryFilterPostIds);
+                junctionIds = [...new Set(tagFilterPostIds.filter((id) => catSet.has(id)))];
+            } else {
+                junctionIds = [...new Set(tagFilterPostIds ?? categoryFilterPostIds!)];
+            }
+            // buildWhereConditions silently DROPS empty arrays, so an explicit
+            // empty-intersection early-return is load-bearing, not cosmetic.
+            if (junctionIds.length === 0) {
+                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+            }
+        }
+
+        const searchTerm = search?.trim() || null;
+        const searchFields = ['title', 'slug', 'excerpt'];
 
         let result;
-        if (hasJunctionFilter) {
-            // When filtering by junction tables, fetch all matching posts then paginate in-memory
-            // to get correct total/totalPages (Post.paginate can't filter by junction IDs)
-            let allMatching;
-            if (search && search.trim()) {
-                allMatching = await Post.search(search.trim(), ['title', 'slug', 'excerpt'], where, {
-                    orderBy,
-                    orderDirection,
-                });
-            } else {
-                allMatching = await Post.where(where, { orderBy, orderDirection });
-            }
-            const filtered = allMatching.filter((p) => junctionFilter(p.get('id') as string));
+        if (junctionIds !== null && junctionIds.length <= D1_IN_CHUNK) {
+            // Junction filter pushed into SQL (array-where → inArray): paginate
+            // and COUNT in the database instead of fetching the whole corpus.
+            const idWhere = { ...where, id: junctionIds };
+            result = searchTerm
+                ? await Post.searchPaginate(searchTerm, searchFields, page, perPage, idWhere, {
+                      orderBy,
+                      orderDirection,
+                  })
+                : await Post.paginate(page, perPage, idWhere, { orderBy, orderDirection });
+        } else if (junctionIds !== null) {
+            // Very large tag/category (> D1's bound-parameter chunk): fetch the
+            // tagged rows chunk-wise by id — bounded by the tag's size, never the
+            // whole published corpus — then order/paginate in memory. The search
+            // term is applied as the JS equivalent of the LIKE %term% condition.
+            const rows = await chunkedFetch(junctionIds, (ids) =>
+                Post.where({ ...where, id: ids }, { orderBy, orderDirection }),
+            );
+            const needle = searchTerm?.toLowerCase() ?? null;
+            const filtered = needle
+                ? rows.filter((p) =>
+                      searchFields.some((f) => ((p.get(f) as string | null) ?? '').toLowerCase().includes(needle)),
+                  )
+                : rows;
+            const direction = orderDirection === 'asc' ? 1 : -1;
+            filtered.sort((a, b) => {
+                const av = a.get(orderBy) as number | string | null;
+                const bv = b.get(orderBy) as number | string | null;
+                if (av === bv) return 0;
+                if (av === null || av === undefined) return 1;
+                if (bv === null || bv === undefined) return -1;
+                return av < bv ? -direction : direction;
+            });
             const total = filtered.length;
-            const totalPages = Math.ceil(total / perPage);
-            const paged = filtered.slice((page - 1) * perPage, page * perPage);
-            result = { data: paged, page, perPage, total, totalPages };
-        } else if (search && search.trim()) {
-            // Text search without junction filter — paginate via limit/offset
-            const searchResults = await Post.search(search.trim(), ['title', 'slug', 'excerpt'], where, {
-                orderBy,
-                orderDirection,
-                limit: perPage,
-                offset: (page - 1) * perPage,
-            });
-            // Count total matches for pagination metadata
-            const allSearchResults = await Post.search(search.trim(), ['title', 'slug', 'excerpt'], where, {
-                orderBy,
-                orderDirection,
-            });
             result = {
-                data: searchResults,
+                data: filtered.slice((page - 1) * perPage, page * perPage),
                 page,
                 perPage,
-                total: allSearchResults.length,
-                totalPages: Math.ceil(allSearchResults.length / perPage),
+                total,
+                totalPages: Math.ceil(total / perPage),
             };
+        } else if (searchTerm) {
+            // Single data+COUNT round-trip instead of the previous double scan
+            // (the second of which fetched every matching row just for .length).
+            result = await Post.searchPaginate(searchTerm, searchFields, page, perPage, where, {
+                orderBy,
+                orderDirection,
+            });
         } else {
             result = await Post.paginate(page, perPage, where, { orderBy, orderDirection });
         }
 
-        // Enrich all posts with tags, category name, series, and author
-        const data = await Promise.all(
-            result.data.map((r) =>
-                publicPostJson(r as Post, {
-                    enrichTags: true,
-                    enrichCategory: true,
-                    enrichSeries: true,
-                    enrichAuthor: true,
-                }),
-            ),
-        );
+        // Enrich the page with tags, categories, series, and author — batched
+        // flat queries (see enrichPostsJsonBatch) instead of ~5 queries per post.
+        const data = await enrichPostsJsonBatch(result.data as Post[]);
         return jsonResponse({
             data,
             pagination: {
@@ -686,7 +871,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             limit,
         });
 
-        const data = await Promise.all(related.map((r) => publicPostJson(r, { enrichTags: true, enrichAuthor: true })));
+        // Batched enrichment (adds categories/seriesTitle alongside tags/author —
+        // additive fields, same per-post shape as the list endpoint).
+        const data = await enrichPostsJsonBatch(related);
         return jsonResponse(data);
     }
 
@@ -809,6 +996,11 @@ ${items}
 
         const appId = url.searchParams.get('appId') || null;
         const organizationId = await resolveTenant(context);
+        // Bounded: unbounded full-corpus loads (every column incl. content JSON)
+        // degrade linearly and risk isolate memory at a few thousand posts. The
+        // sitemap protocol caps a file at 50k URLs; sitemap-index pagination is
+        // the follow-up beyond that.
+        const limit = Math.min(50000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
         if (organizationId !== undefined) where.organizationId = organizationId;
@@ -816,6 +1008,7 @@ ${items}
         const posts = await Post.where(where, {
             orderBy: 'publishedAt',
             orderDirection: 'desc',
+            limit,
         });
 
         const siteUrl = `${url.protocol}//${url.host}`;
@@ -1025,13 +1218,49 @@ ${urls}
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
+        // OBJECT-level authorization: the baseline guard proves "may edit posts
+        // somewhere"; it must not mint previews for posts the caller cannot edit
+        // (another author's draft, another tenant's post via a request-supplied
+        // org hint, a password-protected post's content). Authors always pass
+        // for their OWN posts; anything else requires the app's canManagePost
+        // check against the POST ROW's org — never the request's org hint.
+        // Denial answers 404, identical to a missing post, so minting cannot be
+        // used as a cross-scope slug-existence oracle.
+        const callerId = auth.session?.user?.id ?? null;
+        const postAuthorId = (post.get('authorId') as string | null) ?? null;
+        const postUserId = (post.get('userId') as string | null) ?? null;
+        const isOwnPost = !!callerId && (callerId === postAuthorId || callerId === postUserId);
+        if (!isOwnPost) {
+            const managed = config.canManagePost
+                ? await config.canManagePost(context, {
+                      id: post.get('id') as string,
+                      authorId: postAuthorId,
+                      userId: postUserId,
+                      organizationId: (post.get('organizationId') as string | null) ?? null,
+                  })
+                : false;
+            if (!managed) {
+                return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+            }
+        }
+
+        // Bind the token to the POST ROW's org scope (not the request's org
+        // hint): the row is what the preview will disclose.
+        const tokenOrgScope =
+            organizationId !== undefined ? ((post.get('organizationId') as string | null) ?? null) : undefined;
+
         // Clamp TTL to [1 minute, 7 days]; default 24h lives in signPreviewToken.
         const ttlMs =
             typeof body?.ttlMs === 'number' && Number.isFinite(body.ttlMs)
                 ? Math.min(7 * 24 * 60 * 60 * 1000, Math.max(60 * 1000, body.ttlMs))
                 : undefined;
 
-        const { token, expiresAt } = await signPreviewToken(secret, { slug, appId, organizationId, ttlMs });
+        const { token, expiresAt } = await signPreviewToken(secret, {
+            slug,
+            appId,
+            organizationId: tokenOrgScope,
+            ttlMs,
+        });
         return jsonResponse({
             token,
             expiresAt,

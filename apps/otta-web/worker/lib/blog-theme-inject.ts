@@ -13,7 +13,7 @@ import { blogThemeTokensToCss, type BlogThemeTokens } from '@ottabase/ottablog';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { resolveBlogOrganizationId } from '../routes/blog';
+import { resolveBlogOrganizationIdCached } from '../routes/blog';
 import { ensureDbConnection } from './db-utils';
 
 /** Style-tag id shared with the client applier (BlogStudioContext replaces this element). */
@@ -45,7 +45,7 @@ export async function injectBlogThemeCss(response: Response, request: Request, e
 
         const organizationId =
             config.features.ottablog.mode === 'org'
-                ? await resolveBlogOrganizationId({ request, env, url })
+                ? await resolveBlogOrganizationIdCached({ request, env, url })
                 : undefined;
 
         const activeTheme = await OttablogTheme.active({ appId: config.appId, organizationId });

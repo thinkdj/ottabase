@@ -3,8 +3,10 @@ import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
-import { appMigrations } from '../../ottabase/migrations';
+import { buildAppMigrations } from '../../ottabase/migrations';
 import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
 import { ensureAppBrandDefaults } from '../lib/user-provisioning';
 
@@ -69,12 +71,20 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
         env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true';
 
+    // Org-mode blogs: the index-swap migration runs once (tracked), but autoInit's
+    // ensure step re-creates schema-declared indexes on EVERY run — suppress the
+    // dropped strict slug indexes so a re-init can't silently restore app-wide
+    // uniqueness and break per-org slug namespaces. Env-aware (OTTABLOG_MODE).
+    const ottabaseConfig = getOttabaseConfig(env);
+    const blogOrgMode = ottabaseConfig.packages.ottablog && ottabaseConfig.features.ottablog.mode === 'org';
+
     const result = await autoInit({
         driver,
         schema: allSchemas,
-        customMigrations: appMigrations,
+        customMigrations: buildAppMigrations(env as unknown as Record<string, unknown>),
         verbose: true,
         allowDestructive,
+        suppressIndexes: blogOrgMode ? ottablogOrgModeSuppressedIndexes : [],
     });
 
     // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)

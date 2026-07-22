@@ -6,7 +6,7 @@
 // blog preview-token mint and the /studio surface's server-side counterparts.
 // ---------------------------------------------------------------------------
 
-import { hasPermission } from '@ottabase/rbac/admin-guard';
+import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -56,4 +56,36 @@ export async function requireContentPermission(
     }
 
     return { session: reqCtx.session ?? null };
+}
+
+/**
+ * OBJECT-level check for editorial actions on a specific post: platform admin,
+ * or a manage-grade grant (posts:manage / posts:* / org:admin / *:*) evaluated
+ * IN THE POST ROW's organization — never a request-supplied org hint. Grants
+ * are org-scoped, so a non-member simply has none there and fails closed.
+ */
+export async function canManagePostInOrg(
+    context: ContentGuardContext,
+    post: { organizationId: string | null },
+): Promise<boolean> {
+    const { request, env } = context;
+    if (!env?.OBCF_D1) return false;
+
+    initDbConnection(env);
+
+    try {
+        const reqCtx = await getRequestContext(request, env as any, {
+            getAuthOptions,
+            allowNullTenant: true,
+            organizationIdOverride: post.organizationId ?? undefined,
+        });
+
+        if (!reqCtx.isAuthenticated || !reqCtx.user) return false;
+        if (isPlatformAdmin(reqCtx)) return true;
+        // Platform-owned posts (null org): only a platform admin manages them.
+        if (post.organizationId === null) return false;
+        return hasPermission(reqCtx, 'posts:manage') || hasPermission(reqCtx, 'org:admin');
+    } catch {
+        return false;
+    }
 }

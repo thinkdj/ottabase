@@ -18,7 +18,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import kitchensinkContentTemplate from '../fixtures/kitchensink-content.json';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { requireContentPermission } from '../lib/content-guard';
+import { canManagePostInOrg, requireContentPermission } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
 
 export interface BlogRouteContext {
@@ -68,6 +68,26 @@ export async function resolveBlogOrganizationId(ctx: {
     return null;
 }
 
+/**
+ * Per-request memo over resolveBlogOrganizationId for the worker's HTML
+ * injector chain: the SEO and theme injectors receive the SAME Request object
+ * and would otherwise each pay the subdomain→Organization D1 lookup. WeakMap
+ * keyed by Request — distinct requests never share, entries are GC'd with the
+ * request.
+ */
+const orgResolutionByRequest = new WeakMap<Request, Promise<string | null>>();
+export function resolveBlogOrganizationIdCached(ctx: {
+    request: Request;
+    env: CloudflareEnv;
+    url: URL;
+}): Promise<string | null> {
+    const existing = orgResolutionByRequest.get(ctx.request);
+    if (existing) return existing;
+    const resolution = resolveBlogOrganizationId(ctx);
+    orgResolutionByRequest.set(ctx.request, resolution);
+    return resolution;
+}
+
 const handlers = createBlogHandlers<CloudflareEnv>({
     connect: (env) => {
         if (!env.OBCF_D1) {
@@ -86,6 +106,9 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     // Editorial gate for preview-token minting: any caller who may edit posts
     // (author/editor/org admin/platform owner), not only platform admins.
     requireContentEditor: (ctx) => requireContentPermission(ctx, 'posts:update'),
+    // Object-level check for minting previews of posts the caller does not own:
+    // manage-grade grants evaluated in the POST's org (never a request hint).
+    canManagePost: (ctx, post) => canManagePostInOrg(ctx, post),
     // Dedicated BLOG_PREVIEW_SECRET wins; AUTH_SECRET is the pragmatic default
     // so preview links work out of the box on any configured deployment.
     previewTokenSecret: (env) => {

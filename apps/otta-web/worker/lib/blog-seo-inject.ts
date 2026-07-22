@@ -12,7 +12,7 @@ import { Post } from '@ottabase/ottablog';
 import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { resolveBlogOrganizationId } from '../routes/blog';
+import { resolveBlogOrganizationIdCached } from '../routes/blog';
 import { ensureDbConnection } from './db-utils';
 
 /**
@@ -40,7 +40,7 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         // dimension only in org mode (null = platform-owned content).
         const where: Record<string, unknown> = { slug, status: 'published', appId: config.appId };
         if (config.features.ottablog.mode === 'org') {
-            where.organizationId = await resolveBlogOrganizationId({ request, env, url });
+            where.organizationId = await resolveBlogOrganizationIdCached({ request, env, url });
         }
         const post = await Post.first(where);
         if (!post) return response;

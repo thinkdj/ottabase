@@ -260,15 +260,80 @@ describe('createBlogHandlers', () => {
         });
     });
 
+    describe('studio state shapes', () => {
+        const fullState = {
+            activeThemeId: 'default',
+            themes: [
+                { themeId: 'default', isActive: true, tokens: { light: { '--x': '1' } }, config: null },
+                { themeId: 'stash', isActive: false, tokens: { light: { '--secret': '1' } }, config: { k: 'v' } },
+            ],
+            plugins: [
+                { id: '1', pluginId: 'on', name: 'On', description: 'live', enabled: true, config: { a: 1 } },
+                { id: '2', pluginId: 'off', name: 'Off', description: 'hidden', enabled: false, config: { b: 2 } },
+            ],
+        };
+
+        it('serves the public rendering shape by default: active theme only, disabled-plugin config stripped', async () => {
+            vi.mocked(StudioManager.getState).mockResolvedValue(fullState as any);
+            const requireAdmin = vi.fn(async () => new Response('no', { status: 403 }));
+            const handlers = createBlogHandlers<Env>({ ...baseConfig, requireAdmin });
+
+            const response = await handlers.handleBlogStudioState(ctxFor('/studio/state'));
+            const body = (await response.json()) as typeof fullState;
+
+            expect(body.themes.map((t) => t.themeId)).toEqual(['default']);
+            expect(body.plugins.find((p) => p.pluginId === 'on')?.config).toEqual({ a: 1 });
+            const off = body.plugins.find((p) => p.pluginId === 'off');
+            expect(off?.enabled).toBe(false); // signal retained for client deactivation
+            expect(off?.config).toBeNull();
+            expect(off?.description).toBeNull();
+            // No seeding needed and no ?full=1 → the admin guard is never consulted.
+            expect(requireAdmin).not.toHaveBeenCalled();
+        });
+
+        it('serves the full payload only to admins that request ?full=1', async () => {
+            vi.mocked(StudioManager.getState).mockResolvedValue(fullState as any);
+
+            const adminHandlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                requireAdmin: vi.fn(async () => ({ session: null })),
+            });
+            const adminBody = (await (
+                await adminHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'))
+            ).json()) as typeof fullState;
+            expect(adminBody.themes.map((t) => t.themeId)).toEqual(['default', 'stash']);
+            expect(adminBody.plugins.find((p) => p.pluginId === 'off')?.config).toEqual({ b: 2 });
+
+            const anonHandlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                requireAdmin: vi.fn(async () => new Response('no', { status: 401 })),
+            });
+            const anonBody = (await (
+                await anonHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'))
+            ).json()) as typeof fullState;
+            expect(anonBody.themes.map((t) => t.themeId)).toEqual(['default']);
+            expect(anonBody.plugins.find((p) => p.pluginId === 'off')?.config).toBeNull();
+        });
+    });
+
     describe('draft preview', () => {
         const SECRET = 'preview-secret-32-characters-long!!!';
+        const CALLER = { session: { user: { id: 'author-1' } } };
         const previewConfig = {
             ...baseConfig,
+            // Mint authorization is object-level: default caller is the post's author.
+            requireAdmin: vi.fn(async () => CALLER),
             previewTokenSecret: () => SECRET,
         };
 
+        /** A post row owned by author-1 (matches CALLER) unless overridden. */
+        const ownPostRow = (slug: string, fields: Record<string, unknown> = {}) =>
+            ({
+                get: (k: string) => (({ slug, authorId: 'author-1', userId: 'author-1', ...fields }) as any)[k] ?? null,
+            }) as any;
+
         async function mintToken(handlers: ReturnType<typeof createBlogHandlers<Env>>, slug: string) {
-            vi.mocked(Post.first).mockResolvedValueOnce({ get: () => slug } as any);
+            vi.mocked(Post.first).mockResolvedValueOnce(ownPostRow(slug));
             const response = await handlers.handleBlogPreviewTokenMint({
                 ...ctxFor('/posts/preview-token', {
                     method: 'POST',
@@ -279,6 +344,64 @@ describe('createBlogHandlers', () => {
             expect(response.status).toBe(200);
             return (await response.json()) as { token: string; expiresAt: number; path: string };
         }
+
+        it('mint denies (404, same as missing) for a post the caller does not own', async () => {
+            const handlers = createBlogHandlers<Env>(previewConfig);
+            vi.mocked(Post.first).mockResolvedValueOnce(
+                ownPostRow('their-draft', { authorId: 'someone-else', userId: 'someone-else' }),
+            );
+
+            const response = await handlers.handleBlogPreviewTokenMint(
+                ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 'their-draft' }) }),
+            );
+
+            expect(response.status).toBe(404);
+        });
+
+        it('mint consults canManagePost with the POST ROW org for non-owned posts', async () => {
+            const canManagePost = vi.fn(async () => true);
+            const handlers = createBlogHandlers<Env>({ ...previewConfig, canManagePost });
+            vi.mocked(Post.first).mockResolvedValueOnce(
+                ownPostRow('their-draft', {
+                    id: 'p9',
+                    authorId: 'someone-else',
+                    userId: null,
+                    organizationId: 'org-9',
+                }),
+            );
+
+            const response = await handlers.handleBlogPreviewTokenMint(
+                ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 'their-draft' }) }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(canManagePost).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({ id: 'p9', authorId: 'someone-else', organizationId: 'org-9' }),
+            );
+        });
+
+        it('org mode: the token binds the POST ROW org, not the request org hint', async () => {
+            const handlers = createBlogHandlers<Env>({
+                ...previewConfig,
+                mode: 'org' as const,
+                resolveOrganizationId: vi.fn(async () => 'org-request-hint'),
+                canManagePost: vi.fn(async () => true),
+            });
+            vi.mocked(Post.first).mockResolvedValueOnce(
+                ownPostRow('draft', { authorId: 'someone-else', organizationId: 'org-real' }),
+            );
+
+            const response = await handlers.handleBlogPreviewTokenMint(
+                ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 'draft' }) }),
+            );
+            expect(response.status).toBe(200);
+            const { token } = (await response.json()) as { token: string };
+
+            const { verifyPreviewToken } = await import('../preview-token');
+            const payload = await verifyPreviewToken(SECRET, token);
+            expect(payload?.organizationId).toBe('org-real');
+        });
 
         it('mint responds 404 when no preview secret is configured', async () => {
             const handlers = createBlogHandlers<Env>({ ...baseConfig });

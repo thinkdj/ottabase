@@ -30,7 +30,7 @@ vi.mock('../db-utils', () => ({
 }));
 
 vi.mock('../../routes/blog', () => ({
-    resolveBlogOrganizationId: mockResolveBlogOrganizationId,
+    resolveBlogOrganizationIdCached: mockResolveBlogOrganizationId,
 }));
 
 import { BLOG_THEME_STYLE_ID, injectBlogThemeCss } from '../blog-theme-inject';

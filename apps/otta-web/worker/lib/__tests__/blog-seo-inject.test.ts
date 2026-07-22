@@ -22,7 +22,7 @@ vi.mock('../db-utils', () => ({
 }));
 
 vi.mock('../../routes/blog', () => ({
-    resolveBlogOrganizationId: mockResolveBlogOrganizationId,
+    resolveBlogOrganizationIdCached: mockResolveBlogOrganizationId,
 }));
 
 import { injectBlogPostSeo } from '../blog-seo-inject';

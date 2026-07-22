@@ -98,7 +98,7 @@ export function AdminBlogStudioPage() {
     } = useApiQuery<StudioStateResponse>({
         entity: STUDIO_ENTITY,
         queryKey: ['state'],
-        endpoint: '/api/blog/studio/state',
+        endpoint: '/api/blog/studio/state?full=1',
     });
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,

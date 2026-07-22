@@ -83,6 +83,19 @@ export interface BlogRouterConfig<Env = unknown> {
     requireContentEditor?: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
 
     /**
+     * OBJECT-level authorization for the preview-token mint: may this caller
+     * manage THIS post (e.g. an editor/org-admin grant IN THE POST'S org, or a
+     * platform admin)? Consulted only when the caller is not the post's author.
+     * When absent, minting is restricted to the caller's own posts — the safe
+     * default. Never trust request-supplied org hints here; authorize against
+     * the post row's own organizationId.
+     */
+    canManagePost?: (
+        ctx: BlogRequestContext<Env>,
+        post: { id: string; authorId: string | null; userId: string | null; organizationId: string | null },
+    ) => Promise<boolean>;
+
+    /**
      * EditorJS content for the demo kitchensink post. When omitted, POST /kitchensink
      * responds 404 — apps opt into the demo by supplying content.
      */

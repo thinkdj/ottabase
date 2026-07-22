@@ -85,3 +85,19 @@ export const ottablogOrgModeMigrations = [
         },
     },
 ];
+
+/**
+ * Schema-declared indexes the migration above DROPS. In org mode these MUST be
+ * passed to autoInit's `suppressIndexes` — the ensure step re-creates schema
+ * indexes with IF NOT EXISTS on EVERY init run, while the drop-migration is
+ * tracked and runs once, so without suppression a later re-init silently
+ * restores app-wide slug uniqueness and breaks per-org slug namespaces.
+ */
+export const ottablogOrgModeSuppressedIndexes: string[] = [
+    'posts_app_id_slug_unique_idx',
+    'categories_app_id_type_slug_unique_idx',
+    'post_tags_app_id_type_slug_unique_idx',
+    'series_app_id_slug_unique_idx',
+    'ottablog_themes_app_id_theme_id_unique_idx',
+    'ottablog_plugins_app_id_plugin_id_unique_idx',
+];

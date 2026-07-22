@@ -352,6 +352,8 @@ export class BaseModel extends AbstractBaseModel {
             orderDirection?: 'asc' | 'desc';
             limit?: number;
             offset?: number;
+            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            select?: string[];
         },
         driver?: DbDriver,
         includeTrashed?: boolean,
@@ -368,8 +370,15 @@ export class BaseModel extends AbstractBaseModel {
         const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
         if (softDeleteCond) whereConditions.push(softDeleteCond);
 
-        let query = db
-            .select()
+        // Optional projection: batch enrichment reads (author names for RSS/lists)
+        // shouldn't transfer full rows (e.g. posts.content JSON) for a few fields.
+        const projection: Record<string, any> = {};
+        for (const selected of options?.select ?? []) {
+            const column = (table as any)[selected];
+            if (column) projection[selected] = column;
+        }
+
+        let query: any = (Object.keys(projection).length > 0 ? db.select(projection) : db.select())
             .from(table)
             .where(and(...whereConditions));
 
