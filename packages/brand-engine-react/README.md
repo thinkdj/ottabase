@@ -2,7 +2,7 @@
 
 React bindings for Ottabase Brand Engine — brand config provider, theme application, and layout resolution.
 
-## Install
+## Installation
 
 ```bash
 pnpm add @ottabase/brand-engine-react

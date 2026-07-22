@@ -13,7 +13,7 @@ URL shortening system for Cloudflare D1 — redirect handling, interstitial page
 - Click tracking via Cloudflare Analytics Engine (WAE)
 - Built on OttaORM for Cloudflare D1
 
-## Install
+## Installation
 
 ```bash
 pnpm add @ottabase/shortlinks

@@ -9,7 +9,7 @@ Referral system package for Ottabase — schema, model, validation, and attribut
 - **Click analytics** — Referral clicks written to Cloudflare Analytics Engine (WAE); no per-click DB writes
 - **Conversion tracking** — D1 record created on signup, linked to the referring user
 
-## Install
+## Installation
 
 ```bash
 pnpm add @ottabase/referrals

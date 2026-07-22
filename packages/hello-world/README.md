@@ -5,7 +5,7 @@ A simple, customizable React component that displays a friendly greeting message
 ## Installation
 
 ```bash
-npm install @ottabase/hello-world
+pnpm add @ottabase/hello-world
 ```
 
 ## Usage

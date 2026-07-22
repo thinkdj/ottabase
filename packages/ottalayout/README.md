@@ -2,7 +2,7 @@
 
 Layout system for Ottabase — types, presets, path resolver, validators, utility classes, and React slots.
 
-## Install
+## Installation
 
 ```bash
 pnpm add @ottabase/ottalayout

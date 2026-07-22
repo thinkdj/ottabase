@@ -12,7 +12,7 @@ Edge-friendly email templating + mailer helpers for Ottabase.
 - Dev email trap provider for local workflows
 - Cloudflare provider stub (pluggable transport)
 
-## Install
+## Installation
 
 ```bash
 pnpm add @ottabase/email
