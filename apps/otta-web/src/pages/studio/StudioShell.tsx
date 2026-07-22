@@ -17,7 +17,15 @@ const PATHS: Record<'studio' | 'blog', string> = { studio: '/studio', blog: '/bl
 export function StudioShell({ children }: { children: ReactNode }) {
     return (
         <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+            {/*
+             * top-14 (3.5rem): every /studio route renders inside the app-shell layout,
+             * whose own TopbarHeader is sticky at top-0 z-40 and runs ~3.5rem tall (the
+             * same offset DemoLayout assumes for content below it). Sticking THIS header
+             * at top-0 too would pin it underneath that outer header on scroll instead of
+             * stacking below it, so it starts one header-height down and stays under the
+             * outer header's z-40 (z-30) since it is the nested, not the outer, chrome.
+             */}
+            <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
                 <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
                     <Link to={PATHS.studio} className="inline-flex items-center gap-2 font-semibold">
                         <PenLine className="h-4 w-4" />

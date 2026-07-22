@@ -4,12 +4,14 @@
  * Persistent navigation across all admin blog pages.
  * Highlights the current section based on the URL.
  */
+import { isOrgAdmin, useSession } from '@/lib/auth';
 import { Link, useLocation } from '@tanstack/react-router';
 import { FileText, FolderTree, Layers, Palette, Tag } from 'lucide-react';
 import { useBlogSurface } from './blogAdminPaths';
 
 export function BlogAdminNav() {
     const { pathname } = useLocation();
+    const { user } = useSession();
     const surface = useBlogSurface();
 
     // Links resolve against the active surface (/admin/content/blog or /studio),
@@ -19,7 +21,13 @@ export function BlogAdminNav() {
         { to: surface.tagsPath, label: 'Tag', icon: Tag, exact: false },
         { to: surface.categoriesPath, label: 'Category', icon: FolderTree, exact: false },
         { to: surface.seriesPath, label: 'Series', icon: Layers, exact: false },
-        { to: surface.themesPath, label: 'Content Studio', icon: Palette, exact: false },
+        // Theme/plugin management is studio-ADMIN only server-side. Under /admin/content/blog
+        // the surface itself is already org:admin-gated, so it always applies there; under
+        // /studio (content-permission gated, no admin requirement) a plain author/editor
+        // would otherwise see a nav item that 403s on every action — hide it for them instead.
+        ...(surface.inStudio && !isOrgAdmin(user)
+            ? []
+            : [{ to: surface.themesPath, label: 'Content Studio', icon: Palette, exact: false }]),
     ] as const;
 
     const isActive = (to: string, exact?: boolean) => {

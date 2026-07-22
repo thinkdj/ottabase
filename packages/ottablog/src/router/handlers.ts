@@ -57,8 +57,16 @@ async function findPublishedPostBySlug(
     return Post.first(primary);
 }
 
-/** Conservative D1 bound-parameter chunk size for IN (...) lists. */
+/** Conservative D1 bound-parameter chunk size for IN (...) lists that carry no other bound conditions. */
 const D1_IN_CHUNK = 100;
+
+/**
+ * Chunk size for id-list queries that also carry the list handler's other bound
+ * conditions (status, contentType, appId, organizationId, seriesId, pagination,
+ * search LIKE terms) in the SAME statement — D1's bound-parameter ceiling covers
+ * the whole statement, not just the id list, so this leaves headroom for them.
+ */
+const D1_FILTERED_ID_CHUNK = 80;
 
 function chunkIds(ids: string[], size = D1_IN_CHUNK): string[][] {
     const chunks: string[][] = [];
@@ -67,9 +75,13 @@ function chunkIds(ids: string[], size = D1_IN_CHUNK): string[][] {
 }
 
 /** Run an id-list query in D1-safe chunks and concatenate the results. */
-async function chunkedFetch<M>(ids: string[], fetch: (chunk: string[]) => Promise<M[]>): Promise<M[]> {
+async function chunkedFetch<M>(
+    ids: string[],
+    fetch: (chunk: string[]) => Promise<M[]>,
+    size = D1_IN_CHUNK,
+): Promise<M[]> {
     const results: M[] = [];
-    for (const chunk of chunkIds(ids)) {
+    for (const chunk of chunkIds(ids, size)) {
         results.push(...(await fetch(chunk)));
     }
     return results;
@@ -88,37 +100,51 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
 
     const postIds = records.map((r) => r.get('id') as string);
 
-    // Tags: links → tag rows
-    const tagLinks = await chunkedFetch(postIds, (ids) => PostTagLink.where({ postId: ids }));
+    // Tags: links → tag rows. Best-effort, same as publicPostJson's per-post
+    // try/catch: a transient query failure degrades to empty tags rather than
+    // failing the whole page.
     const tagIdsByPost = new Map<string, string[]>();
-    for (const link of tagLinks) {
-        const pid = link.get('postId') as string;
-        const tid = link.get('tagId') as string;
-        if (!tagIdsByPost.has(pid)) tagIdsByPost.set(pid, []);
-        tagIdsByPost.get(pid)!.push(tid);
+    const tagJsonById = new Map<string, Record<string, unknown>>();
+    try {
+        const tagLinks = await chunkedFetch(postIds, (ids) => PostTagLink.where({ postId: ids }));
+        for (const link of tagLinks) {
+            const pid = link.get('postId') as string;
+            const tid = link.get('tagId') as string;
+            if (!tagIdsByPost.has(pid)) tagIdsByPost.set(pid, []);
+            tagIdsByPost.get(pid)!.push(tid);
+        }
+        const uniqueTagIds = [...new Set(tagLinks.map((l) => l.get('tagId') as string))];
+        const tagRows = await chunkedFetch(uniqueTagIds, (ids) => PostTag.whereIn('id', ids));
+        for (const t of tagRows) tagJsonById.set(t.get('id') as string, t.toJson());
+    } catch {
+        // Tag enrichment is best-effort, same as publicPostJson.
     }
-    const uniqueTagIds = [...new Set(tagLinks.map((l) => l.get('tagId') as string))];
-    const tagRows = await chunkedFetch(uniqueTagIds, (ids) => PostTag.whereIn('id', ids));
-    const tagJsonById = new Map(tagRows.map((t) => [t.get('id') as string, t.toJson()]));
 
-    // Categories: junction links plus legacy single-category column
-    const catLinks = await chunkedFetch(postIds, (ids) => PostCategoryLink.where({ postId: ids }));
+    // Categories: junction links plus legacy single-category column. Same
+    // best-effort fallback as tags above.
     const catIdsByPost = new Map<string, string[]>();
-    for (const link of catLinks) {
-        const pid = link.get('postId') as string;
-        const cid = link.get('categoryId') as string;
-        if (!catIdsByPost.has(pid)) catIdsByPost.set(pid, []);
-        catIdsByPost.get(pid)!.push(cid);
+    const catById = new Map<string, { id: string; name: string; slug: string }>();
+    try {
+        const catLinks = await chunkedFetch(postIds, (ids) => PostCategoryLink.where({ postId: ids }));
+        for (const link of catLinks) {
+            const pid = link.get('postId') as string;
+            const cid = link.get('categoryId') as string;
+            if (!catIdsByPost.has(pid)) catIdsByPost.set(pid, []);
+            catIdsByPost.get(pid)!.push(cid);
+        }
+        const legacyCatIds = records.map((r) => r.get('categoryId') as string | null).filter(Boolean) as string[];
+        const uniqueCatIds = [...new Set([...catLinks.map((l) => l.get('categoryId') as string), ...legacyCatIds])];
+        const catRows = await chunkedFetch(uniqueCatIds, (ids) => PostCategory.whereIn('id', ids));
+        for (const c of catRows) {
+            catById.set(c.get('id') as string, {
+                id: c.get('id') as string,
+                name: c.get('name') as string,
+                slug: c.get('slug') as string,
+            });
+        }
+    } catch {
+        // Category enrichment is best-effort, same as publicPostJson.
     }
-    const legacyCatIds = records.map((r) => r.get('categoryId') as string | null).filter(Boolean) as string[];
-    const uniqueCatIds = [...new Set([...catLinks.map((l) => l.get('categoryId') as string), ...legacyCatIds])];
-    const catRows = await chunkedFetch(uniqueCatIds, (ids) => PostCategory.whereIn('id', ids));
-    const catById = new Map(
-        catRows.map((c) => [
-            c.get('id') as string,
-            { id: c.get('id') as string, name: c.get('name') as string, slug: c.get('slug') as string },
-        ]),
-    );
 
     // Authors (public-safe projection only)
     const uniqueAuthorIds = [
@@ -150,8 +176,12 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
     ] as string[];
     const seriesTitleById = new Map<string, string | null>();
     if (uniqueSeriesIds.length > 0) {
-        const seriesRows = await chunkedFetch(uniqueSeriesIds, (ids) => PostSeries.whereIn('id', ids));
-        for (const s of seriesRows) seriesTitleById.set(s.get('id') as string, (s.get('title') as string) ?? null);
+        try {
+            const seriesRows = await chunkedFetch(uniqueSeriesIds, (ids) => PostSeries.whereIn('id', ids));
+            for (const s of seriesRows) seriesTitleById.set(s.get('id') as string, (s.get('title') as string) ?? null);
+        } catch {
+            // Series enrichment is best-effort, same as publicPostJson.
+        }
     }
 
     return records.map((record) => {
@@ -632,9 +662,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const searchFields = ['title', 'slug', 'excerpt'];
 
         let result;
-        if (junctionIds !== null && junctionIds.length <= D1_IN_CHUNK) {
+        if (junctionIds !== null && junctionIds.length <= D1_FILTERED_ID_CHUNK) {
             // Junction filter pushed into SQL (array-where → inArray): paginate
             // and COUNT in the database instead of fetching the whole corpus.
+            // The id list rides in the SAME statement as `where` (status,
+            // contentType, appId, ...) plus pagination/search params, so the
+            // smaller filtered-chunk threshold (not D1_IN_CHUNK) applies here.
             const idWhere = { ...where, id: junctionIds };
             result = searchTerm
                 ? await Post.searchPaginate(searchTerm, searchFields, page, perPage, idWhere, {
@@ -643,12 +676,16 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                   })
                 : await Post.paginate(page, perPage, idWhere, { orderBy, orderDirection });
         } else if (junctionIds !== null) {
-            // Very large tag/category (> D1's bound-parameter chunk): fetch the
+            // Very large tag/category (> the filtered-id chunk): fetch the
             // tagged rows chunk-wise by id — bounded by the tag's size, never the
             // whole published corpus — then order/paginate in memory. The search
             // term is applied as the JS equivalent of the LIKE %term% condition.
-            const rows = await chunkedFetch(junctionIds, (ids) =>
-                Post.where({ ...where, id: ids }, { orderBy, orderDirection }),
+            // Each chunk carries the same `where` conditions as the id list, so
+            // it uses the filtered (not plain) chunk size too.
+            const rows = await chunkedFetch(
+                junctionIds,
+                (ids) => Post.where({ ...where, id: ids }, { orderBy, orderDirection }),
+                D1_FILTERED_ID_CHUNK,
             );
             const needle = searchTerm?.toLowerCase() ?? null;
             const filtered = needle
@@ -1012,11 +1049,12 @@ ${items}
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
-        // Bounded: unbounded full-corpus loads (every column incl. content JSON)
-        // degrade linearly and risk isolate memory at a few thousand posts. The
-        // sitemap protocol caps a file at 50k URLs; sitemap-index pagination is
-        // the follow-up beyond that.
-        const limit = Math.min(50000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
+        // Bounded at the sitemap protocol's own 50k-URL-per-file ceiling, not a
+        // lower default: crawlers never pass ?limit=, so a smaller default would
+        // silently drop older posts from a real deployment's sitemap the moment
+        // it passed that default (the old endpoint was unbounded). Sitemap-index
+        // pagination is the follow-up once a single deployment nears 50k posts.
+        const limit = Math.min(50000, Math.max(1, parseInt(url.searchParams.get('limit') || '50000', 10)));
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
         if (organizationId !== undefined) where.organizationId = organizationId;

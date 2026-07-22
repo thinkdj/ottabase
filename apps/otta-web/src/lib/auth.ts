@@ -9,6 +9,7 @@
 
 import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { useSession as useAuthSession, type UseSessionOptions } from '@ottabase/auth/react';
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { APP_ID } from '@/ottabase/config';
@@ -73,6 +74,39 @@ export function isAdminUser(user: AdminUserLike): boolean {
 }
 
 /**
+ * Resolve which organization id should drive the app's active-org state (and the
+ * X-Org-Id header) for a given session snapshot + the locally-remembered value.
+ *
+ * The platform-scope sentinel (organizationId NULL) has no way to persist server-side
+ * as distinct from "no preference set" — PATCH activeOrganizationId=null clears the
+ * column, and the session then falls back to the user's earliest membership, same as
+ * an unset preference. Without special-casing it, that fallback org would silently
+ * overwrite the sentinel the instant a platform admin selects Platform (refreshSession()
+ * re-runs the sync effect that calls this). So the sentinel is kept sticky client-side
+ * instead: once stored, it survives session refreshes/reloads until the admin explicitly
+ * switches to a real org (or loses the platformAdmin grant, which drops out of this
+ * branch on the next session read).
+ */
+export function resolveEffectiveOrgId(
+    user:
+        | {
+              permissions?: string[];
+              platformAdmin?: boolean;
+              activeOrganizationId?: string | null;
+              organizationId?: string | null;
+          }
+        | null
+        | undefined,
+    isAuthenticated: boolean,
+    storedOrgId: string | null,
+): string | null {
+    const sessionOrgId = user?.activeOrganizationId ?? user?.organizationId ?? null;
+    const keepPlatformScope = isPlatformAdmin(user) && storedOrgId === PLATFORM_ORG_SENTINEL;
+    if (keepPlatformScope) return PLATFORM_ORG_SENTINEL;
+    return sessionOrgId ?? (isAuthenticated ? storedOrgId : null);
+}
+
+/**
  * Custom useSession hook that syncs with global app state
  */
 export function useSession(options?: UseSessionOptions) {
@@ -88,12 +122,11 @@ export function useSession(options?: UseSessionOptions) {
         setGlobalIsAuthenticated(sessionData.isAuthenticated);
         setAppId(APP_ID);
 
-        // Prefer the server-persisted active org (survives across devices), then the session's
-        // organizationId, then the locally-remembered value.
-        const sessionOrgId =
-            (sessionData.user as any)?.activeOrganizationId ?? (sessionData.user as any)?.organizationId ?? null;
+        // Prefer the server-persisted active org (survives across devices) unless the
+        // platform-scope sentinel is stuck client-side (see resolveEffectiveOrgId), then
+        // the session's organizationId, then the locally-remembered value.
         const storedOrgId = getStoredOrganizationId();
-        const effectiveOrgId = sessionOrgId ?? (sessionData.isAuthenticated ? storedOrgId : null);
+        const effectiveOrgId = resolveEffectiveOrgId(sessionData.user as any, sessionData.isAuthenticated, storedOrgId);
 
         setOrganizationId(effectiveOrgId);
 

@@ -39,6 +39,7 @@ import { Link } from '@tanstack/react-router';
 import { Loader2, Palette, Puzzle, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+import { useBlogSurface } from './blogAdminPaths';
 
 const STUDIO_ENTITY = 'blog_studio' as const;
 
@@ -89,6 +90,7 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
 }
 
 export function AdminBlogStudioPage() {
+    const surface = useBlogSurface();
     const {
         data: state,
         isLoading,
@@ -192,7 +194,7 @@ export function AdminBlogStudioPage() {
                     Failed to load studio state.
                 </div>
                 <Button asChild variant="outline">
-                    <Link to="/admin/content/blog">Back to Blog</Link>
+                    <Link to={surface.contentPath}>Back to Blog</Link>
                 </Button>
             </div>
         );

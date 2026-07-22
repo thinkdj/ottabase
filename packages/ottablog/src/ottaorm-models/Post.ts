@@ -978,12 +978,14 @@ export class Post extends BaseModel {
             ];
 
             if (candidateIds.length > 0) {
-                // Chunk at 100 ids per query (D1 bound-parameter limit); a popular
-                // category previously overflowed the single whereIn and threw.
+                // Chunk at 99 ids per query: whereIn binds the id list PLUS the
+                // limit below as one more parameter, so 100 ids would push the
+                // statement to 101 bound params — past D1's bound-parameter limit.
+                const RELATED_ID_CHUNK = 99;
                 const candidates: InstanceType<typeof BaseModel>[] = [];
-                for (let i = 0; i < candidateIds.length; i += 100) {
+                for (let i = 0; i < candidateIds.length; i += RELATED_ID_CHUNK) {
                     candidates.push(
-                        ...(await this.whereIn('id', candidateIds.slice(i, i + 100), {
+                        ...(await this.whereIn('id', candidateIds.slice(i, i + RELATED_ID_CHUNK), {
                             orderBy: 'publishedAt',
                             orderDirection: 'desc',
                             limit: limit + 1,

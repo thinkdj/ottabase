@@ -41,7 +41,9 @@ Fixed on this branch:
 - SECURITY (low): studio default-row seeding is unique-violation tolerant (concurrent admin loads no longer 500).
 - PERF: posts-list enrichment batched (~5 D1 queries per post → 6 flat queries per page); junction (tag/category)
   filtering pushed into SQL with a chunked fallback for >100-id tags instead of fetching the whole published corpus;
-  search uses a single searchPaginate round-trip instead of a double scan; sitemap bounded (default 5000, cap 50000);
+  search uses a single searchPaginate round-trip instead of a double scan; sitemap bounded (default and cap 50000,
+  the sitemap protocol's own per-file URL limit — crawlers never pass `?limit=`, so a lower default silently drops
+  older posts once a deployment passes it; see the second review pass below);
   Post.related's per-category loop collapsed to one array-where query with a chunked whereIn (fixes the >100-candidate
   crash); the SEO and theme injectors share one per-request org resolution (WeakMap memo); BaseModel.whereIn now
   actually implements its `select` projection (it was silently ignored — the RSS author batch transferred full rows).
@@ -54,6 +56,70 @@ Deferred (recorded, not built — recipes in the perf review):
   edge-injected theme CSS and the client-applied CSS never diverge.
 - KV slug→orgId cache for org-mode subdomain resolution (per-request D1 lookup today, memoized only within a request).
 - Sitemap-index pagination beyond ~10k posts; single-post by-slug/unlock enrichment stays per-post (N=1, fine).
+
+## Second review pass (final, exhaustive multi-lens + adversarial verification)
+
+A follow-up review across regression, security, output-parity, frontend, and platform lenses, with each finding put
+through a 3-vote adversarial panel before being accepted. Fixed on this branch:
+
+- REGRESSION: sitemap default raised from 5000 to 50000 (see the perf note above) — the lower default silently
+  truncated older posts on any deployment past 5000 published posts, since crawlers never send `?limit=`.
+- SECURITY: generic CRUD (`/api/ottaorm/posts`) could stamp `organizationId: null` (platform-owned) drafts for ANY
+  authenticated user, not just platform admins — the posts RLS policy's null-org read gate is read-only, so nothing
+  stopped a write. `ottaorm-crud.ts` now 403s a null-org write from a non-platform-admin.
+- PARITY/PERF: the junction (tag/category) SQL-push path could exceed D1's bound-parameter ceiling once the id list
+  combined with `where`/pagination/search params — split into `D1_IN_CHUNK` (bare id lists, still 100) and
+  `D1_FILTERED_ID_CHUNK` (80, id list plus the list handler's other bound params) in `handlers.ts`.
+- PARITY: `Post.related`'s 100-id chunk plus the `limit` bound param overflowed to 101 bound params on a popular
+  category (same class of bug as above) — chunk size corrected to 99.
+- PARITY: batch post-list enrichment (`enrichPostsJsonBatch`) had no fallback for a transient tag/category/series
+  query failure (the old per-post path degraded to empty arrays; the new batched path 500'd the whole page) — tags,
+  categories, and series enrichment are now each independently try/catch'd, matching the old behavior.
+- FRONTEND: selecting "Platform" in the org switcher was silently reverted — `refreshSession()`'s session-sync effect
+  re-derived the active org from the session, which falls back to the caller's earliest membership once
+  `activeOrganizationId` is cleared (there is no way to persist "explicitly platform" server-side, distinct from "no
+  preference set"). `lib/auth.ts`'s `resolveEffectiveOrgId` now keeps the sentinel sticky client-side once selected.
+- FRONTEND: `StudioShell`'s sticky header (`top-0 z-30`) rendered underneath the app-shell's own sticky topbar
+  (`top-0 z-40`) on scroll — it now sticks at `top-14` (below the outer header) instead of competing for the same
+  offset.
+- FRONTEND: `/studio/themes` (theme/plugin management) was gated by `posts:update` only, but its mutations require
+  studio admin server-side (`requireStudioAdminForScope`: platform admin or the target org's `org:admin`) — a plain
+  author/editor got a page that silently degraded to a read-only skeleton and 403'd on every action. The route now
+  also requires `org:admin`; the nav item hides itself under `/studio` for users who lack it; the error-state "Back
+  to Blog" link resolves via `useBlogSurface` instead of a hardcoded admin-gated path; and the content-permission
+  gate's fallback message no longer claims "Missing privilege: admin" (a content-permission denial is not an admin
+  one).
+- PLATFORM: `generateIndexStatements` (the runtime migration generator) dropped a schema-declared partial index's
+  `.where(...)` clause entirely, so `posts_slug_unique_no_app_idx` (meant to be unique on `slug` only among
+  platform-owned rows, `appId IS NULL`) was created as a GLOBAL unique index on every fresh org-mode install — the
+  first duplicate slug across two orgs would 500. The generator now renders the WHERE clause via drizzle's
+  `SQLiteSyncDialect.sqlToQuery`.
+- PLATFORM: a destructive table rebuild (DROP + RENAME, triggered by a removed column) permanently lost any
+  migration-owned indexes on that table — the rebuild batch has no index statements, and the tracked migration is
+  skipped as already-run on the next init. Migrations can now declare `affectedTables`; `autoMigrate` re-runs a
+  migration whose declared tables were rebuilt THIS run even though it is already recorded (safe only because
+  `ottablogOrgModeMigrations` — the one migration that opts in — is pure idempotent DDL).
+- PLATFORM: the bootstrap wizard's `POST /__bootstrap__/api/init` used the module-load `appMigrations` export (blind
+  to `OTTABLOG_MODE` set only via env) and passed no `suppressIndexes`, so it could both miss org mode on first run
+  and silently restore the dropped strict slug indexes on a maintenance re-run. It now calls `buildAppMigrations(env)`
+  and passes `suppressIndexes` in org mode, matching the sibling `/api/ottaorm/init` route.
+
+Confirmed but NOT built (documented instead — see the runbook below and Gap 1's implementation notes):
+
+- Flipping an existing deployment from platform mode to org mode (`OTTABLOG_MODE=org`) hides every previously
+  authored post from the platform's own apex blog/RSS/sitemap, because platform-mode CRUD stamps posts with the
+  author's personal `organizationId` while org mode serves the apex only from `organizationId IS NULL` rows, and no
+  migration reassigns existing rows. This is a real, supported-lifecycle gap (the env override exists specifically so
+  a deployment CAN flip modes), but auto-migrating data ownership silently would be wrong more often than right —
+  which existing posts should become platform-owned vs. stay with a specific org is an operator decision. See "Mode
+  flip runbook" under Gap 1 for the manual backfill step.
+
+Reviewed and explicitly rejected (raised, then refuted by the adversarial panel — not re-litigated):
+zero-result pagination reporting `totalPages: 1` instead of `0`; >100-junction in-memory sort NULL-ordering versus
+SQL; studio mutation endpoints checking `config.connect` before the admin guard; `enrichPostsJsonBatch` emitting
+explicit `author: null`/`seriesTitle: null` instead of omitting the keys; related-posts gaining `categories`/
+`categoryName`/`categorySlug`/`seriesTitle` fields the old endpoint never returned; `BaseModel.searchPaginate`'s
+`totalPages: 0` vs `1` on an empty result set.
 
 ---
 
@@ -149,6 +215,33 @@ than ad-hoc WHERE clauses so the existing defense-in-depth (`enforceOrgMembershi
 and remember the standing caveat that raw Drizzle queries bypass RLS. Decide and document what happens to existing
 app-global taxonomy rows when a deployment flips modes (recommend: leave them as platform-owned rows with null org,
 visible read-only to tenants). Custom domains per org are a later increment on top of the same org-resolution step.
+
+### Mode flip runbook (platform -> org, on a deployment that already has posts)
+
+Confirmed by the second review pass: flipping `OTTABLOG_MODE` from `platform` to `org` on a deployment that already
+has published posts hides ALL of them from the platform's own apex blog, RSS feed, and sitemap. Platform-mode CRUD
+stamps every post with the author's personal `organizationId` (there is no "no org" authoring path in platform mode
+outside the platform-admin sentinel), while org mode serves the apex (no resolved org) only from rows where
+`organization_id IS NULL`. The posts are not lost — they still belong to their author's org and are reachable via
+`?org=<slug>` or that org's subdomain — but the platform blog itself goes empty. No migration does this
+automatically, and none should: which pre-flip posts should become platform-owned versus stay with their org is an
+operator decision, not something safe to infer.
+
+Before flipping an existing deployment to org mode, decide per post (or per author/org) what "platform-owned" means
+for you, then explicitly null out `organization_id` on the rows that should keep appearing on the apex blog. For
+example, to make every pre-flip post platform-owned (the common case for a deployment that never had real per-org
+content yet):
+
+```sql
+UPDATE posts SET organization_id = NULL WHERE app_id = '<your-app-id>';
+```
+
+Or, to keep a specific author's/org's posts scoped to their org and only move everything else to the platform blog,
+narrow the WHERE clause accordingly (e.g. `AND organization_id != '<org-id-to-keep-scoped>'`). Run this AFTER the
+`ottablog_org_mode_slug_scope_v1` migration has applied (so the partial slug indexes are already in place) and
+BEFORE relying on the apex blog being populated. There is no equivalent problem flipping org -> platform: platform
+mode ignores `organizationId` entirely, so org-owned rows simply keep serving under their org's own scope alongside
+everything else.
 
 ---
 

@@ -10,8 +10,28 @@
 // ============================================================
 
 import { type DbDriver } from '@ottabase/db/drizzle';
+import type { SQL } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
-import { getTableConfig } from 'drizzle-orm/sqlite-core';
+import { getTableConfig, SQLiteSyncDialect } from 'drizzle-orm/sqlite-core';
+
+const sqliteDialect = new SQLiteSyncDialect();
+
+/**
+ * Render a partial index's `.where(sql\`...\`)` condition to raw SQL text.
+ * Every declared partial index condition today is a static column-vs-NULL check
+ * (see Post/PostCategory/PostTag/PostSeries schemas), so it compiles with no bind
+ * params; a condition that DOES need params can't be safely inlined into a DDL
+ * statement, so it is dropped (with a warning) rather than emitting broken SQL.
+ */
+function renderIndexWhere(where: SQL | undefined, indexName: string): string | null {
+    if (!where) return null;
+    const { sql, params } = sqliteDialect.sqlToQuery(where);
+    if (params.length > 0) {
+        console.warn(`Index "${indexName}" has a parameterized WHERE clause, which DDL cannot bind — dropping it.`);
+        return null;
+    }
+    return sql;
+}
 
 /**
  * Migration tracking table name constant
@@ -53,6 +73,13 @@ export interface RuntimeMigrationConfig {
         name: string;
         up: (db: DbDriver) => Promise<void>;
         down?: (db: DbDriver) => Promise<void>;
+        /**
+         * Tables this migration's `up()` creates/modifies indexes or constraints on. When ANY
+         * of these was destructively rebuilt this run (see rebuiltTables above), the migration
+         * re-runs even if already recorded — so `up()` MUST be side-effect-free to repeat (pure
+         * idempotent DDL like the ottablog org-mode index swap, never a one-time data mutation).
+         */
+        affectedTables?: string[];
     }>;
 
     /**
@@ -164,11 +191,15 @@ function generateIndexStatements(table: SQLiteTable, tableNameOverride?: string)
             .filter((n: unknown): n is string => typeof n === 'string');
         if (!name || cols.length === 0) continue;
         const unique = cfg?.unique ? 'UNIQUE ' : '';
+        // Partial index (.where(...)) — e.g. a unique slug index scoped to
+        // `appId IS NULL` — MUST carry its condition into the emitted SQL, or a
+        // schema-declared partial unique index silently becomes a global one.
+        const whereClause = renderIndexWhere(cfg?.where, name);
         statements.push({
             name,
             sql: `CREATE ${unique}INDEX IF NOT EXISTS ${quoteIdentifier(name)} ON ${quoteIdentifier(tableName)} (${cols
                 .map(quoteIdentifier)
-                .join(', ')})`,
+                .join(', ')})${whereClause ? ` WHERE ${whereClause}` : ''}`,
         });
     }
 
@@ -295,6 +326,11 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
         suppressIndexes = [],
     } = config;
     const suppressedIndexNames = new Set(suppressIndexes);
+    // Tables destructively rebuilt (DROP + RENAME) this run — the rebuild takes any
+    // migration-owned indexes on that table with it, and generateIndexStatements only
+    // knows schema-declared ones, so a migration marked affectedTables for one of these
+    // must re-run below even though _ottabase_migrations already has it recorded.
+    const rebuiltTables = new Set<string>();
 
     const result = {
         tablesCreated: [] as string[],
@@ -476,6 +512,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                                     await driver.executeRaw(sql);
                                 }
                             }
+                            rebuiltTables.add(tableName);
                             if (verbose) console.log(`✅ Successfully recreated table ${tableName}`);
                         } catch (error: any) {
                             const errorMsg = `Failed destructive migration on ${tableName}: ${error.message}`;
@@ -534,21 +571,32 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                     [migration.name],
                 );
 
-                const alreadyRun = existingResult.results && existingResult.results.length > 0;
+                const alreadyRecorded = Boolean(existingResult.results && existingResult.results.length > 0);
+                // A destructive rebuild of one of this migration's affected tables just wiped
+                // any indexes/constraints that migration created — re-apply its (pure, idempotent
+                // DDL) `up()` even though it is already recorded, instead of leaving them lost.
+                const needsRerunAfterRebuild =
+                    alreadyRecorded && (migration.affectedTables ?? []).some((t) => rebuiltTables.has(t));
 
-                if (!alreadyRun) {
+                if (!alreadyRecorded || needsRerunAfterRebuild) {
                     if (verbose) {
-                        console.log(`\n🔧 Running custom migration: ${migration.name}`);
+                        console.log(
+                            needsRerunAfterRebuild
+                                ? `\n🔧 Re-running migration after destructive rebuild: ${migration.name}`
+                                : `\n🔧 Running custom migration: ${migration.name}`,
+                        );
                     }
 
                     try {
                         await migration.up(driver);
 
-                        // Record execution
-                        await driver.executeRaw(
-                            `INSERT INTO ${quotedMigrationTable} (name, executed_at) VALUES (?, ?)`,
-                            [migration.name, Date.now()],
-                        );
+                        if (!alreadyRecorded) {
+                            // Record execution
+                            await driver.executeRaw(
+                                `INSERT INTO ${quotedMigrationTable} (name, executed_at) VALUES (?, ?)`,
+                                [migration.name, Date.now()],
+                            );
+                        }
 
                         result.customMigrationsRun.push(migration.name);
                     } catch (error: any) {
@@ -582,6 +630,7 @@ export async function runAutoMigrations(
     customMigrations?: Array<{
         name: string;
         up: (db: DbDriver) => Promise<void>;
+        affectedTables?: string[];
     }>,
     options?: {
         allowDestructive?: boolean;

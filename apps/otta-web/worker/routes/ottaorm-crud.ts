@@ -474,7 +474,19 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         const user = session?.user;
         (crudRequest.body as any).authorId = user?.id ?? (crudRequest.body as any).authorId ?? null;
         (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
-        (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
+
+        // A null organizationId means "platform-owned" (see the posts RLS policy in
+        // registry.ts) — only a platform admin may author those rows. The custom
+        // policy's platformAdmin gate is READ-only (generateFilter), so without this
+        // check anyone with no active org (e.g. after clearing activeOrganizationId)
+        // could stamp an author-invisible, admin-only draft onto the platform blog.
+        const resolvedOrgId = securityContext.organizationId ?? null;
+        if (resolvedOrgId === null && !securityContext.platformAdmin) {
+            return errorResponse('An active organization is required to create or edit posts', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+        (crudRequest.body as any).organizationId = resolvedOrgId;
         (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
     }
 

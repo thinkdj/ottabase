@@ -178,6 +178,71 @@ describe('handleOttaormCrud (posts concurrency)', () => {
     );
 });
 
+describe('handleOttaormCrud (posts null-org authoring guard)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('rejects a non-platform-admin creating a post with no active org (null-org is platform-owned)', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+
+        (getSecurityContext as any).mockResolvedValueOnce({ organizationId: null, appId: 'otta-web' });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'POST',
+            body: { title: 'Sneaky draft', slug: 'sneaky-draft', status: 'draft' },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(403);
+        expect(body.code).toBe('FORBIDDEN');
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
+    it('allows a platform admin to create a null-org (platform-owned) post', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: null,
+            appId: 'otta-web',
+            platformAdmin: true,
+        });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'POST',
+            body: { title: 'Platform post', slug: 'platform-post', status: 'draft' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
+
+        const response = await handleOttaormCrud(createContext());
+        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
+
+        expect(response.status).toBe(200);
+        expect(call.body.organizationId).toBeNull();
+    });
+
+    it('stamps the active org unchanged for a normal member (unaffected by the null-org guard)', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'POST',
+            body: { title: 'Org post', slug: 'org-post', status: 'draft' },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
+
+        const response = await handleOttaormCrud(createContext());
+        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
+
+        expect(response.status).toBe(200);
+        expect(call.body.organizationId).toBe('org-1');
+    });
+});
+
 describe('handleOttaormCrud (organization create — owner-membership atomicity)', () => {
     beforeEach(() => {
         vi.clearAllMocks();

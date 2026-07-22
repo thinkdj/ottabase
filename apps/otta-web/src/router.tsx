@@ -52,6 +52,15 @@ function AdminPrivilegeFallback() {
     );
 }
 
+/** Distinct from AdminPrivilegeFallback: /studio is gated by a CONTENT permission, never admin. */
+function StudioPrivilegeFallback() {
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+            Missing privilege: content editing
+        </div>
+    );
+}
+
 /** Wraps an admin page in: ProtectedRoute(scope) → AdminLayout(sidebar) → page. */
 function renderAdminRoute(scope: AdminRouteScope, children: ReactNode) {
     // Platform pages require a system-scoped platform admin; org pages require org:admin (a platform
@@ -142,16 +151,23 @@ function makeAdminRoute(
 /**
  * Studio route: the writing-first editorial surface at /studio. Gated by CONTENT
  * permissions (posts:update — held by author/editor roles, org admins via *:update,
- * and the platform owner via *:*), never by org:admin or platform admin. Reuses the
- * blog admin pages inside the StudioShell chrome; the pages resolve their internal
- * links against the active surface (see blogAdminPaths.ts).
+ * and the platform owner via *:*), never by org:admin or platform admin (unless a
+ * sub-route opts into `extraPermissions`, e.g. theme/plugin management, whose
+ * mutations require studio admin server-side — see requireStudioAdminForScope).
+ * Reuses the blog admin pages inside the StudioShell chrome; the pages resolve
+ * their internal links against the active surface (see blogAdminPaths.ts).
  */
 function makeStudioRoute(
     path: string,
     loader: () => Promise<Record<string, ComponentType>>,
     exportName: string,
-    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown }> = {},
+    options: Partial<{
+        validateSearch: (s: Record<string, unknown>) => unknown;
+        /** ANDed with posts:update for sub-routes whose server-side actions require more (org:admin). */
+        extraPermissions: string[];
+    }> = {},
 ) {
+    const requiredPermissions = ['posts:update', ...(options.extraPermissions ?? [])];
     return new Route({
         getParentRoute: () => rootRoute,
         path,
@@ -161,7 +177,10 @@ function makeStudioRoute(
                 const { StudioShell } = shell;
                 return {
                     default: () => (
-                        <ProtectedRoute requiredPermissions={['posts:update']} fallback={<AdminPrivilegeFallback />}>
+                        <ProtectedRoute
+                            requiredPermissions={requiredPermissions}
+                            fallback={<StudioPrivilegeFallback />}
+                        >
                             <StudioShell>
                                 <Comp />
                             </StudioShell>
@@ -407,6 +426,10 @@ const studioThemesRoute = makeStudioRoute(
     '/studio/themes',
     () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
     'AdminBlogStudioPage',
+    // Theme/plugin management is studio-ADMIN only server-side (requireStudioAdminForScope:
+    // platform admin, or org:admin of the target org) — a plain author/editor otherwise gets a
+    // page that silently degrades to a read-only skeleton and 403s on every action.
+    { extraPermissions: ['org:admin'] },
 );
 
 const adminChangelogRoute = makeAdminRoute(

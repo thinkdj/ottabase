@@ -20,6 +20,13 @@ export interface Migration {
     name: string; // Unique migration name (e.g., '001_create_users')
     up: (db: any) => Promise<void>; // Run migration
     down?: (db: any) => Promise<void>; // Rollback migration (optional)
+    /**
+     * Tables this migration's `up()` creates/modifies indexes or constraints on. Only
+     * consulted by the runtime generator's autoMigrate (see runtime-generator.ts) to
+     * decide whether to re-run an already-recorded migration after a destructive table
+     * rebuild wiped that table's indexes. `up()` MUST be pure idempotent DDL to set this.
+     */
+    affectedTables?: string[];
 }
 
 /**

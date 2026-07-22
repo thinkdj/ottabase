@@ -83,6 +83,11 @@ export const ottablogOrgModeMigrations = [
                 await exec(db, sql);
             }
         },
+        // Pure idempotent DDL (DROP IF EXISTS / CREATE IF NOT EXISTS) — safe to re-run.
+        // Declared so autoMigrate re-applies it if a destructive column-removal rebuild
+        // (DROP + RENAME) on any of these tables wipes the indexes it created, even
+        // though this migration is already recorded as run.
+        affectedTables: ['posts', 'categories', 'post_tags', 'series', 'ottablog_themes', 'ottablog_plugins'],
     },
 ];
 
