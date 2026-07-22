@@ -15,6 +15,10 @@
         "./router": {
             "types": "./src/router/index.ts",
             "default": "./src/router/index.ts"
+        },
+        "./seo": {
+            "types": "./src/seo.ts",
+            "default": "./src/seo.ts"
         }
     },
     "scripts": {

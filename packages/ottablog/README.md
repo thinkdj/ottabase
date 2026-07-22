@@ -560,6 +560,15 @@ Apps that keep their own handler module as a test/mock seam (like `otta-web`) ca
 `buildBlogRouter(handlers, { makeContext })` — the canonical route table over an app-supplied `BlogHandlers` object.
 `createBlogHandlers(config)` builds that handlers object from the same injected config.
 
+## Edge SEO Meta
+
+`@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge: `extractBlogSlugFromPath` detects a
+blog detail document navigation, `buildPostSeoTags` produces the escaped description/canonical/OpenGraph/Twitter/JSON-LD
+head block, and `replaceDocumentTitle` swaps the SPA's static `<title>` using a replacer function (author-authored
+`$`-sequences are never expanded). The `otta-web` worker wires these into its HTML pipeline right after brand injection
+(`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the article instead of the SPA shell. Injected
+documents are served `Cache-Control: no-store` with asset validators stripped, matching the brand-injection policy.
+
 ## Public API Endpoints
 
 When integrated with the app's worker routes, the blog system provides these public endpoints:

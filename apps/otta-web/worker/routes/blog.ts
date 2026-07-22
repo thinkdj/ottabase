@@ -31,8 +31,9 @@ export interface BlogRouteContext {
  * explicit `?org=` query param, `x-org-id` header, then the request subdomain
  * (first host label) resolved to an organization by slug. Returns null when
  * nothing resolves — the blog then serves platform-owned content.
+ * Exported for the SEO injector, which must scope its post lookup identically.
  */
-async function resolveBlogOrganizationId(ctx: {
+export async function resolveBlogOrganizationId(ctx: {
     request: Request;
     env: CloudflareEnv;
     url: URL;

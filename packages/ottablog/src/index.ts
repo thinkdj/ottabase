@@ -109,6 +109,10 @@ export type { SlugLifecycleConfig, SlugScope } from './slug-utils';
 // Migrations (org-mode index swap; register conditionally in the app's migration registry)
 export { ottablogOrgModeMigrations } from './migrations';
 
+// SEO builders for edge-injected per-post meta (pure, React-free)
+export { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from './seo';
+export type { PostSeoInput } from './seo';
+
 // Components (React)
 export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
 export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';
