@@ -4,8 +4,28 @@ Findings from a focused audit of the blog system: the `@ottabase/ottablog` packa
 `apps/otta-web`. Goal: what is missing to make it a full-fledged, dynamic, use-anywhere blog system (SaaS mode,
 standalone site, embedded in any app), with special attention to permissions/RBAC and theming.
 
-Status: audit only. Nothing below has been implemented. Items marked "(Recommended)" are the preferred option where
+Status: implementation in progress on this branch. Items marked "(Recommended)" are the preferred option where
 alternatives exist, and the priority list at the bottom is the suggested build order.
+
+---
+
+## Decision: integration posture (settled, do not reopen)
+
+**Decoupled contract, integrated experience.** The package boundary stays decoupled; the default app experience gets
+tightly integrated.
+
+- `@ottabase/ottablog` never imports `@ottabase/brand-engine` (feature packages stay independent, per the layering
+  rules). The theming contract between them is semantic CSS variables plus a sparse theme document; `apps/otta-web`
+  composes the two. Dropped into an app without brand-engine, the blog renders off token fallbacks.
+- The blog inherits the app's brand kit by default. Blog themes are sparse token overlays on the brand kit, resolved
+  and edge-injected through the existing brand pipeline, scoped by a `BrandScope` room so overrides cannot leak into
+  the app shell.
+- Blog management gets its own headspace at `/studio`: a writing-first route group that reuses the existing blog admin
+  pages, `ProtectedRoute`, and session machinery. It is NOT a separate app, NOT a separate login, and NOT a plugin
+  marketplace. `/studio` is gated by content permissions (`posts:*`), never by `org:admin` or platform admin, which is
+  what makes it the org-scoped editorial surface in SaaS mode while `/admin` stays the control plane.
+- The full WordPress fantasy (separate app, separate auth, marketplace) is explicitly rejected: one admin
+  infrastructure, one theming engine, zero duplicated auth surfaces.
 
 ---
 

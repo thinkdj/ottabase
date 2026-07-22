@@ -530,6 +530,36 @@ const post = await Post.create({
 - `post_tag_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`tagId`)
 - `post_category_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`categoryId`)
 
+## Mountable HTTP Surface
+
+The package ships its entire HTTP surface as an `@ottabase/ottarouter` sub-router. Worker code imports from the
+React-free `@ottabase/ottablog/router` subpath; everything app-specific (DB wiring, auth guard, cron secret, password
+verify) is injected via config, so the same routes mount in any Ottabase app or bare Worker.
+
+```typescript
+import { createBlogRouter } from '@ottabase/ottablog/router';
+import { registerConnection } from '@ottabase/ottaorm';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+
+const blogRouter = createBlogRouter<Env>({
+    connect: (env) => {
+        if (!env.OBCF_D1) return new Response('D1 not configured', { status: 500 });
+        registerConnection('default', createD1Driver(env.OBCF_D1));
+        return null;
+    },
+    defaultAppId: (env) => 'my-app',
+    requireAdmin: (ctx) => myAdminGuard(ctx), // resolve session or return a 401/403 Response
+    checkCronAuth: (request, env) => request.headers.get('x-cron-secret') === env.CRON_SECRET,
+    verifyPassword: (password, hash) => myVerify(password, hash), // e.g. from @ottabase/auth/backend
+});
+
+apiRouter.mount('/api/blog', blogRouter, { when: (c) => config(c.env).packages.ottablog });
+```
+
+Apps that keep their own handler module as a test/mock seam (like `otta-web`) can instead call
+`buildBlogRouter(handlers, { makeContext })` — the canonical route table over an app-supplied `BlogHandlers` object.
+`createBlogHandlers(config)` builds that handlers object from the same injected config.
+
 ## Public API Endpoints
 
 When integrated with the app's worker routes, the blog system provides these public endpoints:

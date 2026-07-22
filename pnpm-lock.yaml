@@ -1405,6 +1405,12 @@ importers:
       '@ottabase/ottarenderer':
         specifier: workspace:*
         version: link:../ottarenderer
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/react':
         specifier: 'catalog:'
