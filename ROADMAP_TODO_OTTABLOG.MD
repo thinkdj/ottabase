@@ -4,8 +4,26 @@ Findings from a focused audit of the blog system: the `@ottabase/ottablog` packa
 `apps/otta-web`. Goal: what is missing to make it a full-fledged, dynamic, use-anywhere blog system (SaaS mode,
 standalone site, embedded in any app), with special attention to permissions/RBAC and theming.
 
-Status: implementation in progress on this branch. Items marked "(Recommended)" are the preferred option where
-alternatives exist, and the priority list at the bottom is the suggested build order.
+Status: the recommended options for Gaps 1 through 4 are IMPLEMENTED on this branch (see "Implementation status"
+below). Gap 5 items remain open. Items marked "(Recommended)" are the option that was built.
+
+## Implementation status
+
+- Gap 1 (tenancy): DONE. `features.ottablog.mode` ('platform' default | 'org') with OTTABLOG_MODE env override;
+  org-scoped taxonomy/studio columns + RLS flips; org-aware slug index migration (`ottablogOrgModeMigrations`);
+  public reads scoped via an injected `resolveOrganizationId` (otta-web: ?org= / x-org-id / subdomain slug).
+- Gap 2 (editorial RBAC): DONE. `author` role; `editor` + org owner/admin gain posts:publish + posts:manage;
+  ownership-aware posts RLS; posts:publish CRUD gate on the publish transition; taxonomy:manage accepted alongside
+  org:admin; signed draft-preview tokens (mint endpoint + ?preview= on by-slug); /studio surface gated by
+  posts:update with surface-aware page links.
+- Gap 3 (theming): DONE (first increment). `tokens` JSON on ottablog_themes; blogThemeTokensToCss ->
+  [data-brand-scope="blog"] room; BrandScope wrapper on public blog routes; edge + client application with shared
+  style-element id; POST /studio/theme/tokens editor endpoint. Remaining: layout-as-data and a Studio token-editing
+  UI.
+- Gap 4 (packaging/SEO): DONE. Mountable `createBlogRouter`/`buildBlogRouter` in @ottabase/ottablog/router (otta-web
+  mounts it; handlers module stays the test seam); edge-injected per-post SEO meta (@ottabase/ottablog/seo +
+  worker/lib/blog-seo-inject.ts). Remaining: a blog surface for otta-landing.
+- Gap 5: OPEN (import/export, author archives, content i18n, subscriptions, search quality, per-post analytics).
 
 ---
 
