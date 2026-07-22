@@ -103,6 +103,14 @@ export interface OttabaseUIConfig {
     enforceGoogleFonts?: boolean;
 }
 
+/**
+ * Sentinel value for the x-org-id header / org selection meaning "act in PLATFORM
+ * scope" (organizationId NULL — platform-owned rows such as the platform's own
+ * blog in org mode). Honored server-side only for platform admins; never a valid
+ * organization id. Shared by the API client, the org switcher, and the worker.
+ */
+export const PLATFORM_ORG_SENTINEL = 'platform';
+
 /** Built-in package keys. Extend when adding new built-in packages. brandEngine is core, not a package. */
 export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'referrals', 'shortlinks'] as const;
 

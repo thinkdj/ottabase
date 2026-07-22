@@ -302,6 +302,22 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     /**
+     * Guard a Studio operation against its RESOLVED blog scope: null/undefined
+     * target = the platform blog (platform admin), an org id = that org's blog
+     * (its org admin, or a platform admin) via requireScopedStudioAdmin. Without
+     * the seam, falls back to requireAdmin — the platform-only behavior.
+     */
+    async function requireStudioAdmin(
+        context: Ctx,
+        organizationId: string | null | undefined,
+    ): Promise<import('./types').BlogAdminResult | Response> {
+        if (config.requireScopedStudioAdmin) {
+            return config.requireScopedStudioAdmin(context, { organizationId: organizationId ?? null });
+        }
+        return config.requireAdmin(context);
+    }
+
+    /**
      * Public rendering shape of the studio state: the active theme (the only
      * one visitors render) and enabled plugins with config, plus bare
      * {pluginId, enabled:false} skeletons for disabled rows so the client can
@@ -332,12 +348,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const organizationId = await resolveTenant(context);
         const orgScope = organizationId !== undefined ? { organizationId } : {};
 
-        // requireAdmin resolves the full session context — memoize so seeding
-        // and the ?full=1 payload decision cost at most one resolution.
+        // The guard resolves the full session context — memoize so seeding
+        // and the ?full=1 payload decision cost at most one resolution. Scoped:
+        // an org admin administers THEIR org's studio; the platform blog
+        // (null/undefined tenant) requires a platform admin.
         let adminMemo: boolean | null = null;
         const callerIsAdmin = async (): Promise<boolean> => {
             if (adminMemo === null) {
-                const admin = await config.requireAdmin(context);
+                const admin = await requireStudioAdmin(context, organizationId);
                 adminMemo = !(admin instanceof Response);
             }
             return adminMemo;
@@ -410,15 +428,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     async function handleBlogStudioActivateTheme(context: Ctx): Promise<Response> {
-        const admin = await config.requireAdmin(context);
-        if (admin instanceof Response) return admin;
-
         const { request, env } = context;
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
         const orgScope = organizationId !== undefined ? { organizationId } : {};
         const body = await readJson<{ themeId: string }>(request);
         const themeId = body?.themeId;
@@ -444,15 +461,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     async function handleBlogStudioPluginEnable(context: Ctx): Promise<Response> {
-        const admin = await config.requireAdmin(context);
-        if (admin instanceof Response) return admin;
-
         const { request, env } = context;
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
         const orgScope = organizationId !== undefined ? { organizationId } : {};
         const body = await readJson<{ pluginId: string; enabled: boolean }>(request);
         const pluginId = body?.pluginId;
@@ -485,15 +501,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
      * only require a JSON object shape so bad values can be corrected in place.
      */
     async function handleBlogStudioThemeTokens(context: Ctx): Promise<Response> {
-        const admin = await config.requireAdmin(context);
-        if (admin instanceof Response) return admin;
-
         const { request, env } = context;
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
         const body = await readJson<{
             themeId: string;
             tokens: { light?: Record<string, string>; dark?: Record<string, string> } | null;
@@ -520,15 +535,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     async function handleBlogStudioPluginConfig(context: Ctx): Promise<Response> {
-        const admin = await config.requireAdmin(context);
-        if (admin instanceof Response) return admin;
-
         const { request, env } = context;
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
         const body = await readJson<{ pluginId: string; config: Record<string, unknown> }>(request);
         const pluginId = body?.pluginId;
         const pluginConfig = body?.config;

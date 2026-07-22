@@ -22,7 +22,12 @@ export type {
     OttabaseEmailConfig,
     OttabaseUIConfig,
 } from './ottabase-types';
-export { BUILT_IN_PACKAGES, DEFAULT_REFERRAL_PARAM, normalizeReferralParam } from './ottabase-types';
+export {
+    BUILT_IN_PACKAGES,
+    DEFAULT_REFERRAL_PARAM,
+    normalizeReferralParam,
+    PLATFORM_ORG_SENTINEL,
+} from './ottabase-types';
 export { resolveConfigWithEnv, type EnvLike } from './resolveConfigWithEnv';
 
 // Export types

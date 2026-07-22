@@ -10,6 +10,7 @@
 // ============================================================
 
 import { verifyPassword } from '@ottabase/auth/backend';
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { createBlogHandlers } from '@ottabase/ottablog/router';
 import { registerConnection } from '@ottabase/ottaorm';
@@ -18,7 +19,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import kitchensinkContentTemplate from '../fixtures/kitchensink-content.json';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { canManagePostInOrg, requireContentPermission } from '../lib/content-guard';
+import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
 
 export interface BlogRouteContext {
@@ -44,10 +45,15 @@ export async function resolveBlogOrganizationId(ctx: {
         return trimmed && trimmed !== 'null' && trimmed !== 'undefined' ? trimmed : null;
     };
 
+    // Explicit PLATFORM selection (org switcher's Platform scope, or ?org=platform):
+    // serve the platform-owned blog (organizationId NULL) instead of guessing from
+    // the subdomain. Public content — harmless for anyone to request explicitly.
     const fromQuery = clean(ctx.url.searchParams.get('org'));
+    if (fromQuery === PLATFORM_ORG_SENTINEL) return null;
     if (fromQuery) return fromQuery;
 
     const fromHeader = clean(ctx.request.headers.get('x-org-id'));
+    if (fromHeader === PLATFORM_ORG_SENTINEL) return null;
     if (fromHeader) return fromHeader;
 
     // Subdomain lookup: acme.example.com → Organization with slug 'acme'.
@@ -103,6 +109,10 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     resolveOrganizationId: resolveBlogOrganizationId,
     defaultAppId: (env) => getOttabaseConfig(env).appId,
     requireAdmin: (ctx) => requireAdminAccess(ctx as any, { scope: 'system' }),
+    // Studio operations are guarded against their RESOLVED blog scope: the
+    // platform blog stays platform-admin-only; in org mode each org's admin
+    // runs their own blog's Studio (grants evaluated in the target org).
+    requireScopedStudioAdmin: (ctx, target) => requireStudioAdminForScope(ctx, target),
     // Editorial gate for preview-token minting: any caller who may edit posts
     // (author/editor/org admin/platform owner), not only platform admins.
     requireContentEditor: (ctx) => requireContentPermission(ctx, 'posts:update'),

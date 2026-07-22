@@ -59,6 +59,57 @@ export async function requireContentPermission(
 }
 
 /**
+ * SCOPED Studio guard: platform-blog scope (null org) requires a PLATFORM
+ * admin; an org scope requires an ORG ADMIN of that org (org:admin grant
+ * evaluated in the TARGET org — grants are org-scoped, so non-members have
+ * none there) or a platform admin. This is what lets each tenant run their
+ * own blog's Studio in org mode while the platform blog stays platform-only.
+ */
+export async function requireStudioAdminForScope(
+    context: ContentGuardContext,
+    target: { organizationId: string | null },
+): Promise<ContentAccessResult | Response> {
+    const { request, env } = context;
+
+    if (!env?.OBCF_D1) {
+        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
+    }
+
+    initDbConnection(env);
+
+    const reqCtx = await getRequestContext(request, env as any, {
+        getAuthOptions,
+        allowNullTenant: true,
+        // Evaluate grants in the TARGET org (the resolved blog scope), never a
+        // request-supplied hint. For the platform scope there is no org to load.
+        organizationIdOverride: target.organizationId ?? undefined,
+    });
+
+    if (!reqCtx.isAuthenticated || !reqCtx.user) {
+        return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
+    }
+
+    if (isPlatformAdmin(reqCtx)) {
+        return { session: reqCtx.session ?? null };
+    }
+
+    // The platform blog's studio is platform-only.
+    if (target.organizationId === null) {
+        return errorResponse('Managing the platform blog requires a platform administrator', 403, {
+            code: 'FORBIDDEN',
+        });
+    }
+
+    if (!hasPermission(reqCtx, 'org:admin')) {
+        return errorResponse('Managing this blog requires an administrator of its organization', 403, {
+            code: 'FORBIDDEN',
+        });
+    }
+
+    return { session: reqCtx.session ?? null };
+}
+
+/**
  * OBJECT-level check for editorial actions on a specific post: platform admin,
  * or a manage-grade grant (posts:manage / posts:* / org:admin / *:*) evaluated
  * IN THE POST ROW's organization — never a request-supplied org hint. Grants

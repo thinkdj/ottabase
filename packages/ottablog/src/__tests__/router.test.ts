@@ -283,6 +283,64 @@ describe('createBlogHandlers', () => {
         });
     });
 
+    describe('scoped studio guard', () => {
+        it('guards mutations against the RESOLVED tenant (org mode) and propagates denial', async () => {
+            const denial = new Response('not-your-blog', { status: 403 });
+            const requireScopedStudioAdmin = vi.fn(async () => denial);
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                mode: 'org' as const,
+                resolveOrganizationId: vi.fn(async () => 'org-1'),
+                requireScopedStudioAdmin,
+            });
+
+            const response = await handlers.handleBlogStudioActivateTheme(
+                ctxFor('/studio/theme/activate', { method: 'POST', body: JSON.stringify({ themeId: 'default' }) }),
+            );
+
+            expect(response).toBe(denial);
+            expect(requireScopedStudioAdmin).toHaveBeenCalledWith(expect.anything(), { organizationId: 'org-1' });
+            // The plain admin guard is bypassed when the scoped seam is present.
+            expect(baseConfig.requireAdmin).not.toHaveBeenCalled();
+        });
+
+        it('maps the platform blog (unresolved tenant and platform mode) to a null target', async () => {
+            const requireScopedStudioAdmin = vi.fn(async () => ({ session: null }));
+
+            // Org mode, apex (tenant resolves null) → platform blog target.
+            const orgHandlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                mode: 'org' as const,
+                resolveOrganizationId: vi.fn(async () => null),
+                requireScopedStudioAdmin,
+            });
+            await orgHandlers.handleBlogStudioThemeTokens(
+                ctxFor('/studio/theme/tokens', { method: 'POST', body: JSON.stringify({ themeId: 't' }) }),
+            );
+            expect(requireScopedStudioAdmin).toHaveBeenLastCalledWith(expect.anything(), { organizationId: null });
+
+            // Platform mode (tenant undefined) → also the null target.
+            const platformHandlers = createBlogHandlers<Env>({ ...baseConfig, requireScopedStudioAdmin });
+            await platformHandlers.handleBlogStudioPluginEnable(
+                ctxFor('/studio/plugin/enable', { method: 'POST', body: JSON.stringify({ pluginId: 'p' }) }),
+            );
+            expect(requireScopedStudioAdmin).toHaveBeenLastCalledWith(expect.anything(), { organizationId: null });
+        });
+
+        it('falls back to requireAdmin when the scoped seam is absent', async () => {
+            const denial = new Response('platform-only', { status: 403 });
+            const requireAdmin = vi.fn(async () => denial);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig, requireAdmin });
+
+            const response = await handlers.handleBlogStudioActivateTheme(
+                ctxFor('/studio/theme/activate', { method: 'POST', body: JSON.stringify({ themeId: 'default' }) }),
+            );
+
+            expect(response).toBe(denial);
+            expect(requireAdmin).toHaveBeenCalled();
+        });
+    });
+
     describe('studio state shapes', () => {
         const fullState = {
             activeThemeId: 'default',

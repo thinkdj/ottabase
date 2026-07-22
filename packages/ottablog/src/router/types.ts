@@ -63,6 +63,19 @@ export interface BlogRouterConfig<Env = unknown> {
      */
     requireAdmin: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
 
+    /**
+     * SCOPED Studio guard: may this caller administer the studio of the given
+     * blog scope? The target org is the RESOLVED tenant (never a request hint
+     * trusted on its own): null = the platform blog (platform admin required),
+     * an id = that organization's blog (its org admin — or a platform admin).
+     * Enables org admins to run their own blog's Studio in org mode. Falls back
+     * to {@link requireAdmin} (platform-only) when not provided.
+     */
+    requireScopedStudioAdmin?: (
+        ctx: BlogRequestContext<Env>,
+        target: { organizationId: string | null },
+    ) => Promise<BlogAdminResult | Response>;
+
     /** Cron-secret check for POST /publish-scheduled. */
     checkCronAuth: (request: Request, env: Env) => boolean;
 
