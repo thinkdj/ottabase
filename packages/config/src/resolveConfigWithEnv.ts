@@ -5,6 +5,7 @@
 // Secrets (AUTH_SECRET, OAuth keys, API keys) must come from env only.
 // ============================================================
 
+import { normalizeOttablogMode } from './defineOttabaseConfig';
 import { ENV_KEYS } from './env-keys';
 import type { BuiltInPackageName, OttabaseConfig } from './ottabase-types';
 import { BUILT_IN_PACKAGES, normalizeReferralParam } from './ottabase-types';
@@ -106,6 +107,9 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                 disableCredentials:
                     bool(env, 'AUTH_DISABLE_CREDENTIALS') ?? config.features.authBehavior.disableCredentials,
                 verbose: bool(env, 'AUTH_VERBOSE') ?? config.features.authBehavior.verbose,
+            },
+            ottablog: {
+                mode: normalizeOttablogMode(str(env, ENV_KEYS.OTTABLOG_MODE) ?? config.features.ottablog.mode),
             },
         },
         email: {

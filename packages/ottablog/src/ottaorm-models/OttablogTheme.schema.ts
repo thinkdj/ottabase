@@ -30,6 +30,10 @@ export const ottablogThemesTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id'),
 
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
+
         // Timestamps
         createdAt: integer('created_at')
             .notNull()
@@ -42,6 +46,7 @@ export const ottablogThemesTable = sqliteTable(
     },
     (table) => [
         // Unique theme per appId
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('ottablog_themes_app_id_theme_id_unique_idx').on(table.appId, table.themeId),
 
         // Active theme query (only one should be active per appId)
@@ -49,6 +54,9 @@ export const ottablogThemesTable = sqliteTable(
 
         // Multi-tenant filtering
         index('ottablog_themes_app_id_is_active_idx').on(table.appId, table.isActive),
+
+        // Org-mode filtering: organizationId + appId + isActive
+        index('ottablog_themes_org_app_active_idx').on(table.organizationId, table.appId, table.isActive),
 
         // Theme lookup
         index('ottablog_themes_theme_id_idx').on(table.themeId),

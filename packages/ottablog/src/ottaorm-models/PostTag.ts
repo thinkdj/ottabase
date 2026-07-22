@@ -201,9 +201,14 @@ export class PostTag extends BaseModel {
     /**
      * Find post tag by slug
      */
-    static async findBySlug(slug: string, options: { appId: string; type?: string }): Promise<PostTag | null> {
+    static async findBySlug(
+        slug: string,
+        options: { appId: string; type?: string; organizationId?: string | null },
+    ): Promise<PostTag | null> {
         const query: Record<string, unknown> = { slug, appId: options.appId };
         if (options?.type) query.type = options.type;
+        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
+        if (options.organizationId !== undefined) query.organizationId = options.organizationId;
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as PostTag) : null;

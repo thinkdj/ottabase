@@ -38,6 +38,22 @@ export interface BlogRouterConfig<Env = unknown> {
      */
     connect: (env: Env) => Response | null;
 
+    /**
+     * Blog tenancy mode (features.ottablog.mode). Defaults to 'platform': one blog per
+     * app, no org dimension — today's behavior, unchanged. In 'org' mode every public
+     * read is scoped to the organization resolved by {@link resolveOrganizationId};
+     * an unresolved tenant (null) scopes to platform-owned content (organizationId IS NULL).
+     * Pass a function to resolve per request from env (e.g. an OTTABLOG_MODE env override).
+     */
+    mode?: 'platform' | 'org' | ((env: Env) => 'platform' | 'org');
+
+    /**
+     * org mode only: resolve the tenant for a request (subdomain, path prefix, header —
+     * the app decides). Return the organizationId, or null for "no tenant" (platform
+     * content). Never called in platform mode.
+     */
+    resolveOrganizationId?: (ctx: BlogRequestContext<Env>) => Promise<string | null> | string | null;
+
     /** Default appId when the request carries no `?appId=` or `x-app-id` header. */
     defaultAppId: (env: Env) => string;
 

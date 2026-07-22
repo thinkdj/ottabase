@@ -1,5 +1,10 @@
 // Ottabase config (dynamic packages, features, routes)
-export { defineOttabaseConfig, isPackageEnabled, isCustomPackageEnabled } from './defineOttabaseConfig';
+export {
+    defineOttabaseConfig,
+    isPackageEnabled,
+    isCustomPackageEnabled,
+    normalizeOttablogMode,
+} from './defineOttabaseConfig';
 export type {
     OttabaseConfig,
     OttabaseConfigInput,
@@ -9,6 +14,8 @@ export type {
     PaginationFeatureConfig,
     CrudHubFeatureConfig,
     AuthBehaviorConfig,
+    OttablogFeatureConfig,
+    OttablogMode,
     CustomPackageConfig,
     BuiltInPackageName,
     OttabaseFeaturesConfig,

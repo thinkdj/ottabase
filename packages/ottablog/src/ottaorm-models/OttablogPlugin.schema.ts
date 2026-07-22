@@ -29,6 +29,10 @@ export const ottablogPluginsTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id'),
 
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
+
         // Timestamps
         createdAt: integer('created_at')
             .notNull()
@@ -41,6 +45,7 @@ export const ottablogPluginsTable = sqliteTable(
     },
     (table) => [
         // Unique plugin per appId
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('ottablog_plugins_app_id_plugin_id_unique_idx').on(table.appId, table.pluginId),
 
         // Enabled plugins query
@@ -48,6 +53,9 @@ export const ottablogPluginsTable = sqliteTable(
 
         // Multi-tenant filtering
         index('ottablog_plugins_app_id_enabled_idx').on(table.appId, table.enabled),
+
+        // Org-mode filtering: organizationId + appId + enabled
+        index('ottablog_plugins_org_app_enabled_idx').on(table.organizationId, table.appId, table.enabled),
 
         // Plugin lookup
         index('ottablog_plugins_plugin_id_idx').on(table.pluginId),

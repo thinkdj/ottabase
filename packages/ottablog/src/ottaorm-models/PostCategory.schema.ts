@@ -28,6 +28,10 @@ export const categoriesTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id').notNull(),
 
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
+
         // Content type this category applies to (post, news, docs, etc.)
         type: text('type').notNull().default('post'),
 
@@ -43,10 +47,14 @@ export const categoriesTable = sqliteTable(
     },
     (table) => [
         // Enforce unique category slugs per app + content type
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('categories_app_id_type_slug_unique_idx').on(table.appId, table.type, table.slug),
 
         // Multi-tenant with type: appId + type for filtering categories by content type
         index('categories_app_id_type_idx').on(table.appId, table.type),
+
+        // Org-mode filtering: organizationId + appId + type
+        index('categories_org_app_type_idx').on(table.organizationId, table.appId, table.type),
 
         // Hierarchy traversal: parentId + sortOrder for getting children ordered
         index('categories_parent_id_sort_order_idx').on(table.parentId, table.sortOrder),

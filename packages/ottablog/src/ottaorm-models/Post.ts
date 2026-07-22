@@ -954,12 +954,17 @@ export class Post extends BaseModel {
             categoryIds?: string[];
             contentType?: string;
             appId?: string;
+            /** Org-mode scoping: null = platform-owned rows only; undefined = no org filter. */
+            organizationId?: string | null;
             limit?: number;
         },
     ): Promise<Post[]> {
         const limit = options?.limit ?? 4;
         const results: Post[] = [];
         const seenIds = new Set<string>([postId]);
+        const orgScoped = options?.organizationId !== undefined;
+        const inOrgScope = (p: Post): boolean =>
+            !orgScoped || ((p.get('organizationId') as string | null) ?? null) === (options?.organizationId ?? null);
 
         // 1. Same categories via junction table (best signal)
         const catIds = options?.categoryIds?.length ? options.categoryIds : [];
@@ -985,6 +990,7 @@ export class Post extends BaseModel {
                     if (
                         !seenIds.has(p.get('id') as string) &&
                         p.get('status') === 'published' &&
+                        inOrgScope(p as Post) &&
                         results.length < limit
                     ) {
                         results.push(p as Post);
@@ -1001,6 +1007,7 @@ export class Post extends BaseModel {
                     contentType: options.contentType,
                     status: 'published',
                     ...(options?.appId ? { appId: options.appId } : {}),
+                    ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
                 },
                 { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
             );

@@ -1,6 +1,39 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildBlogRouter, createBlogHandlers } from '../router';
 import type { BlogHandlers } from '../router';
+
+// Model layer is mocked so handler tests can assert on query shapes without a DB.
+// Router-table tests below use stub handlers and never touch these mocks.
+vi.mock('../ottaorm-models', () => ({
+    Post: {
+        first: vi.fn(async () => null),
+        where: vi.fn(async () => []),
+        paginate: vi.fn(async () => ({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 })),
+        search: vi.fn(async () => []),
+        find: vi.fn(async () => null),
+        related: vi.fn(async () => []),
+        publishScheduled: vi.fn(async () => []),
+        findBySlug: vi.fn(async () => null),
+        create: vi.fn(),
+    },
+    PostCategory: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
+    PostCategoryLink: { where: vi.fn(async () => []) },
+    PostSeries: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
+    PostTag: { findBySlug: vi.fn(async () => null) },
+    PostTagLink: { where: vi.fn(async () => []) },
+    OttablogTheme: { create: vi.fn(), findByThemeId: vi.fn(async () => null), where: vi.fn(async () => []) },
+    OttablogPlugin: { create: vi.fn(), findByPluginId: vi.fn(async () => null), where: vi.fn(async () => []) },
+}));
+
+vi.mock('../studio', () => ({
+    StudioManager: {
+        getState: vi.fn(async () => ({ activeThemeId: null, themes: [{ themeId: 'default' }], plugins: [{}] })),
+        initialize: vi.fn(async () => undefined),
+    },
+}));
+
+import { Post, PostTag } from '../ottaorm-models';
+import { StudioManager } from '../studio';
 
 type Env = { marker: string };
 
@@ -27,6 +60,12 @@ function stubHandlers(): BlogHandlers<Env> {
 }
 
 const env: Env = { marker: 'env' };
+
+const ctxFor = (path: string, init?: RequestInit) => ({
+    request: new Request(`https://x.test${path}`, init),
+    env,
+    url: new URL(`https://x.test${path}`),
+});
 
 describe('buildBlogRouter', () => {
     it('dispatches by-slug routes with the decoded slug parameter', async () => {
@@ -86,7 +125,7 @@ describe('buildBlogRouter', () => {
     });
 });
 
-describe('createBlogHandlers (DB-free paths)', () => {
+describe('createBlogHandlers', () => {
     const baseConfig = {
         connect: vi.fn(() => null),
         defaultAppId: () => 'test-app',
@@ -95,15 +134,23 @@ describe('createBlogHandlers (DB-free paths)', () => {
         verifyPassword: vi.fn(async () => false),
     };
 
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(Post.paginate).mockResolvedValue({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 } as any);
+        vi.mocked(Post.first).mockResolvedValue(null as any);
+        vi.mocked(PostTag.findBySlug).mockResolvedValue(null as any);
+        vi.mocked(StudioManager.getState).mockResolvedValue({
+            activeThemeId: null,
+            themes: [{ themeId: 'default' }],
+            plugins: [{}],
+        } as any);
+    });
+
     it('publish-scheduled rejects with 401 before touching the database when cron auth fails', async () => {
         const connect = vi.fn(() => null);
         const handlers = createBlogHandlers<Env>({ ...baseConfig, connect, checkCronAuth: () => false });
 
-        const response = await handlers.handleBlogPublishScheduled({
-            request: new Request('https://x.test/publish-scheduled', { method: 'POST' }),
-            env,
-            url: new URL('https://x.test/publish-scheduled'),
-        });
+        const response = await handlers.handleBlogPublishScheduled(ctxFor('/publish-scheduled', { method: 'POST' }));
 
         expect(response.status).toBe(401);
         expect(connect).not.toHaveBeenCalled();
@@ -111,29 +158,15 @@ describe('createBlogHandlers (DB-free paths)', () => {
 
     it('kitchensink responds 404 when no content is configured', async () => {
         const handlers = createBlogHandlers<Env>({ ...baseConfig });
-
-        const response = await handlers.handleBlogKitchensink({
-            request: new Request('https://x.test/kitchensink', { method: 'POST' }),
-            env,
-            url: new URL('https://x.test/kitchensink'),
-        });
-
+        const response = await handlers.handleBlogKitchensink(ctxFor('/kitchensink', { method: 'POST' }));
         expect(response.status).toBe(404);
     });
 
     it('kitchensink returns the admin denial response untouched', async () => {
         const denial = new Response('nope', { status: 403 });
-        const handlers = createBlogHandlers<Env>({
-            ...baseConfig,
-            requireAdmin: async () => denial,
-        });
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireAdmin: async () => denial });
 
-        const response = await handlers.handleBlogKitchensink({
-            request: new Request('https://x.test/kitchensink', { method: 'POST' }),
-            env,
-            url: new URL('https://x.test/kitchensink'),
-        });
-
+        const response = await handlers.handleBlogKitchensink(ctxFor('/kitchensink', { method: 'POST' }));
         expect(response).toBe(denial);
     });
 
@@ -141,12 +174,107 @@ describe('createBlogHandlers (DB-free paths)', () => {
         const dbError = new Response('no d1', { status: 500 });
         const handlers = createBlogHandlers<Env>({ ...baseConfig, connect: () => dbError });
 
-        const response = await handlers.handleBlogPostsList({
-            request: new Request('https://x.test/posts'),
-            env,
-            url: new URL('https://x.test/posts'),
+        const response = await handlers.handleBlogPostsList(ctxFor('/posts'));
+        expect(response).toBe(dbError);
+    });
+
+    describe('platform mode (default)', () => {
+        it('adds no organizationId filter and never calls resolveOrganizationId', async () => {
+            const resolveOrganizationId = vi.fn(async () => 'org-1');
+            const handlers = createBlogHandlers<Env>({ ...baseConfig, resolveOrganizationId });
+
+            await handlers.handleBlogPostsList(ctxFor('/posts'));
+
+            expect(resolveOrganizationId).not.toHaveBeenCalled();
+            const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
+            expect('organizationId' in where).toBe(false);
+        });
+    });
+
+    describe('org mode', () => {
+        const orgConfig = {
+            ...baseConfig,
+            mode: 'org' as const,
+            resolveOrganizationId: vi.fn(async () => 'org-1'),
+        };
+
+        it('scopes the public posts list to the resolved organization', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogPostsList(ctxFor('/posts'));
+
+            const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
+            expect(where.organizationId).toBe('org-1');
         });
 
-        expect(response).toBe(dbError);
+        it('scopes by-slug lookups to the resolved organization', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello'), 'hello');
+
+            expect(Post.first).toHaveBeenCalledWith(
+                expect.objectContaining({ slug: 'hello', status: 'published', organizationId: 'org-1' }),
+            );
+        });
+
+        it('falls back to platform-owned content (organizationId null) when no tenant resolves', async () => {
+            const handlers = createBlogHandlers<Env>({
+                ...orgConfig,
+                resolveOrganizationId: vi.fn(async () => null),
+            });
+            await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello'), 'hello');
+
+            expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ organizationId: null }));
+        });
+
+        it('threads the organization into taxonomy lookups', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogTagBySlug(ctxFor('/tags/by-slug/t'), 't');
+
+            expect(PostTag.findBySlug).toHaveBeenCalledWith('t', expect.objectContaining({ organizationId: 'org-1' }));
+        });
+
+        it('threads the organization into studio state', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogStudioState(ctxFor('/studio/state'));
+
+            expect(StudioManager.getState).toHaveBeenCalledWith('test-app', 'org-1');
+        });
+
+        it('resolves the mode per request when mode is a function of env', async () => {
+            const seenModes: string[] = [];
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                mode: (e) => {
+                    seenModes.push(e.marker);
+                    return 'platform';
+                },
+            });
+
+            await handlers.handleBlogPostsList({ ...ctxFor('/posts'), env: { marker: 'env-a' } });
+            await handlers.handleBlogPostsList({ ...ctxFor('/posts'), env: { marker: 'env-b' } });
+
+            expect(seenModes).toEqual(['env-a', 'env-b']);
+        });
+    });
+});
+
+describe('org-mode migrations', () => {
+    it('executes idempotent index statements through executeRaw', async () => {
+        const executed: string[] = [];
+        const db = { executeRaw: vi.fn(async (sql: string) => void executed.push(sql)) };
+
+        const { ottablogOrgModeMigrations } = await import('../migrations');
+        expect(ottablogOrgModeMigrations).toHaveLength(1);
+        await ottablogOrgModeMigrations[0].up(db);
+
+        // Every statement is idempotent, and each swapped table gets a NULL-org partial
+        // pair (SQLite unique indexes treat NULLs as distinct).
+        expect(executed.length).toBeGreaterThan(0);
+        for (const sql of executed) {
+            expect(sql).toMatch(/IF (NOT )?EXISTS/);
+        }
+        const dropped = executed.filter((s) => s.startsWith('DROP INDEX'));
+        expect(dropped).toHaveLength(6);
+        const nullPartials = executed.filter((s) => s.includes('WHERE organization_id IS NULL'));
+        expect(nullPartials).toHaveLength(6);
     });
 });

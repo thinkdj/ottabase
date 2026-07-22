@@ -106,6 +106,9 @@ export {
 export { normalizeSlugInput, resolveUniqueSlug } from './slug-utils';
 export type { SlugLifecycleConfig, SlugScope } from './slug-utils';
 
+// Migrations (org-mode index swap; register conditionally in the app's migration registry)
+export { ottablogOrgModeMigrations } from './migrations';
+
 // Components (React)
 export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
 export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';

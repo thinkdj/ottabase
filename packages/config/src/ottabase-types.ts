@@ -69,12 +69,25 @@ export interface AuthBehaviorConfig {
     verbose: boolean;
 }
 
+/**
+ * Blog tenancy mode.
+ * - 'platform' (default): one blog per app, owned by the platform. Today's behavior, unchanged.
+ * - 'org': each organization gets its own blog namespace — org-scoped slugs, taxonomy, and theme.
+ *   Rows with a null organizationId remain platform-owned content.
+ */
+export type OttablogMode = 'platform' | 'org';
+
+export interface OttablogFeatureConfig {
+    mode: OttablogMode;
+}
+
 export interface OttabaseFeaturesConfig {
     referrals?: ReferralsFeatureConfig;
     spotlight?: SpotlightFeatureConfig;
     pagination?: PaginationFeatureConfig;
     crudHub?: CrudHubFeatureConfig;
     authBehavior?: AuthBehaviorConfig;
+    ottablog?: Partial<OttablogFeatureConfig>;
 }
 
 export interface OttabaseEmailConfig {
@@ -136,6 +149,7 @@ export interface OttabaseConfig {
         pagination: PaginationFeatureConfig;
         crudHub: CrudHubFeatureConfig;
         authBehavior: AuthBehaviorConfig;
+        ottablog: OttablogFeatureConfig;
     };
     email: OttabaseEmailConfig;
     ui: OttabaseUIConfig;

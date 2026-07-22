@@ -10,6 +10,8 @@ import type {
     CrudHubFeatureConfig,
     OttabaseConfig,
     OttabaseConfigInput,
+    OttablogFeatureConfig,
+    OttablogMode,
     PaginationFeatureConfig,
     ReferralsFeatureConfig,
     SpotlightFeatureConfig,
@@ -46,6 +48,15 @@ const DEFAULT_AUTH_BEHAVIOR: AuthBehaviorConfig = {
     disableCredentials: false,
     verbose: false,
 };
+
+const DEFAULT_OTTABLOG: OttablogFeatureConfig = {
+    mode: 'platform',
+};
+
+/** Coerce an ottablog mode value; anything other than 'org' resolves to 'platform'. */
+export function normalizeOttablogMode(value: unknown): OttablogMode {
+    return value === 'org' ? 'org' : 'platform';
+}
 
 const DEFAULT_PACKAGES: Record<BuiltInPackageName, boolean> = {
     comments: true,
@@ -107,6 +118,10 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         pagination: { ...DEFAULT_PAGINATION, ...input.features?.pagination },
         crudHub: { ...DEFAULT_CRUDHUB, ...input.features?.crudHub },
         authBehavior: { ...DEFAULT_AUTH_BEHAVIOR, ...input.features?.authBehavior },
+        ottablog: {
+            ...DEFAULT_OTTABLOG,
+            mode: normalizeOttablogMode(input.features?.ottablog?.mode ?? DEFAULT_OTTABLOG.mode),
+        },
     };
 
     const meta = {

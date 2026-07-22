@@ -41,14 +41,18 @@ function resolveOrgId(request: Request, fallback: string | null = null): string 
 /**
  * Public blog lookup by slug: always discriminates by appId.
  * Never queries by slug alone — the same slug can exist across apps (see Post schema indexes).
+ * In org mode the lookup also discriminates by organizationId (null = platform-owned rows),
+ * since org mode allows the same slug across orgs within one app.
  */
 async function findPublishedPostBySlug(
     slug: string,
     appId: string,
     contentTypeParam: string | null,
+    organizationId?: string | null,
 ): Promise<Post | null> {
     const primary: Record<string, unknown> = { slug, status: 'published', appId };
     if (contentTypeParam) primary.contentType = contentTypeParam;
+    if (organizationId !== undefined) primary.organizationId = organizationId;
     return Post.first(primary);
 }
 
@@ -151,12 +155,28 @@ async function publicPostJson(
 export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>): BlogHandlers<Env> {
     type Ctx = BlogRequestContext<Env>;
 
+    function resolveMode(env: Env): 'platform' | 'org' {
+        if (typeof config.mode === 'function') return config.mode(env);
+        return config.mode ?? 'platform';
+    }
+
     function resolveAppId(context: Ctx): string {
         return (
             context.url.searchParams.get('appId') ||
             context.request.headers.get('x-app-id') ||
             config.defaultAppId(context.env)
         );
+    }
+
+    /**
+     * Resolve the tenant dimension for this request.
+     * Platform mode: undefined (queries carry no org filter — column is ignored).
+     * Org mode: the app-resolved organizationId, or null for platform-owned content.
+     */
+    async function resolveTenant(context: Ctx): Promise<string | null | undefined> {
+        if (resolveMode(context.env) !== 'org') return undefined;
+        const resolved = await config.resolveOrganizationId?.(context);
+        return resolved ?? null;
     }
 
     async function handleBlogStudioState(context: Ctx): Promise<Response> {
@@ -168,7 +188,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
-        const state = await StudioManager.getState(appId);
+        const organizationId = await resolveTenant(context);
+        const orgScope = organizationId !== undefined ? { organizationId } : {};
+        const state = await StudioManager.getState(appId, organizationId);
 
         const needsSeeding = state.themes.length === 0 || state.plugins.length === 0;
         if (needsSeeding) {
@@ -184,6 +206,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                         description: 'Clean, modern default theme with dark mode support',
                         version: '1.0.0',
                         appId,
+                        ...orgScope,
                         isActive: true,
                     });
                     await OttablogTheme.create({
@@ -193,6 +216,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                         version: '1.0.0',
                         author: 'Ottabase',
                         appId,
+                        ...orgScope,
                         isActive: false,
                     });
                 }
@@ -202,10 +226,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                         name: 'Content Injector Plugin',
                         description: 'Injects custom content into posts',
                         appId,
+                        ...orgScope,
                         enabled: false,
                     });
                 }
-                const finalState = await StudioManager.getState(appId);
+                const finalState = await StudioManager.getState(appId, organizationId);
                 return jsonResponse(finalState);
             }
         }
@@ -222,24 +247,27 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
+        const orgScope = organizationId !== undefined ? { organizationId } : {};
         const body = await readJson<{ themeId: string }>(request);
         const themeId = body?.themeId;
         if (!themeId) {
             return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        let themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+        let themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
         if (!themeRow) {
             await OttablogTheme.create({
                 themeId,
                 name: themeId,
                 appId,
+                ...orgScope,
                 isActive: false,
             });
-            themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+            themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
         }
         if (themeRow) {
-            await themeRow.activate({ appId: appId ?? undefined });
+            await themeRow.activate({ appId: appId ?? undefined, organizationId });
         }
         return jsonResponse({ success: true });
     }
@@ -253,6 +281,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
+        const orgScope = organizationId !== undefined ? { organizationId } : {};
         const body = await readJson<{ pluginId: string; enabled: boolean }>(request);
         const pluginId = body?.pluginId;
         const enabled = body?.enabled ?? true;
@@ -261,12 +291,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        let pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+        let pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined, organizationId });
         if (!pluginRow) {
             await OttablogPlugin.create({
                 pluginId,
                 name: pluginId,
                 appId,
+                ...orgScope,
                 enabled,
             });
         } else {
@@ -285,6 +316,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
         const body = await readJson<{ pluginId: string; config: Record<string, unknown> }>(request);
         const pluginId = body?.pluginId;
         const pluginConfig = body?.config;
@@ -293,7 +325,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        const pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+        const pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined, organizationId });
         if (!pluginRow) {
             return errorResponse('Plugin not found', 404, { code: 'NOT_FOUND' });
         }
@@ -317,9 +349,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const search = url.searchParams.get('search') || null;
         const orderBy = url.searchParams.get('orderBy') || 'publishedAt';
         const orderDirection = (url.searchParams.get('orderDirection') || 'desc') as 'asc' | 'desc';
+        const organizationId = await resolveTenant(context);
 
         const where: Record<string, unknown> = { status: 'published' };
         if (appId) where.appId = appId;
+        if (organizationId !== undefined) where.organizationId = organizationId;
         if (contentType) {
             where.contentType = contentType;
         } else {
@@ -427,8 +461,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam);
+        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
 
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
@@ -466,8 +501,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam);
+        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
@@ -516,8 +552,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
         const type = url.searchParams.get('type') || 'post';
-        const tag = await PostTag.findBySlug(slug, { appId, type });
+        const tag = await PostTag.findBySlug(slug, { appId, type, organizationId });
         if (!tag) {
             return errorResponse('Tag not found', 404, { code: 'NOT_FOUND' });
         }
@@ -530,8 +567,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
         const type = url.searchParams.get('type') || 'post';
-        const category = await PostCategory.findBySlug(slug, { appId, type });
+        const category = await PostCategory.findBySlug(slug, { appId, type, organizationId });
         if (!category) {
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
         }
@@ -544,7 +582,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = resolveAppId(context);
-        const series = await PostSeries.findBySlug(slug, { appId });
+        const organizationId = await resolveTenant(context);
+        const series = await PostSeries.findBySlug(slug, { appId, organizationId });
         if (!series) {
             return errorResponse('Series not found', 404, { code: 'NOT_FOUND' });
         }
@@ -561,6 +600,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = url.searchParams.get('appId') || null;
+        const organizationId = await resolveTenant(context);
         const limit = Math.min(10, Math.max(1, parseInt(url.searchParams.get('limit') || '4', 10)));
 
         const post = await Post.find(postId);
@@ -576,6 +616,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             categoryIds,
             contentType: post.get('contentType') as string,
             appId: appId ?? undefined,
+            organizationId,
             limit,
         });
 
@@ -593,11 +634,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (connectError) return connectError;
 
         const appId = url.searchParams.get('appId') || null;
+        const organizationId = await resolveTenant(context);
         const contentType = url.searchParams.get('contentType') || null;
         const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '25', 10)));
 
         const where: Record<string, unknown> = { status: 'published' };
         if (appId) where.appId = appId;
+        if (organizationId !== undefined) where.organizationId = organizationId;
         if (contentType) {
             where.contentType = contentType;
         } else {
@@ -699,8 +742,10 @@ ${items}
         if (connectError) return connectError;
 
         const appId = url.searchParams.get('appId') || null;
+        const organizationId = await resolveTenant(context);
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
+        if (organizationId !== undefined) where.organizationId = organizationId;
 
         const posts = await Post.where(where, {
             orderBy: 'publishedAt',
