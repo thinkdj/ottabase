@@ -8,6 +8,7 @@
 import { api } from '@/lib/api';
 import {
     activatePlugin,
+    blogThemeTokensToCss,
     contentInjectorPlugin,
     createContentInjectorPlugin,
     deactivatePlugin,
@@ -17,9 +18,35 @@ import {
     registerPlugin,
     registerTheme,
     setActiveTheme,
+    type BlogThemeTokens,
     type StudioPluginState,
     type StudioState,
 } from '@ottabase/ottablog';
+
+/**
+ * Style-element id shared with the edge injector (worker/lib/blog-theme-inject.ts).
+ * The client REPLACES the element's content instead of adding a second tag, so the
+ * edge-painted state and the client-applied state can never disagree — the same
+ * contract the brand engine uses for #brand-critical.
+ */
+const BLOG_THEME_STYLE_ID = 'ottablog-theme-scope';
+
+function applyBlogThemeTokens(tokens: BlogThemeTokens | null | undefined): void {
+    if (typeof document === 'undefined') return;
+    const css = blogThemeTokensToCss(tokens);
+    let el = document.getElementById(BLOG_THEME_STYLE_ID) as HTMLStyleElement | null;
+    if (!css) {
+        // Sparse law: no tokens means no room CSS at all (remove any stale edge tag).
+        el?.remove();
+        return;
+    }
+    if (!el) {
+        el = document.createElement('style');
+        el.id = BLOG_THEME_STYLE_ID;
+        document.head.appendChild(el);
+    }
+    if (el.textContent !== css) el.textContent = css;
+}
 
 /**
  * Register default themes and the content injector plugin (in-memory).
@@ -81,6 +108,11 @@ async function applyState(state: StudioState) {
     if (state.activeThemeId) {
         setActiveTheme(state.activeThemeId);
     }
+
+    // Apply the active theme's brand-token overrides to the blog room
+    // ([data-brand-scope="blog"]). Sparse: no tokens, no CSS.
+    const activeThemeRow = (state.themes || []).find((t) => t.themeId === state.activeThemeId);
+    applyBlogThemeTokens((activeThemeRow?.tokens as BlogThemeTokens | null | undefined) ?? null);
 
     // Merge DB-stored config (classes overrides) into the active in-memory theme
     for (const t of state.themes || []) {

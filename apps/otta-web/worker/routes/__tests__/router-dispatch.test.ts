@@ -110,6 +110,7 @@ vi.mock('../blog', () => ({
     handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
     handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
     handleBlogStudioState: handlerMock('handleBlogStudioState'),
+    handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
     handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
 }));
 
@@ -283,6 +284,7 @@ import {
     handleBlogStudioPluginConfig,
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
+    handleBlogStudioThemeTokens,
     handleBlogTagBySlug,
 } from '../blog';
 import { handleBrandApi } from '../brand';
@@ -666,6 +668,13 @@ describe('router dispatch parity', () => {
             expect(handleBlogPreviewTokenMint).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
             expect(handleBlogPostUnlock).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleBlogPreviewTokenMint');
+        });
+
+        it('POST /api/blog/studio/theme/tokens dispatches to the theme tokens handler', async () => {
+            const { response } = await dispatch('POST', '/api/blog/studio/theme/tokens');
+            expect(handleBlogStudioThemeTokens).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(handleBlogStudioActivateTheme).not.toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleBlogStudioThemeTokens');
         });
     });
 

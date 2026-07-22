@@ -111,6 +111,10 @@ export { ottablogOrgModeMigrations } from './migrations';
 
 // Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
 export { signPreviewToken, verifyPreviewToken } from './preview-token';
+
+// Blog theme tokens: sparse CSS-variable overrides for the [data-brand-scope="blog"] room
+export { blogThemeTokensToCss } from './theme-tokens';
+export type { BlogThemeCssOptions, BlogThemeTokens } from './theme-tokens';
 export type { PreviewTokenPayload } from './preview-token';
 
 // SEO builders for edge-injected per-post meta (pure, React-free)

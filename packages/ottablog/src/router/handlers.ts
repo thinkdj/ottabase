@@ -308,6 +308,47 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return jsonResponse({ success: true });
     }
 
+    /**
+     * POST /studio/theme/tokens — set a theme row's sparse brand-token overrides
+     * (the data-driven half of blog theming). Admin-gated like other Studio
+     * mutations. Tokens are validated at render time (theme-tokens.ts); here we
+     * only require a JSON object shape so bad values can be corrected in place.
+     */
+    async function handleBlogStudioThemeTokens(context: Ctx): Promise<Response> {
+        const admin = await config.requireAdmin(context);
+        if (admin instanceof Response) return admin;
+
+        const { request, env } = context;
+        const connectError = config.connect(env);
+        if (connectError) return connectError;
+
+        const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
+        const body = await readJson<{
+            themeId: string;
+            tokens: { light?: Record<string, string>; dark?: Record<string, string> } | null;
+        }>(request);
+        const themeId = body?.themeId;
+        if (!themeId) {
+            return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
+        }
+        const tokens = body?.tokens ?? null;
+        if (tokens !== null && (typeof tokens !== 'object' || Array.isArray(tokens))) {
+            return errorResponse('tokens must be an object with light/dark records, or null', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+
+        const themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
+        if (!themeRow) {
+            return errorResponse('Theme not found', 404, { code: 'NOT_FOUND' });
+        }
+
+        themeRow.set('tokens', tokens);
+        await themeRow.save();
+        return jsonResponse({ success: true });
+    }
+
     async function handleBlogStudioPluginConfig(context: Ctx): Promise<Response> {
         const admin = await config.requireAdmin(context);
         if (admin instanceof Response) return admin;
@@ -1015,5 +1056,6 @@ ${urls}
         handleBlogPublishScheduled,
         handleBlogKitchensink,
         handleBlogPreviewTokenMint,
+        handleBlogStudioThemeTokens,
     };
 }

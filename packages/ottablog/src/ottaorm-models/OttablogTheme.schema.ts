@@ -27,6 +27,14 @@ export const ottablogThemesTable = sqliteTable(
         // Theme configuration (flexible JSON meta)
         config: text('config', { mode: 'json' }).$type<Record<string, unknown>>(),
 
+        // Sparse brand-token overrides for the blog "room": CSS custom properties
+        // applied under [data-brand-scope="blog"], split by palette. Null renders
+        // pixel-identical to the unthemed baseline (fallback-chain law).
+        tokens: text('tokens', { mode: 'json' }).$type<{
+            light?: Record<string, string>;
+            dark?: Record<string, string>;
+        }>(),
+
         // App identifier for multi-app database sharing
         appId: text('app_id'),
 

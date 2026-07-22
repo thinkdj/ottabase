@@ -57,6 +57,7 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogPublishScheduled: named('publish-scheduled'),
         handleBlogKitchensink: named('kitchensink'),
         handleBlogPreviewTokenMint: named('preview-mint'),
+        handleBlogStudioThemeTokens: named('theme-tokens'),
     };
 }
 
@@ -96,6 +97,7 @@ describe('buildBlogRouter', () => {
             ['GET', '/categories/by-slug/c', 'category-by-slug'],
             ['GET', '/series/by-slug/s', 'series-by-slug'],
             ['POST', '/studio/theme/activate', 'theme-activate'],
+            ['POST', '/studio/theme/tokens', 'theme-tokens'],
             ['POST', '/studio/plugin/enable', 'plugin-enable'],
             ['POST', '/studio/plugin/config', 'plugin-config'],
             ['POST', '/posts/unlock', 'post-unlock'],

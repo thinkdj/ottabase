@@ -111,4 +111,5 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogPublishScheduled(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogKitchensink(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPreviewTokenMint(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioThemeTokens(ctx: BlogRequestContext<Env>): Promise<Response>;
 }

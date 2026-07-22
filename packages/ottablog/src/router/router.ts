@@ -45,6 +45,7 @@ export function buildBlogRouter<Env = unknown>(
     r.get('/categories/by-slug/:slug', (c) => handlers.handleBlogCategoryBySlug(ctxOf(c), c.params.slug));
     r.get('/series/by-slug/:slug', (c) => handlers.handleBlogSeriesBySlug(ctxOf(c), c.params.slug));
     r.post('/studio/theme/activate', (c) => handlers.handleBlogStudioActivateTheme(ctxOf(c)));
+    r.post('/studio/theme/tokens', (c) => handlers.handleBlogStudioThemeTokens(ctxOf(c)));
     r.post('/studio/plugin/enable', (c) => handlers.handleBlogStudioPluginEnable(ctxOf(c)));
     r.post('/studio/plugin/config', (c) => handlers.handleBlogStudioPluginConfig(ctxOf(c)));
     r.post('/posts/unlock', (c) => handlers.handleBlogPostUnlock(ctxOf(c)));

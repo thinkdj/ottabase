@@ -7,7 +7,7 @@ import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
-import { Toaster } from '@ottabase/ui-shadcn';
+import { BrandScope, Toaster } from '@ottabase/ui-shadcn';
 import {
     createBrowserHistory,
     lazyRouteComponent,
@@ -230,19 +230,40 @@ const referralsRoute = publicRoute('/referrals', () =>
 
 // ─── Public content (blog, changelog) ────────────────────────────────────────
 
-const blogListRoute = publicRoute('/blog', () =>
+/**
+ * Public blog page inside the blog token "room": wraps the component in
+ * `<BrandScope name="blog">` so the active blog theme's CSS-variable overrides
+ * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
+ * semantic brand vars for blog subtrees only — never the app shell.
+ */
+function blogPublicRoute(path: string, loader: () => Promise<{ default: ComponentType }>) {
+    return publicRoute(path, () =>
+        loader().then((m) => {
+            const Comp = m.default;
+            return {
+                default: () => (
+                    <BrandScope name="blog">
+                        <Comp />
+                    </BrandScope>
+                ),
+            };
+        }),
+    );
+}
+
+const blogListRoute = blogPublicRoute('/blog', () =>
     import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
 );
-const blogDetailRoute = publicRoute('/blog/$slug', () =>
+const blogDetailRoute = blogPublicRoute('/blog/$slug', () =>
     import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
 );
-const blogTagArchiveRoute = publicRoute('/blog/tag/$slug', () =>
+const blogTagArchiveRoute = blogPublicRoute('/blog/tag/$slug', () =>
     import('@/pages/blog/BlogTagArchivePage').then((m) => ({ default: m.BlogTagArchivePage })),
 );
-const blogCategoryArchiveRoute = publicRoute('/blog/category/$slug', () =>
+const blogCategoryArchiveRoute = blogPublicRoute('/blog/category/$slug', () =>
     import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
 );
-const blogSeriesArchiveRoute = publicRoute('/blog/series/$slug', () =>
+const blogSeriesArchiveRoute = blogPublicRoute('/blog/series/$slug', () =>
     import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
 );
 const changelogListRoute = publicRoute('/changelog', () =>

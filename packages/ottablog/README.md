@@ -560,6 +560,16 @@ Apps that keep their own handler module as a test/mock seam (like `otta-web`) ca
 `buildBlogRouter(handlers, { makeContext })` — the canonical route table over an app-supplied `BlogHandlers` object.
 `createBlogHandlers(config)` builds that handlers object from the same injected config.
 
+## Data-Driven Theme Tokens (Brand Contract)
+
+Blog themes can carry data, not just code: each `ottablog_themes` row has a sparse `tokens` JSON column
+(`{ light?: Record<cssVar, value>, dark?: ... }`). `blogThemeTokensToCss(tokens)` serializes them into a
+`[data-brand-scope="blog"]` room block, which the consuming app applies around its blog pages (otta-web wraps them in
+`<BrandScope name="blog">` from `@ottabase/ui-shadcn` and injects the CSS at the edge plus client-side via studio
+state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
+no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
+(unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
+
 ## Edge SEO Meta
 
 `@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge: `extractBlogSlugFromPath` detects a

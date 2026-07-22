@@ -18,6 +18,8 @@ export interface StudioThemeState {
     author: string | null;
     isActive: boolean;
     config: Record<string, unknown> | null;
+    /** Sparse brand-token overrides for the blog room (see theme-tokens.ts). */
+    tokens: { light?: Record<string, string>; dark?: Record<string, string> } | null;
 }
 
 export interface StudioPluginState {
@@ -83,6 +85,7 @@ export class StudioManager {
             author: (t.get('author') as string) ?? null,
             isActive: (t.get('isActive') as boolean) ?? false,
             config: (t.get('config') as Record<string, unknown>) ?? null,
+            tokens: (t.get('tokens') as StudioThemeState['tokens']) ?? null,
         }));
 
         const plugins: StudioPluginState[] = pluginsRows.map((p) => ({

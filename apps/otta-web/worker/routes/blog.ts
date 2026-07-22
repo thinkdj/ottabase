@@ -114,4 +114,5 @@ export const {
     handleBlogPublishScheduled,
     handleBlogKitchensink,
     handleBlogPreviewTokenMint,
+    handleBlogStudioThemeTokens,
 } = handlers;
