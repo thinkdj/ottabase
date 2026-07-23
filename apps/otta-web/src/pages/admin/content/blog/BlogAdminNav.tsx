@@ -11,12 +11,7 @@ import { useBlogSurface } from './blogAdminPaths';
 
 export function BlogAdminNav() {
     const { pathname } = useLocation();
-    // skipAutoSync: this nav is re-mounted on every /admin/content/blog/* navigation (each
-    // page renders its own copy), and per-page components always opt out of the session
-    // hook's auto-sync — only the stable, mount-once app shell (AdminLayout, SidebarNav, etc.)
-    // drives it. Without this, every nav click fired its own /api/auth/session call and
-    // flashed the surrounding ProtectedRoute's "Checking authentication..." spinner.
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
     const surface = useBlogSurface();
 
     // Links resolve against the active surface (/admin/content/blog or /studio),

@@ -186,7 +186,7 @@ const CommentNode = memo(function CommentNode({
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
     const { isReady: studioReady } = useBlogStudio();
     const [unlockedPost, setUnlockedPost] = useState<BlogPost | null>(null);
     const [password, setPassword] = useState('');

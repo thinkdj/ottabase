@@ -77,7 +77,7 @@ const PROVIDER_MODELS: Record<string, Array<{ value: string; label: string }>> =
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function CloudflareAIDemoPage() {
-    const { isAuthenticated, isLoading: authLoading } = useSession();
+    const { isAuthenticated, isInitialized, isLoading: authLoading } = useSession();
     const [status, setStatus] = useState<AIStatus | null>(null);
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
     const [loading, setLoading] = useState(false);
@@ -128,7 +128,7 @@ export function CloudflareAIDemoPage() {
     };
 
     const sendChat = useCallback(async () => {
-        if (!isAuthenticated || authLoading) {
+        if (!isInitialized || !isAuthenticated || authLoading) {
             setError('Please log in to send AI chat messages.');
             return;
         }
@@ -185,7 +185,17 @@ export function CloudflareAIDemoPage() {
         } finally {
             setChatLoading(false);
         }
-    }, [mode, prompt, systemPrompt, selectedProvider, selectedModel, fallbackChain, isAuthenticated, authLoading]);
+    }, [
+        mode,
+        prompt,
+        systemPrompt,
+        selectedProvider,
+        selectedModel,
+        fallbackChain,
+        isAuthenticated,
+        isInitialized,
+        authLoading,
+    ]);
 
     const currentModels = PROVIDER_MODELS[selectedProvider] || [];
 
@@ -239,7 +249,7 @@ export function CloudflareAIDemoPage() {
                 </div>
             ) : null}
 
-            {!authLoading && !isAuthenticated ? (
+            {isInitialized && !authLoading && !isAuthenticated ? (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                     AI sending is disabled for guest users. Please sign in to send prompts.
                 </div>
@@ -490,7 +500,13 @@ export function CloudflareAIDemoPage() {
                             placeholder="Ask anything..."
                             rows={3}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && isAuthenticated && !authLoading) {
+                                if (
+                                    e.key === 'Enter' &&
+                                    (e.ctrlKey || e.metaKey) &&
+                                    isInitialized &&
+                                    isAuthenticated &&
+                                    !authLoading
+                                ) {
                                     void sendChat();
                                 }
                             }}
@@ -498,12 +514,16 @@ export function CloudflareAIDemoPage() {
                     </div>
                     <Button
                         onClick={() => void sendChat()}
-                        disabled={chatLoading || !prompt.trim() || !isAuthenticated || authLoading}
+                        disabled={chatLoading || !prompt.trim() || !isInitialized || !isAuthenticated || authLoading}
                     >
                         {chatLoading ? 'Sending...' : 'Send'}
                     </Button>
                     <span className="ml-2 text-xs text-muted-foreground">
-                        {isAuthenticated ? 'Ctrl+Enter to send' : 'Sign in required to send'}
+                        {!isInitialized || authLoading
+                            ? 'Checking authentication...'
+                            : isAuthenticated
+                              ? 'Ctrl+Enter to send'
+                              : 'Sign in required to send'}
                     </span>
                 </CardContent>
             </Card>

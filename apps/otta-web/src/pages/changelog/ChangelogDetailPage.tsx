@@ -48,7 +48,7 @@ function formatLongDate(iso: string | null): string {
 export function ChangelogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug ?? '';
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
 
     // Use the blog API with contentType filter for changelogs
     const {

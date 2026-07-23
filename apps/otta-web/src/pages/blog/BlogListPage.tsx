@@ -63,7 +63,7 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 const POSTS_PER_PAGE = 12;
 
 export function BlogListPage() {
-    const { isAuthenticated } = useSession({ skipAutoSync: true });
+    const { isAuthenticated } = useSession();
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [contentType, setContentType] = useState<ContentType | ''>('');

@@ -44,12 +44,14 @@ const postHooks = createModelHooks<Post>({ entityName: 'posts' });
 // ============================================================
 
 export function OttaORMDemoPage() {
-    const { isAuthenticated, isLoading: authLoading } = useSession();
+    const { isAuthenticated, isInitialized, isLoading: authLoading } = useSession();
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newPostTitle, setNewPostTitle] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
-    const canUseCrud = isAuthenticated && !authLoading;
+    // Do not start privileged queries from the persisted browser snapshot. The
+    // root session bootstrap must first confirm that snapshot with the server.
+    const canUseCrud = isInitialized && isAuthenticated && !authLoading;
 
     // TanStack Query hooks - automatic caching, loading states, and refetching
     const {

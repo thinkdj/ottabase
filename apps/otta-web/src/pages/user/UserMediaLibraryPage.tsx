@@ -2,7 +2,7 @@ import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrow
 import { useSession } from '@/lib/auth';
 
 export function UserMediaLibraryPage() {
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
 
     return (
         <MediaLibraryBrowser

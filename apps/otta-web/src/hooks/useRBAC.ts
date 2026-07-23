@@ -9,6 +9,7 @@
  */
 
 import { api } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 import type {
     AuditLogRecord,
     MemberRole,
@@ -19,6 +20,7 @@ import type {
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 // ============================================================================
 // Model hook instances
@@ -29,6 +31,19 @@ const orgMemberHooks = createModelHooks<OrganizationMemberRecord>({ entityName: 
 // Role definitions are managed via the platform-scoped admin endpoint, NOT generic CRUD
 // (/api/ottaorm/roles is default-denied). Same REST shape (GET list, POST, PATCH/:id, DELETE/:id).
 const roleHooks = createModelHooks<RoleRecord>({ entityName: 'roles', apiPath: '/api/admin/roles' });
+
+/** Refresh only when a successful RBAC mutation can change this browser's session snapshot. */
+function useSessionRefreshAfterRbacChange() {
+    const { user, refreshSession } = useSession();
+
+    return useCallback(
+        async (affectedUserId?: string) => {
+            if (affectedUserId && affectedUserId !== user?.id) return;
+            await refreshSession();
+        },
+        [refreshSession, user?.id],
+    );
+}
 
 // ============================================================================
 // Organizations — Query Hooks
@@ -213,6 +228,7 @@ export function useOrganizationMembers(organizationId: string, page = 1, perPage
  */
 export function useInviteMember() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
@@ -247,12 +263,14 @@ export function useInviteMember() {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', variables.organizationId],
             });
+            if (variables.userId) await refreshSessionAfterRbacChange(variables.userId);
         },
     });
 }
 
 export function useUpdateMember() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
@@ -283,12 +301,14 @@ export function useUpdateMember() {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', variables.organizationId],
             });
+            await refreshSessionAfterRbacChange(variables.userId);
         },
     });
 }
 
 export function useUpdateMemberRole() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
@@ -310,16 +330,18 @@ export function useUpdateMemberRole() {
             );
             return response.data;
         },
-        onSuccess: async (_member, { organizationId }) => {
+        onSuccess: async (_member, { organizationId, userId }) => {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', organizationId],
             });
+            await refreshSessionAfterRbacChange(userId);
         },
     });
 }
 
 export function useUpdateMemberStatus() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
@@ -341,16 +363,18 @@ export function useUpdateMemberStatus() {
             );
             return response.data;
         },
-        onSuccess: async (_member, { organizationId }) => {
+        onSuccess: async (_member, { organizationId, userId }) => {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', organizationId],
             });
+            await refreshSessionAfterRbacChange(userId);
         },
     });
 }
 
 export function useRemoveMember() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
@@ -359,10 +383,11 @@ export function useRemoveMember() {
                 method: 'DELETE',
             });
         },
-        onSuccess: async (_data, { organizationId }) => {
+        onSuccess: async (_data, { organizationId, userId }) => {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', organizationId],
             });
+            await refreshSessionAfterRbacChange(userId);
         },
     });
 }
@@ -385,13 +410,14 @@ export function useCreateRole() {
 
 export function useUpdateRole() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'roles' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<RoleRecord> }) => {
             const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${id}`, {
                 method: 'PATCH',
-                body: JSON.stringify(data),
+                body: data,
             });
             return response.data;
         },
@@ -414,15 +440,31 @@ export function useUpdateRole() {
                 queryClient.setQueryData(roleHooks.queryKeys.lists(), context.previous);
             }
         },
+        onSuccess: async () => {
+            await refreshSessionAfterRbacChange();
+        },
     });
 }
 
 export function useDeleteRole() {
-    return roleHooks.useDelete();
+    const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
+
+    return useMutation({
+        meta: { entity: 'roles' },
+        mutationFn: async (id: string) => {
+            await api(`/api/admin/roles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        },
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: roleHooks.queryKeys.lists() });
+            await refreshSessionAfterRbacChange();
+        },
+    });
 }
 
 export function useTogglePermission() {
     const queryClient = useQueryClient();
+    const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'roles' },
@@ -448,7 +490,7 @@ export function useTogglePermission() {
 
             const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${roleId}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ permissions: newPermissions }),
+                body: { permissions: newPermissions },
             });
 
             return response.data;
@@ -480,6 +522,9 @@ export function useTogglePermission() {
             if (context?.previous) {
                 queryClient.setQueryData(roleHooks.queryKeys.lists(), context.previous);
             }
+        },
+        onSuccess: async () => {
+            await refreshSessionAfterRbacChange();
         },
     });
 }

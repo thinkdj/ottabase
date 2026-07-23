@@ -9,7 +9,7 @@ import { ReferralDashboard } from '@/components/ReferralDashboard';
 import { useSession } from '@/lib/auth';
 
 export function ReferralsPage() {
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
 
     return (
         <ProtectedRoute>

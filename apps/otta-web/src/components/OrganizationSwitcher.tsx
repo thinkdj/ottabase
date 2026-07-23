@@ -29,7 +29,7 @@ interface OrganizationSwitcherProps {
 export function OrganizationSwitcher({ currentOrgId, onOrgChange }: OrganizationSwitcherProps) {
     const navigate = useNavigate();
     const { data: orgs = [], isLoading } = useOrganizations();
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
     const [isOpen, setIsOpen] = useState(false);
 
     // Platform admins can act in PLATFORM scope (organizationId NULL server-side):

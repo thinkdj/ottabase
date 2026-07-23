@@ -48,7 +48,7 @@ function formatChangelogDate(iso: string | null): string {
 }
 
 export function ChangelogListPage() {
-    const { isAuthenticated } = useSession({ skipAutoSync: true });
+    const { isAuthenticated } = useSession();
 
     // Use the blog API with contentType filter for changelogs
     const { data: listResponse, isLoading } = useApiQuery<ChangelogListResponse>({

@@ -4,7 +4,7 @@ import { Button } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 
 export function AdminReferralsPage() {
-    const { isAuthenticated, user } = useSession({ skipAutoSync: true });
+    const { isAuthenticated, user } = useSession();
 
     if (!isAuthenticated || !user) {
         return (

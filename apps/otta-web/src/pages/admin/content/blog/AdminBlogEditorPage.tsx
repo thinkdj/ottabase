@@ -287,7 +287,7 @@ interface BlogEditorFormProps {
 function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }: BlogEditorFormProps) {
     const surface = useBlogSurface();
     const navigate = useNavigate();
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
 
     // Form state - initialized from props
     const [title, setTitle] = useState(initialData?.title || '');

@@ -319,16 +319,34 @@ await resetPassword({ email, token, password });
 await changePassword({ currentPassword, newPassword });
 ```
 
-## React Hook
+## React Hooks
 
-`useSession()` (from `@ottabase/auth/react`) is a Jotai-backed hook that syncs with `GET /api/auth/session` on mount and
-persists the session to `localStorage`:
+`useSession()` (from `@ottabase/auth/react`) is a side-effect-free, Jotai-backed reader for the shared session state.
+Mount `useSessionBootstrap()` exactly once near the application root to initialize that state from
+`GET /api/auth/session`; components and route guards then consume the cached result without triggering a request on
+every mount:
 
 ```typescript
-import { useSession } from '@ottabase/auth/react';
+import { useSession, useSessionBootstrap } from '@ottabase/auth/react';
+
+function SessionBootstrap() {
+    useSessionBootstrap();
+    return null;
+}
+
+function App() {
+    return (
+        <>
+            <SessionBootstrap />
+            <Routes />
+        </>
+    );
+}
 
 function MyComponent() {
-    const { session, user, isAuthenticated, isLoading, login, logout, updateUser, refreshSession } = useSession();
+    const { user, isAuthenticated, isInitialized, logout } = useSession();
+
+    if (!isInitialized) return <Loading />;
 
     if (!isAuthenticated) return <LoginPrompt />;
     return (
@@ -339,6 +357,9 @@ function MyComponent() {
     );
 }
 ```
+
+Call `refreshSession()` explicitly after a successful mutation that can change the current user's identity, active
+organization, roles, or permissions. This keeps updates immediate without making route navigation poll the session API.
 
 ## UI Components
 
@@ -416,7 +437,7 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   ├── email.ts           Magic-link senders (dev trap / Nodemailer / Resend)
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
-├── react-hooks.ts         useSession (Jotai-backed)
+├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
 └── components/            Framework-agnostic login/register UI (shadcn/ui)
 ```
 

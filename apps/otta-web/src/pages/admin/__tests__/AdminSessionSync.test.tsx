@@ -43,7 +43,7 @@ describe('admin session synchronization', () => {
         useSession.mockReturnValue({ user: null });
     });
 
-    it('leaves route-level session synchronization to ProtectedRoute', () => {
+    it('reads the shared session without initiating another sync', () => {
         render(
             <>
                 <AdminLayout>Admin content</AdminLayout>
@@ -52,7 +52,7 @@ describe('admin session synchronization', () => {
         );
 
         expect(useSession).toHaveBeenCalledTimes(2);
-        expect(useSession).toHaveBeenNthCalledWith(1, { skipAutoSync: true });
-        expect(useSession).toHaveBeenNthCalledWith(2, { skipAutoSync: true });
+        expect(useSession).toHaveBeenNthCalledWith(1);
+        expect(useSession).toHaveBeenNthCalledWith(2);
     });
 });

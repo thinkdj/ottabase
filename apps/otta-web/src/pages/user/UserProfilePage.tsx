@@ -45,7 +45,7 @@ interface LinkedAccountRecord {
 }
 
 export function UserProfilePage() {
-    const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
+    const { user, updateUser, refreshSession } = useSession();
     const toast = useRBACToast();
 
     const [formData, setFormData] = useState({

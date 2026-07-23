@@ -659,7 +659,7 @@ function InMemoryDemo() {
 // ---------------------------------------------------------------------------
 
 function DatabaseDemo() {
-    const { user } = useSession({ skipAutoSync: true });
+    const { user } = useSession();
     const currentUserId = user?.id ?? null;
     const [mutationError, setMutationError] = useState<string | null>(null);
 

@@ -8,7 +8,12 @@
 // ============================================================
 
 import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
-import { useSession as useAuthSession, type UseSessionOptions } from '@ottabase/auth/react';
+import {
+    useSession as useAuthSession,
+    useSessionBootstrap as useAuthSessionBootstrap,
+    type SessionClientOptions,
+    type SessionState,
+} from '@ottabase/auth/react';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
@@ -25,7 +30,7 @@ function getStoredOrganizationId(): string | null {
 }
 
 // Re-export types
-export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
+export { type Session, type SessionClientOptions, type SessionState, type User } from '@ottabase/auth/react';
 
 type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null | undefined;
 
@@ -106,11 +111,8 @@ export function resolveEffectiveOrgId(
     return sessionOrgId ?? (isAuthenticated ? storedOrgId : null);
 }
 
-/**
- * Custom useSession hook that syncs with global app state
- */
-export function useSession(options?: UseSessionOptions) {
-    const sessionData = useAuthSession(options);
+/** Mirrors the shared auth session into the app's organization-aware state atoms. */
+function useAppSessionState(sessionData: SessionState): SessionState {
     const setGlobalUser = useSetAtom(userAtom);
     const setGlobalIsAuthenticated = useSetAtom(isAuthenticatedAtom);
     const setAppId = useSetAtom(appIdAtom);
@@ -149,4 +151,14 @@ export function useSession(options?: UseSessionOptions) {
     ]);
 
     return sessionData;
+}
+
+/** Read session state without causing network activity. */
+export function useSession(options?: SessionClientOptions): SessionState {
+    return useAppSessionState(useAuthSession(options));
+}
+
+/** Initialize the session once for the app root, then expose the shared session state. */
+export function useSessionBootstrap(options?: SessionClientOptions): SessionState {
+    return useAppSessionState(useAuthSessionBootstrap(options));
 }

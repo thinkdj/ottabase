@@ -104,7 +104,9 @@ export {
     AUTH_STORAGE_KEY,
     clearAuthSessionStorage,
     useSession,
+    useSessionBootstrap,
     type Session as ReactSession,
+    type SessionClientOptions,
+    type SessionState,
     type User,
-    type UseSessionOptions,
 } from './react-hooks';
