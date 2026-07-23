@@ -19,6 +19,7 @@ import {
     registerConnection,
     registerModels,
     registerPolicy,
+    RLSPolicies,
 } from '@ottabase/ottaorm';
 import {
     Account,
@@ -131,6 +132,22 @@ function registerAppModels(env: CloudflareEnv): void {
     registerPolicy(mediaLibraryPolicy);
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
     initRLS();
+
+    // Org-mode blogs: taxonomy and studio state become tenant data, not app-global.
+    // Registered AFTER initRLS so these overrides win (the RLS registry is last-write-wins).
+    // Platform mode (default) keeps the built-in AppScoped policies untouched.
+    // RLS applies on the generic-CRUD path only; the public blog endpoints read published
+    // content directly through models and stay public in both modes.
+    if (packages.ottablog && config.features.ottablog.mode === 'org') {
+        for (const model of ['categories', 'post_tags', 'series', 'ottablog_themes', 'ottablog_plugins']) {
+            registerPolicy({
+                model,
+                policy: RLSPolicies.TenantScoped(false),
+                contextFields: ['organizationId', 'appId'],
+                auditEnabled: true,
+            });
+        }
+    }
 }
 
 export function ensureDbConnection(env: CloudflareEnv): void {

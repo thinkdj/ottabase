@@ -39,6 +39,20 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 # Done! Visit http://localhost:3003 (frontend) or http://localhost:3004 (when using dev:worker only)
 ```
 
+### API request bodies
+
+The configured `api()` client serializes JSON request bodies. Pass objects directly; reserve `JSON.stringify()` for raw
+`fetch()` calls:
+
+```typescript
+import { api } from '@/lib/api';
+
+await api('/api/email/test', {
+    method: 'POST',
+    body: { recipients: ['you@example.com'], provider: 'auto' },
+});
+```
+
 ## Configuration
 
 ### Config Files
@@ -81,6 +95,12 @@ This template ships with a custom, dependency-free auth implementation + D1 inte
 - **Credentials storage**: PBKDF2 hashes in `users.password_hash`, email verification/roles stored alongside.
 - **Session sync tip**: If you mutate `/api/users/me`, call `refreshSession()` (or `updateUser()`) so the cached local
   session picks up the KV-triggered profile version bump immediately.
+- **One session bootstrap**: `AuthSessionBootstrap` owns the app-wide initial session read. `useSession()` is a
+  side-effect-free state reader, and protected routes wait for that bootstrap rather than refreshing on every route
+  mount. Call `refreshSession()` only after a mutation that can change the current user's session data; this avoids
+  remount-driven `/api/auth/session` loops and loading-state flicker. Refreshes are causally ordered, auth-service
+  outages are not mistaken for logout, and logout/401 invalidation clears auth, organization state, and tenant query
+  caches together.
 - **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
   session into all API calls; these values are also mirrored in global state atoms for UI needs.
 

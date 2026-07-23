@@ -69,12 +69,25 @@ export interface AuthBehaviorConfig {
     verbose: boolean;
 }
 
+/**
+ * Blog tenancy mode.
+ * - 'platform' (default): one blog per app, owned by the platform. Today's behavior, unchanged.
+ * - 'org': each organization gets its own blog namespace — org-scoped slugs, taxonomy, and theme.
+ *   Rows with a null organizationId remain platform-owned content.
+ */
+export type OttablogMode = 'platform' | 'org';
+
+export interface OttablogFeatureConfig {
+    mode: OttablogMode;
+}
+
 export interface OttabaseFeaturesConfig {
     referrals?: ReferralsFeatureConfig;
     spotlight?: SpotlightFeatureConfig;
     pagination?: PaginationFeatureConfig;
     crudHub?: CrudHubFeatureConfig;
     authBehavior?: AuthBehaviorConfig;
+    ottablog?: Partial<OttablogFeatureConfig>;
 }
 
 export interface OttabaseEmailConfig {
@@ -89,6 +102,14 @@ export interface OttabaseUIConfig {
     layout?: { minWidth: number; maxWidth: number };
     enforceGoogleFonts?: boolean;
 }
+
+/**
+ * Sentinel value for the x-org-id header / org selection meaning "act in PLATFORM
+ * scope" (organizationId NULL — platform-owned rows such as the platform's own
+ * blog in org mode). Honored server-side only for platform admins; never a valid
+ * organization id. Shared by the API client, the org switcher, and the worker.
+ */
+export const PLATFORM_ORG_SENTINEL = 'platform';
 
 /** Built-in package keys. Extend when adding new built-in packages. brandEngine is core, not a package. */
 export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'referrals', 'shortlinks'] as const;
@@ -136,6 +157,7 @@ export interface OttabaseConfig {
         pagination: PaginationFeatureConfig;
         crudHub: CrudHubFeatureConfig;
         authBehavior: AuthBehaviorConfig;
+        ottablog: OttablogFeatureConfig;
     };
     email: OttabaseEmailConfig;
     ui: OttabaseUIConfig;

@@ -24,9 +24,11 @@ import {
     runMigrations,
     User,
 } from '@ottabase/ottaorm';
+import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
-import { appMigrations } from '../../ottabase/migrations';
+import { buildAppMigrations } from '../../ottabase/migrations';
 import { reconcileSystemRoleSessions } from '../lib/auth-utils';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
@@ -375,15 +377,25 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
 
         // 4. Run ottaorm autoInit (creates all tables from Drizzle schemas)
         const driver = createD1Driver(env.OBCF_D1);
+
+        // Org-mode blogs: the index-swap migration runs once (tracked), but autoInit's
+        // ensure step re-creates schema-declared indexes on EVERY run — suppress the
+        // dropped strict slug indexes so re-running this wizard step can't silently
+        // restore app-wide uniqueness and break per-org slug namespaces. Env-aware
+        // (OTTABLOG_MODE), matching the sibling /api/ottaorm/init route.
+        const ottabaseConfig = getOttabaseConfig(env);
+        const blogOrgMode = ottabaseConfig.packages.ottablog && ottabaseConfig.features.ottablog.mode === 'org';
+
         const initResult = await autoInit({
             driver,
             schema: allSchemas,
-            customMigrations: appMigrations,
+            customMigrations: buildAppMigrations(env as unknown as Record<string, unknown>),
             verbose: true,
             // Allow destructive migrations only when explicitly enabled via env
             allowDestructive:
                 env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
                 env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
+            suppressIndexes: blogOrgMode ? ottablogOrgModeSuppressedIndexes : [],
         });
 
         // 5. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)

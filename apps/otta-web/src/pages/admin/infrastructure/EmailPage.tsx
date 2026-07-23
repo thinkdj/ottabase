@@ -79,7 +79,7 @@ export function AdminEmailPage() {
         try {
             const res = await api<{ results: Array<{ email: string; ok: boolean; provider?: string }> }>(
                 '/api/email/test',
-                { method: 'POST', body: JSON.stringify({ recipients: list, template, subject, provider }) },
+                { method: 'POST', body: { recipients: list, template, subject, provider } },
             );
             setStatus({ state: 'success', results: res.results || [] });
         } catch (err) {

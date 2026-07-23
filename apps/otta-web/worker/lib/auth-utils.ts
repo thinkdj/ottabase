@@ -1,5 +1,6 @@
 import { CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
 import { userKey } from '@ottabase/cf';
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { invalidateCache, invalidateCacheByPrefix, withCache } from '@ottabase/cf/kv-cache';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
@@ -213,18 +214,27 @@ export async function getSecurityContext(
 
     let organizationId: string | null = null;
 
-    if (session?.user?.organizationId) {
-        organizationId = session.user.organizationId;
-    }
+    // Explicit PLATFORM scope: a platform admin may act on platform-owned rows
+    // (organizationId NULL — e.g. the platform's own blog in org mode) by sending
+    // x-org-id: platform. This must override every other resolution path,
+    // including the session's active org — that is the point of the switch.
+    // For anyone else the sentinel is simply ignored (it is never a real org id).
+    const orgHeaderRaw = request.headers.get('x-org-id');
+    const explicitPlatformScope = session?.user?.platformAdmin === true && orgHeaderRaw === PLATFORM_ORG_SENTINEL;
 
-    if (!organizationId) {
-        const orgHeader = request.headers.get('x-org-id');
-        if (orgHeader && orgHeader !== 'null') {
-            organizationId = orgHeader;
+    if (!explicitPlatformScope) {
+        if (session?.user?.organizationId) {
+            organizationId = session.user.organizationId;
+        }
+
+        if (!organizationId) {
+            if (orgHeaderRaw && orgHeaderRaw !== 'null' && orgHeaderRaw !== PLATFORM_ORG_SENTINEL) {
+                organizationId = orgHeaderRaw;
+            }
         }
     }
 
-    if (!organizationId) {
+    if (!organizationId && !explicitPlatformScope) {
         const host = request.headers.get('host') || url.hostname;
         const subdomain = host.split('.')[0];
         if (subdomain && subdomain !== 'www' && subdomain !== 'localhost' && !host.startsWith('127.0.0.1')) {
@@ -232,7 +242,7 @@ export async function getSecurityContext(
         }
     }
 
-    if (!organizationId) {
+    if (!organizationId && !explicitPlatformScope) {
         const orgQuery = url.searchParams.get('organizationId');
         if (orgQuery && orgQuery !== 'null') {
             organizationId = orgQuery;

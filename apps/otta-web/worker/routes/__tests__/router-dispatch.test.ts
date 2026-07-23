@@ -100,6 +100,7 @@ vi.mock('../blog', () => ({
     handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
     handleBlogPostUnlock: handlerMock('handleBlogPostUnlock'),
     handleBlogPostsList: handlerMock('handleBlogPostsList'),
+    handleBlogPreviewTokenMint: handlerMock('handleBlogPreviewTokenMint'),
     handleBlogPublishScheduled: handlerMock('handleBlogPublishScheduled'),
     handleBlogRelatedPosts: handlerMock('handleBlogRelatedPosts'),
     handleBlogRssFeed: handlerMock('handleBlogRssFeed'),
@@ -109,6 +110,7 @@ vi.mock('../blog', () => ({
     handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
     handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
     handleBlogStudioState: handlerMock('handleBlogStudioState'),
+    handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
     handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
 }));
 
@@ -272,6 +274,7 @@ import {
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
+    handleBlogPreviewTokenMint,
     handleBlogPublishScheduled,
     handleBlogRelatedPosts,
     handleBlogRssFeed,
@@ -281,6 +284,7 @@ import {
     handleBlogStudioPluginConfig,
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
+    handleBlogStudioThemeTokens,
     handleBlogTagBySlug,
 } from '../blog';
 import { handleBrandApi } from '../brand';
@@ -657,6 +661,20 @@ describe('router dispatch parity', () => {
             expect(handleBlogRelatedPosts).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }), 'p1');
             expect(handleBlogPostsList).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleBlogRelatedPosts');
+        });
+
+        it('POST /api/blog/posts/preview-token dispatches to the preview mint', async () => {
+            const { response } = await dispatch('POST', '/api/blog/posts/preview-token');
+            expect(handleBlogPreviewTokenMint).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(handleBlogPostUnlock).not.toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleBlogPreviewTokenMint');
+        });
+
+        it('POST /api/blog/studio/theme/tokens dispatches to the theme tokens handler', async () => {
+            const { response } = await dispatch('POST', '/api/blog/studio/theme/tokens');
+            expect(handleBlogStudioThemeTokens).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(handleBlogStudioActivateTheme).not.toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleBlogStudioThemeTokens');
         });
     });
 

@@ -81,3 +81,12 @@ const packageMigrations = getEnabledPackageMigrations();
 // - Core tables exist before app tables
 // - App tables exist before package-specific data migrations
 export const appMigrations: Migration[] = [...coreMigrations, ...appSpecificMigrations, ...packageMigrations];
+
+/**
+ * Env-aware variant for the runtime init route: package migrations can depend
+ * on env-overridable config (e.g. OTTABLOG_MODE flips the org-mode index
+ * migration on), which the module-load `appMigrations` above cannot see.
+ */
+export function buildAppMigrations(env?: Record<string, unknown>): Migration[] {
+    return [...coreMigrations, ...appSpecificMigrations, ...getEnabledPackageMigrations(env)];
+}

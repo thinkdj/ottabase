@@ -8,6 +8,8 @@ import {
     invalidatePlatformStateCache,
     resolvePlatformState,
 } from './worker/bootstrap';
+import { injectBlogPostSeo } from './worker/lib/blog-seo-inject';
+import { injectBlogThemeCss } from './worker/lib/blog-theme-inject';
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
@@ -118,6 +120,14 @@ export default {
 
             if (isHtmlRequest(request) && response.ok) {
                 response = await injectBrandCriticalCSS(response, request, env);
+                // Blog detail navigations additionally get per-post SEO meta
+                // (title, description, canonical, OG/Twitter, JSON-LD) so
+                // crawlers and unfurlers see the article, not the SPA shell.
+                response = await injectBlogPostSeo(response, request, env);
+                // Blog documents also get the active blog theme's scoped token
+                // CSS ([data-brand-scope="blog"]) so the blog room first-paints
+                // themed, matching what the client applies after hydration.
+                response = await injectBlogThemeCss(response, request, env);
             }
 
             return response;

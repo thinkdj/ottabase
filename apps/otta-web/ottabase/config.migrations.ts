@@ -30,6 +30,7 @@ import { commentReactionsTable, commentsTable } from '@ottabase/comments';
 import type { BuiltInPackageName } from '@ottabase/config';
 import {
     categoriesTable,
+    ottablogOrgModeMigrations,
     ottablogPluginsTable,
     ottablogThemesTable,
     postCategoryLinksTable,
@@ -61,6 +62,8 @@ const PACKAGE_REGISTRY = {
             ottablogPluginsTable,
             ottablogThemesTable,
         },
+        // Org-mode slug-index migrations are appended env-aware in
+        // getEnabledPackageMigrations() below (features.ottablog.mode === 'org').
         migrations: [] as Migration[],
     },
     comments: {
@@ -146,6 +149,13 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
         if ((pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
             migrations.push(...pkgConfig.migrations);
         }
+    }
+
+    // Org-mode blogs: swap the app-scoped unique slug indexes for org-aware pairs.
+    // Env-aware (OTTABLOG_MODE overrides the config file), so it must live here rather
+    // than in the static PACKAGE_REGISTRY. Platform mode never touches its indexes.
+    if (config.packages.ottablog && config.features.ottablog.mode === 'org') {
+        migrations.push(...(ottablogOrgModeMigrations as Migration[]));
     }
 
     // Custom packages

@@ -13,6 +13,7 @@
 // ============================================================
 
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
+import { buildBlogRouter } from '@ottabase/ottablog/router';
 import { Router, withHeaders, type Ctx } from '@ottabase/ottarouter';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -76,6 +77,8 @@ import {
     handleBlogCategoryBySlug,
     handleBlogKitchensink,
     handleBlogPostBySlug,
+    handleBlogPreviewTokenMint,
+    handleBlogStudioThemeTokens,
     handleBlogPostUnlock,
     handleBlogPostsList,
     handleBlogPublishScheduled,
@@ -417,25 +420,36 @@ apiRouter.all('/api/ottaorm/*', (c) =>
 );
 
 // -------------------------------------------------------
-// Ottablog package (request-time gate)
+// Ottablog package (request-time gate) — the route table is canonical in
+// @ottabase/ottablog/router; handlers stay imported from './blog' so that
+// module remains the seam for tests/mocks and app-specific wiring.
 // -------------------------------------------------------
-const blogRouter = new Router<CloudflareEnv>();
-blogRouter.get('/studio/state', h(handleBlogStudioState));
-blogRouter.get('/rss', h(handleBlogRssFeed));
-blogRouter.get('/sitemap.xml', h(handleBlogSitemap));
-blogRouter.get('/posts', h(handleBlogPostsList));
-blogRouter.get('/posts/:postId/related', (c) => handleBlogRelatedPosts(ctxOf(c), c.params.postId));
-blogRouter.get('/posts/by-slug/:slug', (c) => handleBlogPostBySlug(ctxOf(c), c.params.slug));
-blogRouter.get('/tags/by-slug/:slug', (c) => handleBlogTagBySlug(ctxOf(c), c.params.slug));
-blogRouter.get('/categories/by-slug/:slug', (c) => handleBlogCategoryBySlug(ctxOf(c), c.params.slug));
-blogRouter.get('/series/by-slug/:slug', (c) => handleBlogSeriesBySlug(ctxOf(c), c.params.slug));
-blogRouter.post('/studio/theme/activate', h(handleBlogStudioActivateTheme));
-blogRouter.post('/studio/plugin/enable', h(handleBlogStudioPluginEnable));
-blogRouter.post('/studio/plugin/config', h(handleBlogStudioPluginConfig));
-blogRouter.post('/posts/unlock', h(handleBlogPostUnlock));
-blogRouter.post('/publish-scheduled', h(handleBlogPublishScheduled));
-blogRouter.post('/kitchensink', h(handleBlogKitchensink));
-apiRouter.mount('/api/blog', blogRouter, { when: (c) => packages(c).ottablog });
+apiRouter.mount(
+    '/api/blog',
+    buildBlogRouter<CloudflareEnv>(
+        {
+            handleBlogStudioState,
+            handleBlogStudioActivateTheme,
+            handleBlogStudioPluginEnable,
+            handleBlogStudioPluginConfig,
+            handleBlogPostsList,
+            handleBlogPostBySlug,
+            handleBlogPostUnlock,
+            handleBlogTagBySlug,
+            handleBlogCategoryBySlug,
+            handleBlogSeriesBySlug,
+            handleBlogRelatedPosts,
+            handleBlogRssFeed,
+            handleBlogSitemap,
+            handleBlogPublishScheduled,
+            handleBlogKitchensink,
+            handleBlogPreviewTokenMint,
+            handleBlogStudioThemeTokens,
+        },
+        { makeContext: ctxOf },
+    ),
+    { when: (c) => packages(c).ottablog },
+);
 
 // -------------------------------------------------------
 // Shortlinks package (request-time gate) — mounted at '/'

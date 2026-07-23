@@ -7,7 +7,7 @@ import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
-import { Toaster } from '@ottabase/ui-shadcn';
+import { BrandScope, Toaster } from '@ottabase/ui-shadcn';
 import {
     createBrowserHistory,
     lazyRouteComponent,
@@ -48,6 +48,15 @@ function AdminPrivilegeFallback() {
     return (
         <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
             Missing privilege: admin
+        </div>
+    );
+}
+
+/** Distinct from AdminPrivilegeFallback: /studio is gated by a CONTENT permission, never admin. */
+function StudioPrivilegeFallback() {
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+            Missing privilege: content editing
         </div>
     );
 }
@@ -139,6 +148,51 @@ function makeAdminRoute(
     });
 }
 
+/**
+ * Studio route: the writing-first editorial surface at /studio. Gated by CONTENT
+ * permissions (posts:update — held by author/editor roles, org admins via *:update,
+ * and the platform owner via *:*), never by org:admin or platform admin (unless a
+ * sub-route opts into `extraPermissions`, e.g. theme/plugin management, whose
+ * mutations require studio admin server-side — see requireStudioAdminForScope).
+ * Reuses the blog admin pages inside the StudioShell chrome; the pages resolve
+ * their internal links against the active surface (see blogAdminPaths.ts).
+ */
+function makeStudioRoute(
+    path: string,
+    loader: () => Promise<Record<string, ComponentType>>,
+    exportName: string,
+    options: Partial<{
+        validateSearch: (s: Record<string, unknown>) => unknown;
+        /** ANDed with posts:update for sub-routes whose server-side actions require more (org:admin). */
+        extraPermissions: string[];
+    }> = {},
+) {
+    const requiredPermissions = ['posts:update', ...(options.extraPermissions ?? [])];
+    return new Route({
+        getParentRoute: () => rootRoute,
+        path,
+        component: lazyRouteComponent(() =>
+            Promise.all([loader(), import('@/pages/studio/StudioShell')]).then(([m, shell]) => {
+                const Comp = m[exportName]!;
+                const { StudioShell } = shell;
+                return {
+                    default: () => (
+                        <ProtectedRoute
+                            requiredPermissions={requiredPermissions}
+                            fallback={<StudioPrivilegeFallback />}
+                        >
+                            <StudioShell>
+                                <Comp />
+                            </StudioShell>
+                        </ProtectedRoute>
+                    ),
+                };
+            }),
+        ),
+        ...(options.validateSearch ? { validateSearch: options.validateSearch } : {}),
+    });
+}
+
 // ─── Marketing / app surface ─────────────────────────────────────────────────
 
 const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
@@ -195,19 +249,40 @@ const referralsRoute = publicRoute('/referrals', () =>
 
 // ─── Public content (blog, changelog) ────────────────────────────────────────
 
-const blogListRoute = publicRoute('/blog', () =>
+/**
+ * Public blog page inside the blog token "room": wraps the component in
+ * `<BrandScope name="blog">` so the active blog theme's CSS-variable overrides
+ * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
+ * semantic brand vars for blog subtrees only — never the app shell.
+ */
+function blogPublicRoute(path: string, loader: () => Promise<{ default: ComponentType }>) {
+    return publicRoute(path, () =>
+        loader().then((m) => {
+            const Comp = m.default;
+            return {
+                default: () => (
+                    <BrandScope name="blog">
+                        <Comp />
+                    </BrandScope>
+                ),
+            };
+        }),
+    );
+}
+
+const blogListRoute = blogPublicRoute('/blog', () =>
     import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
 );
-const blogDetailRoute = publicRoute('/blog/$slug', () =>
+const blogDetailRoute = blogPublicRoute('/blog/$slug', () =>
     import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
 );
-const blogTagArchiveRoute = publicRoute('/blog/tag/$slug', () =>
+const blogTagArchiveRoute = blogPublicRoute('/blog/tag/$slug', () =>
     import('@/pages/blog/BlogTagArchivePage').then((m) => ({ default: m.BlogTagArchivePage })),
 );
-const blogCategoryArchiveRoute = publicRoute('/blog/category/$slug', () =>
+const blogCategoryArchiveRoute = blogPublicRoute('/blog/category/$slug', () =>
     import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
 );
-const blogSeriesArchiveRoute = publicRoute('/blog/series/$slug', () =>
+const blogSeriesArchiveRoute = blogPublicRoute('/blog/series/$slug', () =>
     import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
 );
 const changelogListRoute = publicRoute('/changelog', () =>
@@ -310,6 +385,53 @@ const adminBlogSeriesRoute = makeAdminRoute(
     'AdminBlogSeriesPage',
     { scope: 'org' },
 );
+// ─── /studio — writing-first editorial surface (content-permission gated) ────
+
+const studioRoute = makeStudioRoute(
+    '/studio',
+    () => import('@/pages/admin/content/blog/AdminBlogListPage'),
+    'AdminBlogListPage',
+);
+const studioNewRoute = makeStudioRoute(
+    '/studio/new',
+    () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
+    'AdminBlogEditorPage',
+    {
+        validateSearch: (search: Record<string, unknown>) => ({
+            contentType: typeof search.contentType === 'string' ? search.contentType : undefined,
+        }),
+    },
+);
+const studioEditRoute = makeStudioRoute(
+    '/studio/$postId/edit',
+    () => import('@/pages/admin/content/blog/AdminBlogEditorPage'),
+    'AdminBlogEditorPage',
+);
+const studioTagsRoute = makeStudioRoute(
+    '/studio/tags',
+    () => import('@/pages/admin/content/blog/AdminBlogTagsPage'),
+    'AdminBlogTagsPage',
+);
+const studioCategoriesRoute = makeStudioRoute(
+    '/studio/categories',
+    () => import('@/pages/admin/content/blog/AdminBlogCategoriesPage'),
+    'AdminBlogCategoriesPage',
+);
+const studioSeriesRoute = makeStudioRoute(
+    '/studio/series',
+    () => import('@/pages/admin/content/blog/AdminBlogSeriesPage'),
+    'AdminBlogSeriesPage',
+);
+const studioThemesRoute = makeStudioRoute(
+    '/studio/themes',
+    () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
+    'AdminBlogStudioPage',
+    // Theme/plugin management is studio-ADMIN only server-side (requireStudioAdminForScope:
+    // platform admin, or org:admin of the target org) — a plain author/editor otherwise gets a
+    // page that silently degrades to a read-only skeleton and 403s on every action.
+    { extraPermissions: ['org:admin'] },
+);
+
 const adminChangelogRoute = makeAdminRoute(
     '/admin/content/changelog',
     () => import('@/pages/admin/content/changelog/AdminChangelogListPage'),
@@ -628,6 +750,13 @@ const packageRoutes = [
     { route: adminBlogTagsRoute, pkg: 'ottablog' as const },
     { route: adminBlogCategoriesRoute, pkg: 'ottablog' as const },
     { route: adminBlogSeriesRoute, pkg: 'ottablog' as const },
+    { route: studioRoute, pkg: 'ottablog' as const },
+    { route: studioNewRoute, pkg: 'ottablog' as const },
+    { route: studioEditRoute, pkg: 'ottablog' as const },
+    { route: studioTagsRoute, pkg: 'ottablog' as const },
+    { route: studioCategoriesRoute, pkg: 'ottablog' as const },
+    { route: studioSeriesRoute, pkg: 'ottablog' as const },
+    { route: studioThemesRoute, pkg: 'ottablog' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
 ];
 
