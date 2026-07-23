@@ -1,4 +1,5 @@
 import { ORG_ADMIN_PERMISSION, PLATFORM_ADMIN_PERMISSION } from '@ottabase/ottaorm/models';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { SYSTEM_ORGANIZATION_ID, type RequestContext } from './request-context';
 
 export type AdminScope = 'system' | 'organization' | 'either';
@@ -16,23 +17,9 @@ function jsonResponse(message: string, status: number, code: string) {
     });
 }
 
-/** Wildcard-aware permission match against an explicit permission list (2-segment resource:action). */
-function matchesPermission(perms: readonly string[], permission: string): boolean {
-    if (perms.includes(permission)) return true;
-    const [reqResource, reqAction] = permission.split(':');
-    for (const perm of perms) {
-        const [permResource, permAction] = perm.split(':');
-        if (permResource === '*' && permAction === '*') return true;
-        const resourceMatches = permResource === '*' || permResource === reqResource;
-        const actionMatches = permAction === '*' || permAction === reqAction;
-        if (resourceMatches && actionMatches) return true;
-    }
-    return false;
-}
-
 /** Check single permission against the caller's MERGED permissions (system ∪ org). */
 export function hasPermission(context: RequestContext, permission: string): boolean {
-    return matchesPermission(context.permissions || [], permission);
+    return hasGrantedPermission(context.permissions, permission);
 }
 
 /**
@@ -41,7 +28,7 @@ export function hasPermission(context: RequestContext, permission: string): bool
  * authority, so an org owner (incl. every fresh signup) can never reach the control plane.
  */
 export function isPlatformAdmin(context: RequestContext): boolean {
-    return matchesPermission(context.systemPermissions || [], PLATFORM_ADMIN_PERMISSION);
+    return hasGrantedPermission(context.systemPermissions, PLATFORM_ADMIN_PERMISSION);
 }
 
 /**
@@ -49,7 +36,7 @@ export function isPlatformAdmin(context: RequestContext): boolean {
  * owner ('*:*') also passes, and any org owner/admin ('org:admin') passes for their own org.
  */
 export function isOrgAdmin(context: RequestContext): boolean {
-    return matchesPermission(context.permissions || [], ORG_ADMIN_PERMISSION);
+    return hasGrantedPermission(context.permissions, ORG_ADMIN_PERMISSION);
 }
 
 function hasRequiredPermissions(context: RequestContext, required?: string[]): boolean {
@@ -116,7 +103,7 @@ export function assertBrandEditAccess(
     // SYSTEM-scoped grant; an org owner holding the same permission org-scoped must NOT reach
     // app-wide branding. (If per-org branding ships later, add an org branch keyed on rows that
     // actually carry organizationId.)
-    if (matchesPermission(context.systemPermissions || [], options.permission)) {
+    if (hasGrantedPermission(context.systemPermissions, options.permission)) {
         return { user: context.user, organizationId: options.organizationId ?? null };
     }
     return jsonResponse('Forbidden', 403, 'FORBIDDEN');

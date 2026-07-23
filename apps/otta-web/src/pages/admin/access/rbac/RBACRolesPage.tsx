@@ -1,4 +1,5 @@
 import { api, isApiError } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 import type { RoleRecord } from '@/types/rbac';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -38,6 +39,7 @@ interface RoleFormData {
 
 export function RBACRolesPage() {
     const toast = useRBACToast();
+    const { refreshSession } = useSession();
     const [roles, setRoles] = useState<RoleRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
@@ -103,6 +105,7 @@ export function RBACRolesPage() {
 
         try {
             await api(`/api/admin/roles/${deleteDialog}`, { method: 'DELETE' });
+            await refreshSession();
             toast.rbac.roleDeleted();
             await fetchRoles();
             setDeleteDialog(null);
@@ -129,13 +132,14 @@ export function RBACRolesPage() {
             if (editingRole) {
                 await api(`/api/admin/roles/${editingRole.id}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
+                await refreshSession();
                 toast.rbac.roleUpdated();
             } else {
                 await api('/api/admin/roles', {
                     method: 'POST',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
                 toast.rbac.roleCreated();
             }

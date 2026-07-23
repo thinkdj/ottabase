@@ -4,6 +4,7 @@
 
 import logger from '@ottabase/logger';
 import type { User } from '@ottabase/ottaorm/models';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { RBACCache } from './cache';
 
 /**
@@ -269,22 +270,7 @@ export function hasPermission(context: AppContext, permission: string): boolean 
     if (!context.isAuthenticated) {
         return false;
     }
-
-    // Exact match
-    if (context.permissions.includes(permission)) {
-        return true;
-    }
-
-    // Wildcard matching
-    const [resource, action] = permission.split(':');
-
-    for (const perm of context.permissions) {
-        if (perm === '*:*') return true; // Super admin
-        if (perm === `${resource}:*`) return true; // All actions on resource
-        if (perm === `*:${action}`) return true; // Action on all resources
-    }
-
-    return false;
+    return hasGrantedPermission(context.permissions, permission);
 }
 
 /**

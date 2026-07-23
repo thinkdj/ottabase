@@ -71,6 +71,7 @@
     "dependencies": {
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/auth": "workspace:*",
+        "@ottabase/utils": "workspace:*",
         "@ottabase/logger": "workspace:*",
         "@ottabase/cf": "workspace:*"
     },

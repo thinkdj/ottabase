@@ -219,8 +219,10 @@ await cache.clear();
 '*:*'; // Full access (superadmin)
 ```
 
-**Note:** [@ottabase/ottaorm](../ottaorm/README.md) RLS `requiredPermissions` uses the same wildcard semantics (`*:*`,
-`brand:*`, `*:edit`), so admins with `*:*` pass RLS checks for models like menus that require `brand:edit`.
+Wildcard matching is centralized in `@ottabase/utils/permissions` and shared by RBAC, auth session derivation, OttaORM
+models/RLS, and the app's route guards. Only exact `resource:action` pairs receive wildcard expansion; malformed or
+multi-segment values can match only the same exact string. `*:*`, `brand:*`, and `*:edit` therefore behave identically
+at every enforcement layer.
 
 ## User Model Extensions
 

@@ -3,6 +3,7 @@
 // ============================================================
 
 import { User } from '@ottabase/ottaorm/models';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 
 /**
@@ -96,7 +97,7 @@ export function hasPermission(
     const missingPermissions: string[] = [];
 
     for (const perm of permissions) {
-        const hasIt = checkPermissionMatch(context.permissions, perm);
+        const hasIt = hasGrantedPermission(context.permissions, perm);
 
         if (options.requireAll && !hasIt) {
             missingPermissions.push(perm);
@@ -164,42 +165,6 @@ export function hasRole(
 }
 
 /**
- * Check permission with wildcard support
- * Supports patterns like:
- * - users:read (exact match)
- * - users:* (all actions on users)
- * - *:read (read on all resources)
- * - *:* (all permissions)
- */
-function checkPermissionMatch(userPermissions: string[], requiredPermission: string): boolean {
-    // Check exact match first
-    if (userPermissions.includes(requiredPermission)) {
-        return true;
-    }
-
-    const [reqResource, reqAction] = requiredPermission.split(':');
-
-    for (const perm of userPermissions) {
-        const [permResource, permAction] = perm.split(':');
-
-        // *:* grants everything
-        if (permResource === '*' && permAction === '*') {
-            return true;
-        }
-
-        // Check with wildcards
-        const resourceMatches = permResource === '*' || permResource === reqResource;
-        const actionMatches = permAction === '*' || permAction === reqAction;
-
-        if (resourceMatches && actionMatches) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
  * Check if the context holds any admin capability — PERMISSION-based, never role-NAME-based.
  * True when the caller has `platform:admin` or `org:admin` (or the '*:*' superadmin wildcard).
  * A role merely named 'owner'/'admin' with no such permission is NOT an admin.
@@ -209,8 +174,8 @@ function checkPermissionMatch(userPermissions: string[], requiredPermission: str
  */
 export function isAdmin(context: RBACContext): boolean {
     return (
-        checkPermissionMatch(context.permissions, 'platform:admin') ||
-        checkPermissionMatch(context.permissions, 'org:admin')
+        hasGrantedPermission(context.permissions, 'platform:admin') ||
+        hasGrantedPermission(context.permissions, 'org:admin')
     );
 }
 
