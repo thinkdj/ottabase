@@ -4,6 +4,7 @@
  * Pre-configured RLS policies for all models in the system
  */
 
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { globalRLS } from './engine';
 import type { ModelRLSConfig } from './types';
 import { RLSPolicies } from './types';
@@ -190,10 +191,43 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // CUSTOM POLICIES (Examples)
     // ========================================
 
-    // Example: Posts that belong to org AND created by user
+    // Posts: tenant + app scoped for everyone; the USER dimension is editorial.
+    // Authors (no manage grant) are confined to their own posts; a caller whose merged
+    // permissions carry posts:manage / posts:* / org:admin / *:* — or a platform admin —
+    // operates on every post in the org. Permission + scope, never role names.
     {
         model: 'posts',
-        policy: RLSPolicies.Hierarchical(false), // Tenant + User scoped
+        policy: {
+            level: 'custom',
+            allowNullTenant: false,
+            filter: (context) => {
+                if (!context.userId) return null; // fail closed without a user
+                if (context.organizationId === undefined || context.organizationId === null) {
+                    // THE PLATFORM'S OWN BLOG: rows with organizationId NULL are
+                    // platform-owned (org mode serves them at the apex; each tenant's
+                    // blog is org-scoped). A PLATFORM ADMIN acting without an active
+                    // org manages exactly that scope — create-injection via
+                    // contextFields stamps the null org, so their posts stay
+                    // platform-owned. Everyone else still fails closed.
+                    if (context.platformAdmin === true) {
+                        const filter: Record<string, any> = { organizationId: null };
+                        if (context.appId) filter.appId = context.appId;
+                        return filter;
+                    }
+                    return null; // tenant required (single-founder mode uses allowNullTenant paths)
+                }
+                const filter: Record<string, any> = { organizationId: context.organizationId };
+                if (context.appId) filter.appId = context.appId;
+
+                const permissions = context.permissions ?? [];
+                const canManageAll =
+                    context.platformAdmin === true ||
+                    hasGrantedPermission(permissions, 'posts:manage') ||
+                    hasGrantedPermission(permissions, 'org:admin');
+                if (!canManageAll) filter.userId = context.userId;
+                return filter;
+            },
+        },
         contextFields: ['organizationId', 'appId', 'userId'],
         auditEnabled: true,
     },

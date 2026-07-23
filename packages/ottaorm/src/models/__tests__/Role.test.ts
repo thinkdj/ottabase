@@ -54,6 +54,18 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+describe('Role.hasPermission', () => {
+    it('uses shared wildcard semantics and rejects malformed wildcard grants', () => {
+        const role = new Role({
+            entity: 'roles',
+            data: { permissions: ['posts:*', 'users:*:admin'] },
+        });
+
+        expect(role.hasPermission('posts:delete')).toBe(true);
+        expect(role.hasPermission('users:read')).toBe(false);
+    });
+});
+
 describe('Role.ensureDefaultRoles — heal mode', () => {
     it('heals a stale isSystem `owner = [*:*]` row to the org bundle (org:admin, no *:*) when heal:true', async () => {
         // All roles already match canonical EXCEPT `owner`, which carries the legacy wildcard.

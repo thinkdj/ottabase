@@ -3,6 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { permissionMatches } from '@ottabase/utils/permissions';
 import { permissionsTable } from './Permission.schema';
 
 export { permissionsTable, type NewPermissionType, type PermissionType } from './Permission.schema';
@@ -181,14 +182,7 @@ export class Permission extends BaseModel {
      *   *:* matches everything
      */
     matches(pattern: string): boolean {
-        const name = this.get('name');
-        const [patternResource, patternAction] = pattern.split(':');
-        const [resource, action] = name.split(':');
-
-        const resourceMatches = patternResource === '*' || patternResource === resource;
-        const actionMatches = patternAction === '*' || patternAction === action;
-
-        return resourceMatches && actionMatches;
+        return permissionMatches(pattern, this.get('name'));
     }
 
     /**
