@@ -22,7 +22,10 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
-    const { user } = useSession();
+    // ProtectedRoute owns the one authoritative session refresh for this route. This layout
+    // is recreated whenever the router swaps an admin page, so syncing here would toggle the
+    // shared auth-loading atom and remount the guard in a fetch loop.
+    const { user } = useSession({ skipAutoSync: true });
     // Show only the sections the caller can actually use: platform admins see everything, org
     // admins see just their own-tenant sections (rather than a wall of control-plane pages).
     const groups = useMemo(

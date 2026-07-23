@@ -81,6 +81,9 @@ This template ships with a custom, dependency-free auth implementation + D1 inte
 - **Credentials storage**: PBKDF2 hashes in `users.password_hash`, email verification/roles stored alongside.
 - **Session sync tip**: If you mutate `/api/users/me`, call `refreshSession()` (or `updateUser()`) so the cached local
   session picks up the KV-triggered profile version bump immediately.
+- **Route guards own refreshes**: Components rendered inside a `ProtectedRoute` should use
+  `useSession({ skipAutoSync: true })`; the guard performs the route-level freshness check, avoiding remount-driven
+  `/api/auth/session` loops and loading-state flicker.
 - **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
   session into all API calls; these values are also mirrored in global state atoms for UI needs.
 

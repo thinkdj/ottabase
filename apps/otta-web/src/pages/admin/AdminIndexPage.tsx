@@ -13,7 +13,9 @@ import { useMemo } from 'react';
  * picks it up automatically too).
  */
 export function AdminIndexPage() {
-    const { user } = useSession();
+    // The route guard refreshes authorization before it renders this page. Opting out here
+    // prevents the overview from starting another shared session sync when it remounts.
+    const { user } = useSession({ skipAutoSync: true });
     const groups = useMemo(
         () => getEnabledAdminNav({ isPlatformAdmin: isPlatformAdmin(user), isOrgAdmin: isOrgAdmin(user) }),
         [user],
