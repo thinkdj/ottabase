@@ -291,7 +291,6 @@ import {
     registerWithCredentials,
     getSession,
     signOut,
-    isAuthenticated,
     getCsrfToken,
     requestEmailVerification,
     verifyEmail,
@@ -307,9 +306,14 @@ await sendMagicLink(email, { redirectTo: '/dashboard' });
 // Requires the host app's /api/auth/register endpoint
 await registerWithCredentials({ name, email, password, referralCode });
 
-const session = await getSession(); // AuthSession | null, retries transient 502/503/504 responses
+const result = await getSession(); // SessionFetchResult; retries transient 502/503/504 responses
+if (result.state === 'authenticated') {
+    console.log(result.session.user);
+} else if (result.state === 'unavailable') {
+    // Do not treat network/5xx/invalid JSON as logout.
+    console.error(result.message);
+}
 await signOut({ redirectTo: '/login' });
-const signedIn = await isAuthenticated();
 
 // Requires the host app's own routes (see route table above)
 await requestEmailVerification(email);
@@ -319,16 +323,35 @@ await resetPassword({ email, token, password });
 await changePassword({ currentPassword, newPassword });
 ```
 
-## React Hook
+## React Hooks
 
-`useSession()` (from `@ottabase/auth/react`) is a Jotai-backed hook that syncs with `GET /api/auth/session` on mount and
-persists the session to `localStorage`:
+`useSession()` (from `@ottabase/auth/react`) is a side-effect-free, Jotai-backed reader for the shared session state.
+Mount `useSessionBootstrap()` exactly once near the application root to initialize that state from
+`GET /api/auth/session`; components and route guards then consume the cached result without triggering a request on
+every mount:
 
 ```typescript
-import { useSession } from '@ottabase/auth/react';
+import { useSession, useSessionBootstrap } from '@ottabase/auth/react';
+
+function SessionBootstrap() {
+    useSessionBootstrap();
+    return null;
+}
+
+function App() {
+    return (
+        <>
+            <SessionBootstrap />
+            <Routes />
+        </>
+    );
+}
 
 function MyComponent() {
-    const { session, user, isAuthenticated, isLoading, login, logout, updateUser, refreshSession } = useSession();
+    const { user, isAuthenticated, isInitialized, sessionError, logout, refreshSession } = useSession();
+
+    if (!isInitialized) return <Loading />;
+    if (sessionError) return <Retry onClick={refreshSession} />;
 
     if (!isAuthenticated) return <LoginPrompt />;
     return (
@@ -339,6 +362,13 @@ function MyComponent() {
     );
 }
 ```
+
+Call `refreshSession()` explicitly after a successful mutation that can change the current user's identity, active
+organization, roles, or permissions. Explicit refreshes always start a causally newer request, so a response that began
+before the mutation cannot overwrite the new snapshot. A real anonymous response clears the session; network, upstream,
+and malformed-response failures set `sessionError` while retaining the last confirmed snapshot. Logout and API-level 401
+handlers should call `invalidateAuthSession()`, which clears persisted auth state and notifies the root so app and
+tenant query caches can be cleared together.
 
 ## UI Components
 
@@ -416,7 +446,7 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   ├── email.ts           Magic-link senders (dev trap / Nodemailer / Resend)
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
-├── react-hooks.ts         useSession (Jotai-backed)
+├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
 └── components/            Framework-agnostic login/register UI (shadcn/ui)
 ```
 

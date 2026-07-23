@@ -6,6 +6,8 @@
  */
 
 import { useOrganizations } from '@/hooks/useRBAC';
+import { isPlatformAdmin, useSession } from '@/lib/auth';
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import {
     Button,
     DropdownMenu,
@@ -16,7 +18,7 @@ import {
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
 import { useNavigate } from '@tanstack/react-router';
-import { Building2, Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
+import { Building2, Check, ChevronsUpDown, Globe, Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
 
 interface OrganizationSwitcherProps {
@@ -27,9 +29,16 @@ interface OrganizationSwitcherProps {
 export function OrganizationSwitcher({ currentOrgId, onOrgChange }: OrganizationSwitcherProps) {
     const navigate = useNavigate();
     const { data: orgs = [], isLoading } = useOrganizations();
+    const { user } = useSession();
     const [isOpen, setIsOpen] = useState(false);
 
+    // Platform admins can act in PLATFORM scope (organizationId NULL server-side):
+    // author/manage the platform's own blog and other platform-owned rows.
+    const showPlatformScope = isPlatformAdmin(user);
+    const inPlatformScope = currentOrgId === PLATFORM_ORG_SENTINEL;
+
     const currentOrg = orgs.find((org) => org.id === currentOrgId);
+    const triggerLabel = inPlatformScope ? 'Platform' : currentOrg?.name || 'Select org...';
 
     const handleSelect = (orgId: string) => {
         if (onOrgChange) {
@@ -76,13 +85,31 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" role="combobox" aria-expanded={isOpen} className="w-[200px] justify-between">
                     <div className="flex items-center gap-2 overflow-hidden">
-                        <Building2 className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm truncate">{currentOrg?.name || 'Select org...'}</span>
+                        {inPlatformScope ? (
+                            <Globe className="h-4 w-4 flex-shrink-0" />
+                        ) : (
+                            <Building2 className="h-4 w-4 flex-shrink-0" />
+                        )}
+                        <span className="text-sm truncate">{triggerLabel}</span>
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-[240px]">
+                {showPlatformScope && (
+                    <>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">Platform</DropdownMenuLabel>
+                        <DropdownMenuItem
+                            onClick={() => handleSelect(PLATFORM_ORG_SENTINEL)}
+                            className="flex items-center gap-2 cursor-pointer"
+                        >
+                            <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            <span className="truncate flex-1">Platform</span>
+                            {inPlatformScope && <Check className="h-4 w-4 flex-shrink-0" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                    </>
+                )}
                 <DropdownMenuLabel className="text-xs text-muted-foreground">Your Organizations</DropdownMenuLabel>
                 {orgs.map((org) => (
                     <DropdownMenuItem

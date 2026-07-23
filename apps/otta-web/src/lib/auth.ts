@@ -8,10 +8,20 @@
 // ============================================================
 
 import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
-import { useSession as useAuthSession, type UseSessionOptions } from '@ottabase/auth/react';
+import {
+    AUTH_SESSION_INVALIDATED_EVENT,
+    AUTH_STORAGE_KEY,
+    useSession as useAuthSession,
+    useSessionBootstrap as useAuthSessionBootstrap,
+    type SessionClientOptions,
+    type SessionState,
+} from '@ottabase/auth/react';
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { APP_ID } from '@/ottabase/config';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
@@ -24,23 +34,9 @@ function getStoredOrganizationId(): string | null {
 }
 
 // Re-export types
-export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
+export { type Session, type SessionClientOptions, type SessionState, type User } from '@ottabase/auth/react';
 
 type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null | undefined;
-
-/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
-function hasPermission(permissions: string[] | undefined, required: string): boolean {
-    const list = permissions ?? [];
-    if (list.includes(required)) return true;
-    const [reqResource, reqAction] = required.split(':');
-    return list.some((perm) => {
-        const [permResource, permAction] = perm.split(':');
-        if (permResource === '*' && permAction === '*') return true;
-        return (
-            (permResource === '*' || permResource === reqResource) && (permAction === '*' || permAction === reqAction)
-        );
-    });
-}
 
 /**
  * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
@@ -61,7 +57,7 @@ export function isPlatformAdmin(user: AdminUserLike): boolean {
  */
 export function isOrgAdmin(user: AdminUserLike): boolean {
     if (!user) return false;
-    return isPlatformAdmin(user) || hasPermission(user.permissions, 'org:admin');
+    return isPlatformAdmin(user) || hasGrantedPermission(user.permissions, 'org:admin');
 }
 
 /**
@@ -73,10 +69,41 @@ export function isAdminUser(user: AdminUserLike): boolean {
 }
 
 /**
- * Custom useSession hook that syncs with global app state
+ * Resolve which organization id should drive the app's active-org state (and the
+ * X-Org-Id header) for a given session snapshot + the locally-remembered value.
+ *
+ * The platform-scope sentinel (organizationId NULL) has no way to persist server-side
+ * as distinct from "no preference set" — PATCH activeOrganizationId=null clears the
+ * column, and the session then falls back to the user's earliest membership, same as
+ * an unset preference. Without special-casing it, that fallback org would silently
+ * overwrite the sentinel the instant a platform admin selects Platform (refreshSession()
+ * re-runs the sync effect that calls this). So the sentinel is kept sticky client-side
+ * instead: once stored, it survives session refreshes/reloads until the admin explicitly
+ * switches to a real org (or loses the platformAdmin grant, which drops out of this
+ * branch on the next session read).
  */
-export function useSession(options?: UseSessionOptions) {
-    const sessionData = useAuthSession(options);
+export function resolveEffectiveOrgId(
+    user:
+        | {
+              permissions?: string[];
+              platformAdmin?: boolean;
+              activeOrganizationId?: string | null;
+              organizationId?: string | null;
+          }
+        | null
+        | undefined,
+    isAuthenticated: boolean,
+    storedOrgId: string | null,
+): string | null {
+    const sessionOrgId = user?.activeOrganizationId ?? user?.organizationId ?? null;
+    const keepPlatformScope = isPlatformAdmin(user) && storedOrgId === PLATFORM_ORG_SENTINEL;
+    if (keepPlatformScope) return PLATFORM_ORG_SENTINEL;
+    return sessionOrgId ?? (isAuthenticated ? storedOrgId : null);
+}
+
+/** Mirrors the shared auth session into the app's organization-aware state atoms. */
+function useAppSessionState(sessionData: SessionState): SessionState {
+    const queryClient = useQueryClient();
     const setGlobalUser = useSetAtom(userAtom);
     const setGlobalIsAuthenticated = useSetAtom(isAuthenticatedAtom);
     const setAppId = useSetAtom(appIdAtom);
@@ -88,12 +115,11 @@ export function useSession(options?: UseSessionOptions) {
         setGlobalIsAuthenticated(sessionData.isAuthenticated);
         setAppId(APP_ID);
 
-        // Prefer the server-persisted active org (survives across devices), then the session's
-        // organizationId, then the locally-remembered value.
-        const sessionOrgId =
-            (sessionData.user as any)?.activeOrganizationId ?? (sessionData.user as any)?.organizationId ?? null;
+        // Prefer the server-persisted active org (survives across devices) unless the
+        // platform-scope sentinel is stuck client-side (see resolveEffectiveOrgId), then
+        // the session's organizationId, then the locally-remembered value.
         const storedOrgId = getStoredOrganizationId();
-        const effectiveOrgId = sessionOrgId ?? (sessionData.isAuthenticated ? storedOrgId : null);
+        const effectiveOrgId = resolveEffectiveOrgId(sessionData.user as any, sessionData.isAuthenticated, storedOrgId);
 
         setOrganizationId(effectiveOrgId);
 
@@ -115,5 +141,39 @@ export function useSession(options?: UseSessionOptions) {
         setOrganizationId,
     ]);
 
+    useEffect(() => {
+        const clearClientAuthState = () => {
+            queryClient.clear();
+            setGlobalUser(null);
+            setGlobalIsAuthenticated(false);
+            setOrganizationId(null);
+            try {
+                localStorage.removeItem(CURRENT_ORG_KEY);
+            } catch {
+                // ignore storage failures
+            }
+        };
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === AUTH_STORAGE_KEY && event.newValue === null) clearClientAuthState();
+        };
+
+        window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, clearClientAuthState);
+        window.addEventListener('storage', handleStorage);
+        return () => {
+            window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, clearClientAuthState);
+            window.removeEventListener('storage', handleStorage);
+        };
+    }, [queryClient, setGlobalIsAuthenticated, setGlobalUser, setOrganizationId]);
+
     return sessionData;
+}
+
+/** Read session state without causing network activity. */
+export function useSession(options?: SessionClientOptions): SessionState {
+    return useAuthSession(options);
+}
+
+/** Initialize the session once for the app root, then expose the shared session state. */
+export function useSessionBootstrap(options?: SessionClientOptions): SessionState {
+    return useAppSessionState(useAuthSessionBootstrap(options));
 }

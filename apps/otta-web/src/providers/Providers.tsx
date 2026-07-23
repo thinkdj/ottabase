@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { AuthSessionBootstrap } from '@/components/AuthSessionBootstrap';
 import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
 import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig, PACKAGES_ENABLED } from '@/ottabase/config';
@@ -184,6 +185,7 @@ function ProvidersCore({
                                     enabled={appConfig.features.spotlight.enabled}
                                     shortcuts={appConfig.features.spotlight.shortcuts}
                                 >
+                                    <AuthSessionBootstrap />
                                     {children}
                                     {MEDIA_LIBRARY_ENABLED && <MediaLibraryPickerBridge />}
                                     {/* Provides shadcn AlertDialog confirmation for MediaGalleryTool delete/clear actions */}

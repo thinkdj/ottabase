@@ -1,6 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { getCsrfToken } from '@/lib/auth-api';
-import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
+import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconKey, IconLogin, IconRefresh, IconShieldLock, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -10,15 +10,15 @@ import { DemoPageHeader } from '../DemoPageHeader';
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 export function AuthDemoPage() {
-    const { session, user, isAuthenticated, isLoading, refreshSession, logout } = useSession();
+    const { session, user, isAuthenticated, isInitialized, isLoading, refreshSession, logout } = useSession();
     const [storageSnapshot, setStorageSnapshot] = useState<Record<string, string | null>>({});
     const [csrfToken, setCsrfToken] = useState<string | null>(null);
     const [csrfLoading, setCsrfLoading] = useState(false);
 
     const authState = useMemo(() => {
-        if (isLoading) return 'loading';
+        if (!isInitialized || isLoading) return 'loading';
         return isAuthenticated ? 'authenticated' : 'anonymous';
-    }, [isAuthenticated, isLoading]);
+    }, [isAuthenticated, isInitialized, isLoading]);
 
     const roles = (user?.roles as string[] | undefined) ?? [];
     const permissions = (user?.permissions as string[] | undefined) ?? [];
@@ -37,7 +37,7 @@ export function AuthDemoPage() {
 
     const clearStorageKeys = () => {
         try {
-            clearAuthSessionStorage();
+            invalidateAuthSession();
             localStorage.removeItem(CURRENT_ORG_KEY);
         } catch {
             // Ignore storage failures in demo mode

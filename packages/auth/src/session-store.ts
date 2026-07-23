@@ -32,6 +32,7 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { userKey } from '@ottabase/cf/cache-keys';
 import { registerConnection } from '@ottabase/ottaorm';
 import { OrganizationMember, PLATFORM_ADMIN_PERMISSION, User } from '@ottabase/ottaorm/models';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { SYSTEM_ORGANIZATION_ID, parseBooleanFlag } from './bootstrap';
 import { clearCookie, isHttpsRequest, parseCookies, serializeCookie } from './cookies';
 import { signJwt, verifyJwt } from './jwt';
@@ -143,22 +144,6 @@ function revokedSinceKey(userId: string): string {
 
 function profileVersionKey(userId: string): string {
     return userKey('auth', userId, 'profile', 'version');
-}
-
-/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
-function permissionSatisfies(perms: Iterable<string>, required: string): boolean {
-    const [reqResource, reqAction] = required.split(':');
-    for (const perm of perms) {
-        const [permResource, permAction] = perm.split(':');
-        if (permResource === '*' && permAction === '*') return true;
-        if (
-            (permResource === '*' || permResource === reqResource) &&
-            (permAction === '*' || permAction === reqAction)
-        ) {
-            return true;
-        }
-    }
-    return false;
 }
 
 interface UserContext {
@@ -295,7 +280,7 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
 
             roles = [...roleNameSet];
             permissions = [...permissionSet];
-            platformAdmin = permissionSatisfies(systemPermissionSet, PLATFORM_ADMIN_PERMISSION);
+            platformAdmin = hasGrantedPermission(systemPermissionSet, PLATFORM_ADMIN_PERMISSION);
             const createdAtRaw = user.get('createdAt');
             if (createdAtRaw) {
                 const parsed =

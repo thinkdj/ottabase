@@ -16,7 +16,7 @@ import { useEffect } from 'react';
 
 export function DashboardPage() {
     const navigate = useNavigate();
-    const { user, logout, session } = useSession({ skipAutoSync: true });
+    const { user, logout, session } = useSession();
 
     const handleLogout = () => {
         logout();

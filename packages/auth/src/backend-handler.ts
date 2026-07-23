@@ -627,11 +627,7 @@ async function handleSignOut(request: Request, env: AuthEnv, options: CreateAuth
  * Handle every `/api/auth/*` request not already owned by the host app.
  * Covers: csrf, session, credentials + OAuth + magic-link sign-in, sign-out.
  */
-export async function handleAuthRequest(
-    request: Request,
-    env: AuthEnv,
-    options?: CreateAuthConfigOptions,
-): Promise<Response> {
+async function routeAuthRequest(request: Request, env: AuthEnv, options?: CreateAuthConfigOptions): Promise<Response> {
     try {
         if (!env.OBCF_D1) {
             return jsonResponse({ error: 'OBCF_D1 database binding is required for authentication' }, 500);
@@ -680,4 +676,25 @@ export async function handleAuthRequest(
         console.error('Auth request error:', error);
         return jsonResponse({ error: 'Authentication error' }, 500);
     }
+}
+
+/**
+ * Route an auth request and prevent browsers, proxies, and CDNs from caching
+ * session-bearing responses or redirects.
+ */
+export async function handleAuthRequest(
+    request: Request,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<Response> {
+    const response = await routeAuthRequest(request, env, options);
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'no-store, private');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+    });
 }

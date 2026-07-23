@@ -30,7 +30,7 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import { clearAuthSessionStorage } from '@ottabase/auth/react';
+import { invalidateAuthSession } from '@ottabase/auth/react';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -45,7 +45,7 @@ interface LinkedAccountRecord {
 }
 
 export function UserProfilePage() {
-    const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
+    const { user, updateUser, refreshSession } = useSession();
     const toast = useRBACToast();
 
     const [formData, setFormData] = useState({
@@ -360,7 +360,7 @@ export function UserProfilePage() {
             toast.success('Password updated', 'Please sign in again with your new password.');
             resetPasswordDialogState();
             setIsPasswordDialogOpen(false);
-            clearAuthSessionStorage();
+            invalidateAuthSession();
             if (typeof window !== 'undefined') {
                 window.location.href = '/login?passwordChanged=1';
             }

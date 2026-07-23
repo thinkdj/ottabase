@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export function RegisterPage() {
     const navigate = useNavigate();
-    const { login } = useSession({ skipAutoSync: true });
+    const { login } = useSession();
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
