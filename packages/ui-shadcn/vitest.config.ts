@@ -34,6 +34,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
             // Self-referencing package imports used by components/ui/*.tsx
             '@ottabase/ui-shadcn/lib/utils': path.resolve(__dirname, './src/lib/utils.ts'),
+            '@ottabase/ui-shadcn/brand-components': path.resolve(__dirname, './providers/brand-components.tsx'),
             '@ottabase/ui-shadcn': path.resolve(__dirname, './src/index.ts'),
         },
     },
