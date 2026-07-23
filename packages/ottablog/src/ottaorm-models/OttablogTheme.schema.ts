@@ -2,6 +2,7 @@
  * OttablogTheme table schema - theme registry and state
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { tolerantJsonText } from './tolerant-json-column';
 
 export const ottablogThemesTable = sqliteTable(
     'ottablog_themes',
@@ -25,15 +26,15 @@ export const ottablogThemesTable = sqliteTable(
         isActive: integer('is_active', { mode: 'boolean' }).notNull().default(false),
 
         // Theme configuration (flexible JSON meta)
-        config: text('config', { mode: 'json' }).$type<Record<string, unknown>>(),
+        config: tolerantJsonText<Record<string, unknown>>('config'),
 
         // Sparse brand-token overrides for the blog "room": CSS custom properties
         // applied under [data-brand-scope="blog"], split by palette. Null renders
         // pixel-identical to the unthemed baseline (fallback-chain law).
-        tokens: text('tokens', { mode: 'json' }).$type<{
+        tokens: tolerantJsonText<{
             light?: Record<string, string>;
             dark?: Record<string, string>;
-        }>(),
+        }>('tokens'),
 
         // App identifier for multi-app database sharing
         appId: text('app_id'),

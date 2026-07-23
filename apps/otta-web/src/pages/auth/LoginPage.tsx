@@ -25,7 +25,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { login, isAuthenticated, isInitialized } = useSession();
+    const { login, isAuthenticated, isInitialized, sessionError } = useSession();
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
     const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -87,11 +87,11 @@ export function LoginPage() {
 
     // Redirect if already authenticated
     useEffect(() => {
-        if (hasNavigated.current || !isInitialized || !isAuthenticated) return;
+        if (hasNavigated.current || !isInitialized || sessionError || !isAuthenticated) return;
 
         hasNavigated.current = true;
         navigate({ to: redirectTarget.current, replace: true });
-    }, [isAuthenticated, isInitialized, navigate]);
+    }, [isAuthenticated, isInitialized, navigate, sessionError]);
 
     // Check for missing configuration and show warnings (dev only)
     useEffect(() => {

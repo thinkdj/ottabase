@@ -37,6 +37,19 @@ export interface AuthSession {
     expires: number;
 }
 
+export interface SessionUnavailable {
+    state: 'unavailable';
+    reason: 'network' | 'server' | 'invalid-response';
+    message: string;
+    httpStatus?: number;
+}
+
+/** Explicit result of checking the browser's server-backed session. */
+export type SessionFetchResult =
+    | { state: 'authenticated'; session: AuthSession }
+    | { state: 'anonymous' }
+    | SessionUnavailable;
+
 export interface AuthResponse {
     success: boolean;
     error?: string;
@@ -88,6 +101,22 @@ const SESSION_RETRY_BASE_DELAY_MS = 250;
 
 function isTransientSessionStatus(status: number): boolean {
     return status === 502 || status === 503 || status === 504;
+}
+
+function isAuthSession(value: unknown): value is AuthSession {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Partial<AuthSession>;
+    const user = candidate.user;
+    return (
+        !!user &&
+        typeof user === 'object' &&
+        typeof user.id === 'string' &&
+        user.id.length > 0 &&
+        typeof user.email === 'string' &&
+        user.email.length > 0 &&
+        typeof candidate.expires === 'number' &&
+        Number.isFinite(candidate.expires)
+    );
 }
 
 function waitForRetry(ms: number): Promise<void> {
@@ -235,8 +264,13 @@ export async function registerWithCredentials(
     }
 }
 
-/** Get the current session, retrying transient upstream failures. */
-export async function getSession(options?: AuthClientOptions): Promise<AuthSession | null> {
+/**
+ * Get the current session, retrying transient upstream failures.
+ *
+ * Anonymous is deliberately distinct from an unavailable auth service. Consumers
+ * must not log a user out merely because a network or upstream request failed.
+ */
+export async function getSession(options?: AuthClientOptions): Promise<SessionFetchResult> {
     const baseUrl = options?.baseUrl ?? defaultOptions.baseUrl;
 
     for (let attempt = 1; attempt <= SESSION_RETRY_ATTEMPTS; attempt += 1) {
@@ -253,24 +287,53 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
                     await waitForRetry(SESSION_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1));
                     continue;
                 }
-                return null;
+                if (response.status === 401) return { state: 'anonymous' };
+                return {
+                    state: 'unavailable',
+                    reason: 'server',
+                    message: `Session endpoint returned HTTP ${response.status}`,
+                    httpStatus: response.status,
+                };
             }
 
-            const session = await readJsonSafe(response);
-            if (!session || !session.user) return null;
+            let session: unknown;
+            try {
+                session = await response.json();
+            } catch {
+                return {
+                    state: 'unavailable',
+                    reason: 'invalid-response',
+                    message: 'Session endpoint returned invalid JSON',
+                };
+            }
+            if (session === null) return { state: 'anonymous' };
+            if (!isAuthSession(session)) {
+                return {
+                    state: 'unavailable',
+                    reason: 'invalid-response',
+                    message: 'Session endpoint returned an invalid session',
+                };
+            }
 
-            return session as AuthSession;
+            return { state: 'authenticated', session };
         } catch (error) {
             if (attempt < SESSION_RETRY_ATTEMPTS) {
                 await waitForRetry(SESSION_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1));
                 continue;
             }
-            console.error('Failed to get session:', error);
-            return null;
+            return {
+                state: 'unavailable',
+                reason: 'network',
+                message: error instanceof Error ? error.message : 'Session request failed',
+            };
         }
     }
 
-    return null;
+    return {
+        state: 'unavailable',
+        reason: 'network',
+        message: 'Session request failed',
+    };
 }
 
 /** Sign out the current session. */
@@ -304,12 +367,6 @@ export async function signOut(options?: {
     } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Failed to sign out' };
     }
-}
-
-/** Check if the current visitor has an authenticated session. */
-export async function isAuthenticated(options?: AuthClientOptions): Promise<boolean> {
-    const session = await getSession(options);
-    return session !== null;
 }
 
 /** Request a verification email be (re)sent. */

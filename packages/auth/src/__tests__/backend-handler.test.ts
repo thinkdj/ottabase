@@ -22,6 +22,15 @@ function request(path: string, init?: RequestInit) {
 }
 
 describe('handleAuthRequest', () => {
+    it('marks every auth response as non-cacheable', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/session'), env);
+
+        expect(response.headers.get('cache-control')).toBe('no-store, private');
+        expect(response.headers.get('pragma')).toBe('no-cache');
+        expect(response.headers.get('expires')).toBe('0');
+    });
+
     it('returns 500 when the D1 binding is missing', async () => {
         const env = createEnv({ OBCF_D1: undefined });
         const response = await handleAuthRequest(request('/api/auth/session'), env);

@@ -9,6 +9,7 @@ export * from './http-errors';
 export * from './http-response';
 export * from './json';
 export * from './pagination';
+export * from './permissions';
 export * from './string';
 export * from './timezone';
 export * from './url';

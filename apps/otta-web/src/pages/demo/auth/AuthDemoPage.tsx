@@ -1,6 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { getCsrfToken } from '@/lib/auth-api';
-import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
+import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconKey, IconLogin, IconRefresh, IconShieldLock, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -37,7 +37,7 @@ export function AuthDemoPage() {
 
     const clearStorageKeys = () => {
         try {
-            clearAuthSessionStorage();
+            invalidateAuthSession();
             localStorage.removeItem(CURRENT_ORG_KEY);
         } catch {
             // Ignore storage failures in demo mode

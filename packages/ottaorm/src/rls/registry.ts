@@ -4,6 +4,7 @@
  * Pre-configured RLS policies for all models in the system
  */
 
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { globalRLS } from './engine';
 import type { ModelRLSConfig } from './types';
 import { RLSPolicies } from './types';
@@ -221,10 +222,8 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
                 const permissions = context.permissions ?? [];
                 const canManageAll =
                     context.platformAdmin === true ||
-                    permissions.includes('posts:manage') ||
-                    permissions.includes('posts:*') ||
-                    permissions.includes('org:admin') ||
-                    permissions.includes('*:*');
+                    hasGrantedPermission(permissions, 'posts:manage') ||
+                    hasGrantedPermission(permissions, 'org:admin');
                 if (!canManageAll) filter.userId = context.userId;
                 return filter;
             },

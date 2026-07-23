@@ -4,6 +4,7 @@
  * Automatically enforces security policies at the database level
  */
 
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { ModelRLSConfig, RLSPolicy, RLSViolation, SecurityContext } from './types';
 
 /**
@@ -183,25 +184,7 @@ export class RLSEngine {
      * 3+ segment permissions (e.g. brand:edit:admin) are rejected—no wildcard matching.
      */
     private hasPermission(context: SecurityContext, required: string): boolean {
-        const perms = context.permissions ?? [];
-        if (perms.includes(required)) return true;
-
-        const reqParts = required.split(':');
-        if (reqParts.length !== 2) {
-            return false; // 3+ segments: no wildcard matching, only exact match (checked above)
-        }
-        const [reqResource, reqAction] = reqParts;
-
-        for (const perm of perms) {
-            const permParts = perm.split(':');
-            if (permParts.length !== 2) continue; // Skip malformed/multi-segment; no wildcard from these
-            const [permResource, permAction] = permParts;
-            if (permResource === '*' && permAction === '*') return true;
-            const resourceMatches = permResource === '*' || permResource === reqResource;
-            const actionMatches = permAction === '*' || permAction === reqAction;
-            if (resourceMatches && actionMatches) return true;
-        }
-        return false;
+        return hasGrantedPermission(context.permissions, required);
     }
 
     /**

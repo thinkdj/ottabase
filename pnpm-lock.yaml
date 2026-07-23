@@ -1580,6 +1580,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -1789,6 +1792,9 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

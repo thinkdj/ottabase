@@ -6,9 +6,9 @@
  * - x-app-id and x-org-id headers from global state
  */
 
-import { appIdAtom, globalStore, isAuthenticatedAtom, organizationIdAtom } from '@/ottabase/state/appState';
+import { appIdAtom, globalStore, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { createApiClient, type ApiError } from '@ottabase/api';
-import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
+import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
 import { toast } from 'sonner';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
@@ -167,10 +167,11 @@ export const api = createApiClient({
     getAuthToken,
     onError: handleApiError,
     onUnauthorized: () => {
-        clearAuthSessionStorage();
+        invalidateAuthSession();
         try {
             globalStore.set(organizationIdAtom, null);
             globalStore.set(isAuthenticatedAtom, false);
+            globalStore.set(userAtom, null);
         } catch {
             // ignore store update failures
         }

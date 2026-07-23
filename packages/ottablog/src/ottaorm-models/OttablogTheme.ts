@@ -18,7 +18,6 @@ export class OttablogTheme extends BaseModel {
 
     static casts = {
         isActive: 'boolean' as const,
-        config: 'json' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };

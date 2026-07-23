@@ -60,6 +60,9 @@ import { makeSlug, getSegment, getDomainName, joinPaths, isValidUrl } from '@ott
 // HTML sanitization utilities (browser + Node/SSR safe)
 import { sanitizeUrl, sanitizeInlineHtml, sanitizeBlockHtml, sanitizeSvgHtml } from '@ottabase/utils/sanitize';
 
+// Shared RBAC wildcard semantics (`resource:action`)
+import { hasGrantedPermission, permissionMatches } from '@ottabase/utils/permissions';
+
 // Environment utilities (server-side)
 import { isDev, isProd, isTest, isStaging, isCI, getEnvironment, isRunningOnServer } from '@ottabase/utils/env';
 

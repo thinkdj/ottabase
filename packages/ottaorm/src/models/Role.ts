@@ -3,6 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { rolesTable } from './Role.schema';
 
 export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
@@ -194,8 +195,7 @@ export class Role extends BaseModel {
      * Check if role has a specific permission
      */
     hasPermission(permission: string): boolean {
-        const permissions = this.getPermissions();
-        return permissions.includes(permission);
+        return hasGrantedPermission(this.getPermissions(), permission);
     }
 
     /**

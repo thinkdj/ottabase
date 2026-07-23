@@ -569,6 +569,8 @@ Blog themes can carry data, not just code: each `ottablog_themes` row has a spar
 state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
 no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
 (unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
+Malformed legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored
+content; unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 

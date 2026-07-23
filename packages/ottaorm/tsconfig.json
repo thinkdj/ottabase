@@ -2,7 +2,8 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "outDir": "dist",
-        "rootDir": "src",
+        // Shared workspace utilities resolve to source through the root path aliases.
+        // A package-local rootDir would reject those imports during DTS generation.
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,

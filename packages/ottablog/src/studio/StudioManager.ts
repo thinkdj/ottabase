@@ -38,22 +38,6 @@ export interface StudioState {
 }
 
 /**
- * A single malformed JSON column (tokens/config) anywhere in a result set fails Drizzle's
- * whole row-mapping pass for that query — there's no way to skip just the bad row once it's
- * in the SELECT. Degrade to `fallback` instead of taking down every blog page (initialize,
- * called on each render) or the public studio-state endpoint (getState) over one legacy/
- * manually-edited row. Mirrors the per-lookup try/catch already used for post enrichment.
- */
-async function tolerant<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
-    try {
-        return await run();
-    } catch (error) {
-        console.error(`StudioManager: ${label} failed, degrading:`, error);
-        return fallback;
-    }
-}
-
-/**
  * Studio Manager - syncs DB theme/plugin state to registries
  */
 export class StudioManager {
@@ -65,21 +49,13 @@ export class StudioManager {
      */
     static async initialize(appId: string | null = null, organizationId?: string | null): Promise<void> {
         // Apply active theme
-        const activeTheme = await tolerant(
-            'active theme lookup',
-            () => OttablogTheme.active({ appId: appId ?? undefined, organizationId }),
-            null,
-        );
+        const activeTheme = await OttablogTheme.active({ appId: appId ?? undefined, organizationId });
         if (activeTheme) {
             setActiveTheme(activeTheme.get('themeId') as string);
         }
 
         // Activate enabled plugins (by id only; config is applied on client when loading state)
-        const enabledPlugins = await tolerant(
-            'enabled plugins lookup',
-            () => OttablogPlugin.enabled({ appId: appId ?? undefined, organizationId }),
-            [],
-        );
+        const enabledPlugins = await OttablogPlugin.enabled({ appId: appId ?? undefined, organizationId });
         for (const row of enabledPlugins) {
             await activatePlugin(row.get('pluginId') as string);
         }
@@ -93,8 +69,8 @@ export class StudioManager {
         const scope: Record<string, unknown> = { ...(appId ? { appId } : {}) };
         if (organizationId !== undefined) scope.organizationId = organizationId;
         const [themesRows, pluginsRows] = await Promise.all([
-            tolerant('themes list', () => OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }), []),
-            tolerant('plugins list', () => OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }), []),
+            OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
         ]);
 
         const activeThemeRow = themesRows.find((t) => t.get('isActive'));

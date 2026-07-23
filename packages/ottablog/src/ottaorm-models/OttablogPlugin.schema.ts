@@ -2,6 +2,7 @@
  * OttablogPlugin table schema - plugin registry and state
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { tolerantJsonText } from './tolerant-json-column';
 
 export const ottablogPluginsTable = sqliteTable(
     'ottablog_plugins',
@@ -24,7 +25,7 @@ export const ottablogPluginsTable = sqliteTable(
         enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
 
         // Plugin configuration (flexible JSON meta)
-        config: text('config', { mode: 'json' }).$type<Record<string, unknown>>(),
+        config: tolerantJsonText<Record<string, unknown>>('config'),
 
         // App identifier for multi-app database sharing
         appId: text('app_id'),

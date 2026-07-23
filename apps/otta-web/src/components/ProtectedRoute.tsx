@@ -1,16 +1,9 @@
 import { isPlatformAdmin, useSession } from '@/lib/auth';
 import { rememberReturnPath } from '@/lib/auth-redirect';
-import { Spinner } from '@ottabase/ui-shadcn';
+import { Button, Spinner } from '@ottabase/ui-shadcn';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useRef } from 'react';
-
-function matchesPermission(held: string, required: string): boolean {
-    if (held === required) return true;
-    const [hRes, hAct] = held.split(':');
-    const [rRes, rAct] = required.split(':');
-    if (hRes === '*' && hAct === '*') return true;
-    return (hRes === '*' || hRes === rRes) && (hAct === '*' || hAct === rAct);
-}
 
 interface ProtectedRouteProps {
     children: ReactNode;
@@ -37,16 +30,16 @@ export function ProtectedRoute({
     fallback,
 }: ProtectedRouteProps) {
     const navigate = useNavigate();
-    const { isAuthenticated, isInitialized, user } = useSession();
+    const { isAuthenticated, isInitialized, isLoading, refreshSession, sessionError, user } = useSession();
     const hasRedirected = useRef(false);
 
     useEffect(() => {
-        if (hasRedirected.current || !isInitialized || isAuthenticated) return;
+        if (hasRedirected.current || !isInitialized || sessionError || isAuthenticated) return;
 
         hasRedirected.current = true;
         rememberReturnPath();
         navigate({ to: redirectTo, replace: true });
-    }, [isAuthenticated, isInitialized, navigate, redirectTo]);
+    }, [isAuthenticated, isInitialized, navigate, redirectTo, sessionError]);
 
     // Waiting for the root bootstrap prevents a cookie-only first visit from redirecting
     // before the backend has confirmed its session.
@@ -61,6 +54,20 @@ export function ProtectedRoute({
         );
     }
 
+    if (sessionError) {
+        return (
+            <div className="flex min-h-[50vh] items-center justify-center">
+                <div className="space-y-3 text-center">
+                    <p className="text-sm font-medium">Unable to verify your session</p>
+                    <p className="text-sm text-muted-foreground">Check your connection and try again.</p>
+                    <Button variant="outline" disabled={isLoading} onClick={() => void refreshSession()}>
+                        {isLoading ? 'Checking...' : 'Try again'}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
     if (!isAuthenticated) return null; // Redirect runs in the effect above.
 
     const hasRequiredRoles =
@@ -69,7 +76,7 @@ export function ProtectedRoute({
     const hasRequiredPermissions =
         !requiredPermissions ||
         requiredPermissions.length === 0 ||
-        requiredPermissions.every((perm) => user?.permissions?.some((held) => matchesPermission(held, perm)));
+        requiredPermissions.every((permission) => hasGrantedPermission(user?.permissions, permission));
 
     const authorized = hasRequiredRoles && hasRequiredPermissions && (!requirePlatformAdmin || isPlatformAdmin(user));
 

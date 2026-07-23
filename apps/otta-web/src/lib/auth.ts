@@ -9,15 +9,19 @@
 
 import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import {
+    AUTH_SESSION_INVALIDATED_EVENT,
+    AUTH_STORAGE_KEY,
     useSession as useAuthSession,
     useSessionBootstrap as useAuthSessionBootstrap,
     type SessionClientOptions,
     type SessionState,
 } from '@ottabase/auth/react';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { APP_ID } from '@/ottabase/config';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
@@ -33,20 +37,6 @@ function getStoredOrganizationId(): string | null {
 export { type Session, type SessionClientOptions, type SessionState, type User } from '@ottabase/auth/react';
 
 type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null | undefined;
-
-/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
-function hasPermission(permissions: string[] | undefined, required: string): boolean {
-    const list = permissions ?? [];
-    if (list.includes(required)) return true;
-    const [reqResource, reqAction] = required.split(':');
-    return list.some((perm) => {
-        const [permResource, permAction] = perm.split(':');
-        if (permResource === '*' && permAction === '*') return true;
-        return (
-            (permResource === '*' || permResource === reqResource) && (permAction === '*' || permAction === reqAction)
-        );
-    });
-}
 
 /**
  * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
@@ -67,7 +57,7 @@ export function isPlatformAdmin(user: AdminUserLike): boolean {
  */
 export function isOrgAdmin(user: AdminUserLike): boolean {
     if (!user) return false;
-    return isPlatformAdmin(user) || hasPermission(user.permissions, 'org:admin');
+    return isPlatformAdmin(user) || hasGrantedPermission(user.permissions, 'org:admin');
 }
 
 /**
@@ -113,6 +103,7 @@ export function resolveEffectiveOrgId(
 
 /** Mirrors the shared auth session into the app's organization-aware state atoms. */
 function useAppSessionState(sessionData: SessionState): SessionState {
+    const queryClient = useQueryClient();
     const setGlobalUser = useSetAtom(userAtom);
     const setGlobalIsAuthenticated = useSetAtom(isAuthenticatedAtom);
     const setAppId = useSetAtom(appIdAtom);
@@ -150,12 +141,36 @@ function useAppSessionState(sessionData: SessionState): SessionState {
         setOrganizationId,
     ]);
 
+    useEffect(() => {
+        const clearClientAuthState = () => {
+            queryClient.clear();
+            setGlobalUser(null);
+            setGlobalIsAuthenticated(false);
+            setOrganizationId(null);
+            try {
+                localStorage.removeItem(CURRENT_ORG_KEY);
+            } catch {
+                // ignore storage failures
+            }
+        };
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === AUTH_STORAGE_KEY && event.newValue === null) clearClientAuthState();
+        };
+
+        window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, clearClientAuthState);
+        window.addEventListener('storage', handleStorage);
+        return () => {
+            window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, clearClientAuthState);
+            window.removeEventListener('storage', handleStorage);
+        };
+    }, [queryClient, setGlobalIsAuthenticated, setGlobalUser, setOrganizationId]);
+
     return sessionData;
 }
 
 /** Read session state without causing network activity. */
 export function useSession(options?: SessionClientOptions): SessionState {
-    return useAppSessionState(useAuthSession(options));
+    return useAuthSession(options);
 }
 
 /** Initialize the session once for the app root, then expose the shared session state. */

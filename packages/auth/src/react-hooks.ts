@@ -3,9 +3,15 @@
 // ============================================================
 
 import { atom, useAtom, useAtomValue, type Getter } from 'jotai';
-import { atomWithStorage } from 'jotai/utils';
+import { atomWithStorage, RESET } from 'jotai/utils';
 import { useCallback, useEffect, useRef } from 'react';
-import { signOut as authSignOut, getSession as getAuthSession, type AuthSession } from './client-api';
+import {
+    signOut as authSignOut,
+    getSession as getAuthSession,
+    type AuthSession,
+    type SessionFetchResult,
+    type SessionUnavailable,
+} from './client-api';
 
 /** User data returned with a session. */
 export interface User {
@@ -38,21 +44,28 @@ export interface SessionState {
     isAuthenticated: boolean;
     isInitialized: boolean;
     isLoading: boolean;
+    /** Set only when the session could not be verified; anonymous sessions are not errors. */
+    sessionError: SessionUnavailable | null;
     login: (newSession: Session, loginOptions?: { remember?: boolean }) => void;
     logout: () => Promise<void>;
     updateUser: (updatedUser: Partial<User>) => void;
-    refreshSession: () => Promise<void>;
+    refreshSession: () => Promise<SessionFetchResult>;
 }
 
 /** localStorage key for session persistence */
 export const AUTH_STORAGE_KEY = 'ottabase.auth-session';
+/** Browser event emitted after logout, revocation, or an API-level 401. */
+export const AUTH_SESSION_INVALIDATED_EVENT = 'ottabase:auth-session-invalidated';
 
-/** Clears the persisted session from localStorage. Use in API client onUnauthorized. */
-export function clearAuthSessionStorage(): void {
+/** Clear persisted auth material and notify the mounted session root and app caches. */
+export function invalidateAuthSession(): void {
     try {
         localStorage.removeItem(AUTH_STORAGE_KEY);
     } catch {
         // ignore
+    }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(AUTH_SESSION_INVALIDATED_EVENT));
     }
 }
 
@@ -61,6 +74,7 @@ const memorySessionAtom = atom<Session | null>(null);
 const rememberSessionAtom = atom(true);
 const authLoadingAtom = atom(false);
 const authInitializedAtom = atom(false);
+const authErrorAtom = atom<SessionUnavailable | null>(null);
 
 const activeSessionAtom = atom((get: Getter) => {
     const remember = get(rememberSessionAtom);
@@ -75,24 +89,27 @@ const isAuthenticatedAtom = atom((get: Getter) => {
     return Number.isFinite(expiresAt) && expiresAt > Date.now();
 });
 
-/** One network request is shared by the bootstrap and explicit refresh callers. */
-let sessionSyncPromise: Promise<AuthSession | null> | null = null;
-let sessionSyncKey: string | null = null;
+/** Strict Mode bootstrap effects share one request; explicit refreshes always start fresh. */
+let bootstrapSyncPromise: Promise<SessionFetchResult> | null = null;
+let bootstrapSyncKey: string | null = null;
 /** Prevents a pre-login/logout request from overwriting a newer local session mutation. */
 let sessionStateVersion = 0;
+/** Only the newest started session request may commit its result. */
+let sessionRequestSequence = 0;
+let latestSessionRequest = 0;
 
-function getSharedSessionSync(baseUrl?: string): Promise<AuthSession | null> {
+function getSharedBootstrapSync(baseUrl?: string): Promise<SessionFetchResult> {
     const syncKey = baseUrl ?? null;
-    if (sessionSyncPromise && sessionSyncKey === syncKey) return sessionSyncPromise;
+    if (bootstrapSyncPromise && bootstrapSyncKey === syncKey) return bootstrapSyncPromise;
 
     const request = getAuthSession({ baseUrl });
-    sessionSyncPromise = request;
-    sessionSyncKey = syncKey;
+    bootstrapSyncPromise = request;
+    bootstrapSyncKey = syncKey;
 
     const clearIfCurrent = () => {
-        if (sessionSyncPromise === request) {
-            sessionSyncPromise = null;
-            sessionSyncKey = null;
+        if (bootstrapSyncPromise === request) {
+            bootstrapSyncPromise = null;
+            bootstrapSyncKey = null;
         }
     };
     void request.then(clearIfCurrent, clearIfCurrent);
@@ -102,6 +119,7 @@ function getSharedSessionSync(baseUrl?: string): Promise<AuthSession | null> {
 
 type SessionController = SessionState & {
     initializeSession: () => Promise<void>;
+    clearSession: () => void;
 };
 
 function useSessionController(options?: SessionClientOptions): SessionController {
@@ -111,6 +129,7 @@ function useSessionController(options?: SessionClientOptions): SessionController
     const session = useAtomValue(activeSessionAtom);
     const [isLoading, setIsLoading] = useAtom(authLoadingAtom);
     const [isInitialized, setIsInitialized] = useAtom(authInitializedAtom);
+    const [sessionError, setSessionError] = useAtom(authErrorAtom);
     const [isAuthenticated] = useAtom(isAuthenticatedAtom);
     const rememberSessionRef = useRef(rememberSession);
 
@@ -127,32 +146,61 @@ function useSessionController(options?: SessionClientOptions): SessionController
                     setMemorySession(null);
                 } else {
                     setMemorySession(backendSession as Session);
-                    setPersistentSession(null);
+                    setPersistentSession(RESET);
                 }
             } else {
                 // The backend is authoritative for revoked, expired, and signed-out sessions.
-                setPersistentSession(null);
+                setPersistentSession(RESET);
                 setMemorySession(null);
             }
         },
         [setMemorySession, setPersistentSession],
     );
 
-    const syncFromServer = useCallback(async () => {
-        setIsLoading(true);
-        const versionBeforeRequest = sessionStateVersion;
-        try {
-            const backendSession = await getSharedSessionSync(options?.baseUrl);
-            if (versionBeforeRequest === sessionStateVersion) {
-                applyBackendSession(backendSession);
+    const clearSession = useCallback(() => {
+        sessionStateVersion += 1;
+        latestSessionRequest = ++sessionRequestSequence;
+        setPersistentSession(RESET);
+        setMemorySession(null);
+        setSessionError(null);
+        setIsInitialized(true);
+        setIsLoading(false);
+    }, [setIsInitialized, setIsLoading, setMemorySession, setPersistentSession, setSessionError]);
+
+    const syncFromServer = useCallback(
+        async (mode: 'bootstrap' | 'refresh'): Promise<SessionFetchResult> => {
+            const requestId = ++sessionRequestSequence;
+            latestSessionRequest = requestId;
+            const versionBeforeRequest = sessionStateVersion;
+            setIsLoading(true);
+
+            const result =
+                mode === 'bootstrap'
+                    ? await getSharedBootstrapSync(options?.baseUrl)
+                    : await getAuthSession({ baseUrl: options?.baseUrl });
+
+            if (requestId === latestSessionRequest && versionBeforeRequest === sessionStateVersion) {
+                if (result.state === 'authenticated') {
+                    applyBackendSession(result.session);
+                    setSessionError(null);
+                } else if (result.state === 'anonymous') {
+                    applyBackendSession(null);
+                    setSessionError(null);
+                } else {
+                    // Preserve the last confirmed session during outages, but surface
+                    // that it could not be revalidated so route guards can fail closed.
+                    setSessionError(result);
+                }
             }
-        } catch (error) {
-            console.error('Failed to refresh session:', error);
-        } finally {
-            setIsInitialized(true);
-            setIsLoading(false);
-        }
-    }, [applyBackendSession, options?.baseUrl, setIsInitialized, setIsLoading]);
+
+            if (requestId === latestSessionRequest) {
+                setIsInitialized(true);
+                setIsLoading(false);
+            }
+            return result;
+        },
+        [applyBackendSession, options?.baseUrl, setIsInitialized, setIsLoading, setSessionError],
+    );
 
     const login = useCallback(
         (newSession: Session, loginOptions?: { remember?: boolean }) => {
@@ -164,12 +212,13 @@ function useSessionController(options?: SessionClientOptions): SessionController
                 setMemorySession(null);
             } else {
                 setMemorySession(newSession);
-                setPersistentSession(null);
+                setPersistentSession(RESET);
             }
             // A successful sign-in response is an authoritative session result.
+            setSessionError(null);
             setIsInitialized(true);
         },
-        [setIsInitialized, setMemorySession, setPersistentSession, setRememberSession],
+        [setIsInitialized, setMemorySession, setPersistentSession, setRememberSession, setSessionError],
     );
 
     const logout = useCallback(async () => {
@@ -181,12 +230,10 @@ function useSessionController(options?: SessionClientOptions): SessionController
         } catch (error) {
             console.error('Failed to sign out:', error);
         } finally {
-            sessionStateVersion += 1;
-            setPersistentSession(null);
-            setMemorySession(null);
-            setIsInitialized(true);
+            clearSession();
+            invalidateAuthSession();
         }
-    }, [options?.baseUrl, setIsInitialized, setMemorySession, setPersistentSession]);
+    }, [clearSession, options?.baseUrl]);
 
     const updateUser = useCallback(
         (updatedUser: Partial<User>) => {
@@ -208,8 +255,10 @@ function useSessionController(options?: SessionClientOptions): SessionController
 
     const initializeSession = useCallback(async () => {
         setIsInitialized(false);
-        await syncFromServer();
+        await syncFromServer('bootstrap');
     }, [setIsInitialized, syncFromServer]);
+
+    const refreshSession = useCallback(() => syncFromServer('refresh'), [syncFromServer]);
 
     return {
         session,
@@ -217,11 +266,13 @@ function useSessionController(options?: SessionClientOptions): SessionController
         isAuthenticated,
         isInitialized,
         isLoading,
+        sessionError,
         login,
         logout,
         updateUser,
-        refreshSession: syncFromServer,
+        refreshSession,
         initializeSession,
+        clearSession,
     };
 }
 
@@ -233,15 +284,19 @@ function useSessionController(options?: SessionClientOptions): SessionController
  * current user's session data (for example an organization switch or RBAC update).
  */
 export function useSession(options?: SessionClientOptions): SessionState {
-    const { initializeSession: _initializeSession, ...session } = useSessionController(options);
+    const {
+        initializeSession: _initializeSession,
+        clearSession: _clearSession,
+        ...session
+    } = useSessionController(options);
     return session;
 }
 
 /**
  * Initialize the browser session once for an application root.
  *
- * It is safe under React Strict Mode and shares its network request with an explicit
- * refresh. Protected routes should wait for `isInitialized`, not start their own fetch.
+ * It is safe under React Strict Mode. Bootstrap effects share their request; explicit
+ * refreshes are always newer requests. Protected routes should wait for `isInitialized`.
  */
 export function useSessionBootstrap(options?: SessionClientOptions): SessionState {
     const controller = useSessionController(options);
@@ -250,6 +305,12 @@ export function useSessionBootstrap(options?: SessionClientOptions): SessionStat
         void controller.initializeSession();
     }, [controller.initializeSession]);
 
-    const { initializeSession: _initializeSession, ...session } = controller;
+    useEffect(() => {
+        const invalidate = () => controller.clearSession();
+        window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, invalidate);
+        return () => window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, invalidate);
+    }, [controller.clearSession]);
+
+    const { initializeSession: _initializeSession, clearSession: _clearSession, ...session } = controller;
     return session;
 }

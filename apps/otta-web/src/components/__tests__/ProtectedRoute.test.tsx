@@ -8,6 +8,9 @@ const { navigate, rememberReturnPath, session } = vi.hoisted(() => ({
     session: {
         isAuthenticated: true,
         isInitialized: false,
+        isLoading: false,
+        sessionError: null as { state: 'unavailable'; message: string } | null,
+        refreshSession: vi.fn(),
         user: { id: 'user-1', email: 'owner@example.com', permissions: ['org:admin'] },
     },
 }));
@@ -21,7 +24,12 @@ vi.mock('@/lib/auth-redirect', () => ({ rememberReturnPath }));
 
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({ Spinner: () => <span>spinner</span> }));
+vi.mock('@ottabase/ui-shadcn', () => ({
+    Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+        <button {...props}>{children}</button>
+    ),
+    Spinner: () => <span>spinner</span>,
+}));
 
 import { ProtectedRoute } from '../ProtectedRoute';
 
@@ -31,6 +39,8 @@ describe('ProtectedRoute', () => {
         rememberReturnPath.mockReset();
         session.isAuthenticated = true;
         session.isInitialized = false;
+        session.isLoading = false;
+        session.sessionError = null;
         session.user = { id: 'user-1', email: 'owner@example.com', permissions: ['org:admin'] };
     });
 
@@ -52,6 +62,21 @@ describe('ProtectedRoute', () => {
         );
 
         await waitFor(() => expect(screen.getByText('Admin content')).toBeTruthy());
+        expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('does not redirect when the auth service is unavailable', async () => {
+        session.isAuthenticated = false;
+        session.isInitialized = true;
+        session.sessionError = { state: 'unavailable', message: 'Network down' };
+
+        render(
+            <ProtectedRoute>
+                <div>Private content</div>
+            </ProtectedRoute>,
+        );
+
+        expect(screen.getByText('Unable to verify your session')).toBeTruthy();
         expect(navigate).not.toHaveBeenCalled();
     });
 });

@@ -98,7 +98,9 @@ This template ships with a custom, dependency-free auth implementation + D1 inte
 - **One session bootstrap**: `AuthSessionBootstrap` owns the app-wide initial session read. `useSession()` is a
   side-effect-free state reader, and protected routes wait for that bootstrap rather than refreshing on every route
   mount. Call `refreshSession()` only after a mutation that can change the current user's session data; this avoids
-  remount-driven `/api/auth/session` loops and loading-state flicker.
+  remount-driven `/api/auth/session` loops and loading-state flicker. Refreshes are causally ordered, auth-service
+  outages are not mistaken for logout, and logout/401 invalidation clears auth, organization state, and tenant query
+  caches together.
 - **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
   session into all API calls; these values are also mirrored in global state atoms for UI needs.
 

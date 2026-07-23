@@ -3,6 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { usersTable } from './User.schema';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';
@@ -487,32 +488,7 @@ export class User extends BaseModel {
      */
     async hasPermission(permission: string, options?: { cache?: any; organizationId?: string }): Promise<boolean> {
         const permissions = await this.getPermissions(options);
-
-        // Check for exact match first
-        if (permissions.includes(permission)) {
-            return true;
-        }
-
-        // Check for wildcard matches
-        const [reqResource, reqAction] = permission.split(':');
-        for (const perm of permissions) {
-            const [permResource, permAction] = perm.split(':');
-
-            // *:* grants all permissions
-            if (permResource === '*' && permAction === '*') {
-                return true;
-            }
-
-            // Check resource and action with wildcards
-            const resourceMatches = permResource === '*' || permResource === reqResource;
-            const actionMatches = permAction === '*' || permAction === reqAction;
-
-            if (resourceMatches && actionMatches) {
-                return true;
-            }
-        }
-
-        return false;
+        return hasGrantedPermission(permissions, permission);
     }
 
     /**

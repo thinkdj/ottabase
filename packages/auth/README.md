@@ -291,7 +291,6 @@ import {
     registerWithCredentials,
     getSession,
     signOut,
-    isAuthenticated,
     getCsrfToken,
     requestEmailVerification,
     verifyEmail,
@@ -307,9 +306,14 @@ await sendMagicLink(email, { redirectTo: '/dashboard' });
 // Requires the host app's /api/auth/register endpoint
 await registerWithCredentials({ name, email, password, referralCode });
 
-const session = await getSession(); // AuthSession | null, retries transient 502/503/504 responses
+const result = await getSession(); // SessionFetchResult; retries transient 502/503/504 responses
+if (result.state === 'authenticated') {
+    console.log(result.session.user);
+} else if (result.state === 'unavailable') {
+    // Do not treat network/5xx/invalid JSON as logout.
+    console.error(result.message);
+}
 await signOut({ redirectTo: '/login' });
-const signedIn = await isAuthenticated();
 
 // Requires the host app's own routes (see route table above)
 await requestEmailVerification(email);
@@ -344,9 +348,10 @@ function App() {
 }
 
 function MyComponent() {
-    const { user, isAuthenticated, isInitialized, logout } = useSession();
+    const { user, isAuthenticated, isInitialized, sessionError, logout, refreshSession } = useSession();
 
     if (!isInitialized) return <Loading />;
+    if (sessionError) return <Retry onClick={refreshSession} />;
 
     if (!isAuthenticated) return <LoginPrompt />;
     return (
@@ -359,7 +364,11 @@ function MyComponent() {
 ```
 
 Call `refreshSession()` explicitly after a successful mutation that can change the current user's identity, active
-organization, roles, or permissions. This keeps updates immediate without making route navigation poll the session API.
+organization, roles, or permissions. Explicit refreshes always start a causally newer request, so a response that began
+before the mutation cannot overwrite the new snapshot. A real anonymous response clears the session; network, upstream,
+and malformed-response failures set `sessionError` while retaining the last confirmed snapshot. Logout and API-level 401
+handlers should call `invalidateAuthSession()`, which clears persisted auth state and notifies the root so app and
+tenant query caches can be cleared together.
 
 ## UI Components
 

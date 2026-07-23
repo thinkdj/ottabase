@@ -76,7 +76,6 @@ export {
     changePassword,
     getCsrfToken,
     getSession as getSessionClient,
-    isAuthenticated as isAuthenticatedClient,
     registerWithCredentials,
     requestEmailVerification,
     requestPasswordReset,
@@ -89,6 +88,8 @@ export {
     type AuthClientOptions,
     type AuthResponse,
     type AuthSession,
+    type SessionFetchResult,
+    type SessionUnavailable,
     type ChangePasswordResponse,
     type EmailVerificationResponse,
     type PasswordResetResponse,
@@ -102,7 +103,8 @@ export {
 // ============================================================
 export {
     AUTH_STORAGE_KEY,
-    clearAuthSessionStorage,
+    AUTH_SESSION_INVALIDATED_EVENT,
+    invalidateAuthSession,
     useSession,
     useSessionBootstrap,
     type Session as ReactSession,

@@ -93,8 +93,11 @@ describe('client-api changePassword', () => {
         await vi.runAllTimersAsync();
 
         await expect(sessionPromise).resolves.toEqual({
-            user: { id: 'user-1', email: 'test@example.com' },
-            expires: expect.any(Number),
+            state: 'authenticated',
+            session: {
+                user: { id: 'user-1', email: 'test@example.com' },
+                expires: expect.any(Number),
+            },
         });
         expect(fetch).toHaveBeenCalledTimes(2);
     });
@@ -122,16 +125,57 @@ describe('client-api changePassword', () => {
         await vi.runAllTimersAsync();
 
         await expect(sessionPromise).resolves.toEqual({
-            user: { id: 'user-2', email: 'warm@example.com' },
-            expires: expect.any(Number),
+            state: 'authenticated',
+            session: {
+                user: { id: 'user-2', email: 'warm@example.com' },
+                expires: expect.any(Number),
+            },
         });
         expect(fetch).toHaveBeenCalledTimes(2);
     });
 
-    it('returns null when the session response has no user', async () => {
+    it('returns anonymous only for an explicit empty session', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => null })) as unknown as typeof fetch);
 
-        await expect(getSession()).resolves.toBeNull();
+        await expect(getSession()).resolves.toEqual({ state: 'anonymous' });
+    });
+
+    it('treats a malformed 200 response as unavailable, not anonymous', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => ({
+                ok: true,
+                json: async () => ({ user: { id: 'user-1' }, expires: 'tomorrow' }),
+            })) as unknown as typeof fetch,
+        );
+
+        await expect(getSession()).resolves.toEqual({
+            state: 'unavailable',
+            reason: 'invalid-response',
+            message: 'Session endpoint returned an invalid session',
+        });
+    });
+
+    it('distinguishes an unavailable auth service from an anonymous session', async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503 })) as unknown as typeof fetch);
+
+        const sessionPromise = getSession();
+        await vi.runAllTimersAsync();
+
+        await expect(sessionPromise).resolves.toEqual({
+            state: 'unavailable',
+            reason: 'server',
+            message: 'Session endpoint returned HTTP 503',
+            httpStatus: 503,
+        });
+    });
+
+    it('treats a 401 as anonymous without retrying', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401 })) as unknown as typeof fetch);
+
+        await expect(getSession()).resolves.toEqual({ state: 'anonymous' });
+        expect(fetch).toHaveBeenCalledOnce();
     });
 });
 
