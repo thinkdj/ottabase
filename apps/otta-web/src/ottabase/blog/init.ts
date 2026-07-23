@@ -57,7 +57,6 @@ function registerBlogThemesAndPlugins() {
     const plugin = contentInjectorPlugin.end(
         '<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 my-4 rounded"><p class="text-sm text-blue-800 dark:text-blue-200"><strong>Note:</strong> This content was injected by the Content Injector Plugin!</p></div>',
         {
-            position: 'end',
             priority: 10,
             enabled: true,
             contentTypes: [],

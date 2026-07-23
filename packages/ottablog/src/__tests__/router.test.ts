@@ -210,11 +210,12 @@ describe('createBlogHandlers', () => {
 
         it('scopes related posts to the resolved app', async () => {
             const handlers = createBlogHandlers<Env>({ ...baseConfig });
-            vi.mocked(Post.find).mockResolvedValueOnce({ get: () => 'blog' } as any);
+            vi.mocked(Post.first).mockResolvedValueOnce({ get: () => 'blog' } as any);
 
             await handlers.handleBlogRelatedPosts(ctxFor('/posts/p1/related'), 'p1');
 
             expect(Post.related).toHaveBeenCalledWith('p1', expect.objectContaining({ appId: 'test-app' }));
+            expect(Post.first).toHaveBeenCalledWith({ id: 'p1', appId: 'test-app' });
         });
     });
 

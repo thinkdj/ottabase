@@ -27,6 +27,7 @@ vi.mock('@ottabase/ottablog', () => ({
     registerPlugin: (plugin: unknown) => mockRegisterPlugin(plugin),
     activatePlugin: (id: string) => mockActivatePlugin(id),
     initOttablog: vi.fn(),
+    blogThemeTokensToCss: vi.fn(() => ''),
     contentInjectorPlugin: { end: vi.fn() },
 }));
 

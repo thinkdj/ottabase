@@ -33,6 +33,20 @@ describe('mediaLibraryPolicy', () => {
         });
     });
 
+    it('honors action wildcards for media management', () => {
+        const filter = buildMediaLibraryAccessFilter({
+            appId: 'app-1',
+            organizationId: 'org-1',
+            userId: 'admin-1',
+            permissions: ['*:manage'],
+        });
+
+        expect(filter).toEqual({
+            appId: 'app-1',
+            organizationId: 'org-1',
+        });
+    });
+
     it('denies access when app scope is missing', () => {
         expect(
             buildMediaLibraryAccessFilter({

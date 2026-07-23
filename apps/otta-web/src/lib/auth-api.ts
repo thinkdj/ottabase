@@ -11,7 +11,6 @@ export {
     changePassword,
     getCsrfToken,
     getSession,
-    isAuthenticated,
     registerWithCredentials,
     requestEmailVerification,
     requestPasswordReset,

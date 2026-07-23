@@ -907,7 +907,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const organizationId = await resolveTenant(context);
         const limit = Math.min(10, Math.max(1, parseInt(url.searchParams.get('limit') || '4', 10)));
 
-        const post = await Post.find(postId);
+        const postWhere: Record<string, unknown> = { id: postId, appId };
+        if (organizationId !== undefined) postWhere.organizationId = organizationId;
+        const post = await Post.first(postWhere);
         if (!post) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }

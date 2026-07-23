@@ -1,12 +1,8 @@
 import type { ModelRLSConfig, SecurityContext } from '@ottabase/ottaorm';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 
 function hasManageAllAccess(context: SecurityContext): boolean {
-    return (
-        context.permissions?.includes('*:*') ||
-        context.permissions?.includes('media:*') ||
-        context.permissions?.includes('media:manage') ||
-        false
-    );
+    return hasGrantedPermission(context.permissions, 'media:manage');
 }
 
 export function buildMediaLibraryAccessFilter(context: SecurityContext): Record<string, unknown> | null {

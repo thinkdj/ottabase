@@ -23,7 +23,7 @@ vi.mock('../../lib/auth-utils', () => ({
 }));
 
 vi.mock('@ottabase/ottablog', () => ({
-    Post: { find: vi.fn() },
+    Post: { find: vi.fn(), first: vi.fn() },
 }));
 
 vi.mock('@ottabase/comments', () => ({
@@ -444,7 +444,7 @@ describe('handleOttaormCrud (comments)', () => {
                 method: 'POST',
                 body: { body: 'hello', targetType: 'post', targetId: 'post-1' },
             });
-            (Post.find as any).mockResolvedValue({
+            (Post.first as any).mockResolvedValue({
                 get: (key: string) => (key === 'organizationId' ? 'org-POST' : null),
             });
             (Comment.validateReplyParent as any).mockResolvedValue({ ok: true, depth: 0 });
@@ -457,6 +457,7 @@ describe('handleOttaormCrud (comments)', () => {
             expect(call[0].body.organizationId).toBe('org-POST');
             expect(call[0].body.userId).toBe('user-1');
             expect(call[1].organizationId).toBe('org-POST');
+            expect(Post.first).toHaveBeenCalledWith({ id: 'post-1', appId: 'otta-web' });
         });
 
         it('returns 404 when the target post does not exist', async () => {
@@ -468,7 +469,7 @@ describe('handleOttaormCrud (comments)', () => {
                 method: 'POST',
                 body: { body: 'hello', targetType: 'post', targetId: 'missing-post' },
             });
-            (Post.find as any).mockResolvedValue(null);
+            (Post.first as any).mockResolvedValue(null);
 
             const response = await handleOttaormCrud(createContext());
 
@@ -486,7 +487,7 @@ describe('handleOttaormCrud (comments)', () => {
                 method: 'POST',
                 body: { body: 'hello', targetType: 'post', targetId: 'post-1', parentId: 'other-org-comment' },
             });
-            (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
             (Comment.validateReplyParent as any).mockResolvedValue({ ok: false });
 
             const response = await handleOttaormCrud(createContext());
@@ -507,7 +508,7 @@ describe('handleOttaormCrud (comments)', () => {
                 method: 'POST',
                 body: { body: 'reply', targetType: 'post', targetId: 'post-1', parentId: 'parent-1', depth: 999 },
             });
-            (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
             (Comment.validateReplyParent as any).mockResolvedValue({ ok: true, depth: 2 });
             (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 201 });
 
@@ -535,7 +536,7 @@ describe('handleOttaormCrud (comments)', () => {
             (Comment.find as any).mockResolvedValue(
                 makeCommentStub({ id: 'c1', targetType: 'post', targetId: 'post-1', organizationId: 'org-1' }),
             );
-            (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
 
             const response = await handleOttaormCrud(createContext());
             const body = (await response.json()) as any;
@@ -560,7 +561,7 @@ describe('handleOttaormCrud (comments)', () => {
             (Comment.find as any).mockResolvedValue(
                 makeCommentStub({ id: 'c1', targetType: 'post', targetId: 'post-1', organizationId: 'org-EVIL' }),
             );
-            (Post.find as any).mockResolvedValue({ get: () => 'org-REAL' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-REAL' });
 
             const response = await handleOttaormCrud(createContext());
             const body = (await response.json()) as any;
@@ -583,7 +584,7 @@ describe('handleOttaormCrud (comments)', () => {
             });
             const stub = makeCommentStub({ id: 'c1', targetType: 'post', targetId: 'post-1', organizationId: 'org-1' });
             (Comment.find as any).mockResolvedValue(stub);
-            (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
             (CommentReaction.reactionsFor as any).mockResolvedValue(new Map([['c1', { '👍': ['user-1'] }]]));
 
             const response = await handleOttaormCrud(createContext());
@@ -624,7 +625,7 @@ describe('handleOttaormCrud (comments)', () => {
                         userId: overrides.commentUserId,
                     }),
                 );
-                (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+                (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
             };
         }
 
@@ -689,7 +690,7 @@ describe('handleOttaormCrud (comments)', () => {
                     userId: 'author',
                 }),
             );
-            (Post.find as any).mockResolvedValue({ get: () => 'org-X' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-X' });
 
             const response = await handleOttaormCrud(createContext());
             const body = (await response.json()) as any;
@@ -726,7 +727,7 @@ describe('handleOttaormCrud (comments)', () => {
                     userId: 'author',
                 }),
             );
-            (Post.find as any).mockResolvedValue({ get: () => 'org-X' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-X' });
             (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
 
             const response = await handleOttaormCrud(createContext());
@@ -755,7 +756,7 @@ describe('handleOttaormCrud (comments)', () => {
                     userId: 'user-1',
                 }),
             );
-            (Post.find as any).mockResolvedValue({ get: () => 'org-1' });
+            (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
             (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
 
             await handleOttaormCrud(createContext());
@@ -795,7 +796,7 @@ describe('handleOttaormCrud (comments)', () => {
                 method: 'GET',
                 query: { where: { targetType: 'post', targetId: 'post-1', status: 'active' } },
             });
-            (Post.find as any).mockResolvedValue({
+            (Post.first as any).mockResolvedValue({
                 get: (key: string) => (key === 'organizationId' ? 'org-POST' : null),
             });
             (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { data: [] }, status: 200 });

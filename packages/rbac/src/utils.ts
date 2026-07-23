@@ -186,7 +186,9 @@ export function getAllowedActions(context: RBACContext, resource: string): strin
     const actions = new Set<string>();
 
     for (const perm of context.permissions) {
-        const [permResource, permAction] = perm.split(':');
+        const parsed = parsePermission(perm);
+        if (!parsed) continue;
+        const { resource: permResource, action: permAction } = parsed;
 
         if (permResource === '*' || permResource === resource) {
             if (permAction === '*') {
@@ -217,7 +219,7 @@ export function formatPermission(resource: string, action: string): string {
  */
 export function parsePermission(permission: string): { resource: string; action: string } | null {
     const parts = permission.split(':');
-    if (parts.length !== 2) {
+    if (parts.length !== 2 || parts.some((part) => part.length === 0)) {
         return null;
     }
     return {

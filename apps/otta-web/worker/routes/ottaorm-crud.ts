@@ -6,6 +6,7 @@ import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '
 import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
 
@@ -59,7 +60,10 @@ async function resolveCommentSecurityContext(
     }
 
     if (targetType === 'post') {
-        const post = await Post.find(targetId);
+        // Resolve the target inside the caller's app scope before deriving the
+        // comment tenant. A bare ID could otherwise point at a post belonging
+        // to another app in the shared database.
+        const post = await Post.first({ id: targetId, appId: ambient.appId });
         if (!post) {
             return { ok: false, response: errorResponse('Target post not found', 404, { code: 'NOT_FOUND' }) };
         }
@@ -107,25 +111,7 @@ function isCommentOwnerOrModerator(
     // Org-scoped moderation authority only applies inside the comment's own org.
     if (ambient.organizationId == null || ambient.organizationId !== commentOrgId) return false;
     const permissions = (ambient.permissions as string[] | undefined) ?? [];
-    return permissions.includes('*:*') || permissions.includes('comments:moderate');
-}
-
-/** Wildcard-aware permission match (2-segment resource:action; '*:*' grants all). */
-function permissionMatches(perms: readonly string[] | undefined, required: string): boolean {
-    const list = perms ?? [];
-    if (list.includes(required)) return true;
-    const [reqResource, reqAction] = required.split(':');
-    for (const perm of list) {
-        const [permResource, permAction] = perm.split(':');
-        if (permResource === '*' && permAction === '*') return true;
-        if (
-            (permResource === '*' || permResource === reqResource) &&
-            (permAction === '*' || permAction === reqAction)
-        ) {
-            return true;
-        }
-    }
-    return false;
+    return hasGrantedPermission(permissions, 'comments:moderate');
 }
 
 /**
@@ -338,7 +324,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // taxonomy:manage is the named editorial capability; org:admin keeps passing (owners/admins).
     if (APP_TAXONOMY_MODELS.has(crudRequest.model) && CRUD_WRITE_METHODS.has(crudRequest.method)) {
         const perms = securityContext.permissions as string[] | undefined;
-        if (!permissionMatches(perms, 'org:admin') && !permissionMatches(perms, 'taxonomy:manage')) {
+        if (!hasGrantedPermission(perms, 'org:admin') && !hasGrantedPermission(perms, 'taxonomy:manage')) {
             return errorResponse('Blog taxonomy changes require an organization administrator', 403, {
                 code: 'FORBIDDEN',
             });
@@ -398,7 +384,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         if (
             (requestedStatus === 'published' || requestedStatus === 'scheduled') &&
             !securityContext.platformAdmin &&
-            !permissionMatches(securityContext.permissions as string[] | undefined, 'posts:publish')
+            !hasGrantedPermission(securityContext.permissions as string[] | undefined, 'posts:publish')
         ) {
             return errorResponse('Publishing posts requires the posts:publish permission', 403, {
                 code: 'FORBIDDEN',

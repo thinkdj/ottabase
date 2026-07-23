@@ -26,6 +26,8 @@ describe('parsePermission', () => {
     it('returns null for invalid format', () => {
         expect(parsePermission('posts')).toBeNull();
         expect(parsePermission('posts:read:extra')).toBeNull();
+        expect(parsePermission('posts:')).toBeNull();
+        expect(parsePermission(':read')).toBeNull();
         expect(parsePermission('')).toBeNull();
     });
 });
@@ -242,6 +244,17 @@ describe('getAllowedActions', () => {
             permissions: ['users:read'],
             isAuthenticated: true,
         };
+        expect(getAllowedActions(ctx, 'posts')).toEqual([]);
+    });
+
+    it('ignores malformed permissions when deriving allowed actions', () => {
+        const ctx: RBACContext = {
+            user: {} as any,
+            roles: [],
+            permissions: ['posts:read:extra', 'posts:'],
+            isAuthenticated: true,
+        };
+
         expect(getAllowedActions(ctx, 'posts')).toEqual([]);
     });
 });

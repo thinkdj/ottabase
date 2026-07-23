@@ -963,6 +963,8 @@ export class Post extends BaseModel {
         const results: Post[] = [];
         const seenIds = new Set<string>([postId]);
         const orgScoped = options?.organizationId !== undefined;
+        const appScoped = !!options?.appId;
+        const inAppScope = (p: Post): boolean => !appScoped || p.get('appId') === options?.appId;
         const inOrgScope = (p: Post): boolean =>
             !orgScoped || ((p.get('organizationId') as string | null) ?? null) === (options?.organizationId ?? null);
 
@@ -978,18 +980,26 @@ export class Post extends BaseModel {
             ];
 
             if (candidateIds.length > 0) {
-                // Chunk at 99 ids per query: whereIn binds the id list PLUS the
-                // limit below as one more parameter, so 100 ids would push the
-                // statement to 101 bound params — past D1's bound-parameter limit.
-                const RELATED_ID_CHUNK = 99;
+                // Leave room for status, app/org scope, and the LIMIT bind in the
+                // same statement. D1's bound-parameter ceiling applies to all of
+                // those values, not just the id list.
+                const RELATED_ID_CHUNK = 95;
                 const candidates: InstanceType<typeof BaseModel>[] = [];
                 for (let i = 0; i < candidateIds.length; i += RELATED_ID_CHUNK) {
                     candidates.push(
-                        ...(await this.whereIn('id', candidateIds.slice(i, i + RELATED_ID_CHUNK), {
-                            orderBy: 'publishedAt',
-                            orderDirection: 'desc',
-                            limit: limit + 1,
-                        })),
+                        ...(await this.where(
+                            {
+                                id: candidateIds.slice(i, i + RELATED_ID_CHUNK),
+                                status: 'published',
+                                ...(options?.appId ? { appId: options.appId } : {}),
+                                ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
+                            },
+                            {
+                                orderBy: 'publishedAt',
+                                orderDirection: 'desc',
+                                limit: limit + 1,
+                            },
+                        )),
                     );
                 }
                 // Re-sort merged chunks so cross-chunk ordering matches a single query.
@@ -1000,6 +1010,7 @@ export class Post extends BaseModel {
                     if (
                         !seenIds.has(p.get('id') as string) &&
                         p.get('status') === 'published' &&
+                        inAppScope(p as Post) &&
                         inOrgScope(p as Post) &&
                         results.length < limit
                     ) {
