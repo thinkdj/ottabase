@@ -87,6 +87,11 @@
             "import": "./dist/pagination.mjs",
             "require": "./dist/pagination.js"
         },
+        "./permissions": {
+            "types": "./dist/permissions.d.ts",
+            "import": "./dist/permissions.mjs",
+            "require": "./dist/permissions.js"
+        },
         "./sanitize": {
             "types": "./dist/sanitize.d.ts",
             "import": "./dist/sanitize.mjs",
@@ -98,8 +103,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/sanitize.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/sanitize.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
