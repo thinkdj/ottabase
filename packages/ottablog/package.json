@@ -11,6 +11,14 @@
         "./renderer": {
             "types": "./src/components/BlogRenderer.tsx",
             "default": "./src/components/BlogRenderer.tsx"
+        },
+        "./router": {
+            "types": "./src/router/index.ts",
+            "default": "./src/router/index.ts"
+        },
+        "./seo": {
+            "types": "./src/seo.ts",
+            "default": "./src/seo.ts"
         }
     },
     "scripts": {
@@ -26,7 +34,9 @@
     },
     "dependencies": {
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/ottarenderer": "workspace:*"
+        "@ottabase/ottarenderer": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@types/react": "catalog:",

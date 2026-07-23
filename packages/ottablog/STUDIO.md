@@ -99,6 +99,11 @@ const state = await StudioManager.getState(appId);
 `initialize` does **not** apply plugin `config`; that’s done on the client when building plugin instances from
 `row.config`.
 
+Studio `config` and theme `tokens` remain SQLite `TEXT` columns, but their Drizzle column mapper treats malformed legacy
+JSON as `null` for that field and logs once per worker isolate and column without logging the stored value. Valid rows
+in the same query remain usable. Database, schema, and RLS errors are not converted to empty state; they propagate so
+callers fail closed and operators retain an accurate failure signal.
+
 ---
 
 ## API (worker)

@@ -2,6 +2,7 @@
  * OttablogPlugin table schema - plugin registry and state
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { tolerantJsonText } from './tolerant-json-column';
 
 export const ottablogPluginsTable = sqliteTable(
     'ottablog_plugins',
@@ -24,10 +25,14 @@ export const ottablogPluginsTable = sqliteTable(
         enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
 
         // Plugin configuration (flexible JSON meta)
-        config: text('config', { mode: 'json' }).$type<Record<string, unknown>>(),
+        config: tolerantJsonText<Record<string, unknown>>('config'),
 
         // App identifier for multi-app database sharing
         appId: text('app_id'),
+
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
 
         // Timestamps
         createdAt: integer('created_at')
@@ -41,6 +46,7 @@ export const ottablogPluginsTable = sqliteTable(
     },
     (table) => [
         // Unique plugin per appId
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('ottablog_plugins_app_id_plugin_id_unique_idx').on(table.appId, table.pluginId),
 
         // Enabled plugins query
@@ -48,6 +54,9 @@ export const ottablogPluginsTable = sqliteTable(
 
         // Multi-tenant filtering
         index('ottablog_plugins_app_id_enabled_idx').on(table.appId, table.enabled),
+
+        // Org-mode filtering: organizationId + appId + enabled
+        index('ottablog_plugins_org_app_enabled_idx').on(table.organizationId, table.appId, table.enabled),
 
         // Plugin lookup
         index('ottablog_plugins_plugin_id_idx').on(table.pluginId),

@@ -18,7 +18,6 @@ export class OttablogTheme extends BaseModel {
 
     static casts = {
         isActive: 'boolean' as const,
-        config: 'json' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
@@ -245,9 +244,14 @@ export class OttablogTheme extends BaseModel {
     /**
      * Find theme by themeId
      */
-    static async findByThemeId(themeId: string, options?: { appId?: string }): Promise<OttablogTheme | null> {
+    static async findByThemeId(
+        themeId: string,
+        options?: { appId?: string; organizationId?: string | null },
+    ): Promise<OttablogTheme | null> {
         const query: Record<string, unknown> = { themeId };
         if (options?.appId) query.appId = options.appId;
+        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
+        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as OttablogTheme) : null;
@@ -256,9 +260,10 @@ export class OttablogTheme extends BaseModel {
     /**
      * Get active theme
      */
-    static async active(options?: { appId?: string }): Promise<OttablogTheme | null> {
+    static async active(options?: { appId?: string; organizationId?: string | null }): Promise<OttablogTheme | null> {
         const query: Record<string, unknown> = { isActive: true };
         if (options?.appId) query.appId = options.appId;
+        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as OttablogTheme) : null;
@@ -267,9 +272,10 @@ export class OttablogTheme extends BaseModel {
     /**
      * Get all inactive themes
      */
-    static async inactive(options?: { appId?: string }) {
+    static async inactive(options?: { appId?: string; organizationId?: string | null }) {
         const query: Record<string, unknown> = { isActive: false };
         if (options?.appId) query.appId = options.appId;
+        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
 
         return this.where(query, {
             orderBy: 'name',
@@ -280,28 +286,24 @@ export class OttablogTheme extends BaseModel {
     // ==================== Instance Methods ====================
 
     /**
-     * Activate the theme (deactivates others)
+     * Activate the theme (deactivates others in the same scope).
+     * Scope is (appId) in platform mode; pass organizationId (id or null) to
+     * scope deactivation to a single tenant's blog in org mode.
      */
-    async activate(options?: { appId?: string }) {
+    async activate(options?: { appId?: string; organizationId?: string | null }) {
         const appId = options?.appId || this.get('appId');
+        const orgScoped = options?.organizationId !== undefined;
 
-        // Deactivate all other themes for this appId
-        if (appId) {
-            const otherThemes = await OttablogTheme.where({ appId, isActive: true });
-            for (const theme of otherThemes) {
-                if (theme.get('id') !== this.get('id')) {
-                    theme.set('isActive', false);
-                    await theme.save();
-                }
-            }
-        } else {
-            // Global deactivation if no appId
-            const otherThemes = await OttablogTheme.where({ isActive: true });
-            for (const theme of otherThemes) {
-                if (theme.get('id') !== this.get('id')) {
-                    theme.set('isActive', false);
-                    await theme.save();
-                }
+        // Deactivate all other themes within the activation scope
+        const scopeQuery: Record<string, unknown> = { isActive: true };
+        if (appId) scopeQuery.appId = appId;
+        if (orgScoped) scopeQuery.organizationId = options?.organizationId;
+
+        const otherThemes = await OttablogTheme.where(scopeQuery);
+        for (const theme of otherThemes) {
+            if (theme.get('id') !== this.get('id')) {
+                theme.set('isActive', false);
+                await theme.save();
             }
         }
 

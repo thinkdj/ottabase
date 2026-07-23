@@ -34,6 +34,10 @@ export const seriesTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id').notNull(),
 
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
+
         // Timestamps
         createdAt: integer('created_at')
             .notNull()
@@ -46,10 +50,14 @@ export const seriesTable = sqliteTable(
     },
     (table) => [
         // Enforce unique series slugs per app
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('series_app_id_slug_unique_idx').on(table.appId, table.slug),
 
         // List series by app ordered: appId + isComplete + sortOrder
         index('series_app_id_complete_order_idx').on(table.appId, table.isComplete, table.sortOrder),
+
+        // Org-mode filtering: organizationId + appId
+        index('series_org_app_idx').on(table.organizationId, table.appId),
 
         // Find complete/incomplete series: isComplete + sortOrder
         index('series_is_complete_sort_order_idx').on(table.isComplete, table.sortOrder),

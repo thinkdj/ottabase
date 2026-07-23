@@ -18,6 +18,8 @@ export interface StudioThemeState {
     author: string | null;
     isActive: boolean;
     config: Record<string, unknown> | null;
+    /** Sparse brand-token overrides for the blog room (see theme-tokens.ts). */
+    tokens: { light?: Record<string, string>; dark?: Record<string, string> } | null;
 }
 
 export interface StudioPluginState {
@@ -42,16 +44,18 @@ export class StudioManager {
     /**
      * Load DB state and apply to theme/plugin registries (active theme, enabled plugins).
      * Call this before rendering or when handling studio API requests.
+     * Pass organizationId (id or null) to scope to a single tenant's blog in org mode;
+     * omit it (undefined) for platform mode.
      */
-    static async initialize(appId: string | null = null): Promise<void> {
+    static async initialize(appId: string | null = null, organizationId?: string | null): Promise<void> {
         // Apply active theme
-        const activeTheme = await OttablogTheme.active({ appId: appId ?? undefined });
+        const activeTheme = await OttablogTheme.active({ appId: appId ?? undefined, organizationId });
         if (activeTheme) {
             setActiveTheme(activeTheme.get('themeId') as string);
         }
 
         // Activate enabled plugins (by id only; config is applied on client when loading state)
-        const enabledPlugins = await OttablogPlugin.enabled({ appId: appId ?? undefined });
+        const enabledPlugins = await OttablogPlugin.enabled({ appId: appId ?? undefined, organizationId });
         for (const row of enabledPlugins) {
             await activatePlugin(row.get('pluginId') as string);
         }
@@ -59,11 +63,14 @@ export class StudioManager {
 
     /**
      * Get current studio state for admin UI (themes + plugins from DB).
+     * Pass organizationId (id or null) to scope to a single tenant's blog in org mode.
      */
-    static async getState(appId: string | null = null): Promise<StudioState> {
+    static async getState(appId: string | null = null, organizationId?: string | null): Promise<StudioState> {
+        const scope: Record<string, unknown> = { ...(appId ? { appId } : {}) };
+        if (organizationId !== undefined) scope.organizationId = organizationId;
         const [themesRows, pluginsRows] = await Promise.all([
-            OttablogTheme.where({ ...(appId ? { appId } : {}) }, { orderBy: 'name', orderDirection: 'asc' }),
-            OttablogPlugin.where({ ...(appId ? { appId } : {}) }, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
         ]);
 
         const activeThemeRow = themesRows.find((t) => t.get('isActive'));
@@ -78,6 +85,7 @@ export class StudioManager {
             author: (t.get('author') as string) ?? null,
             isActive: (t.get('isActive') as boolean) ?? false,
             config: (t.get('config') as Record<string, unknown>) ?? null,
+            tokens: (t.get('tokens') as StudioThemeState['tokens']) ?? null,
         }));
 
         const plugins: StudioPluginState[] = pluginsRows.map((p) => ({

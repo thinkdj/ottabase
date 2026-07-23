@@ -954,37 +954,53 @@ export class Post extends BaseModel {
             categoryIds?: string[];
             contentType?: string;
             appId?: string;
+            /** Org-mode scoping: null = platform-owned rows only; undefined = no org filter. */
+            organizationId?: string | null;
             limit?: number;
         },
     ): Promise<Post[]> {
         const limit = options?.limit ?? 4;
         const results: Post[] = [];
         const seenIds = new Set<string>([postId]);
+        const orgScoped = options?.organizationId !== undefined;
+        const inOrgScope = (p: Post): boolean =>
+            !orgScoped || ((p.get('organizationId') as string | null) ?? null) === (options?.organizationId ?? null);
 
         // 1. Same categories via junction table (best signal)
         const catIds = options?.categoryIds?.length ? options.categoryIds : [];
         if (catIds.length > 0) {
-            // Find other posts sharing any of the same categories
+            // Find other posts sharing any of the same categories — single
+            // array-where query (inArray) instead of one query per category.
             const { PostCategoryLink } = await import('./PostCategoryLink');
-            const allCatLinks: InstanceType<typeof PostCategoryLink>[] = [];
-            for (const cid of catIds) {
-                const links = await PostCategoryLink.where({ categoryId: cid });
-                allCatLinks.push(...links);
-            }
+            const allCatLinks = await PostCategoryLink.where({ categoryId: catIds });
             const candidateIds = [
                 ...new Set(allCatLinks.map((l) => l.get('postId') as string).filter((id) => !seenIds.has(id))),
             ];
 
             if (candidateIds.length > 0) {
-                const candidates = await this.whereIn('id', candidateIds, {
-                    orderBy: 'publishedAt',
-                    orderDirection: 'desc',
-                    limit: limit + 1,
-                });
+                // Chunk at 99 ids per query: whereIn binds the id list PLUS the
+                // limit below as one more parameter, so 100 ids would push the
+                // statement to 101 bound params — past D1's bound-parameter limit.
+                const RELATED_ID_CHUNK = 99;
+                const candidates: InstanceType<typeof BaseModel>[] = [];
+                for (let i = 0; i < candidateIds.length; i += RELATED_ID_CHUNK) {
+                    candidates.push(
+                        ...(await this.whereIn('id', candidateIds.slice(i, i + RELATED_ID_CHUNK), {
+                            orderBy: 'publishedAt',
+                            orderDirection: 'desc',
+                            limit: limit + 1,
+                        })),
+                    );
+                }
+                // Re-sort merged chunks so cross-chunk ordering matches a single query.
+                candidates.sort(
+                    (a, b) => ((b.get('publishedAt') as number) ?? 0) - ((a.get('publishedAt') as number) ?? 0),
+                );
                 for (const p of candidates) {
                     if (
                         !seenIds.has(p.get('id') as string) &&
                         p.get('status') === 'published' &&
+                        inOrgScope(p as Post) &&
                         results.length < limit
                     ) {
                         results.push(p as Post);
@@ -1001,6 +1017,7 @@ export class Post extends BaseModel {
                     contentType: options.contentType,
                     status: 'published',
                     ...(options?.appId ? { appId: options.appId } : {}),
+                    ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
                 },
                 { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
             );

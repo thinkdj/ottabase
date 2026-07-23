@@ -530,6 +530,57 @@ const post = await Post.create({
 - `post_tag_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`tagId`)
 - `post_category_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`categoryId`)
 
+## Mountable HTTP Surface
+
+The package ships its entire HTTP surface as an `@ottabase/ottarouter` sub-router. Worker code imports from the
+React-free `@ottabase/ottablog/router` subpath; everything app-specific (DB wiring, auth guard, cron secret, password
+verify) is injected via config, so the same routes mount in any Ottabase app or bare Worker.
+
+```typescript
+import { createBlogRouter } from '@ottabase/ottablog/router';
+import { registerConnection } from '@ottabase/ottaorm';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+
+const blogRouter = createBlogRouter<Env>({
+    connect: (env) => {
+        if (!env.OBCF_D1) return new Response('D1 not configured', { status: 500 });
+        registerConnection('default', createD1Driver(env.OBCF_D1));
+        return null;
+    },
+    defaultAppId: (env) => 'my-app',
+    requireAdmin: (ctx) => myAdminGuard(ctx), // resolve session or return a 401/403 Response
+    checkCronAuth: (request, env) => request.headers.get('x-cron-secret') === env.CRON_SECRET,
+    verifyPassword: (password, hash) => myVerify(password, hash), // e.g. from @ottabase/auth/backend
+});
+
+apiRouter.mount('/api/blog', blogRouter, { when: (c) => config(c.env).packages.ottablog });
+```
+
+Apps that keep their own handler module as a test/mock seam (like `otta-web`) can instead call
+`buildBlogRouter(handlers, { makeContext })` — the canonical route table over an app-supplied `BlogHandlers` object.
+`createBlogHandlers(config)` builds that handlers object from the same injected config.
+
+## Data-Driven Theme Tokens (Brand Contract)
+
+Blog themes can carry data, not just code: each `ottablog_themes` row has a sparse `tokens` JSON column
+(`{ light?: Record<cssVar, value>, dark?: ... }`). `blogThemeTokensToCss(tokens)` serializes them into a
+`[data-brand-scope="blog"]` room block, which the consuming app applies around its blog pages (otta-web wraps them in
+`<BrandScope name="blog">` from `@ottabase/ui-shadcn` and injects the CSS at the edge plus client-side via studio
+state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
+no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
+(unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
+Malformed legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored
+content; unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+
+## Edge SEO Meta
+
+`@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge: `extractBlogSlugFromPath` detects a
+blog detail document navigation, `buildPostSeoTags` produces the escaped description/canonical/OpenGraph/Twitter/JSON-LD
+head block, and `replaceDocumentTitle` swaps the SPA's static `<title>` using a replacer function (author-authored
+`$`-sequences are never expanded). The `otta-web` worker wires these into its HTML pipeline right after brand injection
+(`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the article instead of the SPA shell. Injected
+documents are served `Cache-Control: no-store` with asset validators stripped, matching the brand-injection policy.
+
 ## Public API Endpoints
 
 When integrated with the app's worker routes, the blog system provides these public endpoints:

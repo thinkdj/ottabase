@@ -2,6 +2,7 @@
  * OttablogTheme table schema - theme registry and state
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { tolerantJsonText } from './tolerant-json-column';
 
 export const ottablogThemesTable = sqliteTable(
     'ottablog_themes',
@@ -25,10 +26,22 @@ export const ottablogThemesTable = sqliteTable(
         isActive: integer('is_active', { mode: 'boolean' }).notNull().default(false),
 
         // Theme configuration (flexible JSON meta)
-        config: text('config', { mode: 'json' }).$type<Record<string, unknown>>(),
+        config: tolerantJsonText<Record<string, unknown>>('config'),
+
+        // Sparse brand-token overrides for the blog "room": CSS custom properties
+        // applied under [data-brand-scope="blog"], split by palette. Null renders
+        // pixel-identical to the unthemed baseline (fallback-chain law).
+        tokens: tolerantJsonText<{
+            light?: Record<string, string>;
+            dark?: Record<string, string>;
+        }>('tokens'),
 
         // App identifier for multi-app database sharing
         appId: text('app_id'),
+
+        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
+        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        organizationId: text('organization_id'),
 
         // Timestamps
         createdAt: integer('created_at')
@@ -42,6 +55,7 @@ export const ottablogThemesTable = sqliteTable(
     },
     (table) => [
         // Unique theme per appId
+        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
         uniqueIndex('ottablog_themes_app_id_theme_id_unique_idx').on(table.appId, table.themeId),
 
         // Active theme query (only one should be active per appId)
@@ -49,6 +63,9 @@ export const ottablogThemesTable = sqliteTable(
 
         // Multi-tenant filtering
         index('ottablog_themes_app_id_is_active_idx').on(table.appId, table.isActive),
+
+        // Org-mode filtering: organizationId + appId + isActive
+        index('ottablog_themes_org_app_active_idx').on(table.organizationId, table.appId, table.isActive),
 
         // Theme lookup
         index('ottablog_themes_theme_id_idx').on(table.themeId),

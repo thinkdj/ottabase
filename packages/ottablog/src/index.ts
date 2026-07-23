@@ -106,6 +106,21 @@ export {
 export { normalizeSlugInput, resolveUniqueSlug } from './slug-utils';
 export type { SlugLifecycleConfig, SlugScope } from './slug-utils';
 
+// Migrations (org-mode index swap; register conditionally in the app's migration registry)
+export { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
+
+// Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
+export { signPreviewToken, verifyPreviewToken } from './preview-token';
+
+// Blog theme tokens: sparse CSS-variable overrides for the [data-brand-scope="blog"] room
+export { blogThemeTokensToCss } from './theme-tokens';
+export type { BlogThemeCssOptions, BlogThemeTokens } from './theme-tokens';
+export type { PreviewTokenPayload } from './preview-token';
+
+// SEO builders for edge-injected per-post meta (pure, React-free)
+export { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from './seo';
+export type { PostSeoInput } from './seo';
+
 // Components (React)
 export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
 export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';

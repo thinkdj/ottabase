@@ -18,7 +18,6 @@ export class OttablogPlugin extends BaseModel {
 
     static casts = {
         enabled: 'boolean' as const,
-        config: 'json' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
@@ -230,9 +229,14 @@ export class OttablogPlugin extends BaseModel {
     /**
      * Find plugin by pluginId
      */
-    static async findByPluginId(pluginId: string, options?: { appId?: string }): Promise<OttablogPlugin | null> {
+    static async findByPluginId(
+        pluginId: string,
+        options?: { appId?: string; organizationId?: string | null },
+    ): Promise<OttablogPlugin | null> {
         const query: Record<string, unknown> = { pluginId };
         if (options?.appId) query.appId = options.appId;
+        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
+        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as OttablogPlugin) : null;
@@ -241,9 +245,10 @@ export class OttablogPlugin extends BaseModel {
     /**
      * Get all enabled plugins
      */
-    static async enabled(options?: { appId?: string }) {
+    static async enabled(options?: { appId?: string; organizationId?: string | null }) {
         const query: Record<string, unknown> = { enabled: true };
         if (options?.appId) query.appId = options.appId;
+        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
 
         return this.where(query, {
             orderBy: 'name',
