@@ -39,11 +39,26 @@ import {
     renderMaintenancePage,
     renderPromoteOwnerPage,
     renderReseedPage,
+    renderUnauthorizedPage,
     renderWizardPage,
 } from './pages';
 import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
-import { META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
+import { isDevEnvironment, META_OWNER_CLAIMED_KEY, META_TABLE } from './types';
 import type { PlatformStateResult } from './types';
+
+/**
+ * Headers for every bootstrap HTML response. These pages echo a secret-gated
+ * setup token and the full binding inventory, so they must never be stored by a
+ * cache or framed, and their URLs (which may carry `?secret=`) must not leak
+ * through a referrer.
+ */
+const BOOTSTRAP_HTML_HEADERS = {
+    'Content-Type': 'text/html;charset=UTF-8',
+    'Cache-Control': 'no-store',
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+} as const;
 
 interface BootstrapContext {
     request: Request;
@@ -83,8 +98,7 @@ function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     // unknown ENVIRONMENT is treated as production and denied, so a real deploy cannot run
     // the owner-creation wizard unauthenticated just because ENVIRONMENT wasn't set.
     if (!expectedSecret) {
-        const environment = String((env as any).ENVIRONMENT || '').toLowerCase();
-        return ['development', 'dev', 'test', 'local'].includes(environment);
+        return isDevEnvironment(env);
     }
 
     const headerSecret = request.headers.get('X-Bootstrap-Secret');
@@ -112,7 +126,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         if (context.request.method === 'GET' && !isApiRequest) {
             return new Response(renderLockedPage(platformState), {
                 status: 503,
-                headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
+                headers: { ...BOOTSTRAP_HTML_HEADERS, 'Retry-After': '60' },
             });
         }
         if (isApiRequest) {
@@ -152,9 +166,15 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
                 401,
             );
         }
-        // For HTML page in production without secret, show 401
-        if ((context.env as any).ENVIRONMENT === 'production') {
-            return new Response('Unauthorized: Valid bootstrap secret required (?secret=xxx)', { status: 401 });
+        // Deny the HTML wizard anywhere that is not an explicit dev environment.
+        // Comparing against the single string 'production' let `prod`, `staging`,
+        // `preview` — and an UNSET ENVIRONMENT — serve the binding inventory and
+        // the names of every secret to an anonymous visitor.
+        if (!isDevEnvironment(context.env)) {
+            return new Response(renderUnauthorizedPage(), {
+                status: 401,
+                headers: { ...BOOTSTRAP_HTML_HEADERS },
+            });
         }
     }
 
@@ -207,7 +227,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     if (platformState.panic) {
         return new Response(renderMaintenancePage(platformState), {
             status: 503,
-            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '30' },
+            headers: { ...BOOTSTRAP_HTML_HEADERS, 'Retry-After': '15' },
         });
     }
 
@@ -215,7 +235,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     if (platformState.source === 'env' && platformState.state !== 'READY') {
         return new Response(renderLockedPage(platformState), {
             status: 503,
-            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
+            headers: { ...BOOTSTRAP_HTML_HEADERS, 'Retry-After': '60' },
         });
     }
 
@@ -223,7 +243,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     if (!platformState.bindings.d1) {
         return new Response(renderBindingsErrorPage(platformState), {
             status: 503,
-            headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+            headers: { ...BOOTSTRAP_HTML_HEADERS },
         });
     }
 
@@ -306,7 +326,7 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
     }
 
     // Environment check
-    const isDev = (env as any).ENVIRONMENT === 'development';
+    const isDev = isDevEnvironment(env);
     const isReady = platformState.state === 'READY';
 
     // If READY and NOT dev, return minimal info to prevent leakage
@@ -334,7 +354,7 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
  * Step 1: Clears OBCF_KV, then creates schema tables + runs all migrations.
  */
 async function handleInit(context: BootstrapContext): Promise<Response> {
-    const { env, request } = context;
+    const { env, request, url, platformState } = context;
 
     if (request.method !== 'POST') {
         return jsonResp({ error: 'Method not allowed' }, 405);
@@ -348,6 +368,27 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
                 hint: 'Configure OBCF_D1 in your wrangler.jsonc',
             },
             503,
+        );
+    }
+
+    // Re-running init on a live platform wipes the ENTIRE KV namespace (sessions,
+    // RBAC cache, queue, rate limits) and drops the platform back to BOOTSTRAPPING.
+    // Require an explicit opt-in so it can never be one stray click away.
+    // `source !== 'env'` matters: resolvePlatformState returns {state:'READY',
+    // source:'env'} whenever ENVIRONMENT === 'test', which is exactly where
+    // first-run init must still work.
+    if (
+        platformState.state === 'READY' &&
+        platformState.source !== 'env' &&
+        url.searchParams.get('confirm') !== 'reinit'
+    ) {
+        return jsonResp(
+            {
+                success: false,
+                error: 'Platform is already READY. Re-running init clears the KV namespace and takes the platform offline. Re-send with ?confirm=reinit to proceed.',
+                code: 'ALREADY_READY',
+            },
+            409,
         );
     }
 
@@ -766,24 +807,21 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
 function serveReseedPage(context: BootstrapContext): Response {
     return new Response(renderReseedPage(context.platformState), {
         status: 200,
-        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+        headers: { ...BOOTSTRAP_HTML_HEADERS },
     });
 }
 
 function servePromoteOwnerPage(context: BootstrapContext): Response {
     return new Response(renderPromoteOwnerPage(context.platformState), {
         status: 200,
-        headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+        headers: { ...BOOTSTRAP_HTML_HEADERS },
     });
 }
 
 function serveWizardPage(context: BootstrapContext): Response {
     return new Response(renderWizardPage(context.platformState), {
         status: 200,
-        headers: {
-            'Content-Type': 'text/html;charset=UTF-8',
-            'Cache-Control': 'no-store',
-        },
+        headers: { ...BOOTSTRAP_HTML_HEADERS },
     });
 }
 

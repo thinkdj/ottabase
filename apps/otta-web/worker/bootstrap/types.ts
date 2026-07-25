@@ -72,3 +72,20 @@ export const ENV_LOCK_VAR = 'OTTABASE_LOCKED';
 
 /** Bootstrap path prefix */
 export const BOOTSTRAP_PATH = '/__bootstrap__';
+
+/**
+ * Environments where bootstrap may run without a configured secret, and where
+ * the wizard may report full diagnostics. Anything else — including an UNSET
+ * `ENVIRONMENT` — is treated as production and denied. Keep every environment
+ * check spelled against this list; comparing to the single string 'production'
+ * lets `prod`, `staging`, `preview` and unset all fall through.
+ */
+export const DEV_ENVIRONMENTS = ['development', 'dev', 'test', 'local'] as const;
+
+/** True when `ENVIRONMENT` names a non-production environment. */
+export function isDevEnvironment(env: unknown): boolean {
+    const name = String((env as { ENVIRONMENT?: unknown })?.ENVIRONMENT ?? '')
+        .trim()
+        .toLowerCase();
+    return (DEV_ENVIRONMENTS as readonly string[]).includes(name);
+}

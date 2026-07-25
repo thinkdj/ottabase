@@ -2,8 +2,20 @@
 // Ottabase Bootstrap - HTML Pages
 // ============================================================
 //
-// Self-contained HTML pages served directly from the worker.
-// No external dependencies — everything inline.
+// Self-contained HTML pages served directly from the worker. At this point the
+// platform has no database, no brand engine and no asset pipeline, so every
+// style and script is inline and the page makes no outbound request.
+//
+// DESIGN — the palette, radius, shadow and motion tokens below are transcribed
+// from the app's default brand theme (packages/brand-engine/src/themes/default.json)
+// and the component recipes mirror @ottabase/ui-shadcn (button h-10/rounded-md,
+// input h-10, card rounded-lg + border, the global 2px focus ring). First-run
+// setup should look like the product it is installing. Light and dark come from
+// prefers-color-scheme — there is no theme store to read yet.
+//
+// IMPORTANT — the inline <script> lives inside a TS template literal, so it must
+// never contain a backtick or a ${...} sequence; use string concatenation there.
+// `__tests__/pages.test.ts` asserts no '${' survives into the rendered HTML.
 // ============================================================
 
 import type { PlatformStateResult } from './types';
@@ -11,143 +23,521 @@ import type { PlatformStateResult } from './types';
 const BRAND = 'Ottabase';
 
 // ============================================================
-// Shared styles and layout
+// Design system
 // ============================================================
 
-function baseLayout(title: string, body: string): string {
+/**
+ * Dark-scheme token overrides. Declared once and interpolated into BOTH the
+ * prefers-color-scheme block and the explicit `[data-theme='dark']` selector,
+ * so the theme toggle can never drift from the system default.
+ */
+const DARK_TOKENS = `
+      --background: 222.2 84% 4.9%;
+      --foreground: 210 40% 98%;
+      /* Deliberate deviation from the theme (which sets dark card == background):
+         this page is entirely card-driven with no app chrome around it, so cards
+         are lifted ~3% and the border raised to 17.5% to stay legible. */
+      --card: 222.2 47% 7.5%;
+      --muted: 217.2 32.6% 17.5%;
+      --muted-foreground: 215 20.2% 65.1%;
+      --border: 217.2 32.6% 17.5%;
+      --input: 217.2 32.6% 22%;
+      --ring: 217.2 91.2% 59.8%;
+      --primary: 217.2 91.2% 59.8%;
+      --primary-foreground: 222.2 47.4% 11.2%;
+      /* Inverted against light: the dark fill brightens on hover. */
+      --primary-hover: 217.2 91.2% 68%;
+      --primary-active: 217.2 91.2% 75%;
+      --danger: 0 91% 71%;
+      --success: 154 62% 60%;
+      --warning: 40 90% 66%;
+      --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+      --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
+`;
+
+const STYLES = `
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; padding: 0; }
+
+  :root {
+    color-scheme: light dark;
+
+    /* Palette, transcribed from the app's default brand theme (light scheme) */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    /* Explicit hover/active stops rather than shadcn's bg-primary/90: alpha
+       composites the fill toward the card and drops the label under 4.5:1.
+       Hue and saturation are unchanged; only lightness moves. */
+    --primary-hover: 221.2 83.2% 45%;
+    --primary-active: 221.2 83.2% 38%;
+
+    /* Status hues are tuned for TEXT on our surfaces: the theme's raw --destructive
+       / --warning are button-fill values and fall under 4.5:1 as body copy. */
+    --danger: 0 72% 41%;
+    --success: 150 65% 25%;
+    --warning: 30 80% 30%;
+
+    --radius: 0.5rem;
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+
+    --fast: 100ms;
+    --normal: 200ms;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.0625rem;
+    --text-2xl: 1.75rem;
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace;
+  }
+
+  /* The system preference decides, unless the reader picked light explicitly. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {${DARK_TOKENS}    }
+  }
+
+  /* An explicit choice always wins, in either direction. */
+  :root[data-theme='dark'] {${DARK_TOKENS}    }
+  :root[data-theme='dark'] { color-scheme: dark; }
+  :root[data-theme='light'] { color-scheme: light; }
+
+  body {
+    min-height: 100vh;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 4rem;
+  }
+
+  .page { width: 100%; max-width: 60rem; margin: 0 auto; }
+
+  /* Focus: the app's single global focus-visible rule (shadcn.css) */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  :where([tabindex='-1']):focus { outline: none; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  a { color: hsl(var(--primary)); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--font-mono); font-size: 0.925em; overflow-wrap: anywhere; }
+  strong { font-weight: 600; }
+
+  /* ── Masthead ─────────────────────────────────────────── */
+  .masthead { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.25rem; }
+  /* Wordmark only: no icon, so the name itself carries the identity and is set
+     a quarter larger than body copy. */
+  .brand { display: inline-flex; align-items: center; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
+  .brand:hover { text-decoration: none; }
+  .masthead-actions { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.1875rem 0.625rem; border-radius: 9999px; border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.6); color: hsl(var(--muted-foreground));
+    font-size: var(--text-xs); font-weight: 500; white-space: nowrap;
+  }
+  .chip .dot { width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; background: currentColor; flex: none; }
+  .chip-ready { color: hsl(var(--success)); border-color: hsl(var(--success) / 0.3); background: hsl(var(--success) / 0.08); }
+  .chip-danger { color: hsl(var(--danger)); border-color: hsl(var(--danger) / 0.3); background: hsl(var(--danger) / 0.08); }
+  .chip-warn { color: hsl(var(--warning)); border-color: hsl(var(--warning) / 0.35); background: hsl(var(--warning) / 0.1); }
+
+  /* ── Theme toggle ─────────────────────────────────────── */
+  .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 2rem; height: 2rem; padding: 0;
+    border: 1px solid transparent; border-radius: var(--radius-md);
+    background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer;
+    transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease);
+  }
+  .theme-toggle:hover { background: hsl(var(--muted) / 0.7); color: hsl(var(--foreground)); }
+  .theme-toggle svg { display: block; width: 1rem; height: 1rem; }
+  /* The icon shows the destination, not the current state. Swapping it in CSS
+     means it is already correct on first paint, before the script runs. */
+  .theme-toggle .icon-sun { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .theme-toggle .icon-sun { display: block; }
+    :root:not([data-theme='light']) .theme-toggle .icon-moon { display: none; }
+  }
+  :root[data-theme='dark'] .theme-toggle .icon-sun { display: block; }
+  :root[data-theme='dark'] .theme-toggle .icon-moon { display: none; }
+
+  /* ── Page head ────────────────────────────────────────── */
+  .page-head { max-width: 46rem; margin-bottom: 2.25rem; }
+  h1 { font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.022em; line-height: 1.18; }
+  .lede { margin-top: 0.625rem; color: hsl(var(--muted-foreground)); font-size: var(--text-base); }
+
+  /* ── Shell: step rail + step panel ────────────────────── */
+  .shell { display: grid; gap: 1.75rem; }
+  @media (min-width: 62rem) {
+    .shell { grid-template-columns: 13rem minmax(0, 1fr); gap: 3rem; align-items: start; }
+    .rail { position: sticky; top: 2rem; }
+  }
+
+  .rail-list { list-style: none; display: grid; }
+  .rail-step {
+    position: relative; display: grid; grid-template-columns: 1.75rem minmax(0, 1fr);
+    gap: 0.75rem; align-items: start; width: 100%; padding: 0 0 1.375rem;
+    background: none; border: 0; text-align: left; font: inherit; color: inherit;
+    cursor: pointer; border-radius: var(--radius-sm);
+  }
+  /* Structural pseudo-classes belong on the <li>: the button is always the only
+     child of its item, so .rail-step:last-child would match every step. */
+  .rail-list li:last-child .rail-step { padding-bottom: 0; }
+  .rail-step:disabled { cursor: default; }
+  .rail-list li:not(:last-child) .rail-step::before {
+    content: ''; position: absolute; left: calc(0.875rem - 1px); top: 1.875rem; bottom: 0.375rem;
+    width: 2px; border-radius: 2px; background: hsl(var(--border)); transition: background-color var(--normal) var(--ease);
+  }
+  .rail-list li:not(:last-child) .rail-step.is-done::before { background: hsl(var(--primary)); }
+  .rail-marker {
+    width: 1.75rem; height: 1.75rem; border-radius: 9999px; flex: none;
+    display: grid; place-items: center;
+    border: 1px solid hsl(var(--border)); background: hsl(var(--background));
+    font-size: var(--text-xs); font-weight: 600; font-variant-numeric: tabular-nums;
+    color: hsl(var(--muted-foreground));
+    transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+  }
+  .rail-step.is-current .rail-marker { border-color: hsl(var(--primary)); color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.14); }
+  .rail-step.is-done .rail-marker { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .rail-step.is-error .rail-marker { background: hsl(var(--danger)); border-color: hsl(var(--danger)); color: hsl(var(--background)); }
+  .rail-text { display: grid; gap: 0.0625rem; padding-top: 0.1875rem; min-width: 0; }
+  .rail-title { font-size: var(--text-sm); font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .rail-step.is-current .rail-title, .rail-step.is-done .rail-title { color: hsl(var(--foreground)); }
+  .rail-desc { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+  .rail-step:hover:not(:disabled) .rail-title { color: hsl(var(--foreground)); }
+
+  @media (max-width: 61.999rem) {
+    .rail-list { grid-auto-flow: column; grid-auto-columns: 1fr; }
+    .rail-step { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; gap: 0.5rem; padding: 0; }
+    .rail-list li:not(:last-child) .rail-step::before {
+      top: calc(0.875rem - 1px); bottom: auto; left: calc(50% + 1.25rem);
+      width: calc(100% - 2.5rem); height: 2px;
+    }
+    .rail-text { padding-top: 0; justify-items: center; }
+    .rail-desc { display: none; }
+    .rail-title { font-size: var(--text-xs); }
+  }
+
+  /* ── Card ─────────────────────────────────────────────── */
+  .card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  }
+  .card + .card { margin-top: 1rem; }
+  .card-body { padding: 1.5rem; display: grid; gap: 1rem; }
+  .card-body > * { min-width: 0; }
+  @media (max-width: 30rem) { .card-body { padding: 1.125rem; } }
+  h2 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.012em; line-height: 1.35; }
+  h3 { font-size: var(--text-sm); font-weight: 600; }
+  .prose { color: hsl(var(--muted-foreground)); }
+  .card-head { display: grid; gap: 0.375rem; }
+  .card-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-top: 0.25rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));
+  }
+
+  /* ── Buttons (shadcn parity) ──────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    height: 2.5rem; padding: 0 1rem; flex: none;
+    border: 1px solid transparent; border-radius: var(--radius-md);
+    font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 500; line-height: 1;
+    white-space: nowrap; cursor: pointer;
+    transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+  }
+  .btn:disabled { opacity: 0.5; pointer-events: none; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: var(--shadow-xs); }
+  .btn-primary:hover { background: hsl(var(--primary-hover)); }
+  .btn-primary:active { background: hsl(var(--primary-active)); }
+  .btn-outline { border-color: hsl(var(--input)); background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: var(--shadow-xs); }
+  .btn-outline:hover { background: hsl(var(--muted) / 0.8); }
+  .btn-ghost { background: transparent; color: hsl(var(--muted-foreground)); }
+  .btn-ghost:hover { background: hsl(var(--muted) / 0.7); color: hsl(var(--foreground)); }
+  .btn-sm { height: 2.25rem; padding: 0 0.75rem; }
+  .btn-block { width: 100%; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.625rem; }
+  .btn-row > .btn { flex: 1 1 auto; }
+
+  @keyframes ob-spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 0.875rem; height: 0.875rem; flex: none; border-radius: 9999px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: ob-spin 0.6s linear infinite; opacity: 0.9;
+  }
+
+  /* ── Fields ───────────────────────────────────────────── */
+  .field { display: grid; gap: 0.375rem; }
+  .field-label { font-size: var(--text-sm); font-weight: 500; }
+  .field-input {
+    display: block; width: 100%; height: 2.5rem; padding: 0 0.75rem;
+    border: 1px solid hsl(var(--input)); border-radius: var(--radius-md);
+    background: hsl(var(--background)); color: hsl(var(--foreground));
+    font-family: var(--font-sans); font-size: var(--text-sm);
+    transition: border-color var(--fast) var(--ease);
+  }
+  .field-input::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+  .field-input:hover:not(:disabled) { border-color: hsl(var(--muted-foreground) / 0.5); }
+  .field-input:disabled { opacity: 0.6; cursor: not-allowed; }
+  .field-input[aria-invalid='true'] { border-color: hsl(var(--danger)); }
+  .field-with-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; }
+  .hint { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+  .field-error { font-size: var(--text-xs); color: hsl(var(--danger)); font-weight: 500; }
+  .field-error:empty { display: none; }
+
+  .reqs { list-style: none; display: grid; gap: 0.25rem; margin-top: 0.125rem; }
+  .req { display: grid; grid-template-columns: 0.875rem minmax(0, 1fr); gap: 0.5rem; align-items: center; font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+  .req-mark { width: 0.875rem; text-align: center; line-height: 1; }
+  .req[data-met='true'] { color: hsl(var(--success)); }
+
+  /* ── Alerts ───────────────────────────────────────────── */
+  .alert {
+    display: grid; grid-template-columns: 1rem minmax(0, 1fr); gap: 0.125rem 0.625rem;
+    padding: 0.75rem 0.875rem; border: 1px solid; border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+  }
+  .alert:empty { display: none; }
+  .alert-mark { line-height: 1.4; font-weight: 700; }
+  .alert-title { font-weight: 600; }
+  .alert-body { grid-column: 2; color: inherit; font-weight: 400; }
+  .alert-body > * + * { margin-top: 0.375rem; }
+  .alert-danger { color: hsl(var(--danger)); border-color: hsl(var(--danger) / 0.32); background: hsl(var(--danger) / 0.08); }
+  .alert-warn { color: hsl(var(--warning)); border-color: hsl(var(--warning) / 0.35); background: hsl(var(--warning) / 0.1); }
+  .alert-success { color: hsl(var(--success)); border-color: hsl(var(--success) / 0.32); background: hsl(var(--success) / 0.08); }
+  .alert-info { color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); background: hsl(var(--muted) / 0.5); }
+  .alert a { color: inherit; text-decoration: underline; }
+
+  /* ── Bindings ─────────────────────────────────────────── */
+  .bindings { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); }
+  .binding {
+    display: flex; align-items: center; gap: 0.5rem; min-width: 0;
+    padding: 0.5rem 0.75rem; border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-md); background: hsl(var(--muted) / 0.4);
+    font-size: var(--text-xs);
+  }
+  .binding .dot { width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; background: hsl(var(--tone)); flex: none; }
+  .binding code { color: hsl(var(--foreground)); }
+  .binding-status { margin-left: auto; padding-left: 0.5rem; color: hsl(var(--tone)); font-weight: 500; white-space: nowrap; }
+  .binding-ok { --tone: var(--success); }
+  .binding-optional { --tone: var(--muted-foreground); }
+  .binding-missing { --tone: var(--danger); border-color: hsl(var(--danger) / 0.32); background: hsl(var(--danger) / 0.06); }
+
+  /* ── Definition rows (replaces the old wide env table) ── */
+  .deflist { display: grid; gap: 0.875rem; }
+  .defrow { display: grid; gap: 0.25rem; }
+  @media (min-width: 44rem) { .defrow { grid-template-columns: 14rem minmax(0, 1fr); gap: 0.25rem 1.25rem; } }
+  .defterm { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; overflow-wrap: anywhere; }
+  .defdesc { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+  .deftag { display: inline-block; margin-left: 0.375rem; padding: 0 0.375rem; border-radius: 9999px; border: 1px solid hsl(var(--border)); font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 500; color: hsl(var(--muted-foreground)); vertical-align: 1px; }
+
+  /* ── Code ─────────────────────────────────────────────── */
+  .code {
+    display: block; overflow-x: auto; padding: 0.75rem 0.875rem;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius-md);
+    background: hsl(var(--muted) / 0.5); color: hsl(var(--foreground));
+    font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.7; white-space: pre;
+  }
+
+  /* ── Disclosure ───────────────────────────────────────── */
+  .disclosure { border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--muted) / 0.3); }
+  .disclosure > summary {
+    display: flex; align-items: center; gap: 0.5rem; list-style: none;
+    padding: 0.625rem 0.875rem; border-radius: var(--radius-md);
+    font-size: var(--text-sm); font-weight: 500; cursor: pointer;
+  }
+  .disclosure > summary::-webkit-details-marker { display: none; }
+  .disclosure > summary::before {
+    content: ''; width: 0.4375rem; height: 0.4375rem; flex: none; margin: 0 0.125rem;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg); transition: transform var(--fast) var(--ease);
+  }
+  .disclosure[open] > summary::before { transform: rotate(45deg); }
+  .disclosure-body { display: grid; gap: 0.875rem; padding: 0 0.875rem 0.875rem; }
+
+  /* ── Console ──────────────────────────────────────────── */
+  .console {
+    max-height: 15rem; overflow-y: auto; padding: 0.75rem 0.875rem;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius-md);
+    background: hsl(var(--muted) / 0.45);
+    font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.7;
+  }
+  .console:empty { display: none; }
+  .console-line { display: grid; grid-template-columns: 0.75rem minmax(0, 1fr); gap: 0.5rem; color: hsl(var(--muted-foreground)); overflow-wrap: anywhere; }
+  .console-line .mark { text-align: center; }
+  .console-ok { color: hsl(var(--success)); }
+  .console-err { color: hsl(var(--danger)); }
+  .console-info { color: hsl(var(--primary)); }
+
+  /* ── Pre-flight checks ────────────────────────────────── */
+  .checks { display: grid; gap: 0.4375rem; }
+  .check { display: grid; grid-template-columns: 1rem minmax(0, 1fr); gap: 0.625rem; align-items: start; font-size: var(--text-sm); }
+  .check-mark { font-weight: 700; line-height: 1.5; text-align: center; }
+  .check-pass .check-mark { color: hsl(var(--success)); }
+  .check-warn .check-mark { color: hsl(var(--warning)); }
+  .check-fail .check-mark { color: hsl(var(--danger)); }
+  .check-warn .check-text, .check-fail .check-text { color: hsl(var(--muted-foreground)); }
+  .checks-loading { display: flex; align-items: center; gap: 0.5rem; color: hsl(var(--muted-foreground)); font-size: var(--text-sm); }
+
+  /* ── Summary stats (success panel) ────────────────────── */
+  .stats { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+  .stat { padding: 0.75rem 0.875rem; border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--muted) / 0.4); }
+  .stat-value { font-size: var(--text-lg); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .stat-label { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); margin-top: 0.125rem; }
+
+  .linklist { display: grid; gap: 0.5rem; }
+  .linkrow { display: grid; gap: 0.125rem; }
+  .linkrow a { font-weight: 500; }
+  .linkrow span { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  .footer { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid hsl(var(--border)); font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+
+  .is-hidden { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .spinner { animation: none; border-right-color: currentColor; opacity: 0.5; }
+  }
+
+  @media (forced-colors: active) {
+    .card, .binding, .console, .code, .disclosure, .alert, .stat, .field-input { border: 1px solid CanvasText; }
+    .rail-marker { border: 1px solid CanvasText; }
+    .btn, .theme-toggle { border: 1px solid CanvasText; }
+  }
+`;
+
+/**
+ * Light/dark switch. It starts from the operating system preference and is
+ * deliberately NOT persisted — the wizard runs before there is anywhere to store
+ * it, and step one asks the operator to clear this browser's saved state.
+ * Reloading returns to the system preference.
+ */
+const THEME_TOGGLE = `<button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme" title="Switch theme">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>`;
+
+/**
+ * Theme-toggle behaviour. Uses no template literals and no interpolation so it
+ * can live inside the outer TS template string (see the header note).
+ */
+const THEME_SCRIPT = `<script>
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+    var query = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+    function effective() {
+      var chosen = root.getAttribute('data-theme');
+      if (chosen === 'dark' || chosen === 'light') return chosen;
+      return query && query.matches ? 'dark' : 'light';
+    }
+
+    function relabel() {
+      var next = effective() === 'dark' ? 'light' : 'dark';
+      var text = 'Switch to the ' + next + ' theme';
+      toggle.setAttribute('aria-label', text);
+      toggle.setAttribute('title', text);
+    }
+
+    relabel();
+
+    toggle.addEventListener('click', function () {
+      root.setAttribute('data-theme', effective() === 'dark' ? 'light' : 'dark');
+      relabel();
+    });
+
+    // Keep the label honest while the page is still following the system.
+    if (query && query.addEventListener) {
+      query.addEventListener('change', function () {
+        if (!root.getAttribute('data-theme')) relabel();
+      });
+    }
+  })();
+  </script>`;
+
+/**
+ * Shared page chrome. `chip` is the small status pill on the right of the
+ * masthead — it carries the real platform state rather than decoration.
+ */
+function baseLayout(title: string, chip: string, body: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} — ${BRAND}</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #09090b;
-    --bg-card: #18181b;
-    --bg-card-hover: #1f1f23;
-    --border: #27272a;
-    --border-accent: #3f3f46;
-    --text: #fafafa;
-    --text-muted: #a1a1aa;
-    --text-dim: #71717a;
-    --accent: #6d28d9;
-    --accent-light: #8b5cf6;
-    --accent-glow: rgba(139, 92, 246, 0.15);
-    --success: #22c55e;
-    --success-bg: rgba(34, 197, 94, 0.1);
-    --warning: #eab308;
-    --warning-bg: rgba(234, 179, 8, 0.1);
-    --error: #ef4444;
-    --error-bg: rgba(239, 68, 68, 0.1);
-    --radius: 12px;
-    --radius-sm: 8px;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
-  }
-  body {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem 1rem;
-    line-height: 1.6;
-  }
-  .container { max-width: 680px; width: 100%; }
-  .header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
-  .logo { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-  .logo span { color: var(--accent-light); }
-  .version { font-size: 0.7rem; color: var(--text-dim); background: var(--bg-card); padding: 0.125rem 0.5rem; border-radius: 9999px; border: 1px solid var(--border); }
-  .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
-  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
-  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
-  .card p { color: var(--text-muted); font-size: 0.8125rem; margin-bottom: 0.75rem; }
-  .card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); }
-  .badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.2rem 0.625rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-  .badge-success { background: var(--success-bg); color: var(--success); }
-  .badge-warning { background: var(--warning-bg); color: var(--warning); }
-  .badge-error { background: var(--error-bg); color: var(--error); }
-  .badge-muted { background: rgba(161, 161, 170, 0.1); color: var(--text-muted); }
-  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-  .dot-success { background: var(--success); }
-  .dot-warning { background: var(--warning); }
-  .dot-error { background: var(--error); }
-  .dot-muted { background: var(--text-dim); }
-  .binding-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem; margin: 0.75rem 0; }
-  .binding-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.625rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.75rem; font-family: var(--font-mono); }
-  .binding-item.ok { border-color: rgba(34, 197, 94, 0.25); }
-  .binding-item.missing { border-color: rgba(239, 68, 68, 0.25); opacity: 0.65; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border: none; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; font-family: var(--font); width: 100%; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover:not(:disabled) { background: var(--accent-light); box-shadow: 0 0 24px var(--accent-glow); }
-  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  .btn-outline:hover:not(:disabled) { background: var(--bg-card-hover); border-color: var(--border-accent); }
-  .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
-
-  /* Steps */
-  .steps { display: flex; gap: 0; margin-bottom: 1.5rem; position: relative; }
-  .step-tab { flex: 1; text-align: center; padding: 0.75rem 0.25rem; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); border-bottom: 2px solid var(--border); cursor: default; transition: all 0.2s; }
-  .step-tab.active { color: var(--accent-light); border-bottom-color: var(--accent-light); }
-  .step-tab.done { color: var(--success); border-bottom-color: var(--success); }
-  .step-tab.error { color: var(--error); border-bottom-color: var(--error); }
-  .step-panel { display: none; }
-  .step-panel.active { display: block; }
-
-  /* Forms */
-  .form-group { margin-bottom: 0.75rem; }
-  .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
-  .form-input { width: 100%; padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 0.8125rem; font-family: var(--font); outline: none; transition: border-color 0.15s; }
-  .form-input:focus { border-color: var(--accent-light); }
-  .form-input::placeholder { color: var(--text-dim); }
-  .form-hint { font-size: 0.6875rem; color: var(--text-dim); margin-top: 0.25rem; }
-  .form-error { font-size: 0.6875rem; color: var(--error); margin-top: 0.25rem; }
-
-  /* Misc */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
-  .log-area { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); max-height: 180px; overflow-y: auto; margin-top: 0.75rem; display: none; }
-  .log-area.visible { display: block; }
-  .log-line { padding: 0.0625rem 0; }
-  .log-success { color: var(--success); }
-  .log-error { color: var(--error); }
-  .log-info { color: var(--accent-light); }
-  .alert { padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.8125rem; margin-bottom: 0.75rem; }
-  .alert-error { background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.25); color: var(--error); }
-  .alert-warning { background: var(--warning-bg); border: 1px solid rgba(234, 179, 8, 0.25); color: var(--warning); }
-  .alert-success { background: var(--success-bg); border: 1px solid rgba(34, 197, 94, 0.25); color: var(--success); }
-  pre.code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; overflow-x: auto; margin: 0.5rem 0; color: var(--text-muted); white-space: pre; }
-  .progress-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin: 1rem 0 0.5rem; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--accent-light); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
-  .env-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; }
-  .env-table td { padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-  .env-table td:first-child { font-family: var(--font-mono); color: var(--accent-light); white-space: nowrap; width: 1%; }
-  .env-table td:last-child { color: var(--text-dim); }
-  .footer { margin-top: 2rem; text-align: center; font-size: 0.6875rem; color: var(--text-dim); }
-  .footer a { color: var(--accent-light); text-decoration: none; }
-  .footer a:hover { text-decoration: underline; }
-  .check-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.8125rem; }
-  .check-icon { font-size: 0.875rem; width: 1.25rem; text-align: center; }
-  .check-ok { color: var(--success); }
-  .check-fail { color: var(--error); }
-  .check-warn { color: var(--warning); }
-</style>
+<meta name="robots" content="noindex, nofollow">
+<title>${escapeHtml(title)} &middot; ${BRAND}</title>
+<style>${STYLES}</style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="logo"><span>&#9670;</span> ${BRAND}</div>
-    <span class="version">Setup Wizard</span>
-  </div>
-  ${body}
-  <div class="footer">${BRAND} &middot; Edge-first application framework</div>
+<div class="page">
+  <header class="masthead">
+    <span class="brand">${BRAND}</span>
+    <div class="masthead-actions">
+      ${chip}
+      ${THEME_TOGGLE}
+    </div>
+  </header>
+  <main>
+${body}
+  </main>
+  <footer class="footer">${BRAND} &middot; Edge-first application framework</footer>
 </div>
+${THEME_SCRIPT}
 </body>
 </html>`;
+}
+
+/** Masthead status pill. `tone` is '', 'ready', 'warn' or 'danger'. */
+function chipHtml(label: string, tone = ''): string {
+    const cls = tone ? ` chip-${tone}` : '';
+    return `<span class="chip${cls}"><span class="dot" aria-hidden="true"></span>${escapeHtml(label)}</span>`;
+}
+
+/** The masthead chip for a resolved platform state. */
+function stateChip(state: PlatformStateResult): string {
+    if (state.state === 'READY') return chipHtml('Platform ready', 'ready');
+    if (state.state === 'BOOTSTRAPPING') return chipHtml('Setup in progress', 'warn');
+    return chipHtml('Not initialized');
+}
+
+/** Bootstrap-token field, shared by the maintenance pages. */
+function tokenField(id: string, describedBy: string): string {
+    return `<div class="field">
+        <label class="field-label" for="${id}">Setup token</label>
+        <input class="field-input" id="${id}" type="password" placeholder="BOOTSTRAP_OWNER_SECRET" autocomplete="off" spellcheck="false" aria-describedby="${describedBy}">
+        <p class="hint" id="${describedBy}">Your <code>BOOTSTRAP_OWNER_SECRET</code>. Filled in automatically from <code>?secret=</code> when the URL carries it.</p>
+        <p class="field-error" id="${id}-error" role="alert"></p>
+      </div>`;
 }
 
 // ============================================================
@@ -163,84 +553,134 @@ export function renderReseedPage(state: PlatformStateResult): string {
     // The inline <script> uses string concatenation (no template literals / no `${...}`) so it does
     // not collide with this outer template string.
     return baseLayout(
-        'Reconcile Roles',
-        `
-  <p class="subtitle">Re-seed the framework's default RBAC roles &amp; permissions</p>
-
-  <div class="card">
-    <h2>Reconcile roles &amp; permissions</h2>
-    <p>
-      Re-applies the canonical system-role permission sets (platform_owner, owner, admin, editor,
-      viewer, member) and ensures the default permissions exist. Safe to run anytime — it is
-      <strong>non-destructive</strong>: it only reconciles the built-in system roles to code, and
-      never touches your data or custom roles. Use it after a framework upgrade that changed role
-      permissions (e.g. to heal a legacy <code>owner = ['*:*']</code> row without clearing the DB).
-    </p>
-    <div class="form-group">
-      <label class="form-label" for="reseed-secret">Bootstrap Token</label>
-      <input class="form-input" id="reseed-secret" type="password" placeholder="Secret Token" autocomplete="off">
-      <div class="form-hint">Your <code>BOOTSTRAP_OWNER_SECRET</code>. Prefilled from <code>?secret=</code> in the URL if present.</div>
-    </div>
-    <button class="btn btn-primary" id="btn-reseed">Reconcile roles &amp; permissions</button>
-    <div class="log-area" id="reseed-log"></div>
-    <div class="alert alert-success" id="reseed-relogin" style="display:none;margin-top:0.75rem">
-      Done. Signed-in users keep a cached session snapshot — <strong>log out and back in</strong>
-      (the platform owner especially) so the corrected roles and platform-admin flag take effect.
-    </div>
+        'Reconcile roles',
+        stateChip(state),
+        `  <div class="page-head">
+    <h1>Reconcile roles and permissions</h1>
+    <p class="lede">Re-applies the built-in role definitions from code. Safe to run at any time.</p>
   </div>
+
   ${
       isReady
           ? ''
-          : `<div class="alert alert-warning">Platform is not fully set up yet. For a first run, use the <a href="/__bootstrap__" style="color:var(--accent-light)">setup wizard</a> instead.</div>`
+          : `<div class="alert alert-warn" style="margin-bottom:1rem"><span class="alert-mark" aria-hidden="true">!</span><span class="alert-title">The platform is not set up yet</span><div class="alert-body">Run the <a href="/__bootstrap__">setup wizard</a> first, since it creates the roles this page reconciles.</div></div>`
   }
+
+  <div class="card">
+    <div class="card-body">
+      <div class="card-head">
+        <h2>What this does</h2>
+        <p class="prose">Restores the canonical permission sets for the six system roles (<code>platform_owner</code>, <code>owner</code>, <code>admin</code>, <code>editor</code>, <code>viewer</code> and <code>member</code>), and creates any default permission that is missing. It is non-destructive: your data and any role you created yourself are left untouched. Run it after an upgrade that changed role permissions, for example to heal a legacy <code>owner = ['*:*']</code> row without clearing the database.</p>
+      </div>
+      <form id="reseed-form" novalidate>
+        ${tokenField('reseed-secret', 'reseed-secret-hint')}
+        <button class="btn btn-primary btn-block" id="btn-reseed" type="submit" style="margin-top:1rem">Reconcile roles</button>
+      </form>
+      <div class="console" tabindex="0" id="reseed-log" role="log" aria-live="polite" aria-label="Reconcile output"></div>
+      <div class="alert alert-success is-hidden" id="reseed-relogin">
+        <span class="alert-mark" aria-hidden="true">&#10003;</span>
+        <span class="alert-title">Roles reconciled</span>
+        <div class="alert-body">Signed-in users keep a cached session snapshot. Sign out and back in (the platform owner especially) so the corrected roles take effect.</div>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
+      var form = document.getElementById('reseed-form');
       var input = document.getElementById('reseed-secret');
+      var inputError = document.getElementById('reseed-secret-error');
       var btn = document.getElementById('btn-reseed');
       var log = document.getElementById('reseed-log');
       var relogin = document.getElementById('reseed-relogin');
+
       try {
         var q = new URLSearchParams(location.search).get('secret');
         if (q) input.value = q;
-      } catch (e) {}
+      } catch (e) { /* URL parsing is best-effort */ }
+
       function line(msg, cls) {
-        log.classList.add('visible');
-        var d = document.createElement('div');
-        d.className = 'log-line ' + (cls || '');
-        d.textContent = msg;
-        log.appendChild(d);
+        var row = document.createElement('div');
+        row.className = 'console-line ' + (cls || '');
+        var mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.textContent = cls === 'console-err' ? '\\u2715' : cls === 'console-ok' ? '\\u2713' : '\\u203A';
+        var text = document.createElement('span');
+        text.textContent = msg;
+        row.appendChild(mark);
+        row.appendChild(text);
+        log.appendChild(row);
+        log.scrollTop = log.scrollHeight;
       }
-      btn.addEventListener('click', function () {
+
+      function setBusy(busy, label) {
+        btn.disabled = busy;
+        btn.textContent = '';
+        if (busy) {
+          var s = document.createElement('span');
+          s.className = 'spinner';
+          s.setAttribute('aria-hidden', 'true');
+          btn.appendChild(s);
+        }
+        btn.appendChild(document.createTextNode(label));
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
         var secret = (input.value || '').trim();
-        if (!secret) { line('Enter the bootstrap token first.', 'log-error'); return; }
-        btn.disabled = true;
+        inputError.textContent = '';
+        input.removeAttribute('aria-invalid');
+        if (!secret) {
+          inputError.textContent = 'Enter your setup token to continue.';
+          input.setAttribute('aria-invalid', 'true');
+          input.focus();
+          return;
+        }
+        setBusy(true, 'Reconciling');
         log.innerHTML = '';
-        relogin.style.display = 'none';
-        line('Reconciling roles & permissions...', 'log-info');
+        relogin.classList.add('is-hidden');
+        line('Reconciling roles and permissions', 'console-info');
+
         fetch('/__bootstrap__/api/seed', {
           method: 'POST',
           headers: { 'X-Bootstrap-Secret': secret, 'Content-Type': 'application/json' },
         })
-          .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+          .then(function (r) {
+            return r.text().then(function (text) {
+              var body = null;
+              try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+              return { ok: r.ok, status: r.status, body: body };
+            });
+          })
           .then(function (res) {
-            if (!res.ok) {
-              line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'error'), 'log-error');
-              btn.disabled = false;
+            if (!res.ok || !res.body || res.body.success === false) {
+              if (res.status === 401 || res.status === 403) {
+                inputError.textContent = 'That setup token was not accepted.';
+                input.setAttribute('aria-invalid', 'true');
+                input.focus();
+                line('Unauthorized. Check the token and try again.', 'console-err');
+              } else {
+                line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'request failed (' + res.status + ')'), 'console-err');
+              }
+              setBusy(false, 'Try again');
               return;
             }
-            var roles = res.body && res.body.roles;
-            if (roles && roles.created && roles.created.length) line('Created / healed: ' + roles.created.join(', '), 'log-success');
-            else line('All system roles already match code.', 'log-success');
-            if (roles && roles.existing) line('Roles present: ' + roles.existing.join(', '), '');
-            relogin.style.display = 'block';
-            btn.disabled = false;
+            var roles = res.body.roles;
+            if (roles && roles.created && roles.created.length) line('Created or healed: ' + roles.created.join(', '), 'console-ok');
+            else line('Every system role already matches code.', 'console-ok');
+            if (roles && roles.existing && roles.existing.length) line('Roles present: ' + roles.existing.join(', '), '');
+            relogin.classList.remove('is-hidden');
+            setBusy(false, 'Reconcile again');
           })
-          .catch(function (e) { line('Network error: ' + e.message, 'log-error'); btn.disabled = false; });
+          .catch(function (e) {
+            line('Network error: ' + e.message, 'console-err');
+            setBusy(false, 'Try again');
+          });
       });
     })();
   </script>
-        `,
+`,
     );
 }
 
@@ -254,742 +694,1071 @@ export function renderReseedPage(state: PlatformStateResult): string {
 export function renderPromoteOwnerPage(state: PlatformStateResult): string {
     const isReady = state.state === 'READY';
     return baseLayout(
-        'Promote Platform Owner',
-        `
-  <p class="subtitle">Grant an existing account the system-scoped <code>platform_owner</code> role</p>
-
-  <div class="card">
-    <h2>Promote to platform owner</h2>
-    <p>
-      Grants full platform (control-plane) access to an <strong>existing</strong> user account. The
-      person must already have signed up — this does not create an account. Additive: existing
-      platform owners keep their access.
-    </p>
-    <div class="form-group">
-      <label class="form-label" for="promote-secret">Bootstrap Token</label>
-      <input class="form-input" id="promote-secret" type="password" placeholder="Secret Token" autocomplete="off">
-      <div class="form-hint">Your <code>BOOTSTRAP_OWNER_SECRET</code>. Prefilled from <code>?secret=</code> in the URL if present.</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="promote-email">Account email</label>
-      <input class="form-input" id="promote-email" type="email" placeholder="owner@example.com" autocomplete="off">
-      <div class="form-hint">The email of the existing account to promote.</div>
-    </div>
-    <button class="btn btn-primary" id="btn-promote">Promote to platform owner</button>
-    <div class="log-area" id="promote-log"></div>
-    <div class="alert alert-success" id="promote-relogin" style="display:none;margin-top:0.75rem">
-      Done. If that user is currently signed in, they must <strong>log out and back in</strong> for the
-      platform-admin access to take effect in their session.
-    </div>
+        'Promote platform owner',
+        stateChip(state),
+        `  <div class="page-head">
+    <h1>Promote a platform owner</h1>
+    <p class="lede">Grants an existing account the system-scoped <code>platform_owner</code> role.</p>
   </div>
+
   ${
       isReady
           ? ''
-          : `<div class="alert alert-warning">Platform is not fully set up yet. Use the <a href="/__bootstrap__" style="color:var(--accent-light)">setup wizard</a> to create the first owner.</div>`
+          : `<div class="alert alert-warn" style="margin-bottom:1rem"><span class="alert-mark" aria-hidden="true">!</span><span class="alert-title">The platform is not set up yet</span><div class="alert-body">Use the <a href="/__bootstrap__">setup wizard</a> to create the first owner.</div></div>`
   }
+
+  <div class="card">
+    <div class="card-body">
+      <div class="card-head">
+        <h2>Grant platform ownership</h2>
+        <p class="prose">Gives full control-plane access to an account that already exists. This does not create an account, so the person must have signed up first. Existing platform owners keep their access.</p>
+      </div>
+      <form id="promote-form" novalidate>
+        ${tokenField('promote-secret', 'promote-secret-hint')}
+        <div class="field" style="margin-top:1rem">
+          <label class="field-label" for="promote-email">Account email</label>
+          <input class="field-input" id="promote-email" type="email" placeholder="owner@example.com" autocomplete="off" spellcheck="false" aria-describedby="promote-email-hint">
+          <p class="hint" id="promote-email-hint">The email of the existing account to promote.</p>
+          <p class="field-error" id="promote-email-error" role="alert"></p>
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-promote" type="submit" style="margin-top:1rem">Promote to platform owner</button>
+      </form>
+      <div class="console" tabindex="0" id="promote-log" role="log" aria-live="polite" aria-label="Promotion output"></div>
+      <div class="alert alert-success is-hidden" id="promote-relogin">
+        <span class="alert-mark" aria-hidden="true">&#10003;</span>
+        <span class="alert-title">Ownership granted</span>
+        <div class="alert-body">If that person is signed in right now, they need to sign out and back in before the new access appears in their session.</div>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
+      var form = document.getElementById('promote-form');
       var secretInput = document.getElementById('promote-secret');
+      var secretError = document.getElementById('promote-secret-error');
       var emailInput = document.getElementById('promote-email');
+      var emailError = document.getElementById('promote-email-error');
       var btn = document.getElementById('btn-promote');
       var log = document.getElementById('promote-log');
       var relogin = document.getElementById('promote-relogin');
+
       try {
         var q = new URLSearchParams(location.search).get('secret');
         if (q) secretInput.value = q;
-      } catch (e) {}
+      } catch (e) { /* URL parsing is best-effort */ }
+
       function line(msg, cls) {
-        log.classList.add('visible');
-        var d = document.createElement('div');
-        d.className = 'log-line ' + (cls || '');
-        d.textContent = msg;
-        log.appendChild(d);
+        var row = document.createElement('div');
+        row.className = 'console-line ' + (cls || '');
+        var mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.textContent = cls === 'console-err' ? '\\u2715' : cls === 'console-ok' ? '\\u2713' : '\\u203A';
+        var text = document.createElement('span');
+        text.textContent = msg;
+        row.appendChild(mark);
+        row.appendChild(text);
+        log.appendChild(row);
+        log.scrollTop = log.scrollHeight;
       }
-      btn.addEventListener('click', function () {
+
+      function setBusy(busy, label) {
+        btn.disabled = busy;
+        btn.textContent = '';
+        if (busy) {
+          var s = document.createElement('span');
+          s.className = 'spinner';
+          s.setAttribute('aria-hidden', 'true');
+          btn.appendChild(s);
+        }
+        btn.appendChild(document.createTextNode(label));
+      }
+
+      function fail(el, errEl, message) {
+        errEl.textContent = message;
+        el.setAttribute('aria-invalid', 'true');
+        el.focus();
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
         var secret = (secretInput.value || '').trim();
         var email = (emailInput.value || '').trim();
-        if (!secret) { line('Enter the bootstrap token first.', 'log-error'); return; }
-        if (!email) { line('Enter the account email to promote.', 'log-error'); return; }
-        btn.disabled = true;
+        secretError.textContent = '';
+        emailError.textContent = '';
+        secretInput.removeAttribute('aria-invalid');
+        emailInput.removeAttribute('aria-invalid');
+
+        if (!secret) { fail(secretInput, secretError, 'Enter your setup token to continue.'); return; }
+        if (!email || email.indexOf('@') < 1) { fail(emailInput, emailError, 'Enter the email address of the account to promote.'); return; }
+
+        setBusy(true, 'Promoting');
         log.innerHTML = '';
-        relogin.style.display = 'none';
-        line('Promoting ' + email + '...', 'log-info');
+        relogin.classList.add('is-hidden');
+        line('Promoting ' + email, 'console-info');
+
         fetch('/api/admin/platform-owner/promote', {
           method: 'POST',
           headers: { 'X-Bootstrap-Secret': secret, 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email }),
         })
-          .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+          .then(function (r) {
+            return r.text().then(function (text) {
+              var body = null;
+              try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+              return { ok: r.ok, status: r.status, body: body };
+            });
+          })
           .then(function (res) {
             if (!res.ok) {
-              line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'error'), 'log-error');
-              btn.disabled = false;
+              if (res.status === 401 || res.status === 403) {
+                fail(secretInput, secretError, 'That setup token was not accepted.');
+                line('Unauthorized. Check the token and try again.', 'console-err');
+              } else if (res.status === 404) {
+                fail(emailInput, emailError, 'No account found for that email. They need to sign up first.');
+                line('No account found for ' + email, 'console-err');
+              } else {
+                line('Failed: ' + ((res.body && (res.body.error || res.body.code)) || 'request failed (' + res.status + ')'), 'console-err');
+              }
+              setBusy(false, 'Try again');
               return;
             }
-            line('Promoted. Role: ' + ((res.body && res.body.role) || 'platform_owner') + ' (user ' + ((res.body && res.body.userId) || '?') + ')', 'log-success');
-            relogin.style.display = 'block';
-            btn.disabled = false;
+            var userId = (res.body && res.body.userId) || '';
+            line(
+              'Granted ' + ((res.body && res.body.role) || 'platform_owner') + ' to ' + email +
+                (userId ? ' (user ' + userId + ')' : ''),
+              'console-ok'
+            );
+            relogin.classList.remove('is-hidden');
+            setBusy(false, 'Promote another account');
           })
-          .catch(function (e) { line('Network error: ' + e.message, 'log-error'); btn.disabled = false; });
+          .catch(function (e) {
+            line('Network error: ' + e.message, 'console-err');
+            setBusy(false, 'Try again');
+          });
       });
     })();
   </script>
-        `,
+`,
     );
 }
 
 // ============================================================
 // Wizard page — the main setup flow
 // ============================================================
+//
+// Four steps, each one action: Database -> Roles -> Owner -> Launch.
+// Environment-variable reference material lives in disclosures next to the step
+// it belongs to rather than occupying a step of its own, and the left rail is
+// the single progress indicator (the old tab strip + separate progress bar were
+// two views of the same state).
+
+const WIZARD_STEPS = [
+    { title: 'Database', desc: 'Create tables' },
+    { title: 'Roles', desc: 'Seed permissions' },
+    { title: 'Owner', desc: 'First account' },
+    { title: 'Launch', desc: 'Go live' },
+];
 
 export function renderWizardPage(state: PlatformStateResult): string {
+    const isReady = state.state === 'READY';
+    const hasD1 = state.bindings.d1;
+
+    const railHtml = WIZARD_STEPS.map(
+        (step, i) =>
+            `<li><button type="button" class="rail-step" id="rail-${i}" data-step="${i}"${i === 0 ? ' aria-current="step"' : ' disabled'}>
+            <span class="rail-marker" id="marker-${i}" aria-hidden="true">${i + 1}</span>
+            <span class="rail-text"><span class="rail-title">${escapeHtml(step.title)}</span><span class="rail-desc">${escapeHtml(step.desc)}</span></span>
+          </button></li>`,
+    ).join('\n          ');
+
     const bindingsHtml = Object.entries(state.bindings)
         .map(([name, ok]) => {
             const label = BINDING_LABELS[name] || name;
-            return `<div class="binding-item ${ok ? 'ok' : 'missing'}"><span class="dot ${ok ? 'dot-success' : 'dot-error'}"></span>${label}<span style="margin-left:auto;font-size:0.625rem;color:var(--text-dim)">${ok ? 'OK' : 'Missing'}</span></div>`;
+            const required = REQUIRED_BINDINGS.includes(name);
+            const cls = ok ? 'binding-ok' : required ? 'binding-missing' : 'binding-optional';
+            const status = ok ? 'Connected' : required ? 'Required' : 'Not set';
+            return `<div class="binding ${cls}"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(label)}</code><span class="binding-status">${status}</span></div>`;
         })
-        .join('\n');
-
-    const isReady = state.state === 'READY';
+        .join('\n            ');
 
     return baseLayout(
         'Setup',
-        `
-  <style>
-    .nav-buttons { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
-    .timer-area { font-size: 0.75rem; color: var(--text-dim); text-align: center; margin-top: 0.75rem; height: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-    .btn-link { background: none; border: none; padding: 0; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
-    .btn-link:hover { color: var(--text); }
-  </style>
-
-  <p class="subtitle">Set up your platform in a few steps</p>
-
-  <!-- Step tabs -->
-  <div class="steps" id="step-tabs">
-    <div class="step-tab active" data-step="0">1. Database</div>
-    <div class="step-tab" data-step="1">2. RBAC</div>
-    <div class="step-tab" data-step="2">3. Admin</div>
-    <div class="step-tab" data-step="3">4. Config</div>
-    <div class="step-tab" data-step="4">5. Launch</div>
+        stateChip(state),
+        `  <div class="page-head">
+    <h1>Set up ${BRAND}</h1>
+    <p class="lede">Four steps to a running platform. Nothing is written to your database until you press a button.</p>
   </div>
 
-  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="shell">
+    <nav class="rail" aria-label="Setup steps">
+      <ol class="rail-list">
+          ${railHtml}
+      </ol>
+    </nav>
 
-  <!-- STEP 0: Bindings + DB Init -->
-  <div class="step-panel active" id="panel-0">
-    <div class="card" id="cache-clear-card" style="display:none">
-      <h2>Previous login in browser cache</h2>
-      <p>It seems you have a previous login in browser cache. This can cause conflicts during setup. Clear it before proceeding.</p>
-      <button class="btn btn-outline btn-sm" id="btn-clear-cache">Clear all ottabase.* entries</button>
-    </div>
-    <div class="card">
+    <div>
+      <p class="sr-only" id="step-announcer" aria-live="polite"></p>
 
-      <div class="form-group">
-        <label class="form-label" for="bootstrap-secret"><h2>Bootstrap Token</h2></label>
-        <input class="form-input" id="bootstrap-secret" type="text" placeholder="Secret Token" autocomplete="off">
-        <div class="form-hint">Your secret token set in environment variable referenced in the apps's 'Required: Secrets' section in .env.example</div>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Cloudflare Bindings</h2>
-      <p>These are the Cloudflare resources attached to your worker.</p>
-      <div class="binding-grid">${bindingsHtml}</div>
-      ${
-          !state.bindings.d1
-              ? `
-        <div class="alert alert-error">
-          <strong>D1 Database is required.</strong> Add OBCF_D1 to your wrangler.jsonc and redeploy.
+      <div class="card" id="token-card">
+        <div class="card-body">
+          <div class="field">
+            <label class="field-label" for="bootstrap-secret">Setup token</label>
+            <div class="field-with-action">
+              <input class="field-input" id="bootstrap-secret" type="password" placeholder="BOOTSTRAP_OWNER_SECRET" autocomplete="off" spellcheck="false" aria-describedby="token-hint">
+              <button type="button" class="btn btn-outline" id="token-reveal" aria-pressed="false">Show</button>
+            </div>
+            <p class="hint" id="token-hint">From <code>BOOTSTRAP_OWNER_SECRET</code> in your worker environment. Every step below sends it.</p>
+            <p class="field-error" id="bootstrap-secret-error" role="alert"></p>
+          </div>
         </div>
-        <pre class="code-block">wrangler d1 create ottabase-db
-# Then add the database_id to wrangler.jsonc</pre>
-      `
-              : ''
-      }
-      ${!state.bindings.kv ? `<div class="alert alert-warning">KV (OBCF_KV) is recommended for state caching and session management.</div>` : ''}
-    </div>
-    <div class="card">
-      <h2>Cloudflare API Variables</h2>
-      <p>These are <em>not</em> Worker bindings - they are environment variables used by the CLI and optional analytics features.</p>
-      <table class="env-table" style="margin-top:0.5rem">
-        <thead>
-          <tr style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim)">
-            <td style="padding-bottom:0.5rem">Variable</td>
-            <td style="padding-bottom:0.5rem">Required</td>
-            <td style="padding-bottom:0.5rem">Purpose & Notes</td>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>CLOUDFLARE_ACCOUNT_ID</td>
-            <td><span class="badge badge-warning">Prod</span></td>
-            <td>Needed by <code>wrangler deploy</code>, <code>pnpm cf:setup</code>, and CI/CD. Set as a GitHub Secret (<code>CF_ACCOUNT_ID</code>) for deployments. Not required for local <code>wrangler dev</code> - Wrangler emulates all bindings locally without it.</td>
-          </tr>
-          <tr style="border-bottom:none">
-            <td>CLOUDFLARE_ANALYTICS_API_TOKEN</td>
-            <td><span class="badge badge-muted">Optional</span></td>
-            <td>Enables Cloudflare Analytics Engine queries (traffic stats, custom metrics). The app works fully without it - analytics dashboards will simply show no data until it is set.</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="alert alert-warning" style="margin-top:0.75rem;font-size:0.75rem">
-        <strong>Why are the bindings above green without these?</strong><br>
-        Worker bindings (OBCF_D1, OBCF_KV, etc.) come from <code>wrangler.jsonc</code> and are emulated by Wrangler locally - no Cloudflare account credentials are needed. These two variables are only used by the <em>Wrangler CLI</em> and optional API calls, not by the running Worker itself.
       </div>
-    </div>
-    <div class="card" ${!state.bindings.d1 ? 'style="opacity:0.5;pointer-events:none"' : ''}>
-      <h2>Initialize Database</h2>
-      <p>Creates all schema tables and runs core auth and content migrations (users, accounts, sessions, verification tokens, authenticators, posts, tags), and sets up tracking.</p>
-      <div class="log-area" id="log-init"></div>
-      <button class="btn btn-primary" id="btn-init" ${!state.bindings.d1 ? 'disabled' : ''}>Create Tables & Run Migrations</button>
 
-      <div class="timer-area" id="timer-0"></div>
-      <div class="nav-buttons">
-        <button class="btn btn-outline btn-sm" disabled style="opacity:0">Previous</button>
-        <button class="btn btn-outline btn-sm" id="btn-next-0" disabled>Next &rarr;</button>
-      </div>
-    </div>
-  </div>
+      <!-- STEP 0: Database -->
+      <section class="card step" id="panel-0" aria-labelledby="head-0">
+        <div class="card-body">
+          <div class="card-head">
+            <h2 id="head-0" tabindex="-1">Create the database schema</h2>
+            <p class="prose">Creates every table ${BRAND} needs in your D1 database and runs the core migrations for users, accounts, sessions, verification tokens, authenticators, posts and tags. Tables that already exist are left alone.</p>
+          </div>
 
-  <!-- STEP 1: RBAC Seed -->
-  <div class="step-panel" id="panel-1">
-    <div class="card">
-      <h2>RBAC &amp; Permissions</h2>
-      <p>Seed the default roles (platform_owner, owner, admin, editor, viewer, member) and the default organization used for system-level operations.</p>
-      <div class="log-area" id="log-seed"></div>
-      <button class="btn btn-primary" id="btn-seed">Seed Roles &amp; Permissions</button>
+          <div class="alert alert-warn is-hidden" id="cache-notice">
+            <span class="alert-mark" aria-hidden="true">!</span>
+            <span class="alert-title">A previous session is cached in this browser</span>
+            <div class="alert-body">
+              <p>Leftover client state can conflict with a fresh install.</p>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-clear-cache">Clear cached session</button>
+              <p id="cache-result" role="status"></p>
+            </div>
+          </div>
 
-      <div class="timer-area" id="timer-1"></div>
-      <div class="nav-buttons">
-        <button class="btn btn-outline btn-sm" id="btn-prev-1">Previous</button>
-        <button class="btn btn-outline btn-sm" id="btn-next-1" disabled>Next &rarr;</button>
-      </div>
-    </div>
-  </div>
+          <div>
+            <h3 style="margin-bottom:0.5rem">Cloudflare bindings</h3>
+            <div class="bindings">
+            ${bindingsHtml}
+            </div>
+          </div>
 
-  <!-- STEP 2: Create Platform Owner -->
-  <div class="step-panel" id="panel-2">
-    <div class="card">
-      <h2>Create Platform Owner Account</h2>
-      <p>This will be the platform owner with full administrative privileges. A personal workspace organization will be created automatically.</p>
-      <div class="form-group">
-        <label class="form-label" for="owner-name">Name</label>
-        <input class="form-input" id="owner-name" name="name" type="text" placeholder="Jane Doe" autocomplete="name">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="owner-email">Email <span style="color:var(--error)">*</span></label>
-        <input class="form-input" id="owner-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
-        <div class="form-error" id="err-email" style="display:none"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="owner-password">Password <span style="color:var(--error)">*</span></label>
-        <input class="form-input" id="owner-password" type="password" placeholder="Min 8 characters" autocomplete="new-password" required>
-        <div class="form-hint">Minimum 8 characters. Use a strong, unique password.</div>
-        <div class="form-error" id="err-password" style="display:none"></div>
-      </div>
-      <div class="log-area" id="log-owner"></div>
-      <button class="btn btn-primary" id="btn-owner">Create Platform Owner Account</button>
+          ${
+              hasD1
+                  ? ''
+                  : `<div class="alert alert-danger">
+            <span class="alert-mark" aria-hidden="true">&#10005;</span>
+            <span class="alert-title">A D1 database binding is required</span>
+            <div class="alert-body">
+              <p>Add <code>OBCF_D1</code> to <code>wrangler.jsonc</code> and redeploy, then reload this page.</p>
+              <code class="code">wrangler d1 create ottabase-db
+# copy the database_id into wrangler.jsonc</code>
+            </div>
+          </div>`
+          }
+          ${
+              state.bindings.kv
+                  ? ''
+                  : `<div class="alert alert-warn">
+            <span class="alert-mark" aria-hidden="true">!</span>
+            <span class="alert-title">No KV namespace</span>
+            <div class="alert-body">Setup works without it, but <code>OBCF_KV</code> is what caches platform state and sessions. Add it before going to production.</div>
+          </div>`
+          }
 
-      <div class="timer-area" id="timer-2"></div>
-      <div class="nav-buttons">
-        <button class="btn btn-outline btn-sm" id="btn-prev-2">Previous</button>
-        <button class="btn btn-outline btn-sm" id="btn-next-2" disabled>Next &rarr;</button>
-      </div>
-    </div>
-  </div>
+          <details class="disclosure">
+            <summary>Why are the bindings green without a Cloudflare account ID?</summary>
+            <div class="disclosure-body">
+              <p class="prose">Worker bindings come from <code>wrangler.jsonc</code> and Wrangler emulates them locally, so no account credentials are involved. The two variables below are used by the Wrangler CLI and optional API calls, never by the running worker.</p>
+              <dl class="deflist">
+                <div class="defrow">
+                  <dt class="defterm">CLOUDFLARE_ACCOUNT_ID<span class="deftag">Production</span></dt>
+                  <dd class="defdesc">Needed by <code>wrangler deploy</code>, <code>pnpm cf:setup</code> and CI. Store it as the <code>CF_ACCOUNT_ID</code> repository secret. Local <code>wrangler dev</code> does not need it.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">CLOUDFLARE_ANALYTICS_API_TOKEN<span class="deftag">Optional</span></dt>
+                  <dd class="defdesc">Enables Analytics Engine queries for traffic and custom metrics. Without it the app runs normally and analytics dashboards stay empty.</dd>
+                </div>
+              </dl>
+            </div>
+          </details>
 
-  <!-- STEP 3: Environment Config -->
-  <div class="step-panel" id="panel-3">
-    <div class="card">
-      <h2>Environment Configuration</h2>
-      <p>These environment variables should be set in your wrangler.jsonc (under <code>vars</code>) or as Cloudflare secrets for production. Not all are required for local development.</p>
-      <h3>Authentication (Required for production)</h3>
-      <table class="env-table">
-        <tr><td>AUTH_SECRET</td><td>Session encryption key. Generate with: <code>openssl rand -base64 32</code></td></tr>
-        <tr><td>AUTH_URL</td><td>Your app's public URL (e.g. <code>https://myapp.example.com</code>)</td></tr>
-      </table>
-      <h3 style="margin-top:0.75rem">Email (Optional)</h3>
-      <table class="env-table">
-        <tr><td>EMAIL_RESEND_API_KEY</td><td>API key from <a href="https://resend.com" target="_blank" style="color:var(--accent-light)">Resend</a> (recommended)</td></tr>
-        <tr><td>EMAIL_FROM</td><td>Sender address (default: noreply@example.com)</td></tr>
-      </table>
-      <h3 style="margin-top:0.75rem">Security (Recommended)</h3>
-      <table class="env-table">
-        <tr><td>MIGRATION_SECRET</td><td>Protects the <code>/api/ottaorm/init</code> endpoint in production</td></tr>
-        <tr><td>BOOTSTRAP_OWNER_SECRET</td><td>Protects the <code>/api/admin/platform-owner/promote</code> endpoint</td></tr>
-      </table>
-      <div class="alert alert-warning" style="margin-top:0.75rem">
-        For <strong>local development</strong>, these are optional. In <strong>production</strong>, at minimum set <code>AUTH_SECRET</code>.
-      </div>
-      <pre class="code-block">wrangler secret put AUTH_SECRET
-wrangler secret put MIGRATION_SECRET</pre>
+          <div class="alert alert-danger is-hidden" id="alert-0" role="alert"></div>
+          <button class="btn btn-primary btn-block" id="btn-init"${hasD1 ? '' : ' disabled'}>Create tables and run migrations</button>
+          <div class="console" tabindex="0" id="log-init" role="log" aria-live="polite" aria-label="Database output"></div>
 
-      <div class="nav-buttons">
-        <button class="btn btn-outline btn-sm" id="btn-prev-3">Previous</button>
-        <button class="btn btn-primary btn-sm" id="btn-next-3">Next &rarr;</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- STEP 4: Finalize -->
-  <div class="step-panel" id="panel-4">
-    <div class="card">
-      <h2>Ready to Launch</h2>
-      <p>Final verification before marking the platform as ready.</p>
-      <div id="finalize-checks" style="margin:0.75rem 0"></div>
-      <div class="log-area" id="log-finalize"></div>
-      <button class="btn btn-primary" id="btn-finalize">Launch Platform</button>
-
-      <div class="nav-buttons">
-        <button class="btn btn-outline btn-sm" id="btn-prev-4">Previous</button>
-        <div style="width:1px"></div>
-      </div>
-    </div>
-    <div id="success-card" style="display:none">
-      <div class="card">
-        <div class="alert alert-success" style="margin-bottom:0.75rem">
-          <strong>Setup complete!</strong> Your platform is live and ready to go.
+          <div class="card-foot">
+            <span></span>
+            <button class="btn btn-outline btn-sm" id="next-0" disabled>Next: Roles</button>
+          </div>
         </div>
-        <p style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:0.75rem">Sign in with the platform owner account you just created to get started.</p>
-        <a href="/login" class="btn btn-primary" style="text-decoration:none">Go to Login</a>
-      </div>
+      </section>
+
+      <!-- STEP 1: Roles -->
+      <section class="card step is-hidden" id="panel-1" aria-labelledby="head-1">
+        <div class="card-body">
+          <div class="card-head">
+            <h2 id="head-1" tabindex="-1">Seed roles and permissions</h2>
+            <p class="prose">Creates the six built-in roles (<code>platform_owner</code>, <code>owner</code>, <code>admin</code>, <code>editor</code>, <code>viewer</code> and <code>member</code>) with their default permission sets, and registers the default brand kit for this app. Running it more than once is safe.</p>
+          </div>
+          <div class="alert alert-danger is-hidden" id="alert-1" role="alert"></div>
+          <button class="btn btn-primary btn-block" id="btn-seed">Seed roles and permissions</button>
+          <div class="console" tabindex="0" id="log-seed" role="log" aria-live="polite" aria-label="Role seeding output"></div>
+          <div class="card-foot">
+            <button class="btn btn-ghost btn-sm" data-goto="0">Back</button>
+            <button class="btn btn-outline btn-sm" id="next-1" disabled>Next: Owner</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2: Owner -->
+      <section class="card step is-hidden" id="panel-2" aria-labelledby="head-2">
+        <div class="card-body">
+          <div class="card-head">
+            <h2 id="head-2" tabindex="-1">Create the platform owner</h2>
+            <p class="prose">This account gets full control of the platform, and a personal workspace is created alongside it. It can only be created once. Afterwards, use the promote page to grant ownership to another account.</p>
+          </div>
+          <form id="owner-form" novalidate>
+            <div class="field">
+              <label class="field-label" for="owner-name">Name</label>
+              <input class="field-input" id="owner-name" name="name" type="text" placeholder="Jane Doe" autocomplete="name">
+            </div>
+            <div class="field" style="margin-top:0.875rem">
+              <label class="field-label" for="owner-email">Email</label>
+              <input class="field-input" id="owner-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" required>
+              <p class="field-error" id="owner-email-error" role="alert"></p>
+            </div>
+            <div class="field" style="margin-top:0.875rem">
+              <label class="field-label" for="owner-password">Password</label>
+              <div class="field-with-action">
+                <input class="field-input" id="owner-password" type="password" autocomplete="new-password" aria-describedby="pw-reqs" required>
+                <button type="button" class="btn btn-outline" id="pw-reveal" aria-pressed="false">Show</button>
+              </div>
+              <ul class="reqs" id="pw-reqs">
+                <li class="req" data-req="len"><span class="req-mark" aria-hidden="true">&#9675;</span><span>At least 8 characters</span></li>
+                <li class="req" data-req="upper"><span class="req-mark" aria-hidden="true">&#9675;</span><span>One uppercase letter</span></li>
+                <li class="req" data-req="special"><span class="req-mark" aria-hidden="true">&#9675;</span><span>One special character</span></li>
+              </ul>
+              <p class="field-error" id="owner-password-error" role="alert"></p>
+            </div>
+            <div class="alert alert-danger is-hidden" id="alert-2" role="alert" style="margin-top:1rem"></div>
+            <button class="btn btn-primary btn-block" id="btn-owner" type="submit" style="margin-top:1rem">Create owner account</button>
+          </form>
+          <div class="console" tabindex="0" id="log-owner" role="log" aria-live="polite" aria-label="Account output"></div>
+          <div class="card-foot">
+            <button class="btn btn-ghost btn-sm" data-goto="1">Back</button>
+            <button class="btn btn-outline btn-sm" id="next-2" disabled>Next: Launch</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3: Launch -->
+      <section class="card step is-hidden" id="panel-3" aria-labelledby="head-3">
+        <div class="card-body">
+          <div class="card-head">
+            <h2 id="head-3" tabindex="-1">Pre-flight</h2>
+            <p class="prose">A last look at what was created before the platform starts serving traffic.</p>
+          </div>
+          <div class="checks" id="checks"></div>
+
+          <details class="disclosure">
+            <summary>Environment variables for production</summary>
+            <div class="disclosure-body">
+              <p class="prose">Set these as Cloudflare secrets, or under <code>vars</code> in <code>wrangler.jsonc</code>. Local development runs without them; production needs at least <code>AUTH_SECRET</code>.</p>
+              <dl class="deflist">
+                <div class="defrow">
+                  <dt class="defterm">AUTH_SECRET<span class="deftag">Required</span></dt>
+                  <dd class="defdesc">Signs session cookies. Generate one with <code>openssl rand -base64 32</code>.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">AUTH_URL<span class="deftag">Required</span></dt>
+                  <dd class="defdesc">The public URL of this app, for example <code>https://app.example.com</code>.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">EMAIL_RESEND_API_KEY<span class="deftag">Optional</span></dt>
+                  <dd class="defdesc">Sends magic links, verification and password-reset mail. Without a provider those flows are unavailable.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">EMAIL_FROM<span class="deftag">Optional</span></dt>
+                  <dd class="defdesc">Sender address on outgoing mail.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">MIGRATION_SECRET<span class="deftag">Recommended</span></dt>
+                  <dd class="defdesc">Protects <code>/api/ottaorm/init</code> so migrations cannot be triggered anonymously.</dd>
+                </div>
+                <div class="defrow">
+                  <dt class="defterm">BOOTSTRAP_OWNER_SECRET<span class="deftag">Recommended</span></dt>
+                  <dd class="defdesc">The setup token above. Protects this wizard and the platform-owner promote endpoint.</dd>
+                </div>
+              </dl>
+              <code class="code">wrangler secret put AUTH_SECRET
+wrangler secret put MIGRATION_SECRET</code>
+            </div>
+          </details>
+
+          <div class="alert alert-danger is-hidden" id="alert-3" role="alert"></div>
+          <button class="btn btn-primary btn-block" id="btn-finalize" disabled>Launch platform</button>
+          <div class="console" tabindex="0" id="log-finalize" role="log" aria-live="polite" aria-label="Launch output"></div>
+          <div class="card-foot">
+            <button class="btn btn-ghost btn-sm" data-goto="2">Back</button>
+            <span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Success -->
+      <section class="card step is-hidden" id="panel-done" aria-labelledby="head-done">
+        <div class="card-body">
+          <div class="card-head">
+            <h2 id="head-done" tabindex="-1">${BRAND} is running</h2>
+            <p class="prose" id="done-lede">Setup is complete. Sign in with the owner account to get started.</p>
+          </div>
+          <div class="stats" id="done-stats"></div>
+          <a class="btn btn-primary btn-block" href="/login">Sign in</a>
+          <details class="disclosure">
+            <summary>Maintenance pages</summary>
+            <div class="disclosure-body">
+              <div class="linklist">
+                <div class="linkrow">
+                  <a href="/__bootstrap__/seed">Reconcile roles and permissions</a>
+                  <span>Re-applies built-in role definitions after an upgrade.</span>
+                </div>
+                <div class="linkrow">
+                  <a href="/__bootstrap__/promote-owner">Promote a platform owner</a>
+                  <span>Grants ownership to another existing account, or recovers access.</span>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
     </div>
   </div>
 
   <script>
-  (function() {
-    var currentStep = ${isReady ? 4 : 0};
-    var tabs = document.querySelectorAll('.step-tab');
-    var panels = document.querySelectorAll('.step-panel');
-    var progress = document.getElementById('progress-fill');
-    var autoAdvanceTimer = null;
-    var secret = new URLSearchParams(window.location.search).get('secret');
-    var secretInput = document.getElementById('bootstrap-secret');
-    if (secretInput && secret) {
-      secretInput.value = secret;
-    }
+  (function () {
+    var STEPS = 4;
+    var STEP_NAMES = ['Database', 'Roles', 'Owner', 'Launch'];
+    var current = 0;
+    var done = [false, false, false, false];
+    var ownerEmail = '';
+    // Once setup completes the flow is terminal. Without this, every rail button
+    // becomes reachable (reachable() only asks whether the previous step is done)
+    // and one click would re-arm the init action, which wipes the KV namespace
+    // and drops a live platform back to BOOTSTRAPPING.
+    var finished = false;
 
-    /* Check for ottabase.* in localStorage — show clear section only if non-allowlisted keys exist */
-    (function() {
-      var allowlist = ['ottabase.sidebar-state', 'ottabase.language', 'ottabase.i18n'];
-      var keys = [];
+    var announcer = document.getElementById('step-announcer');
+    var tokenInput = document.getElementById('bootstrap-secret');
+    var tokenError = document.getElementById('bootstrap-secret-error');
+    var tokenHint = document.getElementById('token-hint');
+    var railButtons = [];
+    var i;
+    for (i = 0; i < STEPS; i++) railButtons.push(document.getElementById('rail-' + i));
+
+    try {
+      var qs = new URLSearchParams(window.location.search).get('secret');
+      if (qs) tokenInput.value = qs;
+    } catch (e) { /* URL parsing is best-effort */ }
+
+    // ── Reveal toggles ────────────────────────────────────
+    function bindReveal(buttonId, inputId) {
+      var button = document.getElementById(buttonId);
+      var field = document.getElementById(inputId);
+      if (!button || !field) return;
+      button.addEventListener('click', function () {
+        var shown = field.type === 'text';
+        field.type = shown ? 'password' : 'text';
+        button.textContent = shown ? 'Show' : 'Hide';
+        button.setAttribute('aria-pressed', shown ? 'false' : 'true');
+      });
+    }
+    bindReveal('token-reveal', 'bootstrap-secret');
+    bindReveal('pw-reveal', 'owner-password');
+
+    // ── Stale client state ────────────────────────────────
+    // Anything under ottabase.* that is not a harmless UI preference means a
+    // previous login is cached in this browser and will fight the fresh install.
+    var KEEP = [
+      'ottabase.sidebar-state',
+      'ottabase.language',
+      'ottabase.i18n',
+      'ottabase.theme',
+      'ottabase.ui-scale',
+      'ottabase.layout-overrides',
+    ];
+    function staleKeys() {
+      var found = [];
       try {
-        for (var i = 0; i < localStorage.length; i++) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf('ottabase.') === 0 && allowlist.indexOf(k) === -1) keys.push(k);
+        for (var k = 0; k < localStorage.length; k++) {
+          var key = localStorage.key(k);
+          if (key && key.indexOf('ottabase.') === 0 && KEEP.indexOf(key) === -1) found.push(key);
         }
-      } catch (e) { /* ignore */ }
-      var card = document.getElementById('cache-clear-card');
-      var btn = document.getElementById('btn-clear-cache');
-      if (card && btn && keys.length > 0) {
-        card.style.display = 'block';
-        btn.onclick = function() {
-          try {
-            var toRemove = [];
-            for (var j = 0; j < localStorage.length; j++) {
-              var k = localStorage.key(j);
-              if (k && k.indexOf('ottabase.') === 0 && allowlist.indexOf(k) === -1) toRemove.push(k);
-            }
-            toRemove.forEach(function(k) { localStorage.removeItem(k); });
-            card.style.display = 'none';
-          } catch (e) { /* ignore */ }
-        };
+      } catch (e) { /* storage may be blocked */ }
+      return found;
+    }
+    var cacheNotice = document.getElementById('cache-notice');
+    var clearCacheBtn = document.getElementById('btn-clear-cache');
+    var cacheResult = document.getElementById('cache-result');
+    if (staleKeys().length > 0) cacheNotice.classList.remove('is-hidden');
+    clearCacheBtn.addEventListener('click', function () {
+      // Report the outcome in place. Hiding the card on failure would make a
+      // blocked localStorage look exactly like a successful clear.
+      var removed = 0;
+      try {
+        staleKeys().forEach(function (key) {
+          localStorage.removeItem(key);
+          removed++;
+        });
+      } catch (e) {
+        cacheResult.textContent = 'Could not clear browser storage. Clear this site\\u2019s data in your browser settings, then reload.';
+        return;
       }
-    })();
+      clearCacheBtn.disabled = true;
+      cacheResult.textContent = 'Cleared ' + removed + ' saved item' + (removed === 1 ? '' : 's') + '. Setup can continue.';
+    });
 
-    function apiFetch(url, options) {
+    // ── Networking ────────────────────────────────────────
+    // Always inspects res.ok: a 401 or 500 body is not a success payload.
+    function api(path, options) {
       options = options || {};
-      options.headers = options.headers || {};
-      var activeSecret = secretInput && secretInput.value ? secretInput.value.trim() : secret;
-      if (activeSecret) options.headers['X-Bootstrap-Secret'] = activeSecret;
-      return fetch(url, options);
-    }
-
-    function clearTimer() {
-      if (autoAdvanceTimer) {
-        clearInterval(autoAdvanceTimer);
-        autoAdvanceTimer = null;
-      }
-      var timerEls = document.querySelectorAll('.timer-area');
-      for (var i = 0; i < timerEls.length; i++) {
-        timerEls[i].innerHTML = '';
-      }
-    }
-
-    // Expose cancel globally for inline onclick
-    window.cancelAutoAdvance = function() {
-      clearTimer();
-    };
-
-    function startAutoAdvance(nextStep) {
-      clearTimer();
-      var seconds = 30;
-      var timerEl = document.getElementById('timer-' + (nextStep - 1));
-      if (!timerEl) return;
-
-      function update() {
-        if (seconds <= 0) {
-          clearTimer();
-          goToStep(nextStep);
-          return;
-        }
-        timerEl.innerHTML = 'Auto-advancing in ' + seconds + 's&hellip; <button class="btn-link" onclick="window.cancelAutoAdvance()">Cancel</button>';
-        seconds--;
-      }
-      update();
-      autoAdvanceTimer = setInterval(update, 1000);
-    }
-
-    function goToStep(n) {
-      clearTimer(); // User interaction stops any timer
-      currentStep = n;
-      tabs.forEach(function(t, i) {
-        t.classList.remove('active');
-        // Mark previous steps as done if we're ahead of them
-        if (i < n) t.classList.add('done');
-        if (i === n) t.classList.add('active');
+      var headers = options.headers || {};
+      var token = (tokenInput.value || '').trim();
+      if (token) headers['X-Bootstrap-Secret'] = token;
+      options.headers = headers;
+      options.credentials = 'include';
+      return fetch(path, options).then(function (res) {
+        return res.text().then(function (text) {
+          var body = null;
+          try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+          if (!res.ok || (body && body.success === false)) {
+            // handleInit's failure body carries a "message" field and no "error"
+            // key, so without this an autoInit failure shows only its bare code.
+            var message = (body && (body.error || body.message || body.code)) || 'Request failed (' + res.status + ')';
+            var err = new Error(message);
+            err.status = res.status;
+            err.body = body;
+            throw err;
+          }
+          return body || {};
+        });
       });
-      panels.forEach(function(p, i) {
-        p.classList.toggle('active', i === n);
-      });
-      progress.style.width = (n / 4 * 100) + '%';
     }
 
-    function log(areaId, msg, type) {
+    function isAuthError(err) {
+      return err && (err.status === 401 || err.status === 403);
+    }
+
+    function flagToken(message) {
+      tokenError.textContent = message;
+      tokenInput.setAttribute('aria-invalid', 'true');
+      tokenInput.focus();
+      tokenInput.scrollIntoView({ block: 'center' });
+    }
+
+    tokenInput.addEventListener('input', function () {
+      tokenError.textContent = '';
+      tokenInput.removeAttribute('aria-invalid');
+    });
+
+    // ── Console ───────────────────────────────────────────
+    function log(areaId, message, tone) {
       var area = document.getElementById(areaId);
-      area.classList.add('visible');
-      var line = document.createElement('div');
-      line.className = 'log-line' + (type ? ' log-' + type : '');
-      line.textContent = msg;
-      area.appendChild(line);
+      var row = document.createElement('div');
+      row.className = 'console-line' + (tone ? ' console-' + tone : '');
+      var mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = tone === 'err' ? '\\u2715' : tone === 'ok' ? '\\u2713' : '\\u203A';
+      var text = document.createElement('span');
+      text.textContent = message;
+      row.appendChild(mark);
+      row.appendChild(text);
+      area.appendChild(row);
       area.scrollTop = area.scrollHeight;
-      // Ensure we see the latest log
-      setTimeout(function() { area.scrollTop = area.scrollHeight; }, 10);
     }
 
-    function setBtn(btn, loading, text) {
-      btn.disabled = loading;
-      btn.innerHTML = loading ? '<span class="spinner"></span> ' + text : text;
+    function showAlert(step, title, detail) {
+      var box = document.getElementById('alert-' + step);
+      box.innerHTML = '';
+      var mark = document.createElement('span');
+      mark.className = 'alert-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = '\\u2715';
+      var heading = document.createElement('span');
+      heading.className = 'alert-title';
+      heading.textContent = title;
+      box.appendChild(mark);
+      box.appendChild(heading);
+      if (detail) {
+        var body = document.createElement('div');
+        body.className = 'alert-body';
+        body.textContent = detail;
+        box.appendChild(body);
+      }
+      box.classList.remove('is-hidden');
     }
 
-    // Navigation Buttons
-    function bindNav(id, step) {
-      var btn = document.getElementById(id);
-      if (btn) btn.onclick = function() { goToStep(step); };
+    function clearAlert(step) {
+      var box = document.getElementById('alert-' + step);
+      box.innerHTML = '';
+      box.classList.add('is-hidden');
     }
 
-    bindNav('btn-next-0', 1);
+    function setBusy(button, busy, label) {
+      button.disabled = busy;
+      button.textContent = '';
+      if (busy) {
+        var s = document.createElement('span');
+        s.className = 'spinner';
+        s.setAttribute('aria-hidden', 'true');
+        button.appendChild(s);
+      }
+      button.appendChild(document.createTextNode(label));
+    }
 
-    bindNav('btn-prev-1', 0);
-    bindNav('btn-next-1', 2);
+    // ── Step navigation ───────────────────────────────────
+    function reachable(step) {
+      if (step === 0) return true;
+      return done[step - 1] === true;
+    }
 
-    bindNav('btn-prev-2', 1);
-    bindNav('btn-next-2', 3);
+    function paintRail() {
+      for (var s = 0; s < STEPS; s++) {
+        var button = railButtons[s];
+        var marker = document.getElementById('marker-' + s);
+        button.classList.toggle('is-done', done[s]);
+        button.classList.toggle('is-current', s === current);
+        if (s === current) button.setAttribute('aria-current', 'step');
+        else button.removeAttribute('aria-current');
+        button.disabled = !reachable(s);
+        marker.textContent = done[s] ? '\\u2713' : String(s + 1);
+      }
+    }
 
-    bindNav('btn-prev-3', 2);
-    bindNav('btn-next-3', 4);
+    function goTo(step, focusHeading) {
+      if (finished) return;
+      current = step;
+      for (var s = 0; s < STEPS; s++) {
+        document.getElementById('panel-' + s).classList.toggle('is-hidden', s !== step);
+      }
+      document.getElementById('panel-done').classList.add('is-hidden');
+      paintRail();
+      announcer.textContent = 'Step ' + (step + 1) + ' of ' + STEPS + ': ' + STEP_NAMES[step];
+      if (focusHeading !== false) document.getElementById('head-' + step).focus();
+      if (step === 3) runChecks();
+    }
 
-    bindNav('btn-prev-4', 3);
+    function markDone(step) {
+      done[step] = true;
+      var next = document.getElementById('next-' + step);
+      if (next) next.disabled = false;
+      railButtons[step].classList.remove('is-error');
+      paintRail();
+    }
 
-    // --- Step 0: Init ---
+    function markError(step) {
+      railButtons[step].classList.add('is-error');
+    }
+
+    railButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        var target = Number(button.getAttribute('data-step'));
+        if (reachable(target)) goTo(target);
+      });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'), function (button) {
+      button.addEventListener('click', function () {
+        goTo(Number(button.getAttribute('data-goto')));
+      });
+    });
+
+    for (i = 0; i < STEPS - 1; i++) {
+      (function (from) {
+        var next = document.getElementById('next-' + from);
+        if (next) next.addEventListener('click', function () { goTo(from + 1); });
+      })(i);
+    }
+
+    // ── Step 0: database ──────────────────────────────────
     var btnInit = document.getElementById('btn-init');
-    var btnNext0 = document.getElementById('btn-next-0');
+    btnInit.addEventListener('click', function () {
+      clearAlert(0);
+      setBusy(btnInit, true, 'Creating tables');
+      log('log-init', 'Starting database initialization', 'info');
 
-    btnInit.addEventListener('click', function() {
-      setBtn(btnInit, true, 'Initializing...');
-      log('log-init', 'Starting database initialization...', 'info');
-
-      apiFetch('/__bootstrap__/api/init', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (!data.success) throw new Error(data.error || 'Init failed');
-
+      api('/__bootstrap__/api/init', { method: 'POST' })
+        .then(function (data) {
           var kv = data.kvCleared;
           if (kv) {
-            if (kv.skipped) log('log-init', 'KV not bound (OBCF_KV) — skipped namespace wipe.', '');
-            else log('log-init', 'KV namespace wiped (' + kv.deleted + ' keys removed).', 'success');
+            if (kv.skipped) log('log-init', 'No KV namespace bound, so the cache wipe was skipped.', '');
+            else log('log-init', 'Cleared ' + kv.deleted + ' cached KV keys.', 'ok');
           }
-
-          var ai = data.autoInit;
-          if (ai) {
-            if (ai.tablesCreated && ai.tablesCreated.length > 0) log('log-init', 'Tables created: ' + ai.tablesCreated.join(', '), 'success');
-            if (ai.tablesSkipped && ai.tablesSkipped.length > 0) log('log-init', 'Already existed: ' + ai.tablesSkipped.join(', '), '');
-            if (ai.columnsAdded && ai.columnsAdded.length > 0) log('log-init', 'Columns added: ' + ai.columnsAdded.join(', '), 'success');
-            if (ai.customMigrationsRun && ai.customMigrationsRun.length > 0) log('log-init', 'Migrations run: ' + ai.customMigrationsRun.join(', '), 'success');
-            if (ai.errors && ai.errors.length > 0) ai.errors.forEach(function(e) { log('log-init', 'Warning: ' + e, 'error'); });
+          var auto = data.autoInit;
+          if (auto) {
+            if (auto.tablesCreated && auto.tablesCreated.length) log('log-init', 'Created ' + auto.tablesCreated.length + (auto.tablesCreated.length === 1 ? ' table: ' : ' tables: ') + auto.tablesCreated.join(', '), 'ok');
+            if (auto.tablesSkipped && auto.tablesSkipped.length) log('log-init', 'Already present: ' + auto.tablesSkipped.join(', '), '');
+            if (auto.columnsAdded && auto.columnsAdded.length) log('log-init', 'Added columns: ' + auto.columnsAdded.join(', '), 'ok');
+            if (auto.customMigrationsRun && auto.customMigrationsRun.length) log('log-init', 'Ran migrations: ' + auto.customMigrationsRun.join(', '), 'ok');
+            if (auto.errors && auto.errors.length) auto.errors.forEach(function (msg) { log('log-init', 'Warning: ' + msg, 'err'); });
           }
           var sql = data.sqlMigrations;
           if (sql) {
-            if (sql.executed && sql.executed.length > 0) log('log-init', 'SQL migrations: ' + sql.executed.join(', '), 'success');
-            if (sql.skipped && sql.skipped.length > 0) log('log-init', 'SQL skipped: ' + sql.skipped.join(', '), '');
-            if (sql.errors && sql.errors.length > 0) sql.errors.forEach(function(e) { log('log-init', 'SQL error: ' + e, 'error'); });
+            if (sql.executed && sql.executed.length) log('log-init', 'Core SQL migrations: ' + sql.executed.join(', '), 'ok');
+            if (sql.skipped && sql.skipped.length) log('log-init', 'Already applied: ' + sql.skipped.join(', '), '');
+            if (sql.errors && sql.errors.length) sql.errors.forEach(function (msg) { log('log-init', msg, 'err'); });
           }
-          log('log-init', 'Database initialization complete.', 'success');
-          setBtn(btnInit, false, 'Done');
+          // handleInit returns 200 even when individual migrations failed, so
+          // never claim the schema is ready over the top of red output.
+          var problems = ((sql && sql.errors) || []).length + ((auto && auto.errors) || []).length;
+          if (problems > 0) {
+            showAlert(
+              0,
+              'Migrations finished with ' + problems + ' error' + (problems === 1 ? '' : 's'),
+              'The schema may be incomplete. Review the output above and fix the cause before continuing.'
+            );
+            setBusy(btnInit, false, 'Run again');
+            // Unlock the next step but keep the step flagged; markDone clears the
+            // error class, so it has to run first.
+            markDone(0);
+            markError(0);
+            document.getElementById('next-0').textContent = 'Continue anyway';
+            return;
+          }
+          log('log-init', 'Database ready.', 'ok');
+          setBusy(btnInit, false, 'Tables created');
           btnInit.disabled = true;
-
-          // Enable Next & Start Timer
-          btnNext0.disabled = false;
-          startAutoAdvance(1);
+          markDone(0);
+          document.getElementById('next-0').focus();
         })
-        .catch(function(err) {
-          log('log-init', 'Error: ' + err.message, 'error');
-          setBtn(btnInit, false, 'Retry');
-          tabs[0].classList.add('error');
-        });
-    });
-
-    // --- Step 1: Seed ---
-    var btnSeed = document.getElementById('btn-seed');
-    var btnNext1 = document.getElementById('btn-next-1');
-
-    btnSeed.addEventListener('click', function() {
-      setBtn(btnSeed, true, 'Seeding...');
-      log('log-seed', 'Seeding RBAC roles and default organization...', 'info');
-
-      apiFetch('/__bootstrap__/api/seed', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (!data.success) throw new Error(data.error || 'Seed failed');
-
-          if (data.roles) {
-            if (data.roles.created && data.roles.created.length > 0) log('log-seed', 'Roles created: ' + data.roles.created.join(', '), 'success');
-            if (data.roles.existing) log('log-seed', 'All roles: ' + data.roles.existing.join(', '), '');
+        .catch(function (err) {
+          if (isAuthError(err)) {
+            showAlert(0, 'That setup token was not accepted', 'Check BOOTSTRAP_OWNER_SECRET in your worker environment, then try again.');
+            flagToken('That setup token was not accepted.');
+          } else {
+            showAlert(0, 'Could not create the schema', err.message);
           }
-          log('log-seed', 'Default org: ' + (data.defaultOrganization || 'done'), 'success');
-          log('log-seed', 'RBAC setup complete.', 'success');
-          setBtn(btnSeed, false, 'Done');
-          btnSeed.disabled = true;
-
-          btnNext1.disabled = false;
-          startAutoAdvance(2);
-        })
-        .catch(function(err) {
-          log('log-seed', 'Error: ' + err.message, 'error');
-          setBtn(btnSeed, false, 'Retry');
-          tabs[1].classList.add('error');
+          log('log-init', err.message, 'err');
+          setBusy(btnInit, false, 'Try again');
+          markError(0);
         });
     });
 
-    // --- Step 2: Create Platform Owner ---
+    // ── Step 1: roles ─────────────────────────────────────
+    var btnSeed = document.getElementById('btn-seed');
+    btnSeed.addEventListener('click', function () {
+      clearAlert(1);
+      setBusy(btnSeed, true, 'Seeding');
+      log('log-seed', 'Seeding roles and permissions', 'info');
+
+      api('/__bootstrap__/api/seed', { method: 'POST' })
+        .then(function (data) {
+          if (data.roles) {
+            if (data.roles.created && data.roles.created.length) log('log-seed', 'Created or healed: ' + data.roles.created.join(', '), 'ok');
+            else log('log-seed', 'Every system role already matches code.', 'ok');
+            if (data.roles.existing && data.roles.existing.length) log('log-seed', 'Roles present: ' + data.roles.existing.join(', '), '');
+          }
+          log('log-seed', 'Roles and permissions ready.', 'ok');
+          setBusy(btnSeed, false, 'Roles seeded');
+          btnSeed.disabled = true;
+          markDone(1);
+          document.getElementById('next-1').focus();
+        })
+        .catch(function (err) {
+          if (isAuthError(err)) {
+            showAlert(1, 'That setup token was not accepted', 'Check BOOTSTRAP_OWNER_SECRET in your worker environment, then try again.');
+            flagToken('That setup token was not accepted.');
+          } else {
+            showAlert(1, 'Could not seed roles', err.message);
+          }
+          log('log-seed', err.message, 'err');
+          setBusy(btnSeed, false, 'Try again');
+          markError(1);
+        });
+    });
+
+    // ── Step 2: owner ─────────────────────────────────────
+    var ownerForm = document.getElementById('owner-form');
     var btnOwner = document.getElementById('btn-owner');
-    var btnNext2 = document.getElementById('btn-next-2');
     var nameInput = document.getElementById('owner-name');
     var emailInput = document.getElementById('owner-email');
     var passInput = document.getElementById('owner-password');
-    var errEmail = document.getElementById('err-email');
-    var errPass = document.getElementById('err-password');
+    var emailError = document.getElementById('owner-email-error');
+    var passError = document.getElementById('owner-password-error');
 
-    btnOwner.addEventListener('click', function() {
-      errEmail.style.display = 'none';
-      errPass.style.display = 'none';
+    // Mirrors the server-side rule in worker/bootstrap/routes.ts (handleCreateOwner).
+    var RULES = {
+      len: function (value) { return value.length >= 8; },
+      upper: function (value) { return /[A-Z]/.test(value); },
+      special: function (value) { return /[!@#$%^&*(),.?":{}|<>]/.test(value); },
+    };
 
-      var email = emailInput.value.trim();
-      var password = passInput.value;
-      var name = nameInput.value.trim();
+    function paintRequirements() {
+      var value = passInput.value || '';
+      var allMet = true;
+      Array.prototype.forEach.call(document.querySelectorAll('#pw-reqs .req'), function (item) {
+        var met = RULES[item.getAttribute('data-req')](value);
+        item.setAttribute('data-met', met ? 'true' : 'false');
+        item.querySelector('.req-mark').textContent = met ? '\\u2713' : '\\u25CB';
+        if (!met) allMet = false;
+      });
+      return allMet;
+    }
+    passInput.addEventListener('input', paintRequirements);
+
+    ownerForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      clearAlert(2);
+      emailError.textContent = '';
+      passError.textContent = '';
+      emailInput.removeAttribute('aria-invalid');
+      passInput.removeAttribute('aria-invalid');
+
+      var email = (emailInput.value || '').trim();
+      var password = passInput.value || '';
+      var name = (nameInput.value || '').trim();
 
       if (!email || email.indexOf('@') < 1) {
-        errEmail.textContent = 'Enter a valid email address';
-        errEmail.style.display = 'block';
+        emailError.textContent = 'Enter a valid email address.';
+        emailInput.setAttribute('aria-invalid', 'true');
+        emailInput.focus();
         return;
       }
-      var strongPasswordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
-      if (!password || !strongPasswordRegex.test(password)) {
-        errPass.textContent = 'Password must be at least 8 characters and contain at least one uppercase letter and one special character.';
-        errPass.style.display = 'block';
+      if (!paintRequirements()) {
+        passError.textContent = 'Your password does not meet every requirement above yet.';
+        passInput.setAttribute('aria-invalid', 'true');
+        passInput.focus();
         return;
       }
 
-      setBtn(btnOwner, true, 'Creating...');
-      log('log-owner', 'Creating platform owner account: ' + email, 'info');
+      setBusy(btnOwner, true, 'Creating account');
+      log('log-owner', 'Creating the platform owner: ' + email, 'info');
 
-      /* Clear ottabase.* from localStorage before autologin (fresh owner = clean client state) */
+      // A stale client session would be adopted by the app right after this
+      // account is created, so clear everything under ottabase.* first.
       try {
         var keys = [];
-        for (var i = 0; i < localStorage.length; i++) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf('ottabase.') === 0) keys.push(k);
+        for (var k = 0; k < localStorage.length; k++) {
+          var key = localStorage.key(k);
+          if (key && key.indexOf('ottabase.') === 0) keys.push(key);
         }
-        keys.forEach(function(k) { localStorage.removeItem(k); });
-      } catch (e) { /* ignore */ }
+        keys.forEach(function (key) { localStorage.removeItem(key); });
+      } catch (e) { /* storage may be blocked */ }
 
-      apiFetch('/__bootstrap__/api/create-owner', {
+      api('/__bootstrap__/api/create-owner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: email, password: password, name: name })
+        body: JSON.stringify({ email: email, password: password, name: name }),
       })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (!data.success) {
-            if (data.errors) {
-              if (data.errors.email) { errEmail.textContent = data.errors.email; errEmail.style.display = 'block'; }
-              if (data.errors.password) { errPass.textContent = data.errors.password; errPass.style.display = 'block'; }
-            }
-            throw new Error(data.error || 'Account creation failed');
-          }
-
-          log('log-owner', 'Platform owner account created: ' + data.user.email + ' (role: ' + data.user.role + ')', 'success');
-          if (data.organizationId) log('log-owner', 'Workspace created: ' + data.organizationId, 'success');
-
-          /* Always clear stale auth/org bootstrap storage after platform owner creation */
-          try {
-            localStorage.removeItem('ottabase.auth-session');
-            localStorage.removeItem('ottabase.current-org-id');
-            localStorage.removeItem('ottabase.org-id');
-          } catch (e) { /* ignore storage failures */ }
-
-          /* Pre-hydrate localStorage so ProtectedRoute.hasValidStoredSession() passes
-             and the app doesn't redirect to /login before the cookie-based session loads */
-          try {
-            var session = {
-              user: {
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.name || null,
-                role: data.user.role,
-                organizationId: data.organizationId || null,
-                roles: [data.user.role],
-                permissions: ['*:*']
-              },
-              expires: data.sessionExpires || (Date.now() + 30 * 24 * 60 * 60 * 1000)
-            };
-            //localStorage.setItem('ottabase.auth-session', JSON.stringify(session)); //Changed:Let user login
-            if (data.organizationId) {
-              //localStorage.setItem('ottabase.current-org-id', data.organizationId); //Changed:Let user login
-            }
-          } catch (e) { /* ignore storage failures */ }
-
-          setBtn(btnOwner, false, 'Done');
+        .then(function (data) {
+          ownerEmail = data.user.email;
+          log('log-owner', 'Created ' + data.user.email + ' with the ' + data.user.role + ' role.', 'ok');
+          // Keep the raw id in the output: an operator needs it to look the
+          // row up in D1 when checking tenant scoping.
+          if (data.organizationId) log('log-owner', 'Personal workspace created: ' + data.organizationId, 'ok');
+          setBusy(btnOwner, false, 'Account created');
           btnOwner.disabled = true;
+          nameInput.disabled = true;
           emailInput.disabled = true;
           passInput.disabled = true;
-          nameInput.disabled = true;
-
-          btnNext2.disabled = false;
-          startAutoAdvance(3);
+          markDone(2);
+          document.getElementById('next-2').focus();
         })
-        .catch(function(err) {
-          log('log-owner', 'Error: ' + err.message, 'error');
-          setBtn(btnOwner, false, 'Retry');
-          tabs[2].classList.add('error');
+        .catch(function (err) {
+          var fieldErrors = err.body && err.body.errors;
+          if (fieldErrors) {
+            if (fieldErrors.email) { emailError.textContent = fieldErrors.email; emailInput.setAttribute('aria-invalid', 'true'); }
+            if (fieldErrors.password) { passError.textContent = fieldErrors.password; passInput.setAttribute('aria-invalid', 'true'); }
+          } else if (isAuthError(err)) {
+            showAlert(2, 'That setup token was not accepted', 'Check BOOTSTRAP_OWNER_SECRET in your worker environment, then try again.');
+            flagToken('That setup token was not accepted.');
+          } else if (err.status === 409) {
+            showAlert(2, 'An account already exists', 'The owner account can only be created during first-time setup. Use the promote page at /__bootstrap__/promote-owner to grant ownership instead.');
+          } else {
+            showAlert(2, 'Could not create the account', err.message);
+          }
+          log('log-owner', err.message, 'err');
+          setBusy(btnOwner, false, 'Try again');
+          markError(2);
         });
     });
 
-    // --- Step 3: Config ---
-    // (Handled by manual nav buttons now)
-
-    // --- Step 4: Finalize ---
+    // ── Step 3: pre-flight and launch ─────────────────────
     var btnFinalize = document.getElementById('btn-finalize');
-    var checksEl = document.getElementById('finalize-checks');
-    var successCard = document.getElementById('success-card');
+    var checksEl = document.getElementById('checks');
+    var lastStatus = null;
+
+    function checkRow(tone, label) {
+      var glyph = tone === 'pass' ? '\\u2713' : tone === 'warn' ? '!' : '\\u2715';
+      var word = tone === 'pass' ? 'Passed' : tone === 'warn' ? 'Warning' : 'Failed';
+      var row = document.createElement('div');
+      row.className = 'check check-' + tone;
+      var mark = document.createElement('span');
+      mark.className = 'check-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = glyph;
+      var sr = document.createElement('span');
+      sr.className = 'sr-only';
+      sr.textContent = word + ': ';
+      var text = document.createElement('span');
+      text.className = 'check-text';
+      text.textContent = label;
+      row.appendChild(mark);
+      var wrap = document.createElement('span');
+      wrap.appendChild(sr);
+      wrap.appendChild(text);
+      row.appendChild(wrap);
+      return row;
+    }
 
     function runChecks() {
-      checksEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.8125rem"><span class="spinner"></span> Running pre-flight checks...</div>';
-      apiFetch('/__bootstrap__/api/status')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+      checksEl.innerHTML = '';
+      var loading = document.createElement('div');
+      loading.className = 'checks-loading';
+      var spin = document.createElement('span');
+      spin.className = 'spinner';
+      spin.setAttribute('aria-hidden', 'true');
+      loading.appendChild(spin);
+      loading.appendChild(document.createTextNode('Running pre-flight checks'));
+      checksEl.appendChild(loading);
+
+      api('/__bootstrap__/api/status')
+        .then(function (data) {
+          lastStatus = data;
+          // A READY, non-development platform gets a deliberately minimal status
+          // payload (see handleStatus), so there are no counts to report on.
+          if (!data.database) {
+            checksEl.innerHTML = '';
+            checksEl.appendChild(checkRow('pass', 'This platform is already initialized, so there is nothing to verify.'));
+            btnFinalize.disabled = true;
+            return;
+          }
           var db = data.database || {};
           var env = data.envConfig || {};
-          var html = '';
-
-          function check(ok, label) {
-            return '<div class="check-row"><span class="check-icon ' + (ok ? 'check-ok' : 'check-fail') + '">' + (ok ? '\\u2713' : '\\u2717') + '</span><span>' + label + '</span></div>';
-          }
-          function warn(ok, label) {
-            return '<div class="check-row"><span class="check-icon ' + (ok ? 'check-ok' : 'check-warn') + '">' + (ok ? '\\u2713' : '!') + '</span><span>' + label + '</span></div>';
-          }
-
-          html += check(db.tableCount > 5, db.tableCount + ' tables created');
-          html += check(db.roleCount >= 5, db.roleCount + ' roles seeded');
-          html += check(db.userCount > 0, db.userCount + ' user(s) registered');
-          html += warn(env.authSecret, 'AUTH_SECRET ' + (env.authSecret ? 'configured' : 'not set (needed for production)'));
-          html += warn(env.emailProvider, 'Email provider ' + (env.emailProvider ? 'configured' : 'not configured (optional)'));
-          html += check(data.bindings.d1, 'D1 database connected');
-          html += warn(data.bindings.kv, 'KV namespace ' + (data.bindings.kv ? 'connected' : 'not configured'));
-
-          checksEl.innerHTML = html;
-
-          var canFinalize = db.tableCount > 0 && db.userCount > 0 && db.roleCount > 0;
-          btnFinalize.disabled = !canFinalize;
+          var bindings = data.bindings || {};
+          checksEl.innerHTML = '';
+          checksEl.appendChild(checkRow(db.tableCount > 5 ? 'pass' : 'fail', db.tableCount + ' tables created'));
+          checksEl.appendChild(checkRow(db.roleCount >= 5 ? 'pass' : 'fail', db.roleCount + ' roles seeded'));
+          checksEl.appendChild(checkRow(db.userCount > 0 ? 'pass' : 'fail', db.userCount + (db.userCount === 1 ? ' account registered' : ' accounts registered')));
+          checksEl.appendChild(checkRow(bindings.d1 ? 'pass' : 'fail', 'D1 database connected'));
+          checksEl.appendChild(checkRow(bindings.kv ? 'pass' : 'warn', bindings.kv ? 'KV namespace connected' : 'No KV namespace, so sessions and platform state will not be cached'));
+          checksEl.appendChild(checkRow(env.authSecret ? 'pass' : 'warn', env.authSecret ? 'AUTH_SECRET configured' : 'AUTH_SECRET not set, required before production'));
+          checksEl.appendChild(checkRow(env.emailProvider ? 'pass' : 'warn', env.emailProvider ? 'Email provider configured' : 'No email provider, so magic links and password resets are unavailable'));
+          btnFinalize.disabled = !(db.tableCount > 0 && db.userCount > 0 && db.roleCount > 0);
         })
-        .catch(function() {
-          checksEl.innerHTML = '<div class="alert alert-error">Failed to fetch status</div>';
+        .catch(function (err) {
+          checksEl.innerHTML = '';
+          checksEl.appendChild(checkRow('fail', 'Could not read platform status: ' + err.message));
+          if (isAuthError(err)) flagToken('That setup token was not accepted.');
         });
     }
 
-    btnFinalize.addEventListener('click', function() {
-      setBtn(btnFinalize, true, 'Launching...');
-      log('log-finalize', 'Verifying and finalizing...', 'info');
+    btnFinalize.addEventListener('click', function () {
+      clearAlert(3);
+      setBusy(btnFinalize, true, 'Launching');
+      log('log-finalize', 'Verifying and marking the platform ready', 'info');
 
-      apiFetch('/__bootstrap__/api/finalize', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (!data.success) throw new Error(data.error || 'Finalize failed');
-          log('log-finalize', 'Platform state: READY', 'success');
-          if (data.summary) log('log-finalize', 'Summary: ' + data.summary.tables + ' tables, ' + data.summary.users + ' users, ' + data.summary.roles + ' roles', 'success');
-          setBtn(btnFinalize, false, 'Done');
-          btnFinalize.disabled = true;
-          successCard.style.display = 'block';
-          progress.style.width = '100%';
-          tabs[4].classList.add('done');
+      api('/__bootstrap__/api/finalize', { method: 'POST' })
+        .then(function (data) {
+          log('log-finalize', 'Platform state is now READY.', 'ok');
+          finish(data.summary);
         })
-        .catch(function(err) {
-          log('log-finalize', 'Error: ' + err.message, 'error');
-          setBtn(btnFinalize, false, 'Retry');
-          tabs[4].classList.add('error');
+        .catch(function (err) {
+          if (isAuthError(err)) {
+            showAlert(3, 'That setup token was not accepted', 'Check BOOTSTRAP_OWNER_SECRET in your worker environment, then try again.');
+            flagToken('That setup token was not accepted.');
+          } else {
+            showAlert(3, 'Could not launch', err.message);
+          }
+          // handleFinalize names the tables it could not find, so say which ones.
+          // log() writes via textContent, so table names cannot inject markup.
+          if (err.body && err.body.missing && err.body.missing.length) {
+            log('log-finalize', 'Missing tables: ' + err.body.missing.join(', '), 'err');
+          }
+          log('log-finalize', err.message, 'err');
+          setBusy(btnFinalize, false, 'Try again');
+          markError(3);
         });
     });
 
-    // On load: Check status and auto-advance if ready
-    ${
-        isReady
-            ? `
-    goToStep(4);
-    tabs.forEach(function(t) { t.classList.add('done'); });
-    progress.style.width = '100%';
-    checksEl.innerHTML = '<div class="alert alert-success">Platform is already initialized and running.</div>';
-    btnFinalize.style.display = 'none';
-    successCard.style.display = 'block';
-    `
-            : `
-    // Check status on load to see if we can jump to the end
-    apiFetch('/__bootstrap__/api/status')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var db = data.database || {};
-        // If we have tables, users, and roles OR if the backend explicitly says READY (minimal response)
-        // we are effectively ready to launch.
-        if (data.state === 'READY' || (db.tableCount > 0 && db.userCount > 0 && db.roleCount > 0)) {
-           goToStep(4);
-           // visual polish: mark previous steps as done
-           tabs.forEach(function(t, i) { if (i < 4) t.classList.add('done'); });
+    // ── Completion ────────────────────────────────────────
+    function stat(value, label) {
+      var box = document.createElement('div');
+      box.className = 'stat';
+      var v = document.createElement('div');
+      v.className = 'stat-value';
+      v.textContent = value;
+      var l = document.createElement('div');
+      l.className = 'stat-label';
+      l.textContent = label;
+      box.appendChild(v);
+      box.appendChild(l);
+      return box;
+    }
 
-           // Only run checks if we have the data, otherwise show simple message
-           if (data.database) {
-               runChecks();
-           } else {
-               // Minimal ready state (prod)
-               checksEl.innerHTML = '<div class="alert alert-success">Platform is initialized and running.</div>';
-               btnFinalize.style.display = 'none';
-               successCard.style.display = 'block';
-           }
-        }
-      })
-      .catch(function() { /* ignore errors on auto-check */ });
-
-    // Auto-run preflight when reaching step 4 manually
-    var observer = new MutationObserver(function() {
-      if (document.getElementById('panel-4').classList.contains('active')) {
-        runChecks();
+    function finish(summary) {
+      for (var s = 0; s < STEPS; s++) {
+        done[s] = true;
+        document.getElementById('panel-' + s).classList.add('is-hidden');
       }
-    });
-    panels.forEach(function(p) { observer.observe(p, { attributes: true, attributeFilter: ['class'] }); });
-    `
+      current = STEPS - 1;
+      paintRail();
+      // Seal the flow: the panels stay in the DOM (every handler resolved its
+      // elements at start-up) but nothing can navigate back to a live action.
+      finished = true;
+      for (var r = 0; r < STEPS; r++) railButtons[r].disabled = true;
+      document.getElementById('token-card').classList.add('is-hidden');
+
+      var stats = document.getElementById('done-stats');
+      stats.innerHTML = '';
+      var source = summary || (lastStatus && lastStatus.database) || null;
+      if (source) {
+        stats.appendChild(stat(String(source.tables !== undefined ? source.tables : source.tableCount), 'Tables'));
+        stats.appendChild(stat(String(source.roles !== undefined ? source.roles : source.roleCount), 'Roles'));
+        if (ownerEmail) stats.appendChild(stat(ownerEmail, 'Platform owner'));
+      }
+
+      var panel = document.getElementById('panel-done');
+      panel.classList.remove('is-hidden');
+      announcer.textContent = 'Setup complete. The platform is running.';
+      document.getElementById('head-done').focus();
     }
+
+    // ── Resume ────────────────────────────────────────────
+    // A reload should land on the first step that still has work, not step one.
+    function resume() {
+      api('/__bootstrap__/api/status')
+        .then(function (data) {
+          lastStatus = data;
+          if (data.state === 'READY') {
+            document.getElementById('done-lede').textContent =
+              'This platform is already set up. Sign in with your owner account to continue.';
+            finish(null);
+            return;
+          }
+          var db = data.database || {};
+          var env = data.envConfig || {};
+          if (env.bootstrapOwnerSecret === false) {
+            tokenHint.textContent = 'BOOTSTRAP_OWNER_SECRET is not set in this environment, so no token is needed. Set it before deploying to production.';
+          }
+          if (db.tableCount > 5) markDone(0);
+          if (db.roleCount >= 5) markDone(1);
+          if (db.userCount > 0) markDone(2);
+          var first = done.indexOf(false);
+          goTo(first === -1 ? STEPS - 1 : first, false);
+        })
+        .catch(function (err) {
+          if (isAuthError(err)) {
+            tokenHint.textContent = 'This environment requires a setup token. Enter it to continue.';
+            tokenInput.focus();
+          }
+          paintRail();
+        });
+    }
+
+    paintRail();
+    ${isReady ? 'finish(null); document.getElementById("done-lede").textContent = "This platform is already set up. Sign in with your owner account to continue.";' : 'resume();'}
   })();
   </script>
-  `,
+`,
     );
 }
 
@@ -1000,18 +1769,53 @@ wrangler secret put MIGRATION_SECRET</pre>
 export function renderMaintenancePage(state: PlatformStateResult): string {
     return baseLayout(
         'Maintenance',
-        `
-  <p class="subtitle">Platform Maintenance</p>
-  <div class="card">
-    <h2>Database Unreachable</h2>
-    <div class="alert alert-error">
-      <strong>Service Degraded</strong> &mdash; The KV cache reports the platform was running, but the D1 database is not responding.
-    </div>
-    <p>${escapeHtml(state.reason)}</p>
-    <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-dim)">This page auto-refreshes every 15 seconds.</p>
+        chipHtml('Degraded', 'danger'),
+        `  <div class="page-head">
+    <h1>The database is unreachable</h1>
+    <p class="lede">Cached state says this platform was running, but D1 is not responding right now.</p>
   </div>
-  <script>setTimeout(function(){ location.reload(); }, 15000);</script>
-  `,
+  <div class="card">
+    <div class="card-body">
+      <div class="alert alert-danger">
+        <span class="alert-mark" aria-hidden="true">&#10005;</span>
+        <span class="alert-title">Service degraded</span>
+        <div class="alert-body">${escapeHtml(state.reason)}</div>
+      </div>
+      <p class="hint">
+        This page checks again every 15 seconds<span id="countdown" aria-hidden="true"></span>. No action is needed if
+        the database is coming back.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-outline btn-sm" id="btn-stop">Stop checking</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-now">Check now</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      // WCAG 2.2.1: an automatic refresh must be stoppable. The countdown is
+      // aria-hidden so it does not announce once a second; the sentence above
+      // carries the meaning.
+      var left = 15;
+      var countdown = document.getElementById('countdown');
+      var stop = document.getElementById('btn-stop');
+      var now = document.getElementById('btn-now');
+      var timer = setInterval(function () {
+        left--;
+        if (left <= 0) { clearInterval(timer); location.reload(); return; }
+        countdown.textContent = ' (' + left + 's)';
+      }, 1000);
+      countdown.textContent = ' (' + left + 's)';
+      stop.addEventListener('click', function () {
+        clearInterval(timer);
+        countdown.textContent = '';
+        stop.disabled = true;
+        stop.textContent = 'Automatic checks stopped';
+      });
+      now.addEventListener('click', function () { location.reload(); });
+    })();
+  </script>
+`,
     );
 }
 
@@ -1019,21 +1823,53 @@ export function renderMaintenancePage(state: PlatformStateResult): string {
 // Locked page — ENV override
 // ============================================================
 
-export function renderLockedPage(state: PlatformStateResult): string {
+export function renderLockedPage(_state: PlatformStateResult): string {
     return baseLayout(
         'Locked',
-        `
-  <p class="subtitle">Platform Locked</p>
-  <div class="card">
-    <h2>Administrative Lock Active</h2>
-    <div class="alert alert-warning">
-      <strong>Platform Halted</strong> &mdash; The <code>OTTABASE_LOCKED</code> environment variable is set.
-    </div>
-    <p>Remove the variable from wrangler.jsonc or your Cloudflare dashboard, then redeploy.</p>
-    <pre class="code-block"># Remove or set to "false":
-"OTTABASE_LOCKED": "false"</pre>
+        chipHtml('Locked', 'warn'),
+        `  <div class="page-head">
+    <h1>This platform is locked</h1>
+    <p class="lede">An administrator halted it with an environment variable.</p>
   </div>
-  `,
+  <div class="card">
+    <div class="card-body">
+      <div class="alert alert-warn">
+        <span class="alert-mark" aria-hidden="true">!</span>
+        <span class="alert-title"><code>OTTABASE_LOCKED</code> is set</span>
+        <div class="alert-body">While it is set, every route except the health check is halted.</div>
+      </div>
+      <p class="prose">Remove the variable from <code>wrangler.jsonc</code> or your Cloudflare dashboard, then redeploy.</p>
+      <code class="code">// wrangler.jsonc: remove the entry, or set it to "false":
+"OTTABASE_LOCKED": "false"</code>
+    </div>
+  </div>
+`,
+    );
+}
+
+// ============================================================
+// Unauthorized page — no valid setup token outside a dev environment
+// ============================================================
+//
+// Deliberately says nothing about bindings, environment variables or platform
+// state: an anonymous visitor learns only that a token is required.
+
+export function renderUnauthorizedPage(): string {
+    return baseLayout(
+        'Setup token required',
+        chipHtml('Not available'),
+        `  <div class="page-head">
+    <h1>This page needs a setup token</h1>
+    <p class="lede">First-run setup is restricted on this deployment.</p>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <p class="prose">Append your <code>BOOTSTRAP_OWNER_SECRET</code> as the <code>secret</code> query parameter, or send it as an <code>X-Bootstrap-Secret</code> header.</p>
+      <code class="code">https://your-app.example.com/__bootstrap__?secret=YOUR_SECRET</code>
+      <p class="hint">If you did not set that variable, add it to your worker environment and redeploy. Repeated failed attempts from one address are rate limited.</p>
+    </div>
+  </div>
+`,
     );
 }
 
@@ -1043,21 +1879,53 @@ export function renderLockedPage(state: PlatformStateResult): string {
 
 export function renderBindingsErrorPage(state: PlatformStateResult): string {
     const missing = Object.entries(state.bindings)
-        .filter(([, ok]) => !ok)
+        .filter(([name, ok]) => !ok && REQUIRED_BINDINGS.includes(name))
+        .map(([name]) => BINDING_LABELS[name] || name);
+    const optional = Object.entries(state.bindings)
+        .filter(([name, ok]) => !ok && !REQUIRED_BINDINGS.includes(name))
         .map(([name]) => BINDING_LABELS[name] || name);
 
     return baseLayout(
-        'Configuration Required',
-        `
-  <p class="subtitle">Cloudflare bindings not configured</p>
+        'Configuration required',
+        chipHtml('Not configured', 'danger'),
+        `  <div class="page-head">
+    <h1>Cloudflare bindings are missing</h1>
+    <p class="lede">${BRAND} cannot start until its worker can reach a database.</p>
+  </div>
   <div class="card">
-    <h2>Missing Bindings</h2>
-    <div class="alert alert-error"><strong>Required configuration missing</strong></div>
-    <ul style="margin:0.75rem 0 0.75rem 1.5rem;font-size:0.8125rem">
-      ${missing.map((b) => `<li style="color:var(--error);margin-bottom:0.25rem">${escapeHtml(b)}</li>`).join('\n')}
-    </ul>
-    <pre class="code-block">// wrangler.jsonc — minimum required bindings:
-"d1_databases": [{
+    <div class="card-body">
+      <div>
+        <h3 style="margin-bottom:0.5rem">Required</h3>
+        <div class="bindings">
+          ${
+              missing.length
+                  ? missing
+                        .map(
+                            (b) =>
+                                `<div class="binding binding-missing"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(b)}</code><span class="binding-status">Missing</span></div>`,
+                        )
+                        .join('\n          ')
+                  : `<div class="binding binding-ok"><span class="dot" aria-hidden="true"></span><code>All required bindings present</code></div>`
+          }
+        </div>
+      </div>
+      ${
+          optional.length
+              ? `<div>
+        <h3 style="margin-bottom:0.5rem">Recommended</h3>
+        <div class="bindings">
+          ${optional
+              .map(
+                  (b) =>
+                      `<div class="binding binding-optional"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(b)}</code><span class="binding-status">Not set</span></div>`,
+              )
+              .join('\n          ')}
+        </div>
+      </div>`
+              : ''
+      }
+      <p class="prose">Add them to <code>wrangler.jsonc</code> and redeploy, then re-check.</p>
+      <code class="code">"d1_databases": [{
   "binding": "OBCF_D1",
   "database_name": "ottabase-db",
   "database_id": "YOUR_ID"   // wrangler d1 create ottabase-db
@@ -1065,9 +1933,13 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
 "kv_namespaces": [{
   "binding": "OBCF_KV",
   "id": "YOUR_ID"            // wrangler kv namespace create OBCF_KV
-}]</pre>
+}]</code>
+      <!-- interceptIfNotReady re-probes the bindings on every request, so a
+           plain link is a working re-check with no script. -->
+      <a class="btn btn-outline" href="/">Re-check bindings</a>
+    </div>
   </div>
-  `,
+`,
     );
 }
 
@@ -1083,6 +1955,14 @@ const BINDING_LABELS: Record<string, string> = {
     assets: 'OBCF_ASSETS (Assets)',
 };
 
+/** Bindings without which the platform cannot run — everything else degrades gracefully. */
+const REQUIRED_BINDINGS = ['d1'];
+
 function escapeHtml(str: string): string {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
