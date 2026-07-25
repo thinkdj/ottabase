@@ -82,28 +82,45 @@ describe('bootstrap pages — shared contract', () => {
     it.each(ALL_PAGES)('%s offers a theme toggle that defaults to the system', (_name, html) => {
         expect(html).toContain('id="theme-toggle"');
         expect(html).toContain('Switch to the ');
-        // Nothing is pre-selected in the served markup, so every load — including a
-        // reload after toggling — starts from prefers-color-scheme.
+        // Nothing is pre-selected in the served markup: with no stored choice the
+        // page falls through to prefers-color-scheme.
         expect(html).not.toMatch(/<html[^>]*data-theme/);
     });
 
-    it.each(ALL_PAGES)('%s never persists the chosen theme', (_name, html) => {
-        // The wizard asks the operator to clear this browser's saved state; writing
-        // our own key back would contradict that, so the choice lasts one page view.
-        // Scope to the theme script only: the wizard's own script legitimately
-        // clears ottabase.* keys, and it is emitted earlier in the document.
+    it.each(ALL_PAGES)('%s shares the theme with the app via next-themes storage', (_name, html) => {
+        // Same key and raw string values as the app's provider (storageKey
+        // 'ottabase.theme'), so a choice made here carries into /login.
         const start = html.indexOf("var toggle = document.getElementById('theme-toggle');");
         expect(start).toBeGreaterThan(-1);
-        const script = html.slice(start);
-        expect(script).not.toContain('localStorage');
-        expect(script).not.toContain('sessionStorage');
-        expect(script).not.toContain('document.cookie');
+        const toggleScript = html.slice(start);
+        expect(toggleScript).toContain("localStorage.setItem('ottabase.theme', next)");
+        // Values must stay 'dark' / 'light'; the app's boot script ignores anything else.
+        expect(toggleScript).toContain("var next = effective() === 'dark' ? 'light' : 'dark';");
+    });
+
+    it.each(ALL_PAGES)('%s applies the stored theme before first paint', (_name, html) => {
+        // Mirrors apps/otta-web/index.html so a stored choice does not flash the
+        // system scheme first. Must sit in <head>, ahead of the stylesheet.
+        const head = html.slice(0, html.indexOf('</head>'));
+        expect(head).toContain("localStorage.getItem('ottabase.theme')");
+        expect(head.indexOf("localStorage.getItem('ottabase.theme')")).toBeLessThan(head.indexOf('<style>'));
+    });
+});
+
+describe('client state hygiene', () => {
+    it('keeps the theme when clearing a stale session before owner creation', () => {
+        const html = renderWizardPage(notReadyState);
+        // The pre-create wipe must go through staleKeys(), which honours KEEP.
+        // An unfiltered ottabase.* loop would discard the operator's theme choice.
+        expect(html).toContain('staleKeys().forEach(function (key) { localStorage.removeItem(key); });');
+        expect(html).not.toContain("if (key && key.indexOf('ottabase.') === 0) keys.push(key);");
+        expect(html).toContain("'ottabase.theme',");
     });
 
     it.each(ALL_PAGES)('%s applies dark tokens to the media query and the override alike', (_name, html) => {
         // Both blocks are interpolated from one DARK_TOKENS constant — if this count
         // ever drops to 1, the toggle and the system default have drifted apart.
-        const occurrences = html.split('--background: 222.2 84% 4.9%;').length - 1;
+        const occurrences = html.split('--background: 148 24% 6%;').length - 1;
         expect(occurrences).toBe(2);
         expect(html).toContain(":root:not([data-theme='light'])");
         expect(html).toContain(":root[data-theme='dark']");
@@ -147,6 +164,27 @@ describe('renderWizardPage — /__bootstrap__', () => {
         expect(html).toContain('A D1 database binding is required');
         expect(html).toContain('wrangler d1 create ottabase-db');
         expect(html).toMatch(/id="btn-init"\s+disabled/);
+    });
+
+    it('names each binding in plain language without dropping its identifier', () => {
+        // Both audiences at once: a newcomer reads "Database", an operator reads
+        // OBCF_D1, and neither has to translate for the other.
+        const html = renderWizardPage(notReadyState);
+        const expected: Array<[string, string, string]> = [
+            ['Database', 'OBCF_D1', 'D1'],
+            ['Cache and sessions', 'OBCF_KV', 'KV'],
+            ['File storage', 'OBCF_R2', 'R2'],
+            ['Background jobs', 'OBCF_QUEUE', 'Queue'],
+            ['Static files', 'OBCF_ASSETS', 'Assets'],
+        ];
+        for (const [name, id, product] of expected) {
+            expect(html).toContain(`>${name}</span>`);
+            expect(html).toContain(`<code>${id}</code>`);
+            expect(html).toContain(`>${product}</span>`);
+        }
+        // Every row carries an icon, inlined rather than fetched.
+        expect(html.split('class="binding-icon"').length - 1).toBe(expected.length);
+        expect(html).not.toMatch(/<img[^>]+src=/);
     });
 
     it('separates a required binding from an optional one', () => {

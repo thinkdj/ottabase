@@ -32,28 +32,24 @@ const BRAND = 'Ottabase';
  * so the theme toggle can never drift from the system default.
  */
 const DARK_TOKENS = `
-      --background: 222.2 84% 4.9%;
-      --foreground: 210 40% 98%;
-      /* Deliberate deviation from the theme (which sets dark card == background):
-         this page is entirely card-driven with no app chrome around it, so cards
-         are lifted ~3% and the border raised to 17.5% to stay legible. */
-      --card: 222.2 47% 7.5%;
-      --muted: 217.2 32.6% 17.5%;
-      --muted-foreground: 215 20.2% 65.1%;
-      --border: 217.2 32.6% 17.5%;
-      --input: 217.2 32.6% 22%;
-      --ring: 217.2 91.2% 59.8%;
-      --primary: 217.2 91.2% 59.8%;
-      --primary-foreground: 222.2 47.4% 11.2%;
+      /* Verdant dark, verbatim. It already sets card above background (9% vs 6%),
+         so cards read as raised without the lift earlier palettes needed here. */
+      --background: 148 24% 6%;
+      --foreground: 138 14% 86%;
+      --card: 148 20% 9%;
+      --muted: 146 16% 13%;
+      --muted-foreground: 140 10% 54%;
+      --border: 146 14% 12%;
+      --input: 146 14% 12%;
+      --ring: 156 48% 46%;
+      --primary: 156 48% 46%;
+      --primary-foreground: 148 24% 6%;
       /* Inverted against light: the dark fill brightens on hover. */
-      --primary-hover: 217.2 91.2% 68%;
-      --primary-active: 217.2 91.2% 75%;
-      --danger: 0 91% 71%;
-      --success: 154 62% 60%;
-      --warning: 40 90% 66%;
-      --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
-      --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
-      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
+      --primary-hover: 156 48% 54%;
+      --primary-active: 156 48% 62%;
+      --danger: 4 82% 68%;
+      --success: 162 54% 52%;
+      --warning: 44 78% 60%;
 `;
 
 const STYLES = `
@@ -63,40 +59,45 @@ const STYLES = `
   :root {
     color-scheme: light dark;
 
-    /* Palette, transcribed from the app's default brand theme (light scheme) */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Palette transcribed from the verdant theme (light scheme), which is the
+       framework default: see brand-engine/src/defaults.ts and the
+       themePresetId: 'verdant' that ensureAppBrandDefaults seeds in step two. */
+    --background: 138 18% 97%;
+    --foreground: 148 22% 10%;
     --card: 0 0% 100%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    --muted: 140 14% 93%;
+    /* Verdant ships 142 8% 46%, which measures 4.03:1 on its own tinted
+       background and misses AA. Same hue, four points darker, now 4.9:1. */
+    --muted-foreground: 142 8% 40%;
+    --border: 140 12% 88%;
+    --input: 140 12% 88%;
+    --ring: 156 52% 34%;
+    --primary: 156 52% 34%;
+    --primary-foreground: 0 0% 100%;
     /* Explicit hover/active stops rather than shadcn's bg-primary/90: alpha
        composites the fill toward the card and drops the label under 4.5:1.
        Hue and saturation are unchanged; only lightness moves. */
-    --primary-hover: 221.2 83.2% 45%;
-    --primary-active: 221.2 83.2% 38%;
+    --primary-hover: 156 52% 28%;
+    --primary-active: 156 52% 22%;
 
-    /* Status hues are tuned for TEXT on our surfaces: the theme's raw --destructive
-       / --warning are button-fill values and fall under 4.5:1 as body copy. */
-    --danger: 0 72% 41%;
-    --success: 150 65% 25%;
-    --warning: 30 80% 30%;
+    /* Verdant's destructive / success / warning are button-FILL values and fall
+       under 4.5:1 as body copy, so these keep the hue and drop the lightness. */
+    --danger: 4 70% 40%;
+    --success: 162 62% 26%;
+    --warning: 40 82% 28%;
 
     --radius: 0.5rem;
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
-    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
-    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+    /* Verdant's shadows are green-tinted and softer than a neutral scale. */
+    --shadow-xs: 0 1px 2px rgb(20 60 30 / 0.05);
+    --shadow-sm: 0 2px 4px rgb(20 60 30 / 0.06);
+    --shadow-md: 0 4px 8px -1px rgb(20 60 30 / 0.08);
 
-    --fast: 100ms;
+    --fast: 105ms;
     --normal: 200ms;
-    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease: cubic-bezier(0.35, 0.65, 0.05, 1);
 
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
@@ -104,7 +105,13 @@ const STYLES = `
     --text-lg: 1.0625rem;
     --text-2xl: 1.75rem;
 
-    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+    /* Verdant names Sora for headings and Source Sans 3 for body, both served from
+       Google Fonts. Bootstrap pages may not make outbound requests, so the families
+       are listed FIRST and used only when already installed locally (common on the
+       machines that built the theme); everyone else falls back to the system stack,
+       which is the closest humanist sans available without a download. */
+    --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+    --font-heading: 'Sora', 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace;
   }
 
@@ -152,7 +159,7 @@ const STYLES = `
   .masthead { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.25rem; }
   /* Wordmark only: no icon, so the name itself carries the identity and is set
      a quarter larger than body copy. */
-  .brand { display: inline-flex; align-items: center; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
+  .brand { display: inline-flex; align-items: center; font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
   .brand:hover { text-decoration: none; }
   .masthead-actions { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
   .chip {
@@ -188,8 +195,23 @@ const STYLES = `
 
   /* ── Page head ────────────────────────────────────────── */
   .page-head { max-width: 46rem; margin-bottom: 2.25rem; }
-  h1 { font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.022em; line-height: 1.18; }
+  h1 { font-family: var(--font-heading); font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.022em; line-height: 1.18; }
   .lede { margin-top: 0.625rem; color: hsl(var(--muted-foreground)); font-size: var(--text-base); }
+
+  /* ── Setup token ──────────────────────────────────────
+     Reads as page chrome rather than a step: it gates the whole flow, so it sits
+     above the rail on a muted surface instead of looking like another card. */
+  .token-card {
+    display: grid; gap: 0.375rem;
+    margin-bottom: 1.75rem; padding: 1rem 1.125rem;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--muted) / 0.55);
+  }
+  .tokenbar { display: grid; gap: 0.375rem; }
+  @media (min-width: 44rem) {
+    .tokenbar { grid-template-columns: 8.5rem minmax(0, 1fr); align-items: center; gap: 1rem; }
+    .token-card > .hint, .token-card > .field-error { padding-left: 9.5rem; }
+  }
 
   /* ── Shell: step rail + step panel ────────────────────── */
   .shell { display: grid; gap: 1.75rem; }
@@ -249,11 +271,11 @@ const STYLES = `
     border-radius: var(--radius); box-shadow: var(--shadow-sm);
   }
   .card + .card { margin-top: 1rem; }
-  .card-body { padding: 1.5rem; display: grid; gap: 1rem; }
+  .card-body { padding: 1.375rem; display: grid; gap: 1rem; }
   .card-body > * { min-width: 0; }
   @media (max-width: 30rem) { .card-body { padding: 1.125rem; } }
-  h2 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.012em; line-height: 1.35; }
-  h3 { font-size: var(--text-sm); font-weight: 600; }
+  h2 { font-family: var(--font-heading); font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.012em; line-height: 1.35; }
+  h3 { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 600; }
   .prose { color: hsl(var(--muted-foreground)); }
   .card-head { display: grid; gap: 0.375rem; }
   .card-foot {
@@ -331,20 +353,47 @@ const STYLES = `
   .alert-info { color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); background: hsl(var(--muted) / 0.5); }
   .alert a { color: inherit; text-decoration: underline; }
 
+  /* ── Icons ────────────────────────────────────────────── */
+  .icon { width: 1rem; height: 1rem; display: block; flex: none; }
+
   /* ── Bindings ─────────────────────────────────────────── */
-  .bindings { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); }
+  .bindings { display: grid; gap: 0.5rem; }
   .binding {
-    display: flex; align-items: center; gap: 0.5rem; min-width: 0;
-    padding: 0.5rem 0.75rem; border: 1px solid hsl(var(--border));
+    display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    align-items: start; gap: 0.125rem 0.625rem; min-width: 0;
+    padding: 0.625rem 0.75rem; border: 1px solid hsl(var(--border));
     border-radius: var(--radius-md); background: hsl(var(--muted) / 0.4);
-    font-size: var(--text-xs);
   }
+  .binding-icon { display: grid; place-items: center; width: 1.5rem; height: 1.25rem; color: hsl(var(--tone)); }
+  .binding-text { display: grid; gap: 0.0625rem; min-width: 0; }
+  .binding-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4375rem; }
+  .binding-name { font-size: var(--text-sm); font-weight: 600; }
+  .binding code { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
+  .binding-product {
+    padding: 0 0.3125rem; border-radius: 9999px; border: 1px solid hsl(var(--border));
+    background: hsl(var(--background) / 0.6); font-size: var(--text-xs);
+    color: hsl(var(--muted-foreground)); white-space: nowrap;
+  }
+  .binding-desc { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
   .binding .dot { width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; background: hsl(var(--tone)); flex: none; }
-  .binding code { color: hsl(var(--foreground)); }
-  .binding-status { margin-left: auto; padding-left: 0.5rem; color: hsl(var(--tone)); font-weight: 500; white-space: nowrap; }
+  .binding-status {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    color: hsl(var(--tone)); font-size: var(--text-xs); font-weight: 500; white-space: nowrap;
+  }
   .binding-ok { --tone: var(--success); }
   .binding-optional { --tone: var(--muted-foreground); }
   .binding-missing { --tone: var(--danger); border-color: hsl(var(--danger) / 0.32); background: hsl(var(--danger) / 0.06); }
+  @media (max-width: 30rem) {
+    .binding { grid-template-columns: 1.5rem minmax(0, 1fr); }
+    .binding-status { grid-column: 2; margin-top: 0.25rem; }
+  }
+
+  /* ── Role list: identifier plus what it means in practice ── */
+  .rolelist { list-style: none; display: grid; gap: 0.375rem; margin-top: 0.25rem; }
+  .rolelist li { display: grid; gap: 0.125rem 0.75rem; }
+  @media (min-width: 34rem) { .rolelist li { grid-template-columns: 9.5rem minmax(0, 1fr); align-items: baseline; } }
+  .rolelist code { font-size: var(--text-xs); color: hsl(var(--foreground)); }
+  .rolelist span { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
 
   /* ── Definition rows (replaces the old wide env table) ── */
   .deflist { display: grid; gap: 0.875rem; }
@@ -352,7 +401,10 @@ const STYLES = `
   @media (min-width: 44rem) { .defrow { grid-template-columns: 14rem minmax(0, 1fr); gap: 0.25rem 1.25rem; } }
   .defterm { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; overflow-wrap: anywhere; }
   .defdesc { font-size: var(--text-xs); color: hsl(var(--muted-foreground)); }
-  .deftag { display: inline-block; margin-left: 0.375rem; padding: 0 0.375rem; border-radius: 9999px; border: 1px solid hsl(var(--border)); font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 500; color: hsl(var(--muted-foreground)); vertical-align: 1px; }
+  /* Always on its own row: trailing a long monospace variable name it collided
+     with the term and wrapped unpredictably. block + fit-content keeps the pill
+     hugging its label while forcing the line break. */
+  .deftag { display: block; width: fit-content; margin-top: 0.3125rem; padding: 0 0.4375rem; border-radius: 9999px; border: 1px solid hsl(var(--border)); background: hsl(var(--background) / 0.6); font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 500; line-height: 1.5; color: hsl(var(--muted-foreground)); }
 
   /* ── Code ─────────────────────────────────────────────── */
   .code {
@@ -433,11 +485,58 @@ const STYLES = `
   }
 `;
 
+// ============================================================
+// Icons
+// ============================================================
+//
+// Lucide glyphs inlined as bare path data (the repo's icon set, per AGENTS.MD).
+// No package and no request: they inherit currentColor and are sized by the
+// parent, so one definition serves every intent and both colour schemes.
+
+const ICON_PATHS: Record<string, string> = {
+    database:
+        '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+    zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    'hard-drive':
+        '<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
+    inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    'file-code':
+        '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/>',
+};
+
+/** Inline an icon by name. Returns an empty string for an unknown name. */
+function icon(name: string): string {
+    const path = ICON_PATHS[name];
+    if (!path) return '';
+    return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
+}
+
+/** localStorage key the app's next-themes provider uses (storageKey). */
+const THEME_STORAGE_KEY = 'ottabase.theme';
+
 /**
- * Light/dark switch. It starts from the operating system preference and is
- * deliberately NOT persisted — the wizard runs before there is anywhere to store
- * it, and step one asks the operator to clear this browser's saved state.
- * Reloading returns to the system preference.
+ * Read the stored theme before first paint, mirroring the app's own anti-FOUC
+ * script in apps/otta-web/index.html. Without this the page would paint in the
+ * system scheme and then flip once the toggle script runs at the end of <body>.
+ * Uses no template literals or interpolation (see the header note).
+ */
+const THEME_HEAD_SCRIPT = `<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem('${THEME_STORAGE_KEY}');
+      if (stored === 'dark' || stored === 'light') {
+        document.documentElement.setAttribute('data-theme', stored);
+      }
+    } catch (e) {
+      /* storage can be blocked; fall back to prefers-color-scheme */
+    }
+  })();
+</script>`;
+
+/**
+ * Light/dark switch. It starts from the stored choice, falling back to the
+ * operating system preference, and writes back to the same key and value shape
+ * the app's next-themes provider uses so the choice carries into the app.
  */
 const THEME_TOGGLE = `<button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme" title="Switch theme">
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -471,7 +570,15 @@ const THEME_SCRIPT = `<script>
     relabel();
 
     toggle.addEventListener('click', function () {
-      root.setAttribute('data-theme', effective() === 'dark' ? 'light' : 'dark');
+      var next = effective() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      // Same key and raw string value next-themes writes, so /login and the rest
+      // of the app open in the scheme chosen here.
+      try {
+        localStorage.setItem('ottabase.theme', next);
+      } catch (e) {
+        /* storage can be blocked; the choice then lasts for this page only */
+      }
       relabel();
     });
 
@@ -495,6 +602,7 @@ function baseLayout(title: string, chip: string, body: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+${THEME_HEAD_SCRIPT}
 <title>${escapeHtml(title)} &middot; ${BRAND}</title>
 <style>${STYLES}</style>
 </head>
@@ -557,7 +665,7 @@ export function renderReseedPage(state: PlatformStateResult): string {
         stateChip(state),
         `  <div class="page-head">
     <h1>Reconcile roles and permissions</h1>
-    <p class="lede">Re-applies the built-in role definitions from code. Safe to run at any time.</p>
+    <p class="lede">Puts the built-in roles back to exactly what the code says. Safe to run at any time.</p>
   </div>
 
   ${
@@ -698,7 +806,7 @@ export function renderPromoteOwnerPage(state: PlatformStateResult): string {
         stateChip(state),
         `  <div class="page-head">
     <h1>Promote a platform owner</h1>
-    <p class="lede">Grants an existing account the system-scoped <code>platform_owner</code> role.</p>
+    <p class="lede">Gives someone who already has an account full control of the platform.</p>
   </div>
 
   ${
@@ -711,7 +819,7 @@ export function renderPromoteOwnerPage(state: PlatformStateResult): string {
     <div class="card-body">
       <div class="card-head">
         <h2>Grant platform ownership</h2>
-        <p class="prose">Gives full control-plane access to an account that already exists. This does not create an account, so the person must have signed up first. Existing platform owners keep their access.</p>
+        <p class="prose">Grants the system-wide <code>platform_owner</code> role, which is the highest level of access there is. The person must already have signed up, because this does not create an account. Anyone who is already an owner keeps their access, so you can safely have more than one.</p>
       </div>
       <form id="promote-form" novalidate>
         ${tokenField('promote-secret', 'promote-secret-hint')}
@@ -855,10 +963,10 @@ export function renderPromoteOwnerPage(state: PlatformStateResult): string {
 // two views of the same state).
 
 const WIZARD_STEPS = [
-    { title: 'Database', desc: 'Create tables' },
-    { title: 'Roles', desc: 'Seed permissions' },
-    { title: 'Owner', desc: 'First account' },
-    { title: 'Launch', desc: 'Go live' },
+    { title: 'Database', desc: 'Somewhere to store things' },
+    { title: 'Roles', desc: 'Who can do what' },
+    { title: 'Owner', desc: 'Your account' },
+    { title: 'Launch', desc: 'Open the doors' },
 ];
 
 export function renderWizardPage(state: PlatformStateResult): string {
@@ -874,13 +982,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
     ).join('\n          ');
 
     const bindingsHtml = Object.entries(state.bindings)
-        .map(([name, ok]) => {
-            const label = BINDING_LABELS[name] || name;
-            const required = REQUIRED_BINDINGS.includes(name);
-            const cls = ok ? 'binding-ok' : required ? 'binding-missing' : 'binding-optional';
-            const status = ok ? 'Connected' : required ? 'Required' : 'Not set';
-            return `<div class="binding ${cls}"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(label)}</code><span class="binding-status">${status}</span></div>`;
-        })
+        .map(([name, ok]) => bindingRow(name, ok))
         .join('\n            ');
 
     return baseLayout(
@@ -888,7 +990,20 @@ export function renderWizardPage(state: PlatformStateResult): string {
         stateChip(state),
         `  <div class="page-head">
     <h1>Set up ${BRAND}</h1>
-    <p class="lede">Four steps to a running platform. Nothing is written to your database until you press a button.</p>
+    <p class="lede">Four steps and you have a running platform. Each one explains itself before it does anything, and nothing is written to your database until you press a button.</p>
+  </div>
+
+  <!-- The token gates every step, so it sits above the flow rather than inside it. -->
+  <div class="token-card" id="token-card">
+    <div class="tokenbar">
+      <label class="field-label" for="bootstrap-secret">Setup token</label>
+      <div class="field-with-action">
+        <input class="field-input" id="bootstrap-secret" type="password" placeholder="BOOTSTRAP_OWNER_SECRET" autocomplete="off" spellcheck="false" aria-describedby="token-hint">
+        <button type="button" class="btn btn-outline" id="token-reveal" aria-pressed="false">Show</button>
+      </div>
+    </div>
+    <p class="hint" id="token-hint">This proves you are the person deploying the app, so a stranger cannot run setup against it. It is the <code>BOOTSTRAP_OWNER_SECRET</code> you set in your worker environment, and every step below sends it.</p>
+    <p class="field-error" id="bootstrap-secret-error" role="alert"></p>
   </div>
 
   <div class="shell">
@@ -901,40 +1016,27 @@ export function renderWizardPage(state: PlatformStateResult): string {
     <div>
       <p class="sr-only" id="step-announcer" aria-live="polite"></p>
 
-      <div class="card" id="token-card">
-        <div class="card-body">
-          <div class="field">
-            <label class="field-label" for="bootstrap-secret">Setup token</label>
-            <div class="field-with-action">
-              <input class="field-input" id="bootstrap-secret" type="password" placeholder="BOOTSTRAP_OWNER_SECRET" autocomplete="off" spellcheck="false" aria-describedby="token-hint">
-              <button type="button" class="btn btn-outline" id="token-reveal" aria-pressed="false">Show</button>
-            </div>
-            <p class="hint" id="token-hint">From <code>BOOTSTRAP_OWNER_SECRET</code> in your worker environment. Every step below sends it.</p>
-            <p class="field-error" id="bootstrap-secret-error" role="alert"></p>
-          </div>
-        </div>
-      </div>
-
       <!-- STEP 0: Database -->
       <section class="card step" id="panel-0" aria-labelledby="head-0">
         <div class="card-body">
           <div class="card-head">
-            <h2 id="head-0" tabindex="-1">Create the database schema</h2>
-            <p class="prose">Creates every table ${BRAND} needs in your D1 database and runs the core migrations for users, accounts, sessions, verification tokens, authenticators, posts and tags. Tables that already exist are left alone.</p>
+            <h2 id="head-0" tabindex="-1">Give ${BRAND} somewhere to store things</h2>
+            <p class="prose">Your app needs tables before it can remember anything. This creates them in your D1 database and runs the migrations that keep them up to date: accounts, sign-in sessions, roles, posts and tags. Tables that already exist are left exactly as they are, so running this on an existing database is safe.</p>
           </div>
 
           <div class="alert alert-warn is-hidden" id="cache-notice">
-            <span class="alert-mark" aria-hidden="true">!</span>
-            <span class="alert-title">A previous session is cached in this browser</span>
+            <span class="alert-mark" aria-hidden="true" id="cache-mark">!</span>
+            <span class="alert-title" id="cache-title">A previous session is cached in this browser</span>
             <div class="alert-body">
-              <p>Leftover client state can conflict with a fresh install.</p>
+              <p id="cache-lede">Leftover client state can conflict with a fresh install.</p>
               <button type="button" class="btn btn-outline btn-sm" id="btn-clear-cache">Clear cached session</button>
               <p id="cache-result" role="status"></p>
             </div>
           </div>
 
           <div>
-            <h3 style="margin-bottom:0.5rem">Cloudflare bindings</h3>
+            <h3 style="margin-bottom:0.5rem">What this worker can reach</h3>
+            <p class="hint" style="margin:-0.25rem 0 0.625rem">A binding connects your worker to a Cloudflare resource. They come from <code>wrangler.jsonc</code>, and Wrangler emulates them locally.</p>
             <div class="bindings">
             ${bindingsHtml}
             </div>
@@ -964,9 +1066,9 @@ export function renderWizardPage(state: PlatformStateResult): string {
           }
 
           <details class="disclosure">
-            <summary>Why are the bindings green without a Cloudflare account ID?</summary>
+            <summary>Why is this green when I have not set a Cloudflare account ID?</summary>
             <div class="disclosure-body">
-              <p class="prose">Worker bindings come from <code>wrangler.jsonc</code> and Wrangler emulates them locally, so no account credentials are involved. The two variables below are used by the Wrangler CLI and optional API calls, never by the running worker.</p>
+              <p class="prose">Because the two are unrelated. Bindings are declared in <code>wrangler.jsonc</code> and Wrangler emulates them on your machine, so nothing above needed an account. The variables below are read by the Wrangler command line and by optional analytics calls, never by the running worker, which is why setup works without them.</p>
               <dl class="deflist">
                 <div class="defrow">
                   <dt class="defterm">CLOUDFLARE_ACCOUNT_ID<span class="deftag">Production</span></dt>
@@ -995,8 +1097,16 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <section class="card step is-hidden" id="panel-1" aria-labelledby="head-1">
         <div class="card-body">
           <div class="card-head">
-            <h2 id="head-1" tabindex="-1">Seed roles and permissions</h2>
-            <p class="prose">Creates the six built-in roles (<code>platform_owner</code>, <code>owner</code>, <code>admin</code>, <code>editor</code>, <code>viewer</code> and <code>member</code>) with their default permission sets, and registers the default brand kit for this app. Running it more than once is safe.</p>
+            <h2 id="head-1" tabindex="-1">Decide who can do what</h2>
+            <p class="prose">Rather than every account being equal, people are given a role, and the role decides what they may touch. This creates the six built-in ones and their default permissions, plus the starting look and feel for this app. Running it again later is safe: it only ever repairs the built-in roles back to what the code says, and never touches roles you made yourself.</p>
+            <ul class="rolelist">
+              <li><code>platform_owner</code><span>Runs the whole platform, across every organization</span></li>
+              <li><code>owner</code><span>Runs one organization and its billing</span></li>
+              <li><code>admin</code><span>Manages people and settings inside an organization</span></li>
+              <li><code>editor</code><span>Creates and publishes content</span></li>
+              <li><code>viewer</code><span>Reads content, changes nothing</span></li>
+              <li><code>member</code><span>Belongs to an organization with no extra powers</span></li>
+            </ul>
           </div>
           <div class="alert alert-danger is-hidden" id="alert-1" role="alert"></div>
           <button class="btn btn-primary btn-block" id="btn-seed">Seed roles and permissions</button>
@@ -1012,8 +1122,9 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <section class="card step is-hidden" id="panel-2" aria-labelledby="head-2">
         <div class="card-body">
           <div class="card-head">
-            <h2 id="head-2" tabindex="-1">Create the platform owner</h2>
-            <p class="prose">This account gets full control of the platform, and a personal workspace is created alongside it. It can only be created once. Afterwards, use the promote page to grant ownership to another account.</p>
+            <h2 id="head-2" tabindex="-1">Create your account</h2>
+            <p class="prose">This is the first account, and it holds the <code>platform_owner</code> role: full control over everything, including future organizations. A personal workspace is created with it so you have somewhere to work straight away. You will be signed in automatically once it exists.</p>
+            <p class="hint">This step runs once and then locks itself. To give someone else ownership later, use the promote page linked from the last step.</p>
           </div>
           <form id="owner-form" novalidate>
             <div class="field">
@@ -1053,15 +1164,15 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <section class="card step is-hidden" id="panel-3" aria-labelledby="head-3">
         <div class="card-body">
           <div class="card-head">
-            <h2 id="head-3" tabindex="-1">Pre-flight</h2>
-            <p class="prose">A last look at what was created before the platform starts serving traffic.</p>
+            <h2 id="head-3" tabindex="-1">Check everything before opening the doors</h2>
+            <p class="prose">A look at what the previous steps actually created. A cross means setup is not finished and launching is blocked. An exclamation mark is a warning: the platform will run, but something is worth fixing before real people use it.</p>
           </div>
           <div class="checks" id="checks"></div>
 
           <details class="disclosure">
             <summary>Environment variables for production</summary>
             <div class="disclosure-body">
-              <p class="prose">Set these as Cloudflare secrets, or under <code>vars</code> in <code>wrangler.jsonc</code>. Local development runs without them; production needs at least <code>AUTH_SECRET</code>.</p>
+              <p class="prose">Secrets live outside your code. Set them with <code>wrangler secret put</code>, or as plain values under <code>vars</code> in <code>wrangler.jsonc</code> when they are not sensitive. You can develop locally without any of them, but a real deployment needs at least <code>AUTH_SECRET</code>.</p>
               <dl class="deflist">
                 <div class="defrow">
                   <dt class="defterm">AUTH_SECRET<span class="deftag">Required</span></dt>
@@ -1195,12 +1306,15 @@ wrangler secret put MIGRATION_SECRET</code>
       return found;
     }
     var cacheNotice = document.getElementById('cache-notice');
+    var cacheMark = document.getElementById('cache-mark');
+    var cacheTitle = document.getElementById('cache-title');
+    var cacheLede = document.getElementById('cache-lede');
     var clearCacheBtn = document.getElementById('btn-clear-cache');
     var cacheResult = document.getElementById('cache-result');
     if (staleKeys().length > 0) cacheNotice.classList.remove('is-hidden');
     clearCacheBtn.addEventListener('click', function () {
-      // Report the outcome in place. Hiding the card on failure would make a
-      // blocked localStorage look exactly like a successful clear.
+      // Report the outcome in place, and change the intent with it: a warning
+      // that still looks like a warning after you have fixed it reads as failed.
       var removed = 0;
       try {
         staleKeys().forEach(function (key) {
@@ -1208,11 +1322,19 @@ wrangler secret put MIGRATION_SECRET</code>
           removed++;
         });
       } catch (e) {
-        cacheResult.textContent = 'Could not clear browser storage. Clear this site\\u2019s data in your browser settings, then reload.';
+        cacheNotice.className = 'alert alert-danger';
+        cacheMark.textContent = '\\u2715';
+        cacheTitle.textContent = 'Could not clear browser storage';
+        cacheLede.classList.add('is-hidden');
+        cacheResult.textContent = 'Clear this site\\u2019s data in your browser settings, then reload this page.';
         return;
       }
-      clearCacheBtn.disabled = true;
-      cacheResult.textContent = 'Cleared ' + removed + ' saved item' + (removed === 1 ? '' : 's') + '. Setup can continue.';
+      cacheNotice.className = 'alert alert-success';
+      cacheMark.textContent = '\\u2713';
+      cacheTitle.textContent = 'Browser cache cleared';
+      cacheLede.classList.add('is-hidden');
+      clearCacheBtn.classList.add('is-hidden');
+      cacheResult.textContent = 'Removed ' + removed + ' saved item' + (removed === 1 ? '' : 's') + '. Setup can continue.';
     });
 
     // ── Networking ────────────────────────────────────────
@@ -1533,14 +1655,11 @@ wrangler secret put MIGRATION_SECRET</code>
       log('log-owner', 'Creating the platform owner: ' + email, 'info');
 
       // A stale client session would be adopted by the app right after this
-      // account is created, so clear everything under ottabase.* first.
+      // account is created, so clear it first. staleKeys() honours KEEP, which
+      // preserves harmless UI preferences: wiping ottabase.theme here would
+      // throw away the scheme the operator just picked in the masthead.
       try {
-        var keys = [];
-        for (var k = 0; k < localStorage.length; k++) {
-          var key = localStorage.key(k);
-          if (key && key.indexOf('ottabase.') === 0) keys.push(key);
-        }
-        keys.forEach(function (key) { localStorage.removeItem(key); });
+        staleKeys().forEach(function (key) { localStorage.removeItem(key); });
       } catch (e) { /* storage may be blocked */ }
 
       api('/__bootstrap__/api/create-owner', {
@@ -1772,7 +1891,7 @@ export function renderMaintenancePage(state: PlatformStateResult): string {
         chipHtml('Degraded', 'danger'),
         `  <div class="page-head">
     <h1>The database is unreachable</h1>
-    <p class="lede">Cached state says this platform was running, but D1 is not responding right now.</p>
+    <p class="lede">This platform was running a moment ago, but its database is not answering. Usually this clears on its own.</p>
   </div>
   <div class="card">
     <div class="card-body">
@@ -1829,7 +1948,7 @@ export function renderLockedPage(_state: PlatformStateResult): string {
         chipHtml('Locked', 'warn'),
         `  <div class="page-head">
     <h1>This platform is locked</h1>
-    <p class="lede">An administrator halted it with an environment variable.</p>
+    <p class="lede">Someone stopped it on purpose with an environment variable, so no page will load until that is removed.</p>
   </div>
   <div class="card">
     <div class="card-body">
@@ -1860,7 +1979,7 @@ export function renderUnauthorizedPage(): string {
         chipHtml('Not available'),
         `  <div class="page-head">
     <h1>This page needs a setup token</h1>
-    <p class="lede">First-run setup is restricted on this deployment.</p>
+    <p class="lede">Setup is restricted here, so it needs the token you chose when you deployed.</p>
   </div>
   <div class="card">
     <div class="card-body">
@@ -1880,17 +1999,17 @@ export function renderUnauthorizedPage(): string {
 export function renderBindingsErrorPage(state: PlatformStateResult): string {
     const missing = Object.entries(state.bindings)
         .filter(([name, ok]) => !ok && REQUIRED_BINDINGS.includes(name))
-        .map(([name]) => BINDING_LABELS[name] || name);
+        .map(([name]) => name);
     const optional = Object.entries(state.bindings)
         .filter(([name, ok]) => !ok && !REQUIRED_BINDINGS.includes(name))
-        .map(([name]) => BINDING_LABELS[name] || name);
+        .map(([name]) => name);
 
     return baseLayout(
         'Configuration required',
         chipHtml('Not configured', 'danger'),
         `  <div class="page-head">
     <h1>Cloudflare bindings are missing</h1>
-    <p class="lede">${BRAND} cannot start until its worker can reach a database.</p>
+    <p class="lede">${BRAND} has nowhere to store anything yet, so it cannot start.</p>
   </div>
   <div class="card">
     <div class="card-body">
@@ -1899,13 +2018,8 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
         <div class="bindings">
           ${
               missing.length
-                  ? missing
-                        .map(
-                            (b) =>
-                                `<div class="binding binding-missing"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(b)}</code><span class="binding-status">Missing</span></div>`,
-                        )
-                        .join('\n          ')
-                  : `<div class="binding binding-ok"><span class="dot" aria-hidden="true"></span><code>All required bindings present</code></div>`
+                  ? missing.map((b) => bindingRow(b, false)).join('\n          ')
+                  : `<div class="binding binding-ok"><span class="binding-icon" aria-hidden="true">${icon('database')}</span><span class="binding-text"><span class="binding-head"><span class="binding-name">Everything required is connected</span></span></span></div>`
           }
         </div>
       </div>
@@ -1914,17 +2028,12 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
               ? `<div>
         <h3 style="margin-bottom:0.5rem">Recommended</h3>
         <div class="bindings">
-          ${optional
-              .map(
-                  (b) =>
-                      `<div class="binding binding-optional"><span class="dot" aria-hidden="true"></span><code>${escapeHtml(b)}</code><span class="binding-status">Not set</span></div>`,
-              )
-              .join('\n          ')}
+          ${optional.map((b) => bindingRow(b, false)).join('\n          ')}
         </div>
       </div>`
               : ''
       }
-      <p class="prose">Add them to <code>wrangler.jsonc</code> and redeploy, then re-check.</p>
+      <p class="prose">A binding is how a worker reaches a Cloudflare resource. Add the ones above to <code>wrangler.jsonc</code>, redeploy, then re-check.</p>
       <code class="code">"d1_databases": [{
   "binding": "OBCF_D1",
   "database_name": "ottabase-db",
@@ -1947,16 +2056,81 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
 // Helpers
 // ============================================================
 
-const BINDING_LABELS: Record<string, string> = {
-    d1: 'OBCF_D1 (D1)',
-    kv: 'OBCF_KV (KV)',
-    r2: 'OBCF_R2 (R2)',
-    queue: 'OBCF_QUEUE (Queue)',
-    assets: 'OBCF_ASSETS (Assets)',
+/**
+ * What each Cloudflare binding is, in plain language AND in the exact identifier
+ * you put in wrangler.jsonc. Someone meeting Cloudflare for the first time reads
+ * the name and the sentence; someone who knows it reads the code and the product.
+ * Neither audience has to translate for the other.
+ */
+interface BindingMeta {
+    /** Plain-language name for what this thing does */
+    name: string;
+    /** The binding identifier as written in wrangler.jsonc */
+    id: string;
+    /** The Cloudflare product behind it */
+    product: string;
+    /** One line on why the platform wants it */
+    desc: string;
+    icon: string;
+}
+
+const BINDING_META: Record<string, BindingMeta> = {
+    d1: {
+        name: 'Database',
+        id: 'OBCF_D1',
+        product: 'D1',
+        desc: 'Holds your accounts, roles and content. Nothing works without it.',
+        icon: 'database',
+    },
+    kv: {
+        name: 'Cache and sessions',
+        id: 'OBCF_KV',
+        product: 'KV',
+        desc: 'Keeps people signed in and remembers that setup is finished.',
+        icon: 'zap',
+    },
+    r2: {
+        name: 'File storage',
+        id: 'OBCF_R2',
+        product: 'R2',
+        desc: 'Stores uploads such as images and documents.',
+        icon: 'hard-drive',
+    },
+    queue: {
+        name: 'Background jobs',
+        id: 'OBCF_QUEUE',
+        product: 'Queue',
+        desc: 'Runs slow work later, like sending email.',
+        icon: 'inbox',
+    },
+    assets: {
+        name: 'Static files',
+        id: 'OBCF_ASSETS',
+        product: 'Assets',
+        desc: 'Serves the built front-end to browsers.',
+        icon: 'file-code',
+    },
 };
 
-/** Bindings without which the platform cannot run — everything else degrades gracefully. */
+/** Bindings without which the platform cannot run. Everything else degrades gracefully. */
 const REQUIRED_BINDINGS = ['d1'];
+
+/** One binding row: icon, plain name, identifier, description and status. */
+function bindingRow(key: string, ok: boolean): string {
+    const meta = BINDING_META[key];
+    if (!meta) return '';
+    const required = REQUIRED_BINDINGS.includes(key);
+    const cls = ok ? 'binding-ok' : required ? 'binding-missing' : 'binding-optional';
+    const status = ok ? 'Connected' : required ? 'Required' : 'Not set';
+    return `<div class="binding ${cls}">
+              <span class="binding-icon" aria-hidden="true">${icon(meta.icon)}</span>
+              <span class="binding-text">
+                <span class="binding-head"><span class="binding-name">${escapeHtml(meta.name)}</span><code>${escapeHtml(meta.id)}</code><span class="binding-product">${escapeHtml(meta.product)}</span></span>
+                <span class="binding-desc">${escapeHtml(meta.desc)}</span>
+              </span>
+              <span class="binding-status"><span class="dot" aria-hidden="true"></span>${status}</span>
+            </div>`;
+}
 
 function escapeHtml(str: string): string {
     return String(str)

@@ -55,6 +55,18 @@ Reloading is safe. On load the wizard reads `/api/status` and lands on the first
 completed steps done — it does not restart from step one. Reference material (Cloudflare CLI variables, production
 environment variables) lives in disclosures next to the step it belongs to rather than occupying a step of its own.
 
+## Writing for two audiences
+
+The bootstrap is often someone's first hour with Cloudflare, and it is also run by people who deploy workers weekly. The
+rule is **add plain language, never remove the identifier**. A binding row shows an icon, the human name (`Database`),
+the exact value from `wrangler.jsonc` (`OBCF_D1`), the Cloudflare product (`D1`), one line on why the platform wants it,
+and a status word beside the coloured dot. A newcomer reads left to right and understands; an operator reads the code
+and the status and skips the rest.
+
+The same shape applies elsewhere: step 2 lists every role next to what it can actually do, headings say what the step
+gives you (`Decide who can do what`) rather than naming the mechanism, and each step explains itself before its button.
+`BINDING_META` in `pages.ts` holds the per-binding copy; icons are inline Lucide paths in `ICON_PATHS`.
+
 ## Design constraints
 
 These are the rules that make the pages work at all — break them and setup breaks.
@@ -70,26 +82,45 @@ These are the rules that make the pages work at all — break them and setup bre
 
 ## Look and feel
 
-The palette, radius, shadow and motion tokens in `pages.ts` are transcribed from the app's default brand theme
-(`packages/brand-engine/src/themes/default.json`) and the component CSS mirrors `@ottabase/ui-shadcn` — button `h-10` /
-`rounded-md`, input `h-10`, card `rounded-lg` with a border, and the global `2px solid hsl(var(--ring))` focus ring.
+The palette, radius, shadow and motion tokens in `pages.ts` are transcribed from the **verdant** theme
+(`packages/brand-engine/src/themes/verdant.json`, mirrored in `src/defaults.ts`), which is the framework default and is
+what `ensureAppBrandDefaults` seeds as `themePresetId` during step two. The wizard therefore looks like the brand kit it
+just created. The component CSS mirrors `@ottabase/ui-shadcn`: button `h-10` / `rounded-md`, input `h-10`, card
+`rounded-lg` with a border, and the global `2px solid hsl(var(--ring))` focus ring.
 
-Light and dark default to `prefers-color-scheme`, and a toggle in the masthead overrides it for the current page view.
-The choice is stamped as `data-theme` on `<html>` and is **not persisted** — there is no theme store during bootstrap,
-and step one asks the operator to clear this browser's saved state, so writing a key back would contradict it. A reload
-returns to the system preference.
+Two values are not copied verbatim. Verdant's light `--muted-foreground` (`142 8% 46%`) measures 4.03:1 on its own
+background and misses AA, so it is darkened to `142 8% 40%` (4.9:1). And `--danger` / `--success` / `--warning` are
+derived from verdant's `destructive` / `success` / `warning`, which are button-fill values that fall well under 4.5:1 as
+body copy; the hue is kept and the lightness dropped.
+
+Verdant names Sora (headings) and Source Sans 3 (body), both served from Google Fonts. Bootstrap pages may not make
+outbound requests, so those families are listed first in the stacks and are used only when already installed locally;
+everyone else falls back to the system sans.
+
+Light and dark default to `prefers-color-scheme`, and a toggle in the masthead overrides it. The choice is stamped as
+`data-theme` on `<html>` and written to `localStorage` under **`ottabase.theme`** with the raw value `dark` or `light`,
+which is exactly the key and value shape the app's `next-themes` provider uses (`ProviderNextThemes`, `storageKey`). A
+scheme picked during setup therefore carries into `/login` and the rest of the app.
+
+A small script in `<head>` reads that key before the stylesheet, mirroring the anti-FOUC script in
+`apps/otta-web/index.html`, so a stored choice never flashes the system scheme first.
+
+Two places clear client state, and both must keep this key. `KEEP` in the wizard script lists the harmless UI
+preferences (`ottabase.theme`, `ottabase.language`, `ottabase.sidebar-state`, …) and `staleKeys()` filters against it.
+The pre-owner-creation wipe goes through `staleKeys()` for exactly this reason: an unfiltered `ottabase.*` loop would
+throw away the scheme the operator just chose.
 
 The dark values live in the single `DARK_TOKENS` constant, interpolated into both
 `@media (prefers-color-scheme: dark) :root:not([data-theme='light'])` and `:root[data-theme='dark']`, so the toggle and
 the system default cannot drift. A test asserts the tokens appear in exactly two places. The toggle's icon is swapped in
 CSS rather than by script, so it is already correct on first paint.
 
-One deliberate deviation: in dark mode `--card` is lifted about 3% above `--background` and `--border` is raised to
-`17.5%`. The app's theme sets dark `card == background`, which works inside app chrome but leaves these card-only pages
-with no visible structure.
+Verdant sets `card` above `background` in both schemes (white on a tinted page in light, `9%` on `6%` in dark), so cards
+read as raised without any lift of our own.
 
-When changing the palette, keep every text/background pair at or above **4.5:1**. The status hues (`--danger`,
-`--success`, `--warning`) are tuned for text on tinted surfaces, not for button fills.
+When changing the palette, keep every text/background pair at or above **4.5:1**. Measure rather than assume: render the
+pages to a scratch directory and sample `getComputedStyle` in a browser. Current worst pair is 5.09:1 light, 5.20:1
+dark.
 
 ## Tests
 
