@@ -139,6 +139,8 @@ interface AppConfig {
         robots: string;
         copyrightText: string;
         companyName: string;
+        /** Short line beside the app name in headers, e.g. 'Beta'; omit to hide */
+        tagline?: string;
     };
     uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui';
     features: {

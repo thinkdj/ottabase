@@ -10,6 +10,8 @@ export interface AppMeta {
     robots: string;
     copyrightText: string;
     companyName: string;
+    /** Short line rendered beside the app name in headers; omit or leave empty to hide */
+    tagline?: string;
 }
 
 export type ThemeColors = Record<

@@ -72,7 +72,7 @@ vi.mock('@/hooks/useLocalStorage', () => ({
     useLocalStorage: () => [null, vi.fn()],
 }));
 vi.mock('@/ottabase/config', () => ({
-    APP_META: { appName: 'Test App' },
+    APP_META: { appName: 'Test App', tagline: 'Test Tagline' },
     APP_ID: 'test-app',
     APP_NAME: 'Test App',
     PACKAGES_ENABLED: { ottablog: true, shortlinks: true, referrals: true },
@@ -161,6 +161,13 @@ describe('BrandLayout', () => {
             setLayout({ header: 'topbar' });
             render(<BrandLayout />);
             expect(screen.getByText('Test App')).toBeTruthy();
+        });
+
+        it('renders the configured meta.tagline beside the app name, not a framework name', () => {
+            setLayout({ header: 'topbar' });
+            render(<BrandLayout />);
+            expect(screen.getByText('Test Tagline')).toBeTruthy();
+            expect(screen.queryByText('TanStack')).toBeNull();
         });
 
         it('renders topbar header with navigation when navigation is topbar', () => {

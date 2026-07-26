@@ -20,6 +20,8 @@ export default defineOttabaseConfig({
 
     // ── App Metadata (SEO, copyright, social) ─────────────────
     meta: {
+        // Short line beside the app name in the header — say what the app IS, not what it is built with
+        tagline: 'Cloudflare-native',
         description: 'A minimal Vite + Cloudflare Workers template app in the Ottabase monorepo',
         author: '@thinkdj',
         keywords:

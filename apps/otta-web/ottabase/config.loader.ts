@@ -39,6 +39,7 @@ const APP_META: AppMeta = {
     description: baseCfg.meta.description,
     keywords: baseCfg.meta.keywords,
     robots: baseCfg.meta.robots,
+    tagline: baseCfg.meta.tagline,
     copyrightText: `© 2020-${new Date().getFullYear()} ${baseCfg.meta.companyName || baseCfg.meta.author}`,
     companyName: baseCfg.meta.companyName,
 };

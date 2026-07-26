@@ -76,9 +76,12 @@ export const TopbarHeader = memo(function TopbarHeader({
                     >
                         {APP_META.appName}
                     </Link>
-                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        TanStack
-                    </span>
+                    {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
+                    {APP_META.tagline && (
+                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            {APP_META.tagline}
+                        </span>
+                    )}
                 </div>
 
                 {headerNav}

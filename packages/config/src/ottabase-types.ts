@@ -16,6 +16,12 @@ export interface OttabaseMeta {
     title?: string;
     /** Robots directive (default: 'index, follow') */
     robots?: string;
+    /**
+     * Short line shown beside the app name in the header — an edition or positioning
+     * phrase ('Beta', 'Cloudflare-native'). Empty hides it. Keep it to roughly two
+     * words; the header renders it uppercase.
+     */
+    tagline?: string;
 }
 
 export interface ReferralsFeatureConfig {
@@ -147,6 +153,7 @@ export interface OttabaseConfig {
         logoUrl: string;
         title: string;
         robots: string;
+        tagline: string;
     };
     storage: { prefix: string };
     packages: Record<BuiltInPackageName, boolean>;

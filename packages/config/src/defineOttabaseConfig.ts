@@ -132,6 +132,7 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         logoUrl: input.meta?.logoUrl ?? '/logo.png',
         title: input.meta?.title ?? input.appName,
         robots: input.meta?.robots ?? 'index, follow',
+        tagline: input.meta?.tagline ?? '',
     };
 
     const config: OttabaseConfig = {
