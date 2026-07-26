@@ -62,10 +62,10 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
 
     if (isLoading) {
         return (
-            <Button variant="outline" size="sm" disabled className="w-[200px] justify-between">
+            <Button variant="outline" size="sm" disabled className="w-auto justify-between px-2 sm:w-[200px] sm:px-3">
                 <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    <span className="text-sm">Loading...</span>
+                    <span className="hidden text-sm sm:inline">Loading...</span>
                 </div>
             </Button>
         );
@@ -83,16 +83,24 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
     return (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={isOpen} className="w-[200px] justify-between">
+                {/* Narrow headers get the icon-only trigger; the org name returns from sm up */}
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isOpen}
+                    aria-label={`Organization: ${triggerLabel}`}
+                    title={triggerLabel}
+                    className="w-auto justify-between px-2 sm:w-[200px] sm:px-3"
+                >
                     <div className="flex items-center gap-2 overflow-hidden">
                         {inPlatformScope ? (
                             <Globe className="h-4 w-4 flex-shrink-0" />
                         ) : (
                             <Building2 className="h-4 w-4 flex-shrink-0" />
                         )}
-                        <span className="text-sm truncate">{triggerLabel}</span>
+                        <span className="hidden truncate text-sm sm:inline">{triggerLabel}</span>
                     </div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50 sm:ml-2" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-[240px]">

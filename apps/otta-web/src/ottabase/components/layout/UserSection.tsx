@@ -31,7 +31,8 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
     if (!isAuthenticated) {
         return (
             <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2'}`}>
-                <Button asChild variant="ghost" size="sm">
+                {/* Login carries mobile — the login page links to registration, so Sign up can yield */}
+                <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
                     <Link to="/register">Sign up</Link>
                 </Button>
                 <Button asChild variant="default" size="sm">
@@ -53,7 +54,10 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
                             {user?.image && <AvatarImage src={user.image} />}
                             <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
                         </Avatar>
-                        {!compact && (user?.name || user?.email)}
+                        {/* The avatar identifies the user on narrow headers; the name returns from md up */}
+                        {!compact && (
+                            <span className="hidden max-w-[10rem] truncate md:inline">{user?.name || user?.email}</span>
+                        )}
                     </Link>
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setLogoutConfirmOpen(true)} title="Logout">

@@ -67,18 +67,19 @@ export const TopbarHeader = memo(function TopbarHeader({
         <header
             className={`border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
         >
-            <div className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}>
-                <div className="flex items-center gap-2.5">
+            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-3 ${containerClass}`}>
+                {/* min-w-0 lets the app name ellipsize instead of wrapping the header onto extra lines */}
+                <div className="flex min-w-0 items-center gap-2.5">
                     {leading}
                     <Link
                         to="/"
-                        className="font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
+                        className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground sm:text-base"
                     >
                         {APP_META.appName}
                     </Link>
                     {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
                     {APP_META.tagline && (
-                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <span className="hidden whitespace-nowrap text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground md:inline">
                             {APP_META.tagline}
                         </span>
                     )}
@@ -86,7 +87,7 @@ export const TopbarHeader = memo(function TopbarHeader({
 
                 {headerNav}
 
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                     <ControlsSection />
                     <UserSection />
                 </div>
@@ -149,18 +150,18 @@ export const MinimalHeader = memo(function MinimalHeader({
 
     return (
         <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-            <div className={`mx-auto flex items-center justify-between px-4 py-2 ${containerClass}`}>
-                <div className="flex items-center gap-2.5">
+            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-2 ${containerClass}`}>
+                <div className="flex min-w-0 items-center gap-2.5">
                     {leading}
                     <Link
                         to="/"
-                        className="text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
+                        className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
                     >
                         {APP_META.appName}
                     </Link>
                 </div>
                 {headerNav}
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                     <ControlsSection />
                     <UserSection compact />
                 </div>

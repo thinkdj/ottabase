@@ -46,7 +46,10 @@ export function ControlsSection() {
     return (
         <div className="flex items-center gap-1">
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
-            <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
+            {/* Language is the least urgent control — it yields first on narrow headers */}
+            <span className="hidden sm:inline-flex">
+                <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
+            </span>
             {isAuthenticated && <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />}
         </div>
     );
