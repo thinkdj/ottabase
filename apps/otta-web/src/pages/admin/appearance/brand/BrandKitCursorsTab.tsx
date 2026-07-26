@@ -20,8 +20,20 @@ import {
     PopoverTrigger,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconEdit, IconPointer, IconTrash } from '@tabler/icons-react';
-import { useCallback, useMemo, useState } from 'react';
+import {
+    IconArrowsMove,
+    IconBan,
+    IconCrosshair,
+    IconEdit,
+    IconGripVertical,
+    IconHelpCircle,
+    IconLoader2,
+    IconMoon,
+    IconPointer,
+    IconSun,
+    IconTrash,
+} from '@tabler/icons-react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 /** Convert raw SVG string to CSS cursor data URI */
 function svgToCursorUri(svg: string): string {
@@ -202,38 +214,240 @@ function RegistryPicker({
     );
 }
 
+/** How a cursor state resolves for preview: the CSS to apply plus how to describe its source */
+interface ResolvedCursor {
+    css: string;
+    /** Human label for the readout — `registry:key`, `custom SVG`, or `native <state>` */
+    label: string;
+    /** Art to show in the readout, when the cursor renders an image */
+    svg: string | null;
+    /** False when the state falls through to the browser's own cursor */
+    themed: boolean;
+}
+
+/**
+ * One hoverable target in the preview. Each tile is shaped like the thing its cursor
+ * means (a button for `pointer`, a paragraph for `text`, …) so hovering feels like
+ * using the site rather than reading a list of state names.
+ */
+interface PreviewTile {
+    state: CursorState;
+    /** Swapped in while the pointer is held down — lets one tile exercise grab → grabbing */
+    pressState?: CursorState;
+    hint: string;
+    /** Spans the full row instead of taking a grid cell */
+    wide?: boolean;
+    render: (dark: boolean) => ReactNode;
+}
+
+const PREVIEW_TILES: PreviewTile[] = [
+    {
+        state: 'default',
+        hint: 'the surface itself',
+        wide: true,
+        render: (dark) => (
+            <span className={`text-[11px] ${dark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Roam this strip — it carries the default cursor
+            </span>
+        ),
+    },
+    {
+        state: 'pointer',
+        hint: 'buttons',
+        render: (dark) => (
+            <span
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium shadow-sm ${
+                    dark ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
+                }`}
+            >
+                Get started
+            </span>
+        ),
+    },
+    {
+        state: 'text',
+        hint: 'copy',
+        render: (dark) => (
+            <span className={`text-[11px] leading-tight ${dark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                Select this line
+            </span>
+        ),
+    },
+    {
+        state: 'grab',
+        pressState: 'grabbing',
+        hint: 'hold me',
+        render: (dark) => (
+            <span className={`flex items-center gap-0.5 ${dark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                <IconGripVertical className="h-4 w-4" />
+                <span className="text-[11px]">Drag me</span>
+            </span>
+        ),
+    },
+    {
+        state: 'move',
+        hint: 'reposition',
+        render: (dark) => <IconArrowsMove className={`h-4 w-4 ${dark ? 'text-neutral-300' : 'text-neutral-600'}`} />,
+    },
+    {
+        state: 'crosshair',
+        hint: 'precision',
+        render: (dark) => <IconCrosshair className={`h-4 w-4 ${dark ? 'text-neutral-300' : 'text-neutral-600'}`} />,
+    },
+    {
+        state: 'not-allowed',
+        hint: 'blocked',
+        render: (dark) => (
+            <span className={`flex items-center gap-1 opacity-60 ${dark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                <IconBan className="h-4 w-4" />
+                <span className="text-[11px] line-through">Submit</span>
+            </span>
+        ),
+    },
+    {
+        state: 'wait',
+        hint: 'busy',
+        render: (dark) => (
+            <IconLoader2 className={`h-4 w-4 animate-spin ${dark ? 'text-neutral-400' : 'text-neutral-500'}`} />
+        ),
+    },
+    {
+        state: 'help',
+        hint: 'tooltips',
+        render: (dark) => <IconHelpCircle className={`h-4 w-4 ${dark ? 'text-neutral-300' : 'text-neutral-600'}`} />,
+    },
+];
+
 /** Hoverable playground applying the kit's configured cursors, on a light or dark surface */
 function PreviewSurface({ config, dark }: { config: Partial<TokenCursors>; dark?: boolean }) {
-    const resolved = (state: CursorState) => {
-        const raw = config[state];
-        if (raw) return cursorPreview(raw).css;
-        return state === 'default' ? 'auto' : state;
-    };
+    // Which tile the pointer is over, and whether it is being held down (grab → grabbing)
+    const [hovered, setHovered] = useState<CursorState | null>(null);
+    const [pressed, setPressed] = useState(false);
+
+    const resolve = useCallback(
+        (state: CursorState): ResolvedCursor => {
+            const raw = (config[state] || '').trim();
+            if (!raw) {
+                return {
+                    css: state === 'default' ? 'auto' : state,
+                    label: `native ${state}`,
+                    svg: null,
+                    themed: false,
+                };
+            }
+            const info = cursorPreview(raw);
+            const label =
+                info.kind === 'registry' ? `registry:${info.registryKey}` : info.kind === 'custom' ? 'custom SVG' : raw;
+            return { css: info.css, label, svg: info.svg, themed: true };
+        },
+        [config],
+    );
+
+    const themedCount = CURSOR_STATES.filter((state) => Boolean(config[state])).length;
+    // A held-down tile previews its press state (grab → grabbing) in both the tile and the readout
+    const pressState = PREVIEW_TILES.find((t) => t.state === hovered)?.pressState;
+    const activeState = pressed && pressState ? pressState : hovered;
+    const active = activeState ? resolve(activeState) : null;
+
     return (
         <div
-            className={`flex-1 rounded-lg border p-3 ${
-                dark ? 'border-neutral-700 bg-neutral-900 text-neutral-200' : 'border-border bg-white text-neutral-800'
+            className={`flex-1 min-w-0 rounded-xl border p-3 transition-colors ${
+                dark
+                    ? 'border-neutral-700 bg-gradient-to-b from-neutral-900 to-neutral-950 text-neutral-200'
+                    : 'border-border bg-gradient-to-b from-white to-neutral-50 text-neutral-800'
             }`}
-            style={{ cursor: resolved('default') }}
+            style={{ cursor: resolve('default').css }}
+            onMouseLeave={() => {
+                setHovered(null);
+                setPressed(false);
+            }}
         >
-            <p
-                className={`text-[10px] uppercase tracking-wide mb-2 ${dark ? 'text-neutral-400' : 'text-muted-foreground'}`}
-            >
-                {dark ? 'Dark surface' : 'Light surface'}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-                {CURSOR_STATES.map((state) => (
-                    <span
-                        key={state}
-                        style={{ cursor: resolved(state) }}
-                        className={`rounded-md border px-2 py-1 text-xs select-none ${
-                            dark ? 'border-neutral-700 bg-neutral-800' : 'border-border bg-muted/40'
-                        } ${config[state] ? '' : 'opacity-50'}`}
-                        title={config[state] ? config[state] : `native ${state}`}
-                    >
-                        {state}
+            {/* Header: which surface, and a live readout of the cursor under the pointer */}
+            <div className="flex items-center justify-between gap-2 mb-2.5 min-h-[24px]">
+                <span
+                    className={`inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide ${
+                        dark ? 'text-neutral-400' : 'text-neutral-500'
+                    }`}
+                >
+                    {dark ? <IconMoon className="h-3.5 w-3.5" /> : <IconSun className="h-3.5 w-3.5" />}
+                    {dark ? 'Dark' : 'Light'}
+                    <span className={dark ? 'text-neutral-600' : 'text-neutral-400'}>·</span>
+                    <span className={dark ? 'text-neutral-500' : 'text-neutral-400'}>
+                        {themedCount}/{CURSOR_STATES.length} themed
                     </span>
-                ))}
+                </span>
+                <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] transition-opacity ${
+                        dark ? 'border-neutral-700 bg-neutral-800/70' : 'border-border bg-white'
+                    } ${active ? 'opacity-100' : 'opacity-50'}`}
+                >
+                    {active?.svg ? (
+                        <img src={svgThumbSrc(active.svg)} alt="" className="h-4 w-4" />
+                    ) : (
+                        <IconPointer className={`h-3 w-3 ${dark ? 'text-neutral-500' : 'text-neutral-400'}`} />
+                    )}
+                    {active ? (
+                        <>
+                            <span className="font-medium">{activeState}</span>
+                            <span className={`font-mono truncate max-w-[9rem] ${active.themed ? '' : 'opacity-60'}`}>
+                                {active.label}
+                            </span>
+                        </>
+                    ) : (
+                        <span className={dark ? 'text-neutral-400' : 'text-neutral-500'}>Hover to test</span>
+                    )}
+                </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {PREVIEW_TILES.map((tile) => {
+                    // A held-down grab tile previews `grabbing` instead
+                    const state = tile.pressState && pressed && hovered === tile.state ? tile.pressState : tile.state;
+                    const cursor = resolve(state);
+                    const isHovered = hovered === tile.state;
+                    return (
+                        <div
+                            key={tile.state}
+                            style={{ cursor: cursor.css }}
+                            title={`${state} — ${cursor.label}`}
+                            onMouseEnter={() => setHovered(tile.state)}
+                            onMouseDown={() => tile.pressState && setPressed(true)}
+                            onMouseUp={() => setPressed(false)}
+                            className={`relative flex select-none flex-col items-center justify-center gap-1 rounded-lg border px-1 text-center transition-all ${
+                                tile.wide ? 'col-span-2 h-9 flex-row sm:col-span-4' : 'h-[52px]'
+                            } ${
+                                dark
+                                    ? 'border-neutral-800 bg-neutral-800/40 hover:bg-neutral-800'
+                                    : 'border-border/70 bg-white hover:bg-neutral-50'
+                            } ${isHovered ? (dark ? 'ring-1 ring-neutral-500' : 'ring-1 ring-neutral-300') : ''} ${
+                                cursor.themed ? '' : 'opacity-60'
+                            }`}
+                        >
+                            {/* Dot marks a themed state; hollow means it falls back to the browser cursor */}
+                            <span
+                                className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${
+                                    cursor.themed
+                                        ? dark
+                                            ? 'bg-emerald-400'
+                                            : 'bg-emerald-500'
+                                        : dark
+                                          ? 'border border-neutral-600'
+                                          : 'border border-neutral-300'
+                                }`}
+                            />
+                            {tile.render(Boolean(dark))}
+                            {!tile.wide && (
+                                <span
+                                    className={`w-full truncate font-mono text-[9px] ${
+                                        dark ? 'text-neutral-500' : 'text-neutral-400'
+                                    }`}
+                                >
+                                    {isHovered ? tile.hint : state}
+                                </span>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -471,14 +685,16 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
-                        <Label>Preview — hover the chips</Label>
-                        <div className="flex flex-col md:flex-row gap-3">
+                        <Label>Preview — hover the tiles</Label>
+                        <div className="flex flex-col lg:flex-row gap-3">
                             <PreviewSurface config={activeLight} />
                             <PreviewSurface config={activeDark} dark />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Dimmed chips fall back to the native cursor. The dark surface shows how the white outline
-                            keeps cursors legible.
+                            Each tile is shaped like the thing its cursor means — hold the drag tile to feel{' '}
+                            <code className="font-mono">grabbing</code>. A green dot marks a themed state; dimmed tiles
+                            fall back to the native cursor. The dark surface shows how the white outline keeps cursors
+                            legible.
                         </p>
                     </div>
 
