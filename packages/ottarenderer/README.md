@@ -77,7 +77,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `Faq`                | FAQ accordion (`accordion` / `flat` style) with `FAQPage` schema.org structured data              |
 | `ImageHotspots`      | Interactive image with clickable numbered markers and tooltips                                    |
 | `Layout`             | Multi-column layout (6 presets) with recursive block rendering per column                         |
-| `List`               | Nested ordered/unordered list                                                                     |
+| `List`               | Nested ordered/unordered list; accepts both EditorJS list shapes (see below)                      |
 | `Map`                | Embedded map (OpenStreetMap / Google Maps)                                                        |
 | `MediaEmbed`         | Embedded media (video, audio, PDF, document) with native playback via `MediaPreview`              |
 | `MediaGallery`       | Gallery block with 5 presets (`grid-balanced`, `grid-featured`, `masonry`, `filmstrip`, `mosaic`) |
@@ -88,6 +88,20 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `Table`              | Data table                                                                                        |
 | `Testimonial`        | Social-proof quote card (`card` / `minimal` / `featured`) with avatar, stars, `Review` schema     |
 | `Warning`            | Alert/callout box                                                                                 |
+
+### List block shapes
+
+EditorJS stores lists in two shapes and `List` renders both, so stored content never has to be migrated:
+
+```typescript
+// @editorjs/nested-list (preferred — author new content this way)
+{ type: 'list', data: { style: 'ordered', items: [{ content: 'Parent', items: [{ content: 'Child', items: [] }] }] } }
+
+// @editorjs/list (legacy — plain strings, rendered as a flat list)
+{ type: 'list', data: { style: 'unordered', items: ['First', 'Second'] } }
+```
+
+`style` is stored once per block, so nested levels inherit the parent's `ol`/`ul` tag.
 
 ## Customization
 
