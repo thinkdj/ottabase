@@ -4,8 +4,8 @@
 //
 // The handler bodies and the canonical route table live in the package
 // (packages/ottablog/src/router/). This module only supplies the app-specific
-// seams (D1 wiring, admin guard, cron auth, password verify, kitchensink
-// fixture) and re-exports the built handlers under their historical names so
+// seams (D1 wiring, admin guard, cron auth, password verify, demo seed
+// fixtures) and re-exports the built handlers under their historical names so
 // router.ts registrations and the dispatch tests keep working unchanged.
 // ============================================================
 
@@ -17,7 +17,7 @@ import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import kitchensinkContentTemplate from '../fixtures/kitchensink-content.json';
+import { demoBlogPosts } from '../fixtures/demo-blog-content';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
@@ -127,7 +127,8 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     },
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
-    kitchensinkContent: kitchensinkContentTemplate as Record<string, unknown>,
+    // Demo seeding is platform-owner-only via the system-scoped requireAdmin above.
+    demoPosts: demoBlogPosts,
 });
 
 export const {
@@ -145,7 +146,7 @@ export const {
     handleBlogRssFeed,
     handleBlogSitemap,
     handleBlogPublishScheduled,
-    handleBlogKitchensink,
+    handleBlogDemoSeed,
     handleBlogPreviewTokenMint,
     handleBlogStudioThemeTokens,
 } = handlers;

@@ -548,9 +548,23 @@ const blogRouter = createBlogRouter<Env>({
         return null;
     },
     defaultAppId: (env) => 'my-app',
-    requireAdmin: (ctx) => myAdminGuard(ctx), // resolve session or return a 401/403 Response
+    // Resolve the session or return a 401/403 Response. Gate this at SYSTEM scope: it also
+    // guards POST /seed-demo, which writes demo content into the app.
+    requireAdmin: (ctx) => myAdminGuard(ctx),
     checkCronAuth: (request, env) => request.headers.get('x-cron-secret') === env.CRON_SECRET,
     verifyPassword: (password, hash) => myVerify(password, hash), // e.g. from @ottabase/auth/backend
+    demoPosts: [
+        {
+            title: 'Welcome to my blog',
+            slug: 'welcome',
+            excerpt: 'A sample article for a fresh demo.',
+            content: { version: '2.28.2', blocks: [{ type: 'paragraph', data: { text: 'Hello, world.' } }] },
+            contentType: 'blog',
+            // Optional. Must be a URL that resolves on a fresh install — a new
+            // deployment has no uploaded media to reference.
+            heroImage: { url: 'https://example.com/hero.jpg', alt: 'Hero image' },
+        },
+    ],
 });
 
 apiRouter.mount('/api/blog', blogRouter, { when: (c) => config(c.env).packages.ottablog });
@@ -664,6 +678,24 @@ POST /api/blog/publish-scheduled?appId=xyz
 
 Publishes all posts with `status: 'scheduled'` whose `publishAt` date has passed. Designed to be called from a
 cron/scheduled worker.
+
+### Demo Content Seed
+
+```http
+POST /api/blog/seed-demo
+```
+
+The single seeding entry point — sample articles, release notes, and the block kitchensink that exercises every
+renderer. Apps opt in by providing `demoPosts` in `BlogRouterConfig`; without it the route responds 404.
+
+Gated by `requireAdmin`, which apps should wire at **system scope** so only the platform owner can seed. The handler
+creates only missing rows in the resolved app/organization scope and leaves existing content unchanged, so it is safe
+for a fresh deployment and safe to repeat after an administrator edits the seeded content.
+
+```jsonc
+// 200 response
+{ "created": [{ "id": "...", "slug": "welcome", "contentType": "blog" }], "existing": ["kitchensink"], "total": 2 }
+```
 
 ## Benefits
 

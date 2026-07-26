@@ -96,7 +96,7 @@ vi.mock('../auth', () => ({
 
 vi.mock('../blog', () => ({
     handleBlogCategoryBySlug: handlerMock('handleBlogCategoryBySlug'),
-    handleBlogKitchensink: handlerMock('handleBlogKitchensink'),
+    handleBlogDemoSeed: handlerMock('handleBlogDemoSeed'),
     handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
     handleBlogPostUnlock: handlerMock('handleBlogPostUnlock'),
     handleBlogPostsList: handlerMock('handleBlogPostsList'),
@@ -270,7 +270,7 @@ import {
 } from '../auth';
 import {
     handleBlogCategoryBySlug,
-    handleBlogKitchensink,
+    handleBlogDemoSeed,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -396,7 +396,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleVerifyEmail,
     handleVerifyEmailResend,
     handleBlogCategoryBySlug,
-    handleBlogKitchensink,
+    handleBlogDemoSeed,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -668,6 +668,12 @@ describe('router dispatch parity', () => {
             expect(handleBlogPreviewTokenMint).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
             expect(handleBlogPostUnlock).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleBlogPreviewTokenMint');
+        });
+
+        it('POST /api/blog/seed-demo dispatches to the demo content seed', async () => {
+            const { response } = await dispatch('POST', '/api/blog/seed-demo');
+            expect(handleBlogDemoSeed).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(await response!.text()).toBe('handleBlogDemoSeed');
         });
 
         it('POST /api/blog/studio/theme/tokens dispatches to the theme tokens handler', async () => {

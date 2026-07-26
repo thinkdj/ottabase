@@ -75,7 +75,7 @@ import {
 } from './auth';
 import {
     handleBlogCategoryBySlug,
-    handleBlogKitchensink,
+    handleBlogDemoSeed,
     handleBlogPostBySlug,
     handleBlogPreviewTokenMint,
     handleBlogStudioThemeTokens,
@@ -442,7 +442,7 @@ apiRouter.mount(
             handleBlogRssFeed,
             handleBlogSitemap,
             handleBlogPublishScheduled,
-            handleBlogKitchensink,
+            handleBlogDemoSeed,
             handleBlogPreviewTokenMint,
             handleBlogStudioThemeTokens,
         },

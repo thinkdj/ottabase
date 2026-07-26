@@ -5,7 +5,6 @@
  * Lists all posts with filtering, status management, and CRUD operations.
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
-import { api } from '@/lib/api';
 import type { PaginatedResponse } from '@/lib/api-types';
 import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
@@ -121,21 +120,6 @@ export function AdminBlogListPage() {
         }, SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [searchInput]);
-
-    const [kitchensinkState, setKitchensinkState] = useState<'idle' | 'loading' | 'created' | 'exists'>('idle');
-    const [kitchensinkSlug, setKitchensinkSlug] = useState<string | null>(null);
-
-    const seedKitchensink = async () => {
-        setKitchensinkState('loading');
-        try {
-            const json = await api<{ status: string; id?: string; slug?: string }>('/api/blog/kitchensink', 'POST');
-            setKitchensinkSlug(json.slug ?? null);
-            setKitchensinkState(json.status === 'created' ? 'created' : 'exists');
-        } catch {
-            setKitchensinkSlug(null);
-            setKitchensinkState('idle');
-        }
-    };
 
     // Build where clause for server-side filtering
     const whereClause: Record<string, unknown> = {};
@@ -267,36 +251,6 @@ export function AdminBlogListPage() {
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    {/* Seed Kitchensink: creates a demo post with all block types */}
-                    {(kitchensinkState === 'created' || kitchensinkState === 'exists') && kitchensinkSlug ? (
-                        <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {kitchensinkState === 'created' ? '✓ Created' : 'Already exists'}{' '}
-                            <a
-                                href={`/blog/${kitchensinkSlug}`}
-                                className="ml-1 underline underline-offset-2 transition-colors duration-normal hover:text-foreground"
-                            >
-                                View
-                            </a>
-                        </span>
-                    ) : null}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={seedKitchensink}
-                        disabled={
-                            kitchensinkState === 'loading' ||
-                            kitchensinkState === 'created' ||
-                            kitchensinkState === 'exists'
-                        }
-                    >
-                        {kitchensinkState === 'loading' ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <FileText className="mr-2 h-4 w-4" />
-                        )}
-                        Seed Demo
-                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button>

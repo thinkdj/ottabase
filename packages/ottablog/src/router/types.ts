@@ -8,6 +8,8 @@
  * Ottabase app (or a bare Worker) unchanged.
  */
 
+import type { ContentType, EditorJSData } from '../types';
+
 /** The minimal request context every blog handler receives. */
 export interface BlogRequestContext<Env = unknown> {
     request: Request;
@@ -27,6 +29,23 @@ export interface BlogAdminResult {
             organizationId?: string | null;
         } | null;
     } | null;
+}
+
+/** A static, trusted post used to populate an empty demo deployment. */
+export interface BlogDemoPostSeed {
+    title: string;
+    slug: string;
+    excerpt: string;
+    content: EditorJSData;
+    contentType: ContentType;
+    isFeatured?: boolean;
+    /**
+     * Optional hero/featured image, matching the `heroImage` column shape on Post.
+     * Seeds are trusted, static app fixtures, so the URL must be a public absolute
+     * URL (or an app-served path) that resolves on a fresh deployment — a demo
+     * install has no uploaded media to point at.
+     */
+    heroImage?: { url: string; alt?: string; caption?: string };
 }
 
 /** App-injected dependencies for the blog HTTP surface. */
@@ -58,8 +77,11 @@ export interface BlogRouterConfig<Env = unknown> {
     defaultAppId: (env: Env) => string;
 
     /**
-     * Admin guard for Studio mutations, kitchensink seeding, and default-row seeding.
+     * Admin guard for Studio mutations, demo seeding, and default-row seeding.
      * Resolve to a {@link BlogAdminResult} on success or a `Response` (401/403) on denial.
+     *
+     * Wire this at SYSTEM scope: it gates POST /seed-demo, which writes content
+     * into the app, so an org-scoped admin must not satisfy it.
      */
     requireAdmin: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
 
@@ -109,10 +131,12 @@ export interface BlogRouterConfig<Env = unknown> {
     ) => Promise<boolean>;
 
     /**
-     * EditorJS content for the demo kitchensink post. When omitted, POST /kitchensink
-     * responds 404 — apps opt into the demo by supplying content.
+     * Static trusted content for the platform-owner demo seed — sample articles,
+     * release notes, and the block kitchensink. When omitted, POST /seed-demo
+     * responds 404: apps opt into seeding by supplying content. The handler
+     * creates only missing rows, so running it again never overwrites edits.
      */
-    kitchensinkContent?: Record<string, unknown>;
+    demoPosts?: readonly BlogDemoPostSeed[];
 }
 
 /**
@@ -135,7 +159,7 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogRssFeed(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogSitemap(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPublishScheduled(ctx: BlogRequestContext<Env>): Promise<Response>;
-    handleBlogKitchensink(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogDemoSeed(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPreviewTokenMint(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioThemeTokens(ctx: BlogRequestContext<Env>): Promise<Response>;
 }

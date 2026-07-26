@@ -55,7 +55,7 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogRssFeed: named('rss'),
         handleBlogSitemap: named('sitemap'),
         handleBlogPublishScheduled: named('publish-scheduled'),
-        handleBlogKitchensink: named('kitchensink'),
+        handleBlogDemoSeed: named('seed-demo'),
         handleBlogPreviewTokenMint: named('preview-mint'),
         handleBlogStudioThemeTokens: named('theme-tokens'),
     };
@@ -103,7 +103,7 @@ describe('buildBlogRouter', () => {
             ['POST', '/posts/unlock', 'post-unlock'],
             ['POST', '/posts/preview-token', 'preview-mint'],
             ['POST', '/publish-scheduled', 'publish-scheduled'],
-            ['POST', '/kitchensink', 'kitchensink'],
+            ['POST', '/seed-demo', 'seed-demo'],
         ];
 
         for (const [method, path, expected] of cases) {
@@ -115,6 +115,14 @@ describe('buildBlogRouter', () => {
     it('resolves null for unmatched paths so composition can continue', async () => {
         const router = buildBlogRouter<Env>(stubHandlers());
         const response = await router.handle(new Request('https://x.test/not-a-blog-route'), env);
+        expect(response).toBeNull();
+    });
+
+    it('exposes no seeding route other than /seed-demo', async () => {
+        // Seeding writes to the app's own content, so it stays a single audited
+        // entry point rather than one route per fixture.
+        const router = buildBlogRouter<Env>(stubHandlers());
+        const response = await router.handle(new Request('https://x.test/kitchensink', { method: 'POST' }), env);
         expect(response).toBeNull();
     });
 
@@ -160,17 +168,17 @@ describe('createBlogHandlers', () => {
         expect(connect).not.toHaveBeenCalled();
     });
 
-    it('kitchensink responds 404 when no content is configured', async () => {
+    it('seed-demo responds 404 when no demo content is configured', async () => {
         const handlers = createBlogHandlers<Env>({ ...baseConfig });
-        const response = await handlers.handleBlogKitchensink(ctxFor('/kitchensink', { method: 'POST' }));
+        const response = await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
         expect(response.status).toBe(404);
     });
 
-    it('kitchensink returns the admin denial response untouched', async () => {
+    it('seed-demo returns the admin denial response untouched', async () => {
         const denial = new Response('nope', { status: 403 });
         const handlers = createBlogHandlers<Env>({ ...baseConfig, requireAdmin: async () => denial });
 
-        const response = await handlers.handleBlogKitchensink(ctxFor('/kitchensink', { method: 'POST' }));
+        const response = await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
         expect(response).toBe(denial);
     });
 

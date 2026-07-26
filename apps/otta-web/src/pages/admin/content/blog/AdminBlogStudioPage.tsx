@@ -1,8 +1,9 @@
 /**
  * Admin Content Studio Page
  *
- * Manage content themes and plugins
+ * Manage content themes and plugins, and run the one-time demo content seed.
  */
+import { isPlatformAdmin, useSession } from '@/lib/auth';
 import type { StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
@@ -36,7 +37,7 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Loader2, Palette, Puzzle, Settings } from 'lucide-react';
+import { Loader2, Palette, Puzzle, Settings, Sparkles } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { useBlogSurface } from './blogAdminPaths';
@@ -47,6 +48,13 @@ interface StudioStateResponse {
     activeThemeId: string | null;
     themes: StudioThemeState[];
     plugins: StudioPluginState[];
+}
+
+/** POST /api/blog/seed-demo — create-only, so `existing` lists slugs it skipped. */
+interface DemoSeedResponse {
+    created: Array<{ id: string; slug: string; contentType: string }>;
+    existing: string[];
+    total: number;
 }
 
 /** Content Injector plugin config form shape (enable/disable is on the plugin row, not in config modal) */
@@ -131,6 +139,31 @@ export function AdminBlogStudioPage() {
         mutationOptions: {
             onError: () =>
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' }),
+        },
+    });
+
+    // Demo seeding is a platform-owner setup step: it writes sample posts into the
+    // app's own content. The server gate (system-scoped platform:admin) is
+    // authoritative; this only hides a card the caller could not act on.
+    const { user } = useSession();
+    const canSeedDemo = isPlatformAdmin(user);
+    const [demoSeedResult, setDemoSeedResult] = useState<DemoSeedResponse | null>(null);
+
+    const seedDemoMutation = useApiMutation<DemoSeedResponse, Record<string, never>>({
+        endpoint: '/api/blog/seed-demo',
+        method: 'POST',
+        // Refresh the content list behind us so the seeded posts show up there.
+        invalidateEntities: ['posts'],
+        mutationOptions: {
+            onSuccess: (result) => setDemoSeedResult(result),
+            onError: () => {
+                setDemoSeedResult(null);
+                setAlertDialog({
+                    open: true,
+                    title: 'Could not seed demo content',
+                    message: 'Seeding requires the platform owner role. Check your access and try again.',
+                });
+            },
         },
     });
 
@@ -331,6 +364,50 @@ export function AdminBlogStudioPage() {
                     </Card>
                 </div>
             )}
+
+            {canSeedDemo ? (
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                            <Sparkles className="h-4 w-4 text-muted-foreground" />
+                            Demo Content
+                        </CardTitle>
+                        <CardDescription>
+                            Publishes a small set of sample posts so a fresh install has something real to look at — two
+                            articles, two release notes, and a “kitchensink” post that renders every block type the
+                            editor supports. The kitchensink is the quickest way to check a theme end to end.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => seedDemoMutation.mutate({})}
+                            disabled={seedDemoMutation.isPending}
+                        >
+                            {seedDemoMutation.isPending ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Seeding…
+                                </>
+                            ) : (
+                                'Seed Demo Content'
+                            )}
+                        </Button>
+                        {demoSeedResult ? (
+                            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                                {demoSeedResult.created.length > 0
+                                    ? `Seeded ${demoSeedResult.created.length} of ${demoSeedResult.total}`
+                                    : 'Already seeded'}
+                            </span>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                Runs once. Existing posts are never overwritten, so it is safe to repeat.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            ) : null}
 
             <AlertDialog open={alertDialog.open} onOpenChange={(open) => setAlertDialog((d) => ({ ...d, open }))}>
                 <AlertDialogContent>

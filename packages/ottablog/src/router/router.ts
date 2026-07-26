@@ -51,7 +51,7 @@ export function buildBlogRouter<Env = unknown>(
     r.post('/posts/unlock', (c) => handlers.handleBlogPostUnlock(ctxOf(c)));
     r.post('/posts/preview-token', (c) => handlers.handleBlogPreviewTokenMint(ctxOf(c)));
     r.post('/publish-scheduled', (c) => handlers.handleBlogPublishScheduled(ctxOf(c)));
-    r.post('/kitchensink', (c) => handlers.handleBlogKitchensink(ctxOf(c)));
+    r.post('/seed-demo', (c) => handlers.handleBlogDemoSeed(ctxOf(c)));
 
     return r;
 }

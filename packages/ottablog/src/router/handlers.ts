@@ -3,7 +3,7 @@
  *
  * Bodies were moved verbatim from apps/otta-web/worker/routes/blog.ts; the only
  * changes are the injected seams in {@link BlogRouterConfig} (DB connect, admin
- * guard, cron auth, password verify, kitchensink content, default appId).
+ * guard, cron auth, password verify, demo seed content, default appId).
  */
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -1133,112 +1133,92 @@ ${urls}
         });
     }
 
-    async function handleBlogKitchensink(context: Ctx): Promise<Response> {
+    /**
+     * Seed the app's public demo content — sample articles, release notes, and
+     * the block kitchensink that exercises every renderer. This is the single
+     * seeding entry point; `requireAdmin` is wired to a system-scoped platform
+     * admin gate, so only the platform owner can run it.
+     *
+     * Create-only: an existing slug is reported under `existing` and left
+     * untouched, so re-running is safe after an administrator has tailored the
+     * seeded content.
+     *
+     * Rows are tagged with the CALLER's organization so the seeded posts are
+     * immediately visible and editable in the admin surface, whose reads are
+     * tenant-filtered. Known limitation: an admin browsing in platform scope
+     * still seeds into their session org, since the platform-scope sentinel is
+     * an app-level concept this package does not resolve.
+     */
+    async function handleBlogDemoSeed(context: Ctx): Promise<Response> {
         const auth = await config.requireAdmin(context);
         if (auth instanceof Response) return auth;
 
-        if (!config.kitchensinkContent) {
-            return errorResponse('Kitchensink content not configured', 404, { code: 'NOT_FOUND' });
+        const seeds = config.demoPosts;
+        if (!seeds?.length) {
+            return errorResponse('Demo content is not configured', 404, { code: 'NOT_FOUND' });
         }
 
-        const { env } = context;
-        const connectError = config.connect(env);
+        const connectError = config.connect(context.env);
         if (connectError) return connectError;
 
-        const KITCHENSINK_CONTENT = {
-            ...config.kitchensinkContent,
-            time: Date.now(),
-        };
+        const appId = resolveAppId(context);
+        // Seed into the CALLER's own organization, not the public-read tenant.
+        // resolveTenant() answers "which tenant does a visitor read?" — in platform
+        // mode that is undefined, i.e. a NULL organizationId. Seeding NULL puts the
+        // rows outside every admin's scope, so the editor's own lookup
+        // (GET /api/ottaorm/posts/:id, tenant-filtered) 404s on content the seed
+        // just created. Tagging the caller's org makes seeded posts behave exactly
+        // like posts that admin creates by hand.
+        const organizationId = resolveOrgId(context.request, auth.session?.user?.organizationId ?? null);
+        const userId = auth.session?.user?.id ?? null;
+        const publishedAt = new Date().toISOString();
+        const created: Array<{ id: unknown; slug: string; contentType: string }> = [];
+        const existing: string[] = [];
 
-        const kitchensinkPublishedAt = new Date().toISOString();
+        for (const seed of seeds) {
+            // Mirror the UNIQUE index that actually binds — (app_id, slug) — rather
+            // than the org-aware one. An org-filtered probe would miss a same-slug
+            // row owned by another tenant and turn the insert into a hard constraint
+            // failure instead of a clean "already exists".
+            const where: Record<string, unknown> = { slug: seed.slug, appId };
 
-        const currentUserId = auth.session?.user?.id ?? null;
-        const currentOrganizationId = resolveOrgId(context.request, auth.session?.user?.organizationId ?? null);
-        const currentAppId = resolveAppId(context);
-
-        const existing = await Post.findBySlug('kitchensink-ottablog', { appId: currentAppId });
-        if (existing) {
-            existing.set('title', 'The Kitchensink of Ottablog');
-            existing.set(
-                'excerpt',
-                'A demo post showcasing every block type available in OttaEditor — use this to test rendering, styling, and export.',
-            );
-            existing.set('content', KITCHENSINK_CONTENT);
-            existing.set('contentType', 'blog');
-            existing.set('status', 'published');
-            existing.set('wordCount', 200);
-            // Always reassign to the requesting user so they can edit/delete it and appear as author
-            if (currentUserId) {
-                existing.set('userId', currentUserId);
-                existing.set('authorId', currentUserId);
-            }
-            existing.set('organizationId', currentOrganizationId);
-            existing.set('appId', currentAppId);
-            if (!existing.get('publishedAt')) {
-                existing.set('publishedAt', kitchensinkPublishedAt);
+            if (await Post.first(where)) {
+                existing.push(seed.slug);
+                continue;
             }
 
-            await existing.save();
-
-            return jsonResponse({ status: 'upserted', id: existing.get('id'), slug: existing.get('slug') });
-        }
-
-        let post;
-        try {
-            post = await Post.create({
-                title: 'The Kitchensink of Ottablog',
-                slug: 'kitchensink-ottablog',
-                excerpt:
-                    'A demo post showcasing every block type available in OttaEditor — use this to test rendering, styling, and export.',
-                content: KITCHENSINK_CONTENT,
-                contentType: 'blog',
-                status: 'published',
-                publishedAt: kitchensinkPublishedAt,
-                wordCount: 200,
-                userId: currentUserId,
-                authorId: currentUserId,
-                organizationId: currentOrganizationId,
-                appId: currentAppId,
-            });
-        } catch (error) {
-            // If a concurrent request created the same slug, upsert onto that row.
-            const message = error instanceof Error ? error.message : String(error);
-            const isUniqueViolation = /unique|constraint|duplicate/i.test(message);
-            if (isUniqueViolation) {
-                const concurrent = await Post.findBySlug('kitchensink-ottablog', { appId: currentAppId });
-                if (concurrent) {
-                    concurrent.set('title', 'The Kitchensink of Ottablog');
-                    concurrent.set(
-                        'excerpt',
-                        'A demo post showcasing every block type available in OttaEditor — use this to test rendering, styling, and export.',
-                    );
-                    concurrent.set('content', KITCHENSINK_CONTENT);
-                    concurrent.set('contentType', 'blog');
-                    concurrent.set('status', 'published');
-                    concurrent.set('wordCount', 200);
-                    if (currentUserId) {
-                        concurrent.set('userId', currentUserId);
-                        concurrent.set('authorId', currentUserId);
-                    }
-                    concurrent.set('organizationId', currentOrganizationId);
-                    concurrent.set('appId', currentAppId);
-                    if (!concurrent.get('publishedAt')) {
-                        concurrent.set('publishedAt', kitchensinkPublishedAt);
-                    }
-
-                    await concurrent.save();
-
-                    return jsonResponse({
-                        status: 'upserted',
-                        id: concurrent.get('id'),
-                        slug: concurrent.get('slug'),
-                    });
+            try {
+                const post = await Post.create({
+                    title: seed.title,
+                    slug: seed.slug,
+                    excerpt: seed.excerpt,
+                    content: { ...seed.content, time: Date.now() },
+                    contentType: seed.contentType,
+                    status: 'published',
+                    isFeatured: seed.isFeatured ?? false,
+                    // Omitted rather than nulled when a seed has no hero, so the
+                    // column keeps its own default instead of being force-cleared.
+                    ...(seed.heroImage ? { heroImage: seed.heroImage } : {}),
+                    publishedAt,
+                    postedAt: publishedAt,
+                    userId,
+                    authorId: userId,
+                    appId,
+                    organizationId,
+                });
+                created.push({ id: post.get('id'), slug: seed.slug, contentType: seed.contentType });
+            } catch (error) {
+                // A concurrent seed request may win after our lookup. Re-check
+                // only for a uniqueness conflict; all other failures must remain visible.
+                const message = error instanceof Error ? error.message : String(error);
+                if (!/unique|constraint|duplicate/i.test(message) || !(await Post.first(where))) {
+                    throw error;
                 }
+                existing.push(seed.slug);
             }
-            throw error;
         }
 
-        return jsonResponse({ status: 'created', id: post.get('id'), slug: post.get('slug') });
+        return jsonResponse({ created, existing, total: seeds.length });
     }
 
     /**
@@ -1341,7 +1321,7 @@ ${urls}
         handleBlogRssFeed,
         handleBlogSitemap,
         handleBlogPublishScheduled,
-        handleBlogKitchensink,
+        handleBlogDemoSeed,
         handleBlogPreviewTokenMint,
         handleBlogStudioThemeTokens,
     };

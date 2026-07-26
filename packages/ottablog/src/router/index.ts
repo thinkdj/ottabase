@@ -8,4 +8,4 @@
 export { createBlogHandlers } from './handlers';
 export { buildBlogRouter, createBlogRouter } from './router';
 export type { BuildBlogRouterOptions } from './router';
-export type { BlogAdminResult, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
+export type { BlogAdminResult, BlogDemoPostSeed, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';

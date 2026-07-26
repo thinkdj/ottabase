@@ -13,7 +13,7 @@
             "id": "P8cvY45gey",
             "type": "paragraph",
             "data": {
-                "text": "This post demonstrates <b>every block type</b> available in OttaEditor. Use it to test rendering, styling, and export."
+                "text": "Every block OttaEditor can write, on one page, in the order you would meet them. Scroll through it once to see how your theme handles text, media, and the interactive bits — then <b>edit it, break it, or delete it</b>. Nothing here is precious."
             }
         },
         {
@@ -28,7 +28,24 @@
             "id": "X9m30DLRk-",
             "type": "paragraph",
             "data": {
-                "text": "A regular paragraph with <i>italic</i>, <b>bold</b>, and <code>inline code</code> formatting."
+                "text": "The everyday workhorse. A paragraph carries <i>italic</i> for emphasis, <b>bold</b> for the thing readers must not miss, and <code>inline code</code> for the exact string they need to type. Most of a good post is just this block, used well."
+            }
+        },
+        {
+            "id": "-lczZ8_LTp",
+            "type": "beforeAfter",
+            "data": {
+                "beforeUrl": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600",
+                "afterUrl": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600&sat=-100&exp=-25",
+                "beforeLabel": "Day",
+                "afterLabel": "Night",
+                "orientation": "horizontal",
+                "sliderPosition": 26,
+                "caption": "Drag the handle. Before/After is for redesigns, retouching, and any \"we changed this\" story.",
+                "height": "320px",
+                "imageFit": "cover",
+                "beforePosition": "center",
+                "afterPosition": "center"
             }
         },
         {
@@ -44,8 +61,8 @@
             "id": "GP9bA9GgyH",
             "type": "warning",
             "data": {
-                "title": "Important Note",
-                "message": "Always backup your data before making changes to production systems."
+                "title": "One important note",
+                "message": "Back up your data before you change anything in production. Nobody has ever regretted a backup they did not need."
             }
         },
         {
@@ -68,24 +85,24 @@
                 "style": "ordered",
                 "items": [
                     {
-                        "content": "First item",
+                        "content": "Ordered lists number themselves, so you can reorder freely.",
                         "items": []
                     },
                     {
-                        "content": "Second item with nested",
+                        "content": "Items nest when a step needs its own smaller steps.",
                         "items": [
                             {
-                                "content": "Nested item A",
+                                "content": "Press Tab to go one level deeper.",
                                 "items": []
                             },
                             {
-                                "content": "Nested item B",
+                                "content": "Press Shift + Tab to come back up.",
                                 "items": []
                             }
                         ]
                     },
                     {
-                        "content": "Third item",
+                        "content": "Switch to bullets any time from the block menu.",
                         "items": []
                     }
                 ]
@@ -145,9 +162,10 @@
                 "stretched": false,
                 "content": [
                     ["Feature", "Status", "Notes"],
-                    ["Export JSON", "Done", "Via useOttaEditor"],
-                    ["Export Markdown", "Done", "All 20+ block types"],
-                    ["Undo/Redo", "Done", "Ctrl+Z / Ctrl+Shift+Z"]
+                    ["Export JSON", "Done", "One call to exportJSON()"],
+                    ["Export Markdown", "Done", "Every block type on this page"],
+                    ["Undo / Redo", "Done", "Ctrl + Z and Ctrl + Shift + Z"],
+                    ["Autosave drafts", "Done", "Quietly, while you type"]
                 ]
             }
         },
@@ -163,24 +181,7 @@
             "id": "_jVRRfLo54",
             "type": "raw",
             "data": {
-                "html": "<div><strong>Raw HTML block:</strong> custom markup rendered intentionally.</div>"
-            }
-        },
-        {
-            "id": "-lczZ8_LTp",
-            "type": "beforeAfter",
-            "data": {
-                "beforeUrl": "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1200",
-                "afterUrl": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=1200",
-                "beforeLabel": "Day",
-                "afterLabel": "Night",
-                "orientation": "horizontal",
-                "sliderPosition": 52,
-                "caption": "Before/After comparison block with interactive slider.",
-                "height": "420px",
-                "imageFit": "cover",
-                "beforePosition": "center",
-                "afterPosition": "center"
+                "html": "<div><strong>Raw HTML block:</strong> for the one embed nobody wrote a plugin for yet. Sanitized on the way out.</div>"
             }
         },
         {
@@ -191,7 +192,7 @@
                 "provider": "openstreetmap",
                 "theme": "default",
                 "height": 340,
-                "caption": "Map block centered on Zurich.",
+                "caption": "Paste any map link and the block finds the place. This one is Zurich.",
                 "zoom": 13
             }
         },
@@ -200,8 +201,8 @@
             "type": "mediaEmbed",
             "data": {
                 "url": "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
-                "title": "Short Media Embed Demo",
-                "caption": "MediaEmbed block for non-image assets.",
+                "title": "Five seconds of sample video",
+                "caption": "MediaEmbed handles the assets that are not photos — video, audio, and files.",
                 "mediaId": "",
                 "mimeType": "video/mp4",
                 "mediaKind": "video",
@@ -214,26 +215,26 @@
             "type": "imageHotspots",
             "data": {
                 "imageUrl": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600",
-                "alt": "Urban cityscape at dusk",
-                "caption": "Image hotspots block with click-to-reveal annotations.",
+                "alt": "A wide city avenue framed by tall office towers",
+                "caption": "Click a numbered pin to open its note. Great for product tours, diagrams, and maps of anything.",
                 "hotspots": [
                     {
                         "id": "tower",
-                        "x": 7,
+                        "x": 23,
                         "y": 20,
                         "title": "Landmark Tower",
-                        "content": "The tallest building in the financial district."
+                        "content": "The tallest building on the block, and the easiest way to tell a visitor where to meet you."
                     },
                     {
                         "id": "street",
-                        "x": 71,
+                        "x": 62,
                         "y": 65,
                         "title": "Main Avenue",
-                        "content": "The busiest street with shops and cafes."
+                        "content": "Six lanes, three coffee shops, and the reason nobody drives here at lunchtime."
                     }
                 ],
                 "height": "420px",
-                "imageFit": "contain",
+                "imageFit": "cover",
                 "imagePosition": "center"
             }
         },
@@ -251,7 +252,7 @@
                                     "id": "hjc_iUuUxp",
                                     "type": "header",
                                     "data": {
-                                        "text": "Layout Column A",
+                                        "text": "The wide column",
                                         "level": 3
                                     }
                                 },
@@ -259,7 +260,7 @@
                                     "id": "U5ZnhWppnN",
                                     "type": "paragraph",
                                     "data": {
-                                        "text": "This is nested content inside a layout column. 67%"
+                                        "text": "Layout splits a row into columns, and each column holds real blocks — not just text. This one takes two thirds of the width and is where the main argument goes."
                                     }
                                 }
                             ],
@@ -274,7 +275,7 @@
                                     "id": "k089BxKCxO",
                                     "type": "header",
                                     "data": {
-                                        "text": "Layout Column B",
+                                        "text": "The narrow one",
                                         "level": 3
                                     }
                                 },
@@ -282,7 +283,7 @@
                                     "id": "ftH1FwUQHJ",
                                     "type": "paragraph",
                                     "data": {
-                                        "text": "This is 33%"
+                                        "text": "The remaining third — handy for a sidebar, a caption, or a short checklist:"
                                     }
                                 },
                                 {
@@ -291,11 +292,11 @@
                                     "data": {
                                         "items": [
                                             {
-                                                "text": "Nested blocks",
+                                                "text": "Blocks nest inside columns",
                                                 "checked": true
                                             },
                                             {
-                                                "text": "Responsive columns",
+                                                "text": "Columns stack on mobile",
                                                 "checked": true
                                             }
                                         ]
@@ -321,20 +322,13 @@
             "type": "mediaGallery",
             "data": {
                 "title": "Urban Architecture",
-                "caption": "Layout preset = Mosaic",
+                "caption": "Four photos, mosaic layout. Grid, carousel, and masonry are one dropdown away.",
                 "layout": "mosaic",
                 "items": [
                     {
                         "url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800",
                         "altText": "Modern skyscraper",
                         "caption": "Glass and steel tower",
-                        "mediaKind": "image",
-                        "title": ""
-                    },
-                    {
-                        "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
-                        "altText": "City at night",
-                        "caption": "Neon-lit streets",
                         "mediaKind": "image",
                         "title": ""
                     },
@@ -351,6 +345,13 @@
                         "caption": "Iconic city bridge",
                         "mediaKind": "image",
                         "title": ""
+                    },
+                    {
+                        "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
+                        "altText": "City at night",
+                        "caption": "Neon-lit streets",
+                        "mediaKind": "image",
+                        "title": ""
                     }
                 ]
             }
@@ -359,7 +360,7 @@
             "id": "LuK1uW6oLA",
             "type": "spoiler",
             "data": {
-                "text": "Dont spoil "
+                "text": "Don't spoil this movie for me!"
             }
         },
         {
@@ -378,15 +379,15 @@
                 "items": [
                     {
                         "question": "What is OttaEditor?",
-                        "answer": "OttaEditor is a flexible EditorJS wrapper with plugin management, undo/redo, and export capabilities."
+                        "answer": "A block editor built on Editor.js, with plugin management, undo/redo, and one-call export already wired up."
                     },
                     {
-                        "question": "What export formats are supported?",
-                        "answer": "JSON and Markdown are supported out of the box."
+                        "question": "Which export formats are supported?",
+                        "answer": "JSON and Markdown, out of the box, for every block on this page."
                     },
                     {
-                        "question": "Is it production ready?",
-                        "answer": "Yes! It ships with undo/redo, export, and 20+ block types."
+                        "question": "Do these answers help my SEO?",
+                        "answer": "Yes — FAQ blocks render as structured data, so search engines can read the questions too."
                     }
                 ]
             }
@@ -395,7 +396,7 @@
             "id": "X7CpiSibh7",
             "type": "cta",
             "data": {
-                "text": "Get Started with OttaEditor",
+                "text": "Get started with OttaEditor",
                 "url": "https://github.com/thinkdj/ottabase",
                 "style": "secondary",
                 "alignment": "center",
@@ -415,7 +416,7 @@
             "id": "ITztlLrKWk",
             "type": "testimonial",
             "data": {
-                "quote": "OttaEditor has completely transformed our content workflow. The undo/redo and export features alone saved us hours every week.",
+                "quote": "We stopped arguing about formatting and went back to arguing about the writing. The export alone saves us an afternoon every week.",
                 "authorName": "Sarah Chen",
                 "authorRole": "Head of Content",
                 "authorCompany": "TechCorp",
@@ -433,12 +434,17 @@
                 "content": "",
                 "linkUrl": "",
                 "linkLabel": "",
-                "pros": ["Easy plugin system", "Undo/redo built in", "Great export options", "Theme-aware UI"],
-                "cons": ["EditorJS dependency", "React only"],
+                "pros": [
+                    "Plugins are one line to enable",
+                    "Undo and redo built in",
+                    "Exports to JSON and Markdown",
+                    "Follows your theme, light or dark"
+                ],
+                "cons": ["Carries the Editor.js dependency", "React only, for now"],
                 "rating": 4.5,
                 "maxStars": 5,
                 "allowHalfStars": true,
-                "summary": "A powerful EditorJS wrapper with all the features you need for production content creation.",
+                "summary": "A block editor you can hand to a writer on their first day and still trust in production.",
                 "compact": false
             }
         },
@@ -448,20 +454,20 @@
             "data": {
                 "items": [
                     {
-                        "title": "Install OttaEditor",
-                        "content": "Add @ottabase/ottaeditor to your project."
+                        "title": "Install it",
+                        "content": "Add @ottabase/ottaeditor to your project and install."
                     },
                     {
-                        "title": "Configure Plugins",
-                        "content": "Use defaultPlugins: \"all\" for the full suite."
+                        "title": "Turn on the plugins",
+                        "content": "Set defaultPlugins: \"all\" to get every block on this page."
                     },
                     {
-                        "title": "Add to your page",
-                        "content": "Use useOttaEditor() hook and attach the ref."
+                        "title": "Drop it on a page",
+                        "content": "Call useOttaEditor(), attach the ref, and start typing."
                     },
                     {
-                        "title": "Export content",
-                        "content": "Call exportJSON() or exportMarkdown() from the hook."
+                        "title": "Take the content with you",
+                        "content": "exportJSON() for storage, exportMarkdown() for everywhere else."
                     }
                 ]
             }
@@ -498,7 +504,7 @@
                         "title": "Editor.js",
                         "authors": "CodeX Team",
                         "year": "2024",
-                        "note": "The base editor this is built on."
+                        "note": "The block editor everything here is built on."
                     },
                     {
                         "id": "2",
@@ -507,7 +513,7 @@
                         "authors": "Unsplash Inc.",
                         "year": "2024",
                         "accessedDate": "2024-04-01",
-                        "note": "Free high-resolution photos."
+                        "note": "Every photo on this page, free to use."
                     }
                 ]
             }
