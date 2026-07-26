@@ -1,6 +1,17 @@
 <INSTRUCTIONS>
 # Agents & Architecture
 
+## What is Ottabase?
+
+Ottabase is a Cloudflare-native foundation for shipping production SaaS, Apps, and content sites without first
+assembling the infrastructure. It exists because the interesting part of a product is never the auth flow, the tenant
+boundary, or the media library - yet those are what burn the maker. Everything a real app needs is already wired
+together here: in-house auth, RBAC, an ORM over D1, forms, uploads, a robust blog/CMS, queues, realtime, RLS, and a
+powerful runtime theming engine (Brand Engine), across 50+ packages that already know about each other. The maker can
+focus on the product, not the plumbing and get their ideas out over a weekend. For real.
+
+The typical Ottabase user is a solo founder or a small team who wants to open the repo and start on the actual product.
+
 Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Workers deployment.
 
 ## AI Guidelines (MUST FOLLOW)

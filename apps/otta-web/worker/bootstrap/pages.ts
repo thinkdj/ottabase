@@ -618,7 +618,7 @@ ${THEME_HEAD_SCRIPT}
   <main>
 ${body}
   </main>
-  <footer class="footer">${BRAND} &middot; Edge-first application framework</footer>
+  <footer class="footer">${BRAND} &middot; The edge-first application framework</footer>
 </div>
 ${THEME_SCRIPT}
 </body>
