@@ -43,4 +43,4 @@ export type { MediaLightboxProviderProps } from './viewer/MediaLightboxProvider'
 export { MediaPreview } from './viewer/MediaPreview';
 export { useMediaLightboxUrlSync } from './viewer/useMediaLightboxUrlSync';
 export type { MediaLightboxUrlSyncOptions } from './viewer/useMediaLightboxUrlSync';
-export { ZoomableImage } from './viewer/ZoomableImage';
+export { ZoomableImage, type ZoomStartGesture } from './viewer/ZoomableImage';

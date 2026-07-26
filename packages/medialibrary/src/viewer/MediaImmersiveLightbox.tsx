@@ -23,6 +23,7 @@ export function MediaImmersiveLightbox({
     canGoPrevious = true,
     canGoNext = true,
     zIndex = 100,
+    zoomStart = 'single',
     onClose,
     onPrevious,
     onNext,
@@ -288,7 +289,7 @@ export function MediaImmersiveLightbox({
                         }
                     }}
                 >
-                    <MediaPreview item={currentItem} mode="immersive" fit="contain" controls />
+                    <MediaPreview item={currentItem} mode="immersive" fit="contain" controls zoomStart={zoomStart} />
                 </div>
             </div>
 

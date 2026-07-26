@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { ZoomableImage } from '../ZoomableImage';
 
 describe('ZoomableImage', () => {
@@ -36,6 +36,48 @@ describe('ZoomableImage', () => {
         const img = container.querySelector('img');
         expect(img?.getAttribute('src')).toBe('https://example.com/photo-b.jpg');
         expect(img?.getAttribute('alt')).toBe('Photo B');
+    });
+
+    it('zooms on a single click by default', () => {
+        const { container } = render(<ZoomableImage src="https://example.com/photo.jpg" alt="Photo" />);
+        const shell = container.firstElementChild as HTMLElement;
+
+        fireEvent.pointerDown(shell, { pointerId: 1, pointerType: 'mouse', clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(shell, { pointerId: 1, pointerType: 'mouse', clientX: 10, clientY: 10 });
+        fireEvent.click(shell, { clientX: 10, clientY: 10 });
+
+        expect(container.querySelector('.tabular-nums')?.textContent).toBe('2.0x');
+
+        // Clicking again toggles back to 1x
+        fireEvent.pointerDown(shell, { pointerId: 2, pointerType: 'mouse', clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(shell, { pointerId: 2, pointerType: 'mouse', clientX: 10, clientY: 10 });
+        fireEvent.click(shell, { clientX: 10, clientY: 10 });
+
+        expect(container.querySelector('.tabular-nums')).toBeNull();
+    });
+
+    it('ignores a click that ends a pan drag', () => {
+        const { container } = render(<ZoomableImage src="https://example.com/photo.jpg" alt="Photo" />);
+        const shell = container.firstElementChild as HTMLElement;
+
+        fireEvent.pointerDown(shell, { pointerId: 1, pointerType: 'mouse', clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(shell, { pointerId: 1, pointerType: 'mouse', clientX: 90, clientY: 60 });
+        fireEvent.click(shell, { clientX: 90, clientY: 60 });
+
+        expect(container.querySelector('.tabular-nums')).toBeNull();
+    });
+
+    it('requires a double click when zoomStart is "double"', () => {
+        const { container } = render(
+            <ZoomableImage src="https://example.com/photo.jpg" alt="Photo" zoomStart="double" />,
+        );
+        const shell = container.firstElementChild as HTMLElement;
+
+        fireEvent.click(shell, { clientX: 10, clientY: 10 });
+        expect(container.querySelector('.tabular-nums')).toBeNull();
+
+        fireEvent.doubleClick(shell, { clientX: 10, clientY: 10 });
+        expect(container.querySelector('.tabular-nums')?.textContent).toBe('2.0x');
     });
 
     it('uses lightbox mode styling by default', () => {

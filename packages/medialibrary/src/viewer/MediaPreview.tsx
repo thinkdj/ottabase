@@ -1,7 +1,7 @@
 import { IconArchive, IconFileDescription, IconFileMusic, IconPhoto, IconPlayerPlay } from '@tabler/icons-react';
 import type { MediaViewerItem } from '../types';
 import { getMediaDisplayTitle, getMediaKindFromMimeType, isDocumentMedia } from '../utils';
-import { ZoomableImage } from './ZoomableImage';
+import { ZoomableImage, type ZoomStartGesture } from './ZoomableImage';
 
 export interface MediaPreviewProps {
     item: Partial<MediaViewerItem> & {
@@ -13,6 +13,8 @@ export interface MediaPreviewProps {
     fit?: 'cover' | 'contain';
     controls?: boolean;
     muted?: boolean;
+    /** Mouse gesture that toggles zoom in lightbox / immersive modes. Defaults to 'single'. */
+    zoomStart?: ZoomStartGesture;
 }
 
 function getPlaceholderIcon(mediaKind: string) {
@@ -53,6 +55,7 @@ export function MediaPreview({
     fit = 'cover',
     controls = false,
     muted = true,
+    zoomStart = 'single',
 }: MediaPreviewProps) {
     const mediaKind = item.mediaKind ?? getMediaKindFromMimeType(item.mimeType, item.originalName);
     const previewUrl = item.previewUrl ?? item.url ?? '';
@@ -69,7 +72,13 @@ export function MediaPreview({
         if (mode === 'lightbox' || mode === 'immersive') {
             return (
                 <div className={shellClassName}>
-                    <ZoomableImage src={previewUrl} alt={item.altText || title} className="h-full w-full" mode={mode} />
+                    <ZoomableImage
+                        src={previewUrl}
+                        alt={item.altText || title}
+                        className="h-full w-full"
+                        mode={mode}
+                        zoomStart={zoomStart}
+                    />
                 </div>
             );
         }

@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import type { MediaViewerItem } from '../types';
 import { formatMediaFileSize, getMediaDisplayTitle } from '../utils';
 import { MediaPreview } from './MediaPreview';
+import type { ZoomStartGesture } from './ZoomableImage';
 
 export interface MediaLightboxProps {
     items: MediaViewerItem[];
@@ -21,6 +22,8 @@ export interface MediaLightboxProps {
     canGoPrevious?: boolean;
     canGoNext?: boolean;
     zIndex?: number;
+    /** Mouse gesture that toggles image zoom. Touch always uses double-tap. Defaults to 'single'. */
+    zoomStart?: ZoomStartGesture;
     onClose: () => void;
     onPrevious: () => void;
     onNext: () => void;
@@ -43,6 +46,7 @@ export function MediaLightbox({
     canGoPrevious = true,
     canGoNext = true,
     zIndex = 100,
+    zoomStart = 'single',
     onClose,
     onPrevious,
     onNext,
@@ -212,7 +216,13 @@ export function MediaLightbox({
                         )}
 
                         <div className="h-full w-full max-w-6xl">
-                            <MediaPreview item={currentItem} mode="lightbox" fit="contain" controls />
+                            <MediaPreview
+                                item={currentItem}
+                                mode="lightbox"
+                                fit="contain"
+                                controls
+                                zoomStart={zoomStart}
+                            />
                         </div>
                     </div>
 

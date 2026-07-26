@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/** Which mouse gesture toggles zoom: a single click or a double click. */
+export type ZoomStartGesture = 'single' | 'double';
+
 export interface ZoomableImageProps {
     src: string;
     alt: string;
     className?: string;
     /** The lightbox mode (immersive gets different styling) */
     mode?: 'lightbox' | 'immersive';
+    /** Mouse gesture that toggles zoom. Touch always uses double-tap. Defaults to 'single'. */
+    zoomStart?: ZoomStartGesture;
 }
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 const ZOOM_STEP = 0.25;
-const DOUBLE_CLICK_ZOOM = 2;
+const TOGGLE_ZOOM = 2;
 const DOUBLE_TAP_MS = 300;
+/** Pointer travel (px) above which a mouse press counts as a drag, not a click. */
+const CLICK_SLOP = 5;
 
 const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 
@@ -20,12 +27,12 @@ const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =
 
 /**
  * Image wrapper with zoom and pan support:
- * - Desktop: scroll-wheel zoom, double-click toggle, click-and-drag pan.
+ * - Desktop: scroll-wheel zoom, click (or double-click, per `zoomStart`) toggle, click-and-drag pan.
  * - Touch: pinch to zoom, double-tap toggle, drag to pan when zoomed in.
  *
  * Used inside lightbox / immersive viewers for image media only.
  */
-export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: ZoomableImageProps) {
+export function ZoomableImage({ src, alt, className, mode = 'lightbox', zoomStart = 'single' }: ZoomableImageProps) {
     const [zoom, setZoom] = useState(MIN_ZOOM);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -38,6 +45,8 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
     const pinchRef = useRef<{ startDistance: number; startZoom: number } | null>(null);
     // Last tap timestamp for double-tap detection on touch
     const lastTapRef = useRef<number>(0);
+    // Where the last mouse press landed — used to tell a click apart from a pan drag
+    const mouseDownRef = useRef({ x: 0, y: 0 });
 
     // Reset zoom / pan / gesture state when the image source changes
     useEffect(() => {
@@ -53,7 +62,7 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
                 setPan({ x: 0, y: 0 });
                 return MIN_ZOOM;
             }
-            return DOUBLE_CLICK_ZOOM;
+            return TOGGLE_ZOOM;
         });
     }, []);
 
@@ -72,6 +81,7 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
 
     const handleDoubleClick = useCallback(
         (e: React.MouseEvent) => {
+            if (zoomStart !== 'double') return;
             // Mouse-only — touch double-tap is handled in handlePointerDown.
             const pointerType = (e.nativeEvent as PointerEvent).pointerType;
             if (pointerType && pointerType !== 'mouse') return;
@@ -79,13 +89,34 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
             e.stopPropagation();
             toggleZoom();
         },
-        [toggleZoom],
+        [toggleZoom, zoomStart],
+    );
+
+    const handleClick = useCallback(
+        (e: React.MouseEvent) => {
+            if (zoomStart !== 'single') return;
+            // Mouse-only — touch double-tap is handled in handlePointerDown.
+            const pointerType = (e.nativeEvent as PointerEvent).pointerType;
+            if (pointerType && pointerType !== 'mouse') return;
+            // Ignore the click that terminates a pan drag.
+            const dx = e.clientX - mouseDownRef.current.x;
+            const dy = e.clientY - mouseDownRef.current.y;
+            if (Math.hypot(dx, dy) > CLICK_SLOP) return;
+            e.preventDefault();
+            e.stopPropagation();
+            toggleZoom();
+        },
+        [toggleZoom, zoomStart],
     );
 
     const handlePointerDown = useCallback(
         (e: React.PointerEvent) => {
             pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
             e.currentTarget.setPointerCapture?.(e.pointerId);
+
+            if (e.pointerType === 'mouse') {
+                mouseDownRef.current = { x: e.clientX, y: e.clientY };
+            }
 
             // Two pointers → start pinch
             if (pointersRef.current.size === 2) {
@@ -179,6 +210,7 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox' }: Zoomab
             ref={containerRef}
             className={`relative overflow-hidden ${className ?? ''}`}
             onWheel={handleWheel}
+            onClick={handleClick}
             onDoubleClick={handleDoubleClick}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
