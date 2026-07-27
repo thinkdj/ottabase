@@ -1,20 +1,9 @@
 /**
- * Cloudflare AI demo — a chat test over the REAL product path.
+ * OttaAI playground — real app routes, not a parallel demo client.
  *
- * This page deliberately has NO AI code of its own. It posts to `/api/ai/complete`, the same
- * endpoint the rest of the app uses, so what it demonstrates is the actual resolution chain:
- * the signed-in user's own key → their organization's key → the platform default → nothing.
- *
- * It replaced a demo built on `@ottabase/cf-ai`, which shipped a second, parallel AI client
- * (Workers AI binding, gateway proxy, a fallback chain) whose provider table had already
- * drifted from Cloudflare's docs. A demo that exercises a code path no product feature uses
- * is worse than no demo: it passes while the real path is broken.
- *
- * Three things here are worth reading as documentation:
- *  • the task selector — `extract` is `gate: 'required'`, so it 402s WITHOUT a tenant key even
- *    though the platform floor is configured. That is the BYOK upsell, enforced server-side.
- *  • `source` in the response — `byok` or `platform`, i.e. whose key actually paid.
- *  • the model override — the app validates it (no traversal, no operator-only dynamic route).
+ * Chat calls `/api/ai/complete`; vectors call `/api/ai/embed`. Both resolve the signed-in
+ * tenant's selected credential before the platform fallback, enforce their task policy on
+ * the server, and expose only redacted provenance back to this page.
  */
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
@@ -33,15 +22,17 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { ArrowRight, Bot, Braces, Check, Cloud, KeyRound, Layers3, MessageSquareText, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
-// ── Types (mirroring the /api/ai/* responses) ───────────────────────────────
-
-/** `GET /api/ai/status` — the resolver's dry run for the current user. */
 interface AiStatus {
     configured: boolean;
     source: 'byok' | 'platform' | null;
@@ -54,7 +45,6 @@ interface AiStatus {
     gates: Record<string, { allowed: boolean; reason?: string }>;
 }
 
-/** `POST /api/ai/complete` — note `source`, which names whose key paid. */
 interface CompleteResponse {
     text: string;
     source: 'byok' | 'platform' | null;
@@ -63,52 +53,78 @@ interface CompleteResponse {
     usage: { input: number; output: number; cached?: number } | null;
 }
 
-/**
- * Where a user connects their own key (the AI settings live on the profile page).
- *
- * Typed as a plain `string` rather than inlined as a literal: this app's TanStack route
- * registration only knows a handful of paths, so a literal `to="/profile"` fails to type-check
- * — the same pre-existing error `UserSection.tsx` has for `/login`, `/register` and `/profile`.
- * `DemoPageHeader` already navigates this way. Inline the literal once the route tree is
- * registered properly and this can go.
- */
+interface EmbedResponse {
+    vectors: number[][];
+    source: 'byok' | 'platform' | null;
+    provider: string | null;
+    model: string | null;
+    usage: { input: number } | null;
+}
+
+type Surface = 'chat' | 'embeddings';
+
 const PROFILE_PATH: string = '/profile';
 
-/**
- * The app's declared tasks (see `worker/lib/ai.ts`).
- *
- * Hard-coded rather than fetched: task keys are a SERVER contract, and the worker module that
- * declares them must not be imported into the browser bundle.
- */
 const TASKS = [
-    { key: 'assist', label: 'Assistant', note: 'Soft gate — runs on the platform key when you have none.' },
-    { key: 'summarize', label: 'Summarise', note: 'Soft gate, and your model wins when you bring a key.' },
+    { key: 'assist', label: 'Assistant', note: 'Uses the platform fallback when you have no tenant key.' },
+    { key: 'summarize', label: 'Summarise', note: 'Optimised for longer source text; your tenant model wins.' },
     {
         key: 'extract',
         label: 'Document extraction',
-        note: 'REQUIRED gate — 402s without your own key, even though a platform key exists.',
+        note: 'Requires a tenant key. The platform never pays for this task.',
     },
 ] as const;
 
-// ── Component ───────────────────────────────────────────────────────────────
+function sourceLabel(source: 'byok' | 'platform' | null): string {
+    if (source === 'byok') return 'tenant key';
+    if (source === 'platform') return 'platform key';
+    return 'no route';
+}
+
+function VectorPreview({ vector }: { vector: number[] }) {
+    const preview = vector.slice(0, 8).map((value) => value.toFixed(4));
+    return (
+        <code className="block overflow-x-auto rounded-lg bg-background px-3 py-2 font-mono text-xs leading-6 text-foreground ring-1 ring-border">
+            [{preview.join(', ')}
+            {vector.length > preview.length ? ', …' : ''}]
+        </code>
+    );
+}
 
 export function CloudflareAIDemoPage() {
     const { isAuthenticated, isInitialized, isLoading: authLoading } = useSession();
     const [status, setStatus] = useState<AiStatus | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
+    const [surface, setSurface] = useState<Surface>('chat');
 
     const [task, setTask] = useState<string>('assist');
-    const [prompt, setPrompt] = useState('');
-    const [systemPrompt, setSystemPrompt] = useState('');
+    const [prompt, setPrompt] = useState('What makes a good multi-tenant AI boundary?');
+    const [systemPrompt, setSystemPrompt] = useState('Answer in three concise bullets.');
     const [model, setModel] = useState('');
     const [response, setResponse] = useState<CompleteResponse | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [chatError, setChatError] = useState<string | null>(null);
     const [sending, setSending] = useState(false);
 
+    const [embeddingText, setEmbeddingText] = useState(
+        'Ottabase gives product teams the SaaS foundation so they can ship the part that matters.',
+    );
+    const [dimensions, setDimensions] = useState('');
+    const [embedding, setEmbedding] = useState<EmbedResponse | null>(null);
+    const [embeddingError, setEmbeddingError] = useState<string | null>(null);
+    const [embeddingSending, setEmbeddingSending] = useState(false);
+
     const signedIn = isInitialized && !authLoading && isAuthenticated;
+    const activeTask = TASKS.find((entry) => entry.key === task);
+    const embeddingInputs = useMemo(
+        () =>
+            embeddingText
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean),
+        [embeddingText],
+    );
 
     useEffect(() => {
-        // The status endpoint is authenticated, like every other AI route.
         if (!signedIn) return;
         void (async () => {
             try {
@@ -123,9 +139,8 @@ export function CloudflareAIDemoPage() {
 
     const send = useCallback(async () => {
         if (!signedIn || !prompt.trim()) return;
-
         setSending(true);
-        setError(null);
+        setChatError(null);
         setResponse(null);
         try {
             const data = await api<CompleteResponse>('/api/ai/complete', {
@@ -139,217 +154,430 @@ export function CloudflareAIDemoPage() {
             });
             setResponse(data);
         } catch (err) {
-            // The server returns a CLASSIFIED code — BYOK_REQUIRED, NOT_CONFIGURED,
-            // VALIDATION_ERROR — and the message is already tenant-safe.
-            setError(isApiError(err) ? err.message : 'Request failed');
+            setChatError(isApiError(err) ? err.message : 'The chat request failed');
         } finally {
             setSending(false);
         }
-    }, [signedIn, task, prompt, systemPrompt, model]);
+    }, [model, prompt, signedIn, systemPrompt, task]);
 
-    const activeTask = TASKS.find((entry) => entry.key === task);
+    const createEmbedding = useCallback(async () => {
+        if (!signedIn || embeddingInputs.length === 0) return;
+        setEmbeddingSending(true);
+        setEmbeddingError(null);
+        setEmbedding(null);
+        try {
+            const parsedDimensions = dimensions.trim() ? Number(dimensions) : undefined;
+            const data = await api<EmbedResponse>('/api/ai/embed', {
+                method: 'POST',
+                body: {
+                    input: embeddingInputs.length === 1 ? embeddingInputs[0] : embeddingInputs,
+                    ...(parsedDimensions !== undefined ? { dimensions: parsedDimensions } : {}),
+                },
+            });
+            setEmbedding(data);
+        } catch (err) {
+            setEmbeddingError(isApiError(err) ? err.message : 'The embedding request failed');
+        } finally {
+            setEmbeddingSending(false);
+        }
+    }, [dimensions, embeddingInputs, signedIn]);
+
+    const activeSource = response?.source ?? embedding?.source ?? status?.source ?? null;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pb-8">
             <DemoPageHeader
-                title="AI chat"
-                description={
-                    <>
-                        Tenant-aware chat through Cloudflare AI Gateway, powered by{' '}
-                        <code className="text-xs">@ottabase/ottaai</code>. Posts to the same{' '}
-                        <code className="text-xs">/api/ai/complete</code> the rest of the app uses, so the key
-                        resolution and the server-side gate are the real ones.
-                    </>
-                }
+                title="OttaAI Playground"
+                description="A small, honest surface for the real OttaAI runtime: tenant-aware chat and embeddings through Cloudflare AI Gateway. No browser-held keys, no parallel demo client."
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare Features"
+                actions={
+                    <Badge variant="outline" className="gap-1.5 px-2.5 py-1 text-xs font-medium">
+                        <Sparkles className="h-3.5 w-3.5" /> Real product route
+                    </Badge>
+                }
             />
 
-            {/* ── What would resolve for you ──────────────────────────────── */}
-            {signedIn ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Your resolution</CardTitle>
-                        <CardDescription>
-                            Computed by the same resolver the runtime path uses, so the guard and the call cannot drift.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {status ? (
-                            <>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant={status.configured ? 'default' : 'secondary'}>
-                                        {status.configured ? 'Configured' : 'Not configured'}
-                                    </Badge>
-                                    {status.source ? (
-                                        <Badge variant={status.source === 'byok' ? 'default' : 'outline'}>
-                                            source: {status.source}
-                                        </Badge>
-                                    ) : null}
-                                    {status.provider ? <Badge variant="outline">{status.provider}</Badge> : null}
-                                    {status.model ? (
-                                        <span className="text-xs text-muted-foreground">{status.model}</span>
-                                    ) : null}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {status.hasSecret
-                                        ? `Running on your own key (${status.keyHint ?? 'saved'}). You are billed by your provider.`
-                                        : 'Running on the platform key. Connect your own to unlock gated tasks and pay your own provider.'}{' '}
-                                    <Link className="underline" to={PROFILE_PATH}>
-                                        Manage AI providers
-                                    </Link>
-                                </p>
-                            </>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">{statusError ?? 'Loading…'}</p>
-                        )}
+            {isInitialized && !authLoading && !isAuthenticated ? (
+                <Card className="border-warning/30 bg-warning/5 shadow-none">
+                    <CardContent className="flex gap-3 p-4 text-sm text-warning">
+                        <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
+                        <p>
+                            Sign in to run the playground. OttaAI always derives identity and organization scope on the
+                            server before it looks at a tenant credential.
+                        </p>
                     </CardContent>
                 </Card>
             ) : null}
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
-
-            {isInitialized && !authLoading && !isAuthenticated ? (
-                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                    Every AI route requires an authenticated session — an anonymous request could otherwise carry a
-                    client-supplied organization header into a resolver that deliberately bypasses RLS. Sign in to send
-                    prompts.
-                </div>
-            ) : null}
-
-            {/* ── Compose ─────────────────────────────────────────────────── */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Send a message</CardTitle>
-                    <CardDescription>
-                        You choose a TASK, not a provider or a key — that is the whole promise. An operator changes
-                        provisioning behaviour without touching this call site.
-                    </CardDescription>
+            <Card className="overflow-hidden rounded-xl border-border/70 bg-card shadow-none">
+                <CardHeader className="border-b border-border/70 bg-muted/20 pb-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                            <CardTitle className="text-base">Your AI route</CardTitle>
+                            <CardDescription>
+                                What the resolver would use for this signed-in tenant right now.
+                            </CardDescription>
+                        </div>
+                        {status ? (
+                            <Badge variant={status.configured ? 'default' : 'secondary'}>
+                                {status.configured ? `Ready · ${sourceLabel(status.source)}` : 'Not configured'}
+                            </Badge>
+                        ) : null}
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Task</Label>
-                        <Select value={task} onValueChange={setTask}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select task" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {TASKS.map((entry) => (
-                                    <SelectItem key={entry.key} value={entry.key}>
-                                        {entry.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {activeTask ? <p className="text-xs text-muted-foreground">{activeTask.note}</p> : null}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>System prompt (optional)</Label>
-                        <Input
-                            value={systemPrompt}
-                            onChange={(e) => setSystemPrompt(e.target.value)}
-                            placeholder="e.g. You are a helpful assistant"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Model override (optional)</Label>
-                        <Input
-                            value={model}
-                            onChange={(e) => setModel(e.target.value)}
-                            placeholder="e.g. gpt-4o — leave blank to use the resolved default"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Validated server-side: no path traversal, and{' '}
-                            <code className="text-xs">dynamic/&lt;route&gt;</code> is operator-only.
+                <CardContent className="p-4 sm:p-5">
+                    {signedIn && status ? (
+                        <>
+                            <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch">
+                                <div
+                                    className={`rounded-lg border p-3 ${status.source === 'byok' ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/20'}`}
+                                >
+                                    <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                                        <KeyRound className="h-4 w-4" /> Tenant key
+                                    </div>
+                                    <p className="text-xs leading-relaxed text-muted-foreground">
+                                        Your personal or workspace credential takes priority when eligible.
+                                    </p>
+                                </div>
+                                <ArrowRight className="m-auto hidden h-4 w-4 text-muted-foreground md:block" />
+                                <div
+                                    className={`rounded-lg border p-3 ${status.source === 'platform' ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/20'}`}
+                                >
+                                    <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                                        <Cloud className="h-4 w-4" /> Platform fallback
+                                    </div>
+                                    <p className="text-xs leading-relaxed text-muted-foreground">
+                                        Soft tasks can use the deployment's inexpensive default.
+                                    </p>
+                                </div>
+                                <ArrowRight className="m-auto hidden h-4 w-4 text-muted-foreground md:block" />
+                                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                                    <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                                        <Bot className="h-4 w-4" /> Task policy
+                                    </div>
+                                    <p className="text-xs leading-relaxed text-muted-foreground">
+                                        Sensitive work can require BYOK before any provider call is made.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+                                {status.provider ? <Badge variant="outline">{status.provider}</Badge> : null}
+                                {status.model ? <span>{status.model}</span> : null}
+                                <span>·</span>
+                                <span>
+                                    {status.hasSecret
+                                        ? 'A tenant credential is selected for eligible work.'
+                                        : 'No tenant credential is selected; soft tasks may use the platform fallback.'}
+                                </span>
+                                <Link
+                                    className="font-medium text-foreground underline underline-offset-4"
+                                    to={PROFILE_PATH}
+                                >
+                                    Manage providers
+                                </Link>
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            {signedIn
+                                ? (statusError ?? 'Checking your route…')
+                                : 'Your route appears after you sign in.'}
                         </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Prompt</Label>
-                        <Textarea
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="Ask anything..."
-                            rows={3}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && signedIn) void send();
-                            }}
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Button onClick={() => void send()} disabled={sending || !prompt.trim() || !signedIn}>
-                            {sending ? 'Sending…' : 'Send'}
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                            {!isInitialized || authLoading
-                                ? 'Checking authentication…'
-                                : signedIn
-                                  ? 'Ctrl+Enter to send'
-                                  : 'Sign in required'}
-                        </span>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 
-            {/* ── Response ────────────────────────────────────────────────── */}
-            {response ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Response</CardTitle>
-                        <CardDescription className="flex flex-wrap items-center gap-2">
-                            {response.source ? (
-                                <Badge variant={response.source === 'byok' ? 'default' : 'outline'}>
-                                    {response.source === 'byok' ? 'your key' : 'platform key'}
-                                </Badge>
-                            ) : null}
-                            {response.provider ? <Badge variant="outline">{response.provider}</Badge> : null}
-                            {response.model ? <span className="text-muted-foreground">· {response.model}</span> : null}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm ring-1 ring-border">
-                            {response.text}
-                        </div>
-                        {response.usage ? (
-                            <div className="mt-3 text-xs text-muted-foreground">
-                                {response.usage.input} in · {response.usage.output} out
-                                {response.usage.cached !== undefined ? ` · ${response.usage.cached} cached` : ''}
-                            </div>
-                        ) : null}
-                    </CardContent>
-                </Card>
-            ) : null}
+            <Tabs value={surface} onValueChange={(value) => setSurface(value as Surface)} className="space-y-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <TabsList className="w-full sm:w-auto">
+                        <TabsTrigger value="chat" className="flex-1 gap-2 sm:flex-none">
+                            <MessageSquareText className="h-4 w-4" /> Chat
+                        </TabsTrigger>
+                        <TabsTrigger value="embeddings" className="flex-1 gap-2 sm:flex-none">
+                            <Braces className="h-4 w-4" /> Embeddings
+                        </TabsTrigger>
+                    </TabsList>
+                    <p className="text-xs text-muted-foreground">
+                        Active source: <span className="font-medium text-foreground">{sourceLabel(activeSource)}</span>
+                    </p>
+                </div>
 
-            {/* ── Setup ───────────────────────────────────────────────────── */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                    <p>
-                        <strong>Required</strong> — <code className="text-xs">AI_CREDENTIAL_SECRET</code> (the master
-                        key that encrypts tenant credentials). Without it the feature stays dormant and every AI route
-                        returns 501.
-                    </p>
-                    <p>
-                        <strong>Gateway</strong> — <code className="text-xs">CLOUDFLARE_ACCOUNT_ID</code> and{' '}
-                        <code className="text-xs">CFAI_GATEWAY_NAME</code>, plus{' '}
-                        <code className="text-xs">CFAI_GATEWAY_TOKEN</code> when the gateway is authenticated.
-                    </p>
-                    <p>
-                        <strong>Platform floor (optional)</strong> —{' '}
-                        <code className="text-xs">OTTAAI_PLATFORM_PROVIDER</code>,{' '}
-                        <code className="text-xs">OTTAAI_PLATFORM_MODEL</code> and the matching{' '}
-                        <code className="text-xs">CFAI_&lt;PROVIDER&gt;_API_KEY</code>. Leave unset to ship BYOK-only,
-                        where every task upsells instead of falling back.
-                    </p>
+                <TabsContent value="chat" className="mt-0 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+                    <Card className="rounded-xl border-border/70 shadow-none">
+                        <CardHeader>
+                            <CardTitle className="text-base">Ask the assistant</CardTitle>
+                            <CardDescription>
+                                Name a task, not a provider. Resolution, gating and attribution stay server-side.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            <div className="space-y-2">
+                                <Label>Task</Label>
+                                <Select value={task} onValueChange={setTask}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a task" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TASKS.map((entry) => (
+                                            <SelectItem key={entry.key} value={entry.key}>
+                                                {entry.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {activeTask ? <p className="text-xs text-muted-foreground">{activeTask.note}</p> : null}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="ai-prompt">Prompt</Label>
+                                <Textarea
+                                    id="ai-prompt"
+                                    value={prompt}
+                                    onChange={(event) => setPrompt(event.target.value)}
+                                    rows={5}
+                                    placeholder="Ask anything…"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && signedIn)
+                                            void send();
+                                    }}
+                                />
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="ai-system">
+                                        System instruction <span className="text-muted-foreground">(optional)</span>
+                                    </Label>
+                                    <Input
+                                        id="ai-system"
+                                        value={systemPrompt}
+                                        onChange={(event) => setSystemPrompt(event.target.value)}
+                                        placeholder="Be concise…"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="ai-model">
+                                        Model override <span className="text-muted-foreground">(optional)</span>
+                                    </Label>
+                                    <Input
+                                        id="ai-model"
+                                        value={model}
+                                        onChange={(event) => setModel(event.target.value)}
+                                        placeholder="gpt-4o-mini"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Button onClick={() => void send()} disabled={sending || !prompt.trim() || !signedIn}>
+                                    {sending ? 'Thinking…' : 'Send message'}
+                                </Button>
+                                <span className="text-xs text-muted-foreground">
+                                    {signedIn ? 'Ctrl/⌘ + Enter to send' : 'Sign in required'}
+                                </span>
+                            </div>
+                            {chatError ? <p className="text-sm text-destructive">{chatError}</p> : null}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="rounded-xl border-border/70 bg-muted/15 shadow-none">
+                        <CardHeader>
+                            <CardTitle className="text-base">Response</CardTitle>
+                            <CardDescription>
+                                Redacted provenance is visible; provider credentials never are.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {response ? (
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge variant={response.source === 'byok' ? 'default' : 'outline'}>
+                                            {sourceLabel(response.source)}
+                                        </Badge>
+                                        {response.provider ? (
+                                            <Badge variant="outline">{response.provider}</Badge>
+                                        ) : null}
+                                        {response.model ? (
+                                            <span className="text-xs text-muted-foreground">{response.model}</span>
+                                        ) : null}
+                                    </div>
+                                    <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm leading-6 ring-1 ring-border">
+                                        {response.text}
+                                    </div>
+                                    {response.usage ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            {response.usage.input} input · {response.usage.output} output
+                                            {response.usage.cached !== undefined
+                                                ? ` · ${response.usage.cached} cached`
+                                                : ''}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center">
+                                    <MessageSquareText className="mb-3 h-5 w-5 text-muted-foreground" />
+                                    <p className="text-sm font-medium">Your response will appear here</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                        It includes the source, model and token accounting that actually served the
+                                        call.
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent
+                    value="embeddings"
+                    className="mt-0 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
+                >
+                    <Card className="rounded-xl border-border/70 shadow-none">
+                        <CardHeader>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <CardTitle className="text-base">Turn text into vectors</CardTitle>
+                                    <CardDescription className="mt-1">
+                                        Use vectors for semantic search, similarity and recommendations — not a
+                                        human-facing answer.
+                                    </CardDescription>
+                                </div>
+                                <Badge variant="outline">OpenAI · text-embedding-3-small</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            <div className="rounded-lg border border-border bg-muted/25 p-3 text-xs leading-relaxed text-muted-foreground">
+                                The model is task-pinned by the server. One non-empty line creates one vector,
+                                preserving order; the demo supports up to 16 lines. It does not persist vectors or
+                                connect them to Vectorize.
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="embedding-text">Text to embed</Label>
+                                <Textarea
+                                    id="embedding-text"
+                                    value={embeddingText}
+                                    onChange={(event) => setEmbeddingText(event.target.value)}
+                                    rows={7}
+                                    placeholder="One text value per line…"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {embeddingInputs.length} {embeddingInputs.length === 1 ? 'vector' : 'vectors'}{' '}
+                                    queued
+                                </p>
+                            </div>
+                            <div className="max-w-56 space-y-2">
+                                <Label htmlFor="embedding-dimensions">
+                                    Dimensions <span className="text-muted-foreground">(optional)</span>
+                                </Label>
+                                <Input
+                                    id="embedding-dimensions"
+                                    inputMode="numeric"
+                                    value={dimensions}
+                                    onChange={(event) => setDimensions(event.target.value.replace(/[^0-9]/g, ''))}
+                                    placeholder="Provider default (1536)"
+                                />
+                                <p className="text-xs text-muted-foreground">1–1536 for the pinned model.</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={() => void createEmbedding()}
+                                    disabled={embeddingSending || embeddingInputs.length === 0 || !signedIn}
+                                >
+                                    {embeddingSending ? 'Vectorising…' : 'Create embedding'}
+                                </Button>
+                                <span className="text-xs text-muted-foreground">
+                                    Same tenant resolver, quota and provenance as chat.
+                                </span>
+                            </div>
+                            {embeddingError ? <p className="text-sm text-destructive">{embeddingError}</p> : null}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="rounded-xl border-border/70 bg-muted/15 shadow-none">
+                        <CardHeader>
+                            <CardTitle className="text-base">Vector output</CardTitle>
+                            <CardDescription>A compact preview keeps the numerical result legible.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {embedding ? (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="rounded-lg border border-border bg-background p-3">
+                                            <p className="text-xs text-muted-foreground">Vectors</p>
+                                            <p className="mt-1 text-xl font-semibold">{embedding.vectors.length}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-border bg-background p-3">
+                                            <p className="text-xs text-muted-foreground">Dimensions</p>
+                                            <p className="mt-1 text-xl font-semibold">
+                                                {embedding.vectors[0]?.length ?? 0}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge variant={embedding.source === 'byok' ? 'default' : 'outline'}>
+                                            {sourceLabel(embedding.source)}
+                                        </Badge>
+                                        {embedding.provider ? (
+                                            <Badge variant="outline">{embedding.provider}</Badge>
+                                        ) : null}
+                                        {embedding.model ? (
+                                            <span className="text-xs text-muted-foreground">{embedding.model}</span>
+                                        ) : null}
+                                    </div>
+                                    {embedding.vectors[0] ? <VectorPreview vector={embedding.vectors[0]} /> : null}
+                                    <div className="flex items-start gap-2 rounded-lg bg-background p-3 text-xs leading-relaxed text-muted-foreground ring-1 ring-border">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                        <span>
+                                            The full vector is returned by the API. This demo only previews its first
+                                            values so the useful facts — order, count and dimensionality — stay
+                                            readable.
+                                        </span>
+                                    </div>
+                                    {embedding.usage ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            {embedding.usage.input} input tokens
+                                        </p>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center">
+                                    <Layers3 className="mb-3 h-5 w-5 text-muted-foreground" />
+                                    <p className="text-sm font-medium">A vector preview will appear here</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                        This makes the embedding operation tangible without pretending a vector is
+                                        prose.
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            <Card className="rounded-xl border-border/70 bg-muted/25 shadow-none">
+                <CardContent className="grid gap-5 p-5 md:grid-cols-3">
+                    <div className="space-y-1.5">
+                        <KeyRound className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Keys stay server-side</p>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            The browser sees a redacted source, never a provider secret or gateway token.
+                        </p>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Bot className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Tasks carry the policy</p>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            The app chooses the job; OttaAI decides which eligible credential and model may serve it.
+                        </p>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Layers3 className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Embeddings are ready for a real feature</p>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            This route creates vectors. A search feature can next store them in a deliberate
+                            Vectorize-backed model.
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

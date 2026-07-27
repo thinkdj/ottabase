@@ -99,6 +99,12 @@ interface CompleteBody {
     model?: unknown;
 }
 
+/** A deliberately small, text-only embedding payload. */
+interface EmbedBody {
+    input?: unknown;
+    dimensions?: unknown;
+}
+
 const KNOWN_TASKS = new Set<string>(Object.values(AI_TASKS));
 
 /**
@@ -124,6 +130,12 @@ const TASK_INPUT_LIMITS: Record<string, { prompt: number; system: number }> = {
 
 /** Applied to any task without its own entry, so a NEW task is never accidentally unbounded. */
 const DEFAULT_INPUT_LIMIT = { prompt: 16_000, system: 4_000 } as const;
+
+/** Bound both individual text values and the whole batch before the resolver runs. */
+const EMBEDDING_INPUT_LIMITS = { items: 16, itemCharacters: 16_000, totalCharacters: 64_000 } as const;
+
+/** `text-embedding-3-small`, the task-pinned model, supports up to 1,536 dimensions. */
+const MAX_EMBEDDING_DIMENSIONS = 1_536;
 
 /**
  * Generous ceiling on the raw body, checked before `request.json()`.
@@ -191,6 +203,55 @@ function validateModelOverride(model: unknown): { ok: true; model?: string } | {
         return { ok: false, message: 'dynamic/<route> model references are operator-only' };
     }
     return { ok: true, model: trimmed };
+}
+
+function validateEmbeddingInput(
+    input: unknown,
+): { ok: true; input: string | string[] } | { ok: false; message: string } {
+    const values = Array.isArray(input) ? input : [input];
+    if (values.length === 0 || values.length > EMBEDDING_INPUT_LIMITS.items) {
+        return {
+            ok: false,
+            message: `input must contain between 1 and ${EMBEDDING_INPUT_LIMITS.items} text values`,
+        };
+    }
+
+    let totalCharacters = 0;
+    const validated: string[] = [];
+    for (const value of values) {
+        if (typeof value !== 'string') return { ok: false, message: 'every input value must be a string' };
+        const text = value.trim();
+        if (!text) return { ok: false, message: 'every input value must contain text' };
+        if (text.length > EMBEDDING_INPUT_LIMITS.itemCharacters) {
+            return {
+                ok: false,
+                message: `each input value is limited to ${EMBEDDING_INPUT_LIMITS.itemCharacters} characters`,
+            };
+        }
+        totalCharacters += text.length;
+        if (totalCharacters > EMBEDDING_INPUT_LIMITS.totalCharacters) {
+            return {
+                ok: false,
+                message: `embedding input is limited to ${EMBEDDING_INPUT_LIMITS.totalCharacters} characters in total`,
+            };
+        }
+        validated.push(text);
+    }
+
+    return { ok: true, input: Array.isArray(input) ? validated : validated[0]! };
+}
+
+function validateEmbeddingDimensions(
+    dimensions: unknown,
+): { ok: true; dimensions?: number } | { ok: false; message: string } {
+    if (dimensions === undefined || dimensions === null || dimensions === '') return { ok: true };
+    if (!Number.isInteger(dimensions) || typeof dimensions !== 'number') {
+        return { ok: false, message: 'dimensions must be a whole number' };
+    }
+    if (dimensions < 1 || dimensions > MAX_EMBEDDING_DIMENSIONS) {
+        return { ok: false, message: `dimensions must be between 1 and ${MAX_EMBEDDING_DIMENSIONS}` };
+    }
+    return { ok: true, dimensions };
 }
 
 /**
@@ -295,6 +356,73 @@ export async function handleAiComplete(
                 source: resolution.source,
                 provider: resolution.configSummary.provider,
                 model: resolution.configSummary.model,
+                usage: result.result.tokens,
+            });
+        },
+        waitUntil,
+    );
+}
+
+/**
+ * POST /api/ai/embed — produce one vector per text value, in input order.
+ *
+ * This is intentionally a separate operation from `/complete`: embeddings do not have
+ * roles, output tokens or a useful streaming representation. The declared `embed` task
+ * owns provider/model selection; the request cannot choose a provider, model or gateway path.
+ */
+export async function handleAiEmbed(
+    context: ApiRouteContext,
+    waitUntil?: (promise: Promise<unknown>) => void,
+): Promise<Response> {
+    return withInstance(
+        context,
+        async (ai, security) => {
+            const unauthenticated = requireSession(security);
+            if (unauthenticated) return unauthenticated;
+
+            const declaredLength = Number(context.request.headers.get('content-length') ?? '0');
+            if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+                return errorResponse('Request body is too large', 413, { code: 'PAYLOAD_TOO_LARGE' });
+            }
+
+            let body: EmbedBody;
+            try {
+                body = (await context.request.json()) as EmbedBody;
+            } catch {
+                return errorResponse('Invalid JSON body', 400, { code: 'INVALID_JSON' });
+            }
+
+            const input = validateEmbeddingInput(body.input);
+            if (!input.ok) return errorResponse(input.message, 400, { code: 'VALIDATION_ERROR' });
+            const dimensions = validateEmbeddingDimensions(body.dimensions);
+            if (!dimensions.ok) return errorResponse(dimensions.message, 400, { code: 'VALIDATION_ERROR' });
+
+            const aiContext = ai.contextFrom({ authenticated: true });
+            const { gate, resolution } = await ai.resolveWithGate(aiContext, AI_TASKS.embed);
+            if (!gate.allowed) {
+                return errorResponse(AI_ERROR_MESSAGES.BYOK_REQUIRED, AI_ERROR_HTTP_STATUS.BYOK_REQUIRED, {
+                    code: gate.code,
+                    hint: gate.reason,
+                });
+            }
+            if (!resolution.client) {
+                const code = resolution.reason === 'CREDENTIAL_UNREADABLE' ? 'CREDENTIAL_UNREADABLE' : 'NOT_CONFIGURED';
+                return errorResponse(AI_ERROR_MESSAGES[code], AI_ERROR_HTTP_STATUS[code], {
+                    code,
+                    hint: resolution.tenantReason ?? resolution.reason,
+                });
+            }
+
+            const result = await resolution.client.embed({ input: input.input, dimensions: dimensions.dimensions });
+            if (!result.ok) {
+                return errorResponse(result.message, AI_ERROR_HTTP_STATUS[result.code], { code: result.code });
+            }
+
+            return jsonResponse({
+                vectors: result.result.vectors,
+                source: resolution.source,
+                provider: result.result.provider,
+                model: result.result.model,
                 usage: result.result.tokens,
             });
         },

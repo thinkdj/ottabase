@@ -50,8 +50,9 @@ export function CloudflareDemoIndexPage() {
             href: '/demo/cloudflare/realtime',
         },
         {
-            name: 'AI chat (BYOK)',
-            description: 'Tenant-aware chat via AI Gateway — user key → org key → platform floor, gated server-side',
+            name: 'OttaAI Playground',
+            description:
+                'Tenant-aware chat and embeddings via AI Gateway — tenant key → platform floor, gated server-side',
             href: '/demo/cloudflare/ai',
         },
     ];

@@ -64,6 +64,8 @@ export const AI_TASKS = {
     summarize: 'summarize',
     /** Long-document extraction — expensive, tenant-key only. */
     extract: 'extract',
+    /** Vectorise text for semantic search, similarity and recommendations. */
+    embed: 'embed',
 } as const;
 
 export type AiTaskKey = (typeof AI_TASKS)[keyof typeof AI_TASKS];
@@ -98,6 +100,21 @@ const TASK_POLICIES: AiTaskPolicy[] = [
         //
         // If multimodal content types are ever added to `AiCallOptions`, add the requirement
         // back in the SAME change.
+    },
+    {
+        key: AI_TASKS.embed,
+        label: 'Embeddings',
+        // The shipped AI Gateway embedding wire is deliberately OpenAI-only. Pinning the
+        // model does two useful things at once: an OpenAI tenant key can serve embeddings
+        // even when its chat default is GPT, and a non-OpenAI credential is filtered out
+        // before a call carrying that credential reaches a provider-specific endpoint.
+        modelPolicy: 'task-pinned',
+        pinnedModels: { openai: 'text-embedding-3-small' },
+        // This is also the platform-path model. A deployment using a non-OpenAI platform
+        // provider remains configured for chat, but the transport refuses embedding calls
+        // explicitly rather than guessing at another provider's wire format.
+        defaultModel: 'openai/text-embedding-3-small',
+        requiredCapabilities: ['embedding'],
     },
 ];
 

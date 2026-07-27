@@ -30,7 +30,7 @@ vi.mock('../../lib/auth-utils', () => ({
 
 import { clearConnection, registerConnection } from '@ottabase/ottaorm';
 import { resetCredentialWrites } from '@ottabase/ottaai/ottaorm';
-import { handleAiComplete } from '../ai';
+import { handleAiComplete, handleAiEmbed } from '../ai';
 
 // ---------------------------------------------------------------------------
 // Stubs for the three external boundaries
@@ -132,6 +132,17 @@ function env(overrides: Record<string, unknown> = {}) {
 function post(body: unknown, envOverrides: Record<string, unknown> = {}) {
     return {
         request: new Request('http://localhost/api/ai/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: typeof body === 'string' ? body : JSON.stringify(body),
+        }),
+        env: env(envOverrides),
+    } as never;
+}
+
+function embedPost(body: unknown, envOverrides: Record<string, unknown> = {}) {
+    return {
+        request: new Request('http://localhost/api/ai/embed', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: typeof body === 'string' ? body : JSON.stringify(body),
@@ -290,6 +301,71 @@ describe('the app composes the package into a correctly addressed gateway call',
     it('honours a per-call model override', async () => {
         await handleAiComplete(post({ prompt: 'hi', model: 'gpt-4o' }));
         expect(outbound[0]!.body).toMatchObject({ model: 'gpt-4o' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Embeddings — the same resolver, a deliberately separate operation
+// ---------------------------------------------------------------------------
+
+describe('/api/ai/embed', () => {
+    it('issues an OpenAI embeddings call through the gateway with the task-pinned model', async () => {
+        vi.stubGlobal(
+            'fetch',
+            stubFetch({
+                data: [{ embedding: [0.125, -0.25, 0.5], index: 0 }],
+                model: 'text-embedding-3-small',
+                usage: { prompt_tokens: 4 },
+            }),
+        );
+
+        const res = await handleAiEmbed(embedPost({ input: 'Semantic search starts here', dimensions: 512 }));
+
+        expect(res.status).toBe(200);
+        expect(outbound).toHaveLength(1);
+        expect(outbound[0]).toMatchObject({
+            url: 'https://gateway.ai.cloudflare.com/v1/acct-test/gw-test/openai/embeddings',
+            body: {
+                model: 'text-embedding-3-small',
+                input: 'Semantic search starts here',
+                dimensions: 512,
+            },
+        });
+        expect(JSON.parse(outbound[0]!.headers['cf-aig-metadata']!)).toMatchObject({
+            source: 'platform',
+            task: 'embed',
+            app: 'otta-web',
+        });
+        expect(await res.json()).toMatchObject({
+            vectors: [[0.125, -0.25, 0.5]],
+            source: 'platform',
+            provider: 'openai',
+            model: 'text-embedding-3-small',
+            usage: { input: 4 },
+        });
+    });
+
+    it('accepts a small ordered batch and refuses malformed or oversized input before spending', async () => {
+        vi.stubGlobal(
+            'fetch',
+            stubFetch({ data: [{ embedding: [1] }, { embedding: [2] }], usage: { prompt_tokens: 2 } }),
+        );
+        expect((await handleAiEmbed(embedPost({ input: ['first', 'second'] }))).status).toBe(200);
+        expect(outbound[0]!.body.input).toEqual(['first', 'second']);
+
+        expect((await handleAiEmbed(embedPost({ input: ['valid', { no: 'objects' }] }))).status).toBe(400);
+        expect((await handleAiEmbed(embedPost({ input: 'x'.repeat(16_001) }))).status).toBe(400);
+        expect((await handleAiEmbed(embedPost({ input: 'valid', dimensions: 1_537 }))).status).toBe(400);
+        expect(outbound).toHaveLength(1);
+    });
+
+    it('requires an authenticated session before resolution', async () => {
+        security = { userId: null, organizationId: 'org-someone-else' };
+
+        const res = await handleAiEmbed(embedPost({ input: 'do not bill another tenant' }));
+
+        expect(res.status).toBe(401);
+        expect(outbound).toHaveLength(0);
     });
 });
 

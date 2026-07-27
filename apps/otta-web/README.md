@@ -159,6 +159,20 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm
 # Bindings: OBCF_ANALYTICS_SHORTLINKS (shortlink_clicks), OBCF_ANALYTICS_REFERRALS (referral_clicks)
 ```
 
+### OttaAI playground
+
+When `packages.ottaai` is enabled, `/demo/cloudflare/ai` exercises the same server-side OttaAI routes used by product
+features: chat at `POST /api/ai/complete` and embeddings at `POST /api/ai/embed`. Both derive the signed-in user's
+tenant context on the Worker, resolve an eligible personal/workspace credential before the optional platform fallback,
+and return only redacted provenance.
+
+Set `AI_CREDENTIAL_SECRET` (or a rotating `AI_CREDENTIAL_KEYRING`) to enable tenant credentials. Configure
+`CLOUDFLARE_ACCOUNT_ID`, `CFAI_GATEWAY_NAME`, and optionally `CFAI_GATEWAY_TOKEN` for AI Gateway. The platform fallback
+uses `OTTAAI_PLATFORM_PROVIDER`, `OTTAAI_PLATFORM_MODEL`, and its matching `CFAI_<PROVIDER>_API_KEY`; it also requires
+the `OBCF_KV` binding for the platform-spend limiter. The shipped embeddings route is intentionally OpenAI-only and uses
+the task-pinned `text-embedding-3-small` model. It returns vectors but does not persist them; connect a real retrieval
+feature to Vectorize deliberately rather than treating the playground as a vector store.
+
 ### Local dev email trap
 
 - Set `DEV_EMAIL_TRAP_ENABLED=true` in local worker env to capture emails in KV instead of sending them.

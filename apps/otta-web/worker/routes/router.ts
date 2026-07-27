@@ -69,6 +69,7 @@ import {
     handleAiCredentialsList,
     handleAiCredentialsTest,
     handleAiCredentialsUpdate,
+    handleAiEmbed,
     handleAiExplain,
     handleAiProviders,
     handleAiStatus,
@@ -501,6 +502,7 @@ aiRouter.delete('/credentials/:id', (c) => handleAiCredentialsDelete(ctxOf(c), c
 // `waitUntil` or the credential-health and attribution writes it defers are cancelled at
 // response — silent data loss, and the one thing the `defer` seam exists to prevent.
 aiRouter.post('/complete', (c) => handleAiComplete(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
+aiRouter.post('/embed', (c) => handleAiEmbed(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
 apiRouter.mount('/api/ai', aiRouter, { when: (c) => packages(c).ottaai });
 
 // -------------------------------------------------------

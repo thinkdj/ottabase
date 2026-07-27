@@ -174,10 +174,10 @@ export const DEMO_ITEMS: DemoItem[] = [
     {
         to: '/demo/cloudflare/ai',
         icon: Bot,
-        label: 'AI chat',
-        title: 'AI chat',
+        label: 'OttaAI Playground',
+        title: 'OttaAI Playground',
         description:
-            'Tenant-aware chat through Cloudflare AI Gateway — your key, your org key, or the platform floor, with the BYOK gate enforced server-side',
+            'Tenant-aware chat and embeddings through Cloudflare AI Gateway — tenant key or platform fallback, with server-side task gates',
         buttonVariant: 'outline',
     },
     {
