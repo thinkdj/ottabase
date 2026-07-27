@@ -164,7 +164,6 @@ import {
     TabsTrigger,
     Textarea,
     toast,
-    Toaster,
     Toggle,
     ToggleGroup,
     ToggleGroupItem,
@@ -1211,7 +1210,6 @@ export function ShadcnDemoPage() {
                                     Loading Toast
                                 </Button>
                             </div>
-                            <Toaster />
                         </CardContent>
                     </Card>
                 </div>

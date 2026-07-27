@@ -7,7 +7,7 @@ import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
-import { BrandScope, Toaster } from '@ottabase/ui-shadcn';
+import { BrandScope } from '@ottabase/ui-shadcn';
 import {
     createBrowserHistory,
     lazyRouteComponent,
@@ -35,7 +35,6 @@ function RootLayout() {
 
     return (
         <>
-            <Toaster />
             <BrandPathSync pathname={pathname} />
             <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
                 <Outlet />
