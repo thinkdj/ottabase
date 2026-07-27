@@ -13,6 +13,7 @@
         }
     },
     "bin": {
+        "key-gen": "bin/key-gen.cjs",
         "cloudflare-login": "bin/cloudflare-login.cjs",
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
@@ -28,10 +29,11 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/key-gen.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/key-gen.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
+        "key:gen": "node bin/key-gen.cjs",
         "clean-reset": "node bin/clean-reset.mjs",
         "clean-db": "node bin/clean-db.mjs",
         "clean-kv": "node bin/clean-kv.mjs",

@@ -41,6 +41,7 @@
         "otta": "packages/cli/bin/otta.mjs"
     },
     "scripts": {
+        "key:gen": "pnpm --filter @ottabase/scripts run key:gen",
         "otta": "node packages/cli/bin/otta.mjs",
         "dev": "node dev.js",
         "dev:fe": "pnpm --filter @ottabase/otta-web dev",

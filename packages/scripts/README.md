@@ -49,9 +49,26 @@ Validates that all resources in `wrangler.jsonc` exist in your Cloudflare accoun
 pnpm cf:validate
 ```
 
+### `pnpm key:gen`
+
+Generates development-safe values for fillable keys in the target app's `.env.local` using the local `.env.example` as
+the source of truth for which keys are available.
+
+- Keeps existing non-empty keys intact (idempotent/rerun-safe).
+- Generates only allowlisted Ottabase local secrets, such as `AUTH_SECRET`, `MIGRATION_SECRET`,
+  `BOOTSTRAP_OWNER_SECRET`, and `CRON_SECRET`.
+- Leaves third-party provider credentials empty, such as OAuth client secrets and API keys.
+- Skips keys that already have a non-empty value.
+- Uses readable prefixes for generated values (for example, `BOOTSTRAP_OWNER_SECRET` uses `BOS`).
+
+```bash
+pnpm key:gen                   # Uses the default app (or app selected by env/flags below)
+pnpm key:gen -- --app=otta-web  # Target specific app
+```
+
 ### Targeting an app
 
-All three `cf:*` commands operate on one app's `wrangler.jsonc`. The app is selected in this order (first match wins):
+All app-scoped commands (`cf:*`, `key:gen`) resolve the target app in this order (first match wins):
 
 1. `--app=<name>` flag: `pnpm cf:setup -- --app=otta-landing`
 2. `OTTABASE_CF_APP` (or `CF_APP`) env var:
