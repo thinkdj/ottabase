@@ -23,6 +23,17 @@ export interface AiCallResult {
     raw: unknown;
 }
 
+/** A normalised embedding response. One vector is returned for each input, in order. */
+export interface AiEmbeddingResult {
+    vectors: number[][];
+    /** Input-token accounting. `null` when the provider genuinely did not report it. */
+    tokens: { input: number } | null;
+    model: string;
+    provider: string;
+    /** Raw provider payload, for callers that need provider-specific metadata. */
+    raw: unknown;
+}
+
 /** A normalised transport failure. Adapters must not leak SDK error objects across this line. */
 export interface AiCallError {
     /** Upstream HTTP status, when there was one. */
@@ -81,9 +92,42 @@ export interface AiCallOptions {
     metadata?: Record<string, string>;
 }
 
+/**
+ * A single embedding request.
+ *
+ * This is intentionally a separate operation from chat completion. Embeddings have no
+ * roles, no streamed text deltas and no output-token count, so putting them in
+ * `AiCallOptions` would make both contracts less truthful.
+ */
+export interface AiEmbedOptions {
+    /** One text value, or a batch whose result vectors preserve this order. */
+    input: string | string[];
+    /** Per-call model override. It may narrow the resolved model, never switch providers. */
+    model?: string;
+    /** Optional vector dimensionality for providers that support it (OpenAI text-embedding-3). */
+    dimensions?: number;
+    /** Milliseconds. */
+    timeout?: number;
+    signal?: AbortSignal;
+    /** Bypass any response cache. */
+    skipCache?: boolean;
+    /** Response cache TTL in seconds. Ignored for BYOK-sourced calls. */
+    cacheTtlSeconds?: number;
+    /** Non-secret tags forwarded to the transport's own logging. */
+    metadata?: Record<string, string>;
+}
+
 /** The raw client an adapter produces. The core wraps this in its instrumented decorator. */
 export interface RawAiClient {
     complete(options: AiCallOptions): Promise<{ ok: true; result: AiCallResult } | { ok: false; error: AiCallError }>;
+    /**
+     * Optional because a transport may deliberately support chat before it has a verified
+     * embedding wire contract. The instrumented client turns absence into a typed refusal;
+     * it never guesses at a provider endpoint.
+     */
+    embed?(
+        options: AiEmbedOptions,
+    ): Promise<{ ok: true; result: AiEmbeddingResult } | { ok: false; error: AiCallError }>;
     /**
      * Stream a completion.
      *

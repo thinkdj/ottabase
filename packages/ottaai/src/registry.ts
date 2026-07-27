@@ -143,6 +143,8 @@ export const BUILT_IN_PROVIDERS: readonly AiProviderEntry[] = Object.freeze([
         models: [
             { id: 'gpt-4o-mini', label: 'GPT-4o mini', capabilities: ['text', 'vision', 'tools', 'json'] },
             { id: 'gpt-4o', label: 'GPT-4o', capabilities: ['text', 'vision', 'tools', 'json'] },
+            { id: 'text-embedding-3-small', label: 'text-embedding-3-small', capabilities: ['embedding'] },
+            { id: 'text-embedding-3-large', label: 'text-embedding-3-large', capabilities: ['embedding'] },
         ],
     },
     {

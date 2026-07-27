@@ -378,6 +378,58 @@ describe('request bodies match the dialect, and `extra` cannot fight the URL', (
 });
 
 // ---------------------------------------------------------------------------
+// Embeddings
+// ---------------------------------------------------------------------------
+
+describe('OpenAI embeddings', () => {
+    it('uses the documented provider-native endpoint and preserves batch order', async () => {
+        const captured: Captured[] = [];
+        const client = makeClient({
+            fetch: capturingFetch(captured, {
+                data: [{ embedding: [0.1] }, { embedding: [0.2] }],
+                usage: { prompt_tokens: 7 },
+                model: 'text-embedding-3-small',
+            }),
+        });
+
+        const result = await client.embed!({
+            model: 'openai/text-embedding-3-small',
+            input: ['first', 'second'],
+            dimensions: 256,
+        });
+
+        expect(captured[0]!.url).toBe(`${BASE}/openai/embeddings`);
+        expect(captured[0]!.body).toEqual({
+            model: 'text-embedding-3-small',
+            input: ['first', 'second'],
+            dimensions: 256,
+        });
+        expect(result).toMatchObject({
+            ok: true,
+            result: { vectors: [[0.1], [0.2]], tokens: { input: 7 }, model: 'text-embedding-3-small' },
+        });
+    });
+
+    it('refuses chat models and unsupported providers before issuing a billable request', async () => {
+        const chatCaptured: Captured[] = [];
+        const chatClient = makeClient({ fetch: capturingFetch(chatCaptured) });
+        const chat = await chatClient.embed!({ input: 'nope' });
+        expect(chat.ok).toBe(false);
+        expect(chatCaptured).toHaveLength(0);
+
+        const providerCaptured: Captured[] = [];
+        const providerClient = makeClient({
+            provider: 'anthropic',
+            model: 'anthropic/claude-sonnet-4-5',
+            fetch: capturingFetch(providerCaptured),
+        });
+        const provider = await providerClient.embed!({ input: 'nope', model: 'text-embedding-3-small' });
+        expect(provider.ok).toBe(false);
+        expect(providerCaptured).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Refusals
 // ---------------------------------------------------------------------------
 

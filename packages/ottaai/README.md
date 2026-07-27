@@ -6,12 +6,11 @@ deterministically, gated server-side, and shipped with the settings UI.
 The tenant's key pays for the tenant's inference — which is what lets you offer strong AI on a free plan, removes the
 per-tenant cost ceiling, and answers "can we use your data" with the tenant's own provider contract.
 
-> **Scope: text chat completion.** The call contract (`AiCallOptions`) takes messages whose `content` is a plain string,
-> and results normalise to `text` plus token counts. Images, audio, tool calls, embeddings and structured provider
-> outputs have **no representation to serialise**, so they are not supported however capable the chosen model is. The
-> registry's `capabilities` (`vision`, `tools`, `embedding`, …) are **model-selection metadata** — they decide which
-> credential is eligible for a task, not what you can send. If you need the raw provider payload, `AiCallResult.raw`
-> carries it unmodified.
+> **Scope: text chat completion plus embeddings.** Chat uses `AiCallOptions`, whose message `content` is a plain string,
+> and normalises to `text` plus token counts. Embeddings use the separate `AiEmbedOptions` / `client.embed()` contract,
+> returning ordered numeric vectors and input-token accounting. Images, audio, tool calls and structured provider
+> outputs still have **no representation to serialise**, so they are not supported however capable the chosen model is.
+> The registry's `capabilities` decide which credential is eligible for a task; they do not widen either call contract.
 
 ## Provider support
 
@@ -20,7 +19,7 @@ request body and response parser, each asserted literally in `__tests__/gateway-
 
 | Provider           | Gateway path                                             | Auth                              | Tenant BYOK               |
 | ------------------ | -------------------------------------------------------- | --------------------------------- | ------------------------- |
-| `openai`           | `/openai/chat/completions`                               | `Authorization: Bearer`           | ✓                         |
+| `openai`           | `/openai/chat/completions`, `/openai/embeddings`         | `Authorization: Bearer`           | ✓                         |
 | `anthropic`        | `/anthropic/v1/messages`                                 | `x-api-key` + `anthropic-version` | ✓                         |
 | `google-ai-studio` | `/google-ai-studio/v1/models/{model}:generateContent`    | `x-goog-api-key`                  | ✓                         |
 | `groq`             | `/groq/chat/completions`                                 | `Authorization: Bearer`           | ✓                         |
@@ -260,6 +259,38 @@ if (!resolution.client) {
 }
 const result = await resolution.client.complete({ messages: [{ role: 'user', content: prompt }] });
 ```
+
+### 8. Generate embeddings
+
+Embeddings use the exact same resolution, credential custody, source-aware quota and outcome pipeline as chat. Give the
+task an embedding model and capability requirement; otherwise a normal chat task may resolve to a chat model and is
+correctly refused before any provider request is sent.
+
+```ts
+const { resolution } = await ai.resolveWithGate(ai.contextFrom(hostAuth), 'search-index');
+if (!resolution.client) return errorResponse('AI unavailable', 501, { code: resolution.reason });
+
+const embedded = await resolution.client.embed({ input: ['first document', 'second document'] });
+if (!embedded.ok) return errorResponse(embedded.message, embedded.status ?? 502, { code: embedded.code });
+
+// `vectors[0]` belongs to "first document"; input order is preserved.
+await vectorIndex.upsert(embedded.result.vectors);
+```
+
+```ts
+tasks: [
+    {
+        key: 'search-index',
+        defaultModel: 'openai/text-embedding-3-small',
+        requiredCapabilities: ['embedding'],
+    },
+];
+```
+
+The shipped Gateway transport supports **OpenAI embeddings only** at `/openai/embeddings`. Other providers are refused
+locally until they have an individually verified request and response wire contract; the package never guesses at a
+provider's embedding dialect. `dimensions` is available for compatible OpenAI `text-embedding-3` models. Embeddings are
+non-streaming and report input tokens only.
 
 Do **not** write `requireByok(...)` then `resolve(...)`. It reads better and does the whole job twice — two candidate
 fan-outs (two D1 queries each under a mixed strategy) and two envelope decryptions, per inference, on the hot path. The

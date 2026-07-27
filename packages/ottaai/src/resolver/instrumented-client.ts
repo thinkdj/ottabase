@@ -19,7 +19,15 @@ import { AI_ERROR_CODES, classifyUpstreamStatus, isAbortError, type AiErrorCode 
 import { redactSecrets } from '../secret';
 import type { DegradationPolicy, MergedTransportConfig, ResolutionSource } from '../types';
 import type { EventSink } from './events';
-import type { AiCallError, AiCallOptions, AiCallResult, AiStreamEvent, RawAiClient } from './transport';
+import type {
+    AiCallError,
+    AiCallOptions,
+    AiCallResult,
+    AiEmbedOptions,
+    AiEmbeddingResult,
+    AiStreamEvent,
+    RawAiClient,
+} from './transport';
 
 export interface QuotaCheck {
     /**
@@ -74,6 +82,11 @@ export interface AiClient {
     complete(
         options: AiCallOptions,
     ): Promise<{ ok: true; result: AiCallResult } | { ok: false; code: AiErrorCode; message: string; status?: number }>;
+    embed(
+        options: AiEmbedOptions,
+    ): Promise<
+        { ok: true; result: AiEmbeddingResult } | { ok: false; code: AiErrorCode; message: string; status?: number }
+    >;
     stream(options: AiCallOptions): AsyncIterable<AiStreamEvent>;
     /** Redacted provenance, safe to log. */
     readonly source: Exclude<ResolutionSource, null>;
@@ -106,7 +119,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
     const byokSourced = deps.source === 'byok';
     const cacheTtl = byokSourced ? undefined : deps.responseCacheTtlSeconds;
 
-    function resolveCacheTtl(options: AiCallOptions): number | undefined {
+    function resolveCacheTtl(options: Pick<AiCallOptions, 'skipCache' | 'cacheTtlSeconds'>): number | undefined {
         if (options.skipCache) return undefined;
         if (byokSourced) return undefined;
         return options.cacheTtlSeconds ?? cacheTtl;
@@ -126,9 +139,10 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
     function emitCompleted(input: {
         correlationId: string;
         startedAt: number;
-        result?: AiCallResult;
+        result?: AiCallResult | AiEmbeddingResult;
         code?: AiErrorCode;
         source: Exclude<ResolutionSource, null>;
+        operation?: 'chat' | 'embedding';
     }): void {
         // A DEGRADED call went out on the PLATFORM client, against the platform provider and
         // platform model — reporting the tenant's provider/model with `source: 'platform'`
@@ -137,6 +151,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
         const degraded = input.source === 'platform' && deps.source === 'byok';
         const provider = degraded ? (deps.platformConfig?.provider ?? deps.config.provider) : deps.config.provider;
         const model = degraded ? (deps.platformConfig?.model ?? null) : deps.config.model;
+        const tokens = input.result?.tokens;
 
         deps.emit('call.completed', {
             correlationId: input.correlationId,
@@ -146,12 +161,13 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             provider,
             model,
             taskKey: deps.taskKey,
+            operation: input.operation ?? 'chat',
             appId: provenance.appId,
             organizationId: provenance.organizationId,
             userId: provenance.userId,
-            inputTokens: input.result?.tokens?.input ?? null,
-            outputTokens: input.result?.tokens?.output ?? null,
-            cachedTokens: input.result?.tokens?.cached ?? null,
+            inputTokens: tokens?.input ?? null,
+            outputTokens: tokens && 'output' in tokens ? (tokens.output ?? null) : null,
+            cachedTokens: tokens && 'cached' in tokens ? (tokens.cached ?? null) : null,
             latencyMs: now() - input.startedAt,
             outcome: input.result ? 'success' : 'error',
             ...(input.code ? { errorCode: input.code } : {}),
@@ -284,6 +300,124 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
 
             writeHealth(false, code);
             emitCompleted({ correlationId, startedAt, code, source: deps.source });
+            return { ok: false, code, message, status: response.error.statusCode };
+        },
+
+        async embed(options) {
+            const correlationId = newCorrelationId();
+            const startedAt = now();
+
+            if (deps.quota) {
+                const allowed = await deps.quota({
+                    source: deps.source,
+                    taskKey: deps.taskKey,
+                    organizationId: provenance.organizationId,
+                    userId: provenance.userId,
+                });
+                if (!allowed) {
+                    deps.emit('quota.exceeded', {
+                        taskKey: deps.taskKey,
+                        source: deps.source,
+                        appId: provenance.appId,
+                        organizationId: provenance.organizationId,
+                        userId: provenance.userId,
+                    });
+                    return {
+                        ok: false,
+                        code: AI_ERROR_CODES.RATE_LIMITED,
+                        message: 'Your AI usage quota for this period has been reached.',
+                    };
+                }
+            }
+
+            // A chat-only adapter must refuse explicitly. Guessing at a provider endpoint is
+            // how a provider-specific mismatch becomes a billed, opaque 200 response.
+            if (!deps.raw.embed) {
+                emitCompleted({
+                    correlationId,
+                    startedAt,
+                    code: AI_ERROR_CODES.UNSUPPORTED_OPERATION,
+                    source: deps.source,
+                    operation: 'embedding',
+                });
+                return {
+                    ok: false,
+                    code: AI_ERROR_CODES.UNSUPPORTED_OPERATION,
+                    message: 'The resolved AI transport does not support embeddings.',
+                };
+            }
+
+            const call: AiEmbedOptions = {
+                ...options,
+                cacheTtlSeconds: resolveCacheTtl(options),
+                metadata: { ...(options.metadata ?? {}), byok: String(deps.source === 'byok'), task: deps.taskKey },
+            };
+
+            let response;
+            try {
+                response = await deps.raw.embed(call);
+            } catch (thrown) {
+                const code = isAbortError(thrown) ? AI_ERROR_CODES.TIMEOUT : AI_ERROR_CODES.ERROR;
+                const message = redactSecrets(
+                    thrown instanceof Error ? thrown.message : String(thrown),
+                    deps.redactionSentinels,
+                );
+                writeHealth(false, code);
+                emitCompleted({ correlationId, startedAt, code, source: deps.source, operation: 'embedding' });
+                return { ok: false, code, message };
+            }
+
+            if (response.ok) {
+                writeHealth(true);
+                emitCompleted({
+                    correlationId,
+                    startedAt,
+                    result: response.result,
+                    source: deps.source,
+                    operation: 'embedding',
+                });
+                return response;
+            }
+
+            const { code, message } = classify(response.error);
+            const fallbackEmbed = deps.platformFallback?.embed;
+            if (shouldDegrade(response.error.statusCode) && fallbackEmbed) {
+                deps.emit('call.degraded', {
+                    correlationId,
+                    credentialId: provenance.credentialId,
+                    taskKey: deps.taskKey,
+                    fromSource: 'byok',
+                    toSource: 'platform',
+                    triggerStatus: response.error.statusCode!,
+                    appId: provenance.appId,
+                    organizationId: provenance.organizationId,
+                    userId: provenance.userId,
+                });
+                writeHealth(false, code);
+                const retry = await fallbackEmbed(call);
+                if (retry.ok) {
+                    emitCompleted({
+                        correlationId,
+                        startedAt,
+                        result: retry.result,
+                        source: 'platform',
+                        operation: 'embedding',
+                    });
+                    return retry;
+                }
+                const retryClassified = classify(retry.error);
+                emitCompleted({
+                    correlationId,
+                    startedAt,
+                    code: retryClassified.code,
+                    source: 'platform',
+                    operation: 'embedding',
+                });
+                return { ok: false, ...retryClassified, status: retry.error.statusCode };
+            }
+
+            writeHealth(false, code);
+            emitCompleted({ correlationId, startedAt, code, source: deps.source, operation: 'embedding' });
             return { ok: false, code, message, status: response.error.statusCode };
         },
 

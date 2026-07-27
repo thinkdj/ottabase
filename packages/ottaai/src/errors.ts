@@ -24,6 +24,8 @@ export const AI_ERROR_CODES = {
     TIMEOUT: 'TIMEOUT',
     /** AI is not fully configured (no usable credential at ANY tier). */
     NOT_CONFIGURED: 'NOT_CONFIGURED',
+    /** The selected transport intentionally has no verified implementation for this operation. */
+    UNSUPPORTED_OPERATION: 'UNSUPPORTED_OPERATION',
     /** A credential row EXISTS but could not be decrypted/used — re-enter it. */
     CREDENTIAL_UNREADABLE: 'CREDENTIAL_UNREADABLE',
     /** This task requires the tenant's own key (`gate: 'required'`). */
@@ -90,6 +92,7 @@ export const AI_ERROR_HTTP_STATUS: Record<AiErrorCode, number> = {
     RATE_LIMITED: 429,
     TIMEOUT: 504,
     NOT_CONFIGURED: 501,
+    UNSUPPORTED_OPERATION: 501,
     CREDENTIAL_UNREADABLE: 409,
     BYOK_REQUIRED: 402,
     FORBIDDEN: 403,
@@ -116,6 +119,7 @@ export const AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
     RATE_LIMITED: 'Your key works, but the provider is rate-limiting right now. Try again shortly.',
     TIMEOUT: 'The request to the provider timed out.',
     NOT_CONFIGURED: 'AI is not configured. Connect a provider to enable this feature.',
+    UNSUPPORTED_OPERATION: 'This AI provider does not support this operation on this deployment.',
     CREDENTIAL_UNREADABLE: 'Your saved key could not be used. Please re-enter it.',
     BYOK_REQUIRED: 'This feature runs on your own provider key. Connect a provider to continue.',
     FORBIDDEN: 'You do not have permission to manage this AI provider connection.',

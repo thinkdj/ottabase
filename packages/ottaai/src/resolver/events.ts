@@ -54,6 +54,8 @@ export interface CallCompletedEvent extends TenancyFields {
     provider: string;
     model: string | null;
     taskKey: string;
+    /** Separates text completions from embedding calls in host-side accounting. */
+    operation: 'chat' | 'embedding';
     inputTokens: number | null;
     outputTokens: number | null;
     cachedTokens: number | null;

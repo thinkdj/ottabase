@@ -23,7 +23,15 @@ import { DYNAMIC_MODEL_PREFIX, parseModelRef } from '../model-ref';
 import { createProviderRegistry, type AiProviderRegistry } from '../registry';
 import { redactSecrets } from '../secret';
 import type { MergedTransportConfig } from '../types';
-import type { AiCallError, AiCallOptions, AiStreamEvent, RawAiClient, TransportAdapter } from '../resolver/transport';
+import type {
+    AiCallError,
+    AiCallOptions,
+    AiEmbedOptions,
+    AiEmbeddingResult,
+    AiStreamEvent,
+    RawAiClient,
+    TransportAdapter,
+} from '../resolver/transport';
 import { GATEWAY_PROVIDERS, gatewayAdapterFor, type GatewayProviderAdapter, type GatewayWire } from './providers';
 import { buildBody, createStreamReader, normalizeResult } from './wire';
 
@@ -234,7 +242,60 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         };
     }
 
-    function buildHeaders(adapter: GatewayProviderAdapter | null, options: AiCallOptions): Headers {
+    /**
+     * Embeddings deliberately start with OpenAI only. Cloudflare documents OpenAI's provider
+     * base as a replacement for OpenAI's `/v1` base, so `/embeddings` is a verified route;
+     * other providers need their own request/response contracts before they are enabled.
+     */
+    function embeddingTarget(perCallModel: string | undefined): Target {
+        if (config.provider !== 'openai') {
+            return {
+                ok: false,
+                message:
+                    `This deployment's AI Gateway transport has no verified embedding wire contract for provider ` +
+                    `"${config.provider}". OpenAI is the only shipped embedding provider.`,
+            };
+        }
+
+        const ref = perCallModel ?? config.model;
+        if (!ref || isDynamicRef(ref)) {
+            return {
+                ok: false,
+                message: 'Embeddings require an explicit OpenAI embedding model; dynamic routes are chat-only.',
+            };
+        }
+
+        const parsed = parseModelRef(ref, deps.registry);
+        if (parsed.form === 'qualified' && parsed.provider !== config.provider) {
+            return {
+                ok: false,
+                message:
+                    `Model "${parsed.raw}" targets provider "${parsed.provider}" but this credential is for ` +
+                    `"${config.provider}". A model reference may not change the provider â€” save a credential for ` +
+                    `"${parsed.provider}" instead.`,
+            };
+        }
+
+        const capabilities = deps.registry.capabilitiesFor(config.provider, parsed.model);
+        if (capabilities && !capabilities.includes('embedding')) {
+            return {
+                ok: false,
+                message: `Model "${parsed.model}" is not registered as an embedding model for OpenAI.`,
+            };
+        }
+
+        const adapter = gatewayAdapterFor('openai')!;
+        return {
+            ok: true,
+            url: `${GATEWAY_BASE}/${config.accountId}/${config.gateway}/${adapter.slug}/embeddings`,
+            modelId: parsed.model,
+            provider: config.provider,
+            wire: adapter.wire,
+            adapter,
+        };
+    }
+
+    function buildHeaders(adapter: GatewayProviderAdapter | null, options: AiCallOptions | AiEmbedOptions): Headers {
         const headers = new Headers({ 'Content-Type': 'application/json' });
 
         // Provider-mandated headers (Anthropic's API version, for example) go on FIRST so an
@@ -385,6 +446,80 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         }
     }
 
+    async function issueEmbedding(
+        options: AiEmbedOptions,
+    ): Promise<
+        | { ok: true; response: Response; provider: string; modelId: string; done: () => void }
+        | { ok: false; error: AiCallError }
+    > {
+        const resolved = embeddingTarget(options.model);
+        if (!resolved.ok) return { ok: false, error: { retryable: false, message: resolved.message } };
+        if (!resolved.modelId) {
+            return { ok: false, error: { retryable: false, message: 'An embedding model is required.' } };
+        }
+
+        const input = Array.isArray(options.input) ? options.input : [options.input];
+        if (input.length === 0 || input.some((value) => typeof value !== 'string' || value.length === 0)) {
+            return {
+                ok: false,
+                error: { retryable: false, message: 'Embedding input must contain one or more non-empty strings.' },
+            };
+        }
+        if (options.dimensions !== undefined && (!Number.isInteger(options.dimensions) || options.dimensions <= 0)) {
+            return {
+                ok: false,
+                error: { retryable: false, message: 'Embedding dimensions must be a positive integer.' },
+            };
+        }
+        if (options.signal?.aborted) {
+            return { ok: false, error: { retryable: false, message: 'Request was aborted before it was sent' } };
+        }
+
+        const controller = new AbortController();
+        const timeoutMs = options.timeout ?? deps.defaultTimeout;
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const done = () => clearTimeout(timer);
+        if (options.signal) options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+
+        try {
+            const response = await doFetch(resolved.url, {
+                method: 'POST',
+                headers: buildHeaders(resolved.adapter, options),
+                body: JSON.stringify({
+                    model: resolved.modelId,
+                    input: Array.isArray(options.input) ? options.input : options.input,
+                    ...(options.dimensions !== undefined ? { dimensions: options.dimensions } : {}),
+                }),
+                signal: controller.signal,
+            });
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                done();
+                return {
+                    ok: false,
+                    error: {
+                        statusCode: response.status,
+                        retryable: response.status >= 500 || response.status === 429,
+                        message: redactSecrets(text || `Upstream returned ${response.status}`, sentinels),
+                    },
+                };
+            }
+            return { ok: true, response, provider: resolved.provider, modelId: resolved.modelId, done };
+        } catch (thrown) {
+            done();
+            const aborted = (thrown as { name?: string })?.name === 'AbortError';
+            return {
+                ok: false,
+                error: {
+                    retryable: !aborted,
+                    message: aborted
+                        ? `Request timed out after ${timeoutMs}ms`
+                        : redactSecrets(thrown instanceof Error ? thrown.message : String(thrown), sentinels),
+                },
+            };
+        }
+    }
+
     return {
         async complete(options) {
             const issued = await issue(options, false);
@@ -411,6 +546,58 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             }
 
             return { ok: true, result: normalizeResult(issued.wire, payload, issued.provider, issued.modelId) };
+        },
+
+        async embed(options) {
+            const issued = await issueEmbedding(options);
+            if (!issued.ok) return { ok: false, error: issued.error };
+
+            let payload: Record<string, unknown>;
+            try {
+                payload = (await issued.response.json()) as Record<string, unknown>;
+            } catch (error) {
+                return {
+                    ok: false,
+                    error: {
+                        statusCode: issued.response.status,
+                        retryable: false,
+                        message: redactSecrets(
+                            `Provider returned an unparseable embedding response: ${
+                                error instanceof Error ? error.message : String(error)
+                            }`,
+                            sentinels,
+                        ),
+                    },
+                };
+            } finally {
+                issued.done();
+            }
+
+            const data = payload.data;
+            if (!Array.isArray(data)) {
+                return {
+                    ok: false,
+                    error: { retryable: false, message: 'Provider returned no embedding vectors.' },
+                };
+            }
+            const vectors = data.map((item) => (item as { embedding?: unknown }).embedding);
+            if (
+                !vectors.every((vector) => Array.isArray(vector) && vector.every((value) => typeof value === 'number'))
+            ) {
+                return {
+                    ok: false,
+                    error: { retryable: false, message: 'Provider returned an invalid embedding vector.' },
+                };
+            }
+            const usage = payload.usage as { prompt_tokens?: unknown } | undefined;
+            const result: AiEmbeddingResult = {
+                vectors: vectors as number[][],
+                tokens: typeof usage?.prompt_tokens === 'number' ? { input: usage.prompt_tokens } : null,
+                model: typeof payload.model === 'string' ? payload.model : issued.modelId,
+                provider: issued.provider,
+                raw: payload,
+            };
+            return { ok: true, result };
         },
 
         async *stream(options) {

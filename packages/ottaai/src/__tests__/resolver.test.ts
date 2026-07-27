@@ -486,6 +486,32 @@ describe('the instrumented client', () => {
         expect(completed?.payload).toMatchObject({ source: 'byok', taskKey: 'chat', outcome: 'success' });
     });
 
+    it('routes embeddings through the same quota, provenance and outcome pipeline as chat', async () => {
+        const { ai, store, events, transport } = harness({
+            tasks: [
+                {
+                    key: 'embed',
+                    defaultModel: 'openai/text-embedding-3-small',
+                    requiredCapabilities: ['embedding'],
+                },
+            ],
+        });
+        store.seed([await encryptedCredential({ model: 'openai/text-embedding-3-small' })]);
+
+        const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'embed');
+        const result = await resolution.client!.embed({ input: ['first', 'second'] });
+
+        expect(result).toMatchObject({ ok: true, result: { vectors: [[0.1, 0.2, 0.3]] } });
+        expect(transport.calls).toContainEqual(expect.objectContaining({ kind: 'embed' }));
+        expect(events.find((entry) => entry.event === 'call.completed')?.payload).toMatchObject({
+            source: 'byok',
+            taskKey: 'embed',
+            operation: 'embedding',
+            inputTokens: 1,
+            outputTokens: null,
+        });
+    });
+
     it('classifies a 401 as INVALID_KEY and does NOT cascade by default', async () => {
         const { ai, store, transport } = harness();
         store.seed([await encryptedCredential()]);

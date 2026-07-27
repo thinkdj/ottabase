@@ -12,6 +12,8 @@ import type {
     AiCallError,
     AiCallOptions,
     AiCallResult,
+    AiEmbedOptions,
+    AiEmbeddingResult,
     AiStreamEvent,
     RawAiClient,
     TransportAdapter,
@@ -190,6 +192,8 @@ export interface MockTransportScript {
     inStreamError?: { statusCode?: number; message: string };
     /** Fixed completion text. */
     text?: string;
+    /** Fixed embedding vectors. */
+    vectors?: number[][];
     /** Token counts to report. `null` reproduces the "streaming omits usage" bug. */
     tokens?: AiCallResult['tokens'];
     /** Reject as if the request timed out. */
@@ -200,7 +204,7 @@ export interface MockTransport extends TransportAdapter {
     /** Every merged config the adapter was asked to build a client for. */
     readonly configs: MergedTransportConfig[];
     /** Every call the mock served, with the options it received. */
-    readonly calls: Array<{ kind: 'complete' | 'stream'; options: AiCallOptions }>;
+    readonly calls: Array<{ kind: 'complete' | 'embed' | 'stream'; options: AiCallOptions | AiEmbedOptions }>;
     script(next: MockTransportScript): void;
     reset(): void;
 }
@@ -215,7 +219,7 @@ export interface MockTransport extends TransportAdapter {
 export function createMockTransport(initial: MockTransportScript = {}): MockTransport {
     let scripted: MockTransportScript = { ...initial };
     const configs: MergedTransportConfig[] = [];
-    const calls: Array<{ kind: 'complete' | 'stream'; options: AiCallOptions }> = [];
+    const calls: Array<{ kind: 'complete' | 'embed' | 'stream'; options: AiCallOptions | AiEmbedOptions }> = [];
 
     function failure(): AiCallError | null {
         if (scripted.throws) throw scripted.throws;
@@ -262,6 +266,19 @@ export function createMockTransport(initial: MockTransportScript = {}): MockTran
                             raw: null,
                         },
                     };
+                },
+                async embed(options) {
+                    calls.push({ kind: 'embed', options });
+                    const error = failure();
+                    if (error) return { ok: false, error };
+                    const result: AiEmbeddingResult = {
+                        vectors: scripted.vectors ?? [[0.1, 0.2, 0.3]],
+                        tokens: scripted.tokens ? { input: scripted.tokens.input } : { input: 1 },
+                        model: options.model ?? config.model ?? '',
+                        provider: config.provider,
+                        raw: null,
+                    };
+                    return { ok: true, result };
                 },
                 async *stream(options): AsyncIterable<AiStreamEvent> {
                     calls.push({ kind: 'stream', options });
