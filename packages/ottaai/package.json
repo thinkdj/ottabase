@@ -1,0 +1,107 @@
+{
+    "name": "@ottabase/ottaai",
+    "version": "0.0.1",
+    "description": "Ottabase AI engine — tenant BYOK provider credentials (user/org/platform), encrypted at rest, deterministic key resolution, task gates, and a Cloudflare AI Gateway transport",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./resolver": {
+            "types": "./src/resolver/index.ts",
+            "default": "./src/resolver/index.ts"
+        },
+        "./ottaorm": {
+            "types": "./src/ottaorm/index.ts",
+            "default": "./src/ottaorm/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./transports/gateway": {
+            "types": "./src/transports/gateway.ts",
+            "default": "./src/transports/gateway.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
+        },
+        "./testing": {
+            "types": "./src/testing/index.ts",
+            "default": "./src/testing/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/db": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "lucide-react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        },
+        "@ottabase/ui-components": {
+            "optional": true
+        },
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@testing-library/react": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "jsdom": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "keywords": [
+        "ai",
+        "byok",
+        "cloudflare",
+        "ai-gateway",
+        "multi-tenant",
+        "credentials",
+        "ottabase"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/ottaai"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/ottaai#readme"
+}

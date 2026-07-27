@@ -139,7 +139,14 @@
         ],
     },
 
-    // Workers AI binding — direct access to Cloudflare AI models
+    // Workers AI binding — direct access to Cloudflare AI models.
+    //
+    // CURRENTLY UNREAD BY APPLICATION CODE. It was the `@ottabase/cf-ai` demo's binding; that
+    // package is gone and @ottabase/ottaai reaches providers through AI Gateway instead.
+    // Kept because this is the intended seam for Cloudflare-billed inference (`workers-ai` is
+    // registered as a PLATFORM-ONLY provider precisely because it needs this binding or the
+    // AI Gateway REST API, not the provider-native proxy shape). Binding it costs nothing and
+    // avoids a wrangler change when that transport lands. Delete it if you never want it.
     // @see https://developers.cloudflare.com/workers-ai/
     "ai": {
         "binding": "OBCF_AI",

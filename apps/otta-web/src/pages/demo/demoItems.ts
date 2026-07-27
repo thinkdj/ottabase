@@ -174,9 +174,10 @@ export const DEMO_ITEMS: DemoItem[] = [
     {
         to: '/demo/cloudflare/ai',
         icon: Bot,
-        label: 'Cloudflare AI',
-        title: 'Cloudflare AI',
-        description: 'Multi-provider AI via Workers AI, AI Gateway, and Universal chat with fallback support',
+        label: 'AI chat',
+        title: 'AI chat',
+        description:
+            'Tenant-aware chat through Cloudflare AI Gateway — your key, your org key, or the platform floor, with the BYOK gate enforced server-side',
         buttonVariant: 'outline',
     },
     {

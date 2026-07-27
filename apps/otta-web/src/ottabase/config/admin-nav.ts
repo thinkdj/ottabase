@@ -28,6 +28,7 @@ import {
     Power,
     RefreshCw,
     Rocket,
+    Sparkles,
     Server,
     Shield,
     ShieldCheck,
@@ -256,6 +257,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: UserPlus,
                 scope: 'org',
                 requiresPackage: 'referrals',
+            },
+            {
+                title: 'AI providers',
+                description:
+                    'Connect your own AI provider keys, see which key each feature actually resolves to, and diagnose why.',
+                href: '/admin/growth/ai-providers',
+                icon: Sparkles,
+                scope: 'org',
+                requiresPackage: 'ottaai',
             },
         ],
     },

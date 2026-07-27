@@ -61,6 +61,18 @@ import {
     handleAdminRolesList,
 } from './admin-roles';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './admin-users';
+import {
+    handleAiComplete,
+    handleAiCredentialsActivate,
+    handleAiCredentialsCreate,
+    handleAiCredentialsDelete,
+    handleAiCredentialsList,
+    handleAiCredentialsTest,
+    handleAiCredentialsUpdate,
+    handleAiExplain,
+    handleAiProviders,
+    handleAiStatus,
+} from './ai';
 import { handleAuditLogs } from './audit';
 import {
     handleAuthConfig,
@@ -93,13 +105,6 @@ import {
     handleBlogTagBySlug,
 } from './blog';
 import { handleBrandApi } from './brand';
-import {
-    handleAIChat,
-    handleAIGatewayChat,
-    handleAIProviders,
-    handleAIStatus,
-    handleAIUniversalChat,
-} from './cloudflare-ai';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
@@ -392,11 +397,9 @@ apiRouter.post('/api/cloudflare/rate-limiting', h(handleRateLimiting));
 apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
 apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
 apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));
-apiRouter.get('/api/cloudflare/ai/providers', h(handleAIProviders));
-apiRouter.get('/api/cloudflare/ai/status', h(handleAIStatus));
-apiRouter.post('/api/cloudflare/ai/chat', h(handleAIChat));
-apiRouter.post('/api/cloudflare/ai/gateway/chat', h(handleAIGatewayChat));
-apiRouter.post('/api/cloudflare/ai/universal/chat', h(handleAIUniversalChat));
+// NOTE: there are deliberately no `/api/cloudflare/ai/*` routes. The AI demo posts to
+// `/api/ai/complete` — the SAME endpoint product features use — so the demo exercises the real
+// resolution chain instead of a parallel client whose provider table can drift from it.
 apiRouter.post('/api/upload', h(handleUpload));
 apiRouter.all('/api/upload/file/*', h(handleUploadFile));
 
@@ -475,6 +478,30 @@ referralsRouter.get('/analytics', h(handleReferralsAnalytics));
 referralsRouter.post('/track', h(handleReferralTrack));
 referralsRouter.put('/username', h(handleReferralUsernameUpdate));
 apiRouter.mount('/api/referrals', referralsRouter, { when: (c) => packages(c).referrals });
+
+// -------------------------------------------------------
+// AI provisioning / BYOK (@ottabase/ottaai) — request-time gate
+// -------------------------------------------------------
+// Credential CRUD is deliberately NOT exposed through /api/ottaorm: the model is absent
+// from GENERIC_CRUD_ALLOWLIST, and these handlers come from the package's route factory,
+// which owns tenancy stamping, the authorize hook, and the filter/sort deny-list on the
+// secret-union columns.
+const aiRouter = new Router<CloudflareEnv>();
+aiRouter.get('/status', h(handleAiStatus));
+aiRouter.get('/providers', h(handleAiProviders));
+aiRouter.get('/explain', h(handleAiExplain));
+aiRouter.get('/credentials', h(handleAiCredentialsList));
+aiRouter.post('/credentials', h(handleAiCredentialsCreate));
+// Static beats :param in this router, so /credentials/test cannot be shadowed by :id.
+aiRouter.post('/credentials/test', h(handleAiCredentialsTest));
+aiRouter.post('/credentials/:id/activate', (c) => handleAiCredentialsActivate(ctxOf(c), c.params.id));
+aiRouter.patch('/credentials/:id', (c) => handleAiCredentialsUpdate(ctxOf(c), c.params.id));
+aiRouter.delete('/credentials/:id', (c) => handleAiCredentialsDelete(ctxOf(c), c.params.id));
+// Registered with the RAW `Ctx`, not `h(...)`: the inference path needs a real
+// `waitUntil` or the credential-health and attribution writes it defers are cancelled at
+// response — silent data loss, and the one thing the `defer` seam exists to prevent.
+aiRouter.post('/complete', (c) => handleAiComplete(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
+apiRouter.mount('/api/ai', aiRouter, { when: (c) => packages(c).ottaai });
 
 // -------------------------------------------------------
 // Error policy — mirrors the worker's top-level mapping, plus

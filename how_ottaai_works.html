@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How OttaAI works</title>
+    <style>
+        :root { --text:#37352f; --muted:#787774; --line:#e9e9e7; --soft:#f7f7f5; --blue:#eaf3ff; --green:#edf8ee; --yellow:#fbf5dd; --red:#fff0ef; }
+        * { box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { margin:0; color:var(--text); background:#fff; font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+        .page { width:min(820px, calc(100% - 40px)); margin:0 auto; }
+        header { padding:76px 0 42px; }
+        .eyebrow { color:var(--muted); font-size:14px; }
+        h1 { margin:10px 0 14px; font-size:46px; line-height:1.15; letter-spacing:-.035em; }
+        h2 { margin:0 0 14px; font-size:27px; line-height:1.3; letter-spacing:-.025em; }
+        h3 { margin:0 0 4px; font-size:16px; }
+        p { margin:0 0 10px; }
+        .lead { max-width:690px; color:var(--muted); font-size:19px; }
+        nav { display:flex; flex-wrap:wrap; gap:16px; margin-top:25px; font-size:14px; }
+        nav a { color:var(--muted); text-decoration:none; }
+        nav a:hover { color:var(--text); text-decoration:underline; }
+        section { padding:35px 0; border-top:1px solid var(--line); }
+        .note { border-left:3px solid #d3d3cf; padding:8px 0 8px 15px; color:var(--muted); }
+        .grid { display:grid; gap:12px; }
+        .three { grid-template-columns:repeat(3,1fr); }
+        .two { grid-template-columns:repeat(2,1fr); }
+        .block { border:1px solid var(--line); border-radius:4px; padding:17px; background:#fff; }
+        .tone-blue { background:var(--blue); } .tone-green { background:var(--green); } .tone-yellow { background:var(--yellow); }
+        .label { display:block; margin-bottom:8px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+        .small { color:var(--muted); font-size:14px; }
+        .rule { margin-top:13px; padding-top:11px; border-top:1px solid rgba(55,53,47,.12); font-size:14px; }
+        .diagram { margin-top:18px; padding:18px 0 2px; border-top:1px solid var(--line); }
+        .diagram svg { display:block; width:100%; height:auto; }
+        .svg-title { fill:var(--text); font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        .svg-copy { fill:var(--muted); font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        .svg-step { fill:var(--muted); font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:.5px; }
+        .svg-box { stroke:#d8d8d4; stroke-width:1.5; }
+        .arrow { stroke:#aaa9a5; stroke-width:1.5; fill:none; marker-end:url(#arrow); }
+        .wireframes { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+        .wire { border:1px solid var(--line); border-radius:5px; overflow:hidden; background:#fff; }
+        .wire-top { display:flex; align-items:center; gap:6px; height:30px; padding:0 10px; border-bottom:1px solid var(--line); background:var(--soft); }
+        .dot { width:7px; height:7px; border-radius:50%; background:#d8d8d4; }
+        .wire-body { display:grid; grid-template-columns:90px 1fr; min-height:210px; }
+        .wire-side { padding:11px 8px; border-right:1px solid var(--line); background:#fafaf9; }
+        .wire-side span { display:block; margin:5px 0; border-radius:3px; padding:4px; color:#969590; font-size:10px; }
+        .wire-side .active { background:#ececea; color:var(--text); font-weight:600; }
+        .wire-main { padding:14px; }
+        .fake-title { margin-bottom:5px; font-size:13px; font-weight:600; }
+        .fake-copy { color:var(--muted); font-size:11px; }
+        .fake-field { margin-top:11px; border:1px solid #dededb; border-radius:3px; padding:7px; color:#aaa9a5; font-size:11px; }
+        .fake-select { display:flex; justify-content:space-between; }
+        .fake-button { display:inline-block; margin-top:11px; border-radius:3px; padding:6px 9px; background:#37352f; color:#fff; font-size:11px; }
+        .caption { margin-top:9px; color:var(--muted); font-size:13px; }
+        table { width:100%; border-collapse:collapse; font-size:14px; }
+        th,td { padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; }
+        th { color:var(--muted); font-size:12px; font-weight:600; }
+        code { border-radius:3px; padding:2px 4px; background:var(--soft); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em; }
+        .steps { list-style:none; margin:0; padding:0; }
+        .steps li { display:grid; grid-template-columns:28px 1fr; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+        .steps li:last-child { border:0; }
+        .n { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--soft); color:var(--muted); font-size:12px; font-weight:600; }
+        footer { padding:28px 0 48px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+        @media (max-width:650px) { .three,.two,.wireframes { grid-template-columns:1fr; } h1 { font-size:38px; } header { padding-top:44px; } }
+        @media print { nav { display:none; } section { padding:22px 0; } }
+    </style>
+</head>
+<body>
+    <header class="page">
+        <div class="eyebrow">Ottabase / OttaAI</div>
+        <h1>How OttaAI chooses an AI key</h1>
+        <p class="lead">A short guide to personal keys, workspace keys, the platform route, and what an organization admin can do.</p>
+        <nav><a href="#keys">Keys</a><a href="#add">Add a key</a><a href="#resolution">Resolution</a><a href="#request">Request flow</a><a href="#safety">Safety</a></nav>
+    </header>
+
+    <main class="page">
+        <section id="keys">
+            <h2>Three key sources</h2>
+            <div class="grid three">
+                <div class="block tone-blue"><span class="label">Personal</span><h3>My key</h3><p class="small">Used only for my requests.</p><div class="rule"><strong>Owner:</strong> the user<br><strong>Bill:</strong> the user's provider account</div></div>
+                <div class="block tone-green"><span class="label">Workspace</span><h3>Our key</h3><p class="small">Available to people in the active workspace.</p><div class="rule"><strong>Owner:</strong> the organization<br><strong>Bill:</strong> the workspace's provider account</div></div>
+                <div class="block tone-yellow"><span class="label">Platform</span><h3>Included AI</h3><p class="small">Set by the product operator, not a user.</p><div class="rule"><strong>Owner:</strong> the operator<br><strong>Bill:</strong> the operator's provider account</div></div>
+            </div>
+        </section>
+
+        <section id="add">
+            <h2>Where a key is added</h2>
+            <div class="wireframes">
+                <div><div class="wire" aria-label="Profile AI provider wireframe"><div class="wire-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="wire-body"><div class="wire-side"><span>Account</span><span>Security</span><span class="active">AI provider</span></div><div class="wire-main"><div class="fake-title">AI provider</div><div class="fake-copy">Bring your own key for your own usage.</div><div class="fake-field">Provider</div><div class="fake-field">API key</div><span class="fake-button">Connect a provider</span></div></div></div><p class="caption"><strong>Any user:</strong> Profile → AI provider. This always creates a personal key.</p></div>
+                <div><div class="wire" aria-label="Admin AI providers wireframe"><div class="wire-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="wire-body"><div class="wire-side"><span>Analytics</span><span class="active">AI providers</span></div><div class="wire-main"><div class="fake-title">AI providers</div><div class="fake-copy">Connect a provider for yourself or the workspace.</div><div class="fake-field fake-select"><span>Who can use this key?</span><span>⌄</span></div><div class="fake-field">Just me / Everyone in this workspace</div><span class="fake-button">Connect</span></div></div></div><p class="caption"><strong>Org admin:</strong> Admin → Growth → AI providers. “Everyone” creates the shared workspace key.</p></div>
+            </div>
+            <p class="note" style="margin-top:18px">An organization admin can add both a workspace key and a separate personal key. They cannot create a personal key for someone else.</p>
+        </section>
+
+        <section id="resolution">
+            <h2>The default resolution order</h2>
+            <p class="muted">The default strategy is <code>user-then-org</code>.</p>
+            <div class="diagram">
+                <svg viewBox="0 0 800 250" role="img" aria-label="Personal key then workspace key then platform route resolution flow">
+                    <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#aaa9a5" /></marker></defs>
+                    <text x="18" y="28" class="svg-step">AI REQUEST</text><rect x="18" y="45" width="145" height="112" rx="5" fill="#f7f7f5" class="svg-box" /><text x="34" y="82" class="svg-title">Signed-in user</text><text x="34" y="105" class="svg-copy">+ active workspace</text>
+                    <path d="M163 100 H215" class="arrow" />
+                    <text x="215" y="28" class="svg-step">1 · FIRST CHOICE</text><rect x="215" y="45" width="165" height="112" rx="5" fill="#eaf3ff" class="svg-box" /><text x="231" y="82" class="svg-title">Personal key</text><text x="231" y="105" class="svg-copy">If usable, use it.</text><text x="231" y="132" class="svg-copy">The user pays.</text>
+                    <path d="M380 100 H432" class="arrow" /><text x="387" y="88" class="svg-copy">No</text>
+                    <text x="432" y="28" class="svg-step">2 · SECOND CHOICE</text><rect x="432" y="45" width="165" height="112" rx="5" fill="#edf8ee" class="svg-box" /><text x="448" y="82" class="svg-title">Workspace key</text><text x="448" y="105" class="svg-copy">If usable, use it.</text><text x="448" y="132" class="svg-copy">The workspace pays.</text>
+                    <path d="M597 100 H649" class="arrow" /><text x="604" y="88" class="svg-copy">No</text>
+                    <text x="649" y="28" class="svg-step">3 · LAST CHOICE</text><rect x="649" y="45" width="133" height="112" rx="5" fill="#fbf5dd" class="svg-box" /><text x="665" y="82" class="svg-title">Platform</text><text x="665" y="105" class="svg-copy">Only when the</text><text x="665" y="123" class="svg-copy">task allows it.</text>
+                    <text x="18" y="205" class="svg-copy">For a BYOK-required task, step 3 is skipped. A usable personal or workspace key is required.</text>
+                </svg>
+            </div>
+            <div class="note"><strong>Important:</strong> if an admin has both a personal key and a workspace key, the admin's personal key wins for that admin under the default strategy. Other members can still use the workspace key.</div>
+        </section>
+
+        <section id="request">
+            <h2>What happens to a request</h2>
+            <ol class="steps">
+                <li><span class="n">1</span><div><strong>Establish scope</strong><br><span class="small">The server identifies the user, the active organization, and the app.</span></div></li>
+                <li><span class="n">2</span><div><strong>Resolve a permitted key</strong><br><span class="small">Only keys belonging to that user/workspace/app are considered.</span></div></li>
+                <li><span class="n">3</span><div><strong>Apply the task rule</strong><br><span class="small">A BYOK-required task does not fall back to the platform route.</span></div></li>
+                <li><span class="n">4</span><div><strong>Apply cost controls</strong><br><span class="small">If the platform would pay, a burst guard runs before the provider call.</span></div></li>
+                <li><span class="n">5</span><div><strong>Call through AI Gateway</strong><br><span class="small">The request leaves from the server; a saved key never reaches the browser.</span></div></li>
+            </ol>
+        </section>
+
+        <section id="safety">
+            <h2>What is protected</h2>
+            <div class="grid two">
+                <div class="block"><span class="label">Keys</span><h3>Write-only secrets</h3><p class="small">Keys are encrypted at rest and are never shown again after saving. Replacing a key means entering a new one.</p></div>
+                <div class="block"><span class="label">Organizations</span><h3>Server-side permissions</h3><p class="small">A workspace key needs <code>ai:manage</code> or <code>org:admin</code>. The browser cannot select another workspace by changing request data.</p></div>
+                <div class="block"><span class="label">Platform spend</span><h3>Fail closed</h3><p class="small">If platform rate limiting is unavailable or misconfigured, platform-paid calls stop before provider I/O. BYOK can continue.</p></div>
+                <div class="block"><span class="label">What it is not</span><h3>Not a billing quota</h3><p class="small">The platform control limits short bursts. It is not a monthly token allowance, invoice, or exact spend ceiling.</p></div>
+            </div>
+        </section>
+
+        <section>
+            <h2>In one sentence</h2>
+            <p style="font-size:19px"><strong>Users own personal keys, org admins manage shared workspace keys, and OttaAI resolves the best allowed source on the server—personal first, workspace second, platform last.</strong></p>
+        </section>
+    </main>
+    <footer class="page">OttaAI · personal, workspace, and platform AI flows.</footer>
+</body>
+</html>

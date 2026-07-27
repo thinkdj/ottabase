@@ -8,8 +8,9 @@
 import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
-import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
+import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { changePassword, requestEmailVerification } from '@/lib/auth-api';
+import { AiPersonalProviders } from './AiPersonalProviders';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -747,6 +748,9 @@ export function UserProfilePage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* AI providers — personal keys. Dormant unless the ottaai package is enabled. */}
+            {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
 
             {/* Security */}
             <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">

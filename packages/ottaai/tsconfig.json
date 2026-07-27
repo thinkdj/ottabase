@@ -1,0 +1,14 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "src",
+        "baseUrl": ".",
+        "jsx": "react-jsx",
+        "paths": {},
+        "skipLibCheck": true,
+        "lib": ["esnext", "dom", "dom.iterable"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

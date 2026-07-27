@@ -3,6 +3,8 @@ export {
     defineOttabaseConfig,
     isPackageEnabled,
     isCustomPackageEnabled,
+    normalizeOttaaiMode,
+    normalizeOttaaiStrategy,
     normalizeOttablogMode,
 } from './defineOttabaseConfig';
 export type {
@@ -14,6 +16,8 @@ export type {
     PaginationFeatureConfig,
     CrudHubFeatureConfig,
     AuthBehaviorConfig,
+    OttaaiFeatureConfig,
+    OttaaiRateLimitConfig,
     OttablogFeatureConfig,
     OttablogMode,
     CustomPackageConfig,

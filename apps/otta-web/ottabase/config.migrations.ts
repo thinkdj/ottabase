@@ -40,6 +40,7 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 import type { Migration } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
@@ -68,6 +69,10 @@ const PACKAGE_REGISTRY = {
     },
     comments: {
         tables: { commentsTable, commentReactionsTable },
+        migrations: [] as Migration[],
+    },
+    ottaai: {
+        tables: { aiProviderCredentialsTable },
         migrations: [] as Migration[],
     },
     shortlinks: {

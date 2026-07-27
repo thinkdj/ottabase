@@ -1,8 +1,20 @@
 /**
- * Cloudflare AI Demo Page
+ * Cloudflare AI demo — a chat test over the REAL product path.
  *
- * Interactive demo for Workers AI, AI Gateway, and Universal AI chat.
- * Lets users send prompts, pick providers/models, and see responses.
+ * This page deliberately has NO AI code of its own. It posts to `/api/ai/complete`, the same
+ * endpoint the rest of the app uses, so what it demonstrates is the actual resolution chain:
+ * the signed-in user's own key → their organization's key → the platform default → nothing.
+ *
+ * It replaced a demo built on `@ottabase/cf-ai`, which shipped a second, parallel AI client
+ * (Workers AI binding, gateway proxy, a fallback chain) whose provider table had already
+ * drifted from Cloudflare's docs. A demo that exercises a code path no product feature uses
+ * is worse than no demo: it passes while the real path is broken.
+ *
+ * Three things here are worth reading as documentation:
+ *  • the task selector — `extract` is `gate: 'required'`, so it 402s WITHOUT a tenant key even
+ *    though the platform floor is configured. That is the BYOK upsell, enforced server-side.
+ *  • `source` in the response — `byok` or `platform`, i.e. whose key actually paid.
+ *  • the model override — the app validates it (no traversal, no operator-only dynamic route).
  */
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
@@ -24,225 +36,177 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { DemoPageHeader } from '../DemoPageHeader';
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// ── Types (mirroring the /api/ai/* responses) ───────────────────────────────
 
-interface AIStatus {
-    workersAI: boolean;
-    aiGateway: boolean;
-    openai: boolean;
-    anthropic: boolean;
-    googleAI: boolean;
+/** `GET /api/ai/status` — the resolver's dry run for the current user. */
+interface AiStatus {
+    configured: boolean;
+    source: 'byok' | 'platform' | null;
+    reason: string;
+    provider: string | null;
+    model: string | null;
+    keyHint: string | null;
+    hasSecret: boolean;
+    strategy: string;
+    gates: Record<string, { allowed: boolean; reason?: string }>;
 }
 
-interface ProviderInfo {
-    key: string;
-    name: string;
-    pathPrefix: string;
+/** `POST /api/ai/complete` — note `source`, which names whose key paid. */
+interface CompleteResponse {
+    text: string;
+    source: 'byok' | 'platform' | null;
+    provider: string | null;
+    model: string | null;
+    usage: { input: number; output: number; cached?: number } | null;
 }
 
-interface ChatResponse {
-    text?: string;
-    response?: unknown;
-    provider?: string;
-    model?: string;
-    usage?: Record<string, unknown>;
-}
+/**
+ * Where a user connects their own key (the AI settings live on the profile page).
+ *
+ * Typed as a plain `string` rather than inlined as a literal: this app's TanStack route
+ * registration only knows a handful of paths, so a literal `to="/profile"` fails to type-check
+ * — the same pre-existing error `UserSection.tsx` has for `/login`, `/register` and `/profile`.
+ * `DemoPageHeader` already navigates this way. Inline the literal once the route tree is
+ * registered properly and this can go.
+ */
+const PROFILE_PATH: string = '/profile';
 
-// ── Popular models by provider ──────────────────────────────────────────────
-
-const PROVIDER_MODELS: Record<string, Array<{ value: string; label: string }>> = {
-    'workers-ai': [
-        { value: '@cf/meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B Instruct' },
-        { value: '@cf/meta/llama-3-8b-instruct', label: 'Llama 3 8B Instruct' },
-        { value: '@cf/mistral/mistral-7b-instruct-v0.2', label: 'Mistral 7B Instruct' },
-        { value: '@hf/google/gemma-7b-it', label: 'Gemma 7B IT' },
-    ],
-    openai: [
-        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-        { value: 'gpt-4o', label: 'GPT-4o' },
-        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    ],
-    anthropic: [
-        { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-        { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-    ],
-    'google-ai-studio': [
-        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-    ],
-};
+/**
+ * The app's declared tasks (see `worker/lib/ai.ts`).
+ *
+ * Hard-coded rather than fetched: task keys are a SERVER contract, and the worker module that
+ * declares them must not be imported into the browser bundle.
+ */
+const TASKS = [
+    { key: 'assist', label: 'Assistant', note: 'Soft gate — runs on the platform key when you have none.' },
+    { key: 'summarize', label: 'Summarise', note: 'Soft gate, and your model wins when you bring a key.' },
+    {
+        key: 'extract',
+        label: 'Document extraction',
+        note: 'REQUIRED gate — 402s without your own key, even though a platform key exists.',
+    },
+] as const;
 
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function CloudflareAIDemoPage() {
     const { isAuthenticated, isInitialized, isLoading: authLoading } = useSession();
-    const [status, setStatus] = useState<AIStatus | null>(null);
-    const [providers, setProviders] = useState<ProviderInfo[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<AiStatus | null>(null);
+    const [statusError, setStatusError] = useState<string | null>(null);
 
-    // Chat state
-    const [mode, setMode] = useState<'workers-ai' | 'gateway' | 'universal'>('workers-ai');
+    const [task, setTask] = useState<string>('assist');
     const [prompt, setPrompt] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('');
-    const [selectedProvider, setSelectedProvider] = useState('workers-ai');
-    const [selectedModel, setSelectedModel] = useState('@cf/meta/llama-3.1-8b-instruct');
-    const [response, setResponse] = useState<ChatResponse | null>(null);
-    const [chatLoading, setChatLoading] = useState(false);
+    const [model, setModel] = useState('');
+    const [response, setResponse] = useState<CompleteResponse | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [sending, setSending] = useState(false);
 
-    // Fallback chain state (universal mode)
-    const [fallbackChain, setFallbackChain] = useState<Array<{ provider: string; model: string }>>([]);
+    const signedIn = isInitialized && !authLoading && isAuthenticated;
 
-    // Load AI status and provider list on mount
     useEffect(() => {
-        void loadStatus();
-        void loadProviders();
-    }, []);
+        // The status endpoint is authenticated, like every other AI route.
+        if (!signedIn) return;
+        void (async () => {
+            try {
+                const data = await api<{ data: AiStatus }>('/api/ai/status');
+                setStatus(data?.data ?? null);
+                setStatusError(null);
+            } catch (err) {
+                setStatusError(isApiError(err) ? err.message : 'Failed to load AI status');
+            }
+        })();
+    }, [signedIn]);
 
-    // Reset model when provider changes
-    useEffect(() => {
-        const models = PROVIDER_MODELS[selectedProvider];
-        if (models && models.length > 0) {
-            setSelectedModel(models[0].value);
-        }
-    }, [selectedProvider]);
+    const send = useCallback(async () => {
+        if (!signedIn || !prompt.trim()) return;
 
-    const loadStatus = async () => {
-        try {
-            const data = await api<AIStatus>('/api/cloudflare/ai/status');
-            setStatus(data);
-        } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load AI status');
-        }
-    };
-
-    const loadProviders = async () => {
-        try {
-            const data = await api<{ providers: ProviderInfo[] }>('/api/cloudflare/ai/providers');
-            setProviders(data.providers);
-        } catch {
-            // Non-critical, we have hardcoded fallback
-        }
-    };
-
-    const sendChat = useCallback(async () => {
-        if (!isInitialized || !isAuthenticated || authLoading) {
-            setError('Please log in to send AI chat messages.');
-            return;
-        }
-        if (!prompt.trim()) return;
-
-        setChatLoading(true);
+        setSending(true);
         setError(null);
         setResponse(null);
-
         try {
-            let endpoint: string;
-            let body: Record<string, unknown>;
-
-            switch (mode) {
-                case 'workers-ai':
-                    endpoint = '/api/cloudflare/ai/chat';
-                    body = {
-                        prompt: prompt.trim(),
-                        model: selectedModel,
-                        ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-                    };
-                    break;
-
-                case 'gateway':
-                    endpoint = '/api/cloudflare/ai/gateway/chat';
-                    body = {
-                        provider: selectedProvider,
-                        model: selectedModel,
-                        prompt: prompt.trim(),
-                        ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-                    };
-                    break;
-
-                case 'universal':
-                    endpoint = '/api/cloudflare/ai/universal/chat';
-                    body = {
-                        provider: selectedProvider,
-                        model: selectedModel,
-                        prompt: prompt.trim(),
-                        ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-                        ...(fallbackChain.length > 0 ? { fallback: fallbackChain } : {}),
-                    };
-                    break;
-            }
-
-            const data = await api<ChatResponse>(endpoint, {
+            const data = await api<CompleteResponse>('/api/ai/complete', {
                 method: 'POST',
-                body,
+                body: {
+                    task,
+                    prompt: prompt.trim(),
+                    ...(systemPrompt.trim() ? { system: systemPrompt.trim() } : {}),
+                    ...(model.trim() ? { model: model.trim() } : {}),
+                },
             });
-
             setResponse(data);
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Chat request failed');
+            // The server returns a CLASSIFIED code — BYOK_REQUIRED, NOT_CONFIGURED,
+            // VALIDATION_ERROR — and the message is already tenant-safe.
+            setError(isApiError(err) ? err.message : 'Request failed');
         } finally {
-            setChatLoading(false);
+            setSending(false);
         }
-    }, [
-        mode,
-        prompt,
-        systemPrompt,
-        selectedProvider,
-        selectedModel,
-        fallbackChain,
-        isAuthenticated,
-        isInitialized,
-        authLoading,
-    ]);
+    }, [signedIn, task, prompt, systemPrompt, model]);
 
-    const currentModels = PROVIDER_MODELS[selectedProvider] || [];
+    const activeTask = TASKS.find((entry) => entry.key === task);
 
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Cloudflare AI"
+                title="AI chat"
                 description={
                     <>
-                        Multi-provider AI via Workers AI, AI Gateway, and Universal chat. Powered by{' '}
-                        <code className="text-xs">@ottabase/cf-ai</code>.
+                        Tenant-aware chat through Cloudflare AI Gateway, powered by{' '}
+                        <code className="text-xs">@ottabase/ottaai</code>. Posts to the same{' '}
+                        <code className="text-xs">/api/ai/complete</code> the rest of the app uses, so the key
+                        resolution and the server-side gate are the real ones.
                     </>
                 }
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare Features"
             />
 
-            {/* ── Binding Status ──────────────────────────────────────────── */}
-            {status ? (
+            {/* ── What would resolve for you ──────────────────────────────── */}
+            {signedIn ? (
                 <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Binding Status</CardTitle>
-                        <CardDescription>Which AI services are configured in your Worker environment</CardDescription>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Your resolution</CardTitle>
+                        <CardDescription>
+                            Computed by the same resolver the runtime path uses, so the guard and the call cannot drift.
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                            <Badge variant={status.workersAI ? 'default' : 'secondary'}>
-                                Workers AI {status.workersAI ? '✓' : '✗'}
-                            </Badge>
-                            <Badge variant={status.aiGateway ? 'default' : 'secondary'}>
-                                AI Gateway {status.aiGateway ? '✓' : '✗'}
-                            </Badge>
-                            <Badge variant={status.openai ? 'default' : 'secondary'}>
-                                OpenAI Key {status.openai ? '✓' : '✗'}
-                            </Badge>
-                            <Badge variant={status.anthropic ? 'default' : 'secondary'}>
-                                Anthropic Key {status.anthropic ? '✓' : '✗'}
-                            </Badge>
-                            <Badge variant={status.googleAI ? 'default' : 'secondary'}>
-                                Google AI Key {status.googleAI ? '✓' : '✗'}
-                            </Badge>
-                        </div>
+                    <CardContent className="space-y-3">
+                        {status ? (
+                            <>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant={status.configured ? 'default' : 'secondary'}>
+                                        {status.configured ? 'Configured' : 'Not configured'}
+                                    </Badge>
+                                    {status.source ? (
+                                        <Badge variant={status.source === 'byok' ? 'default' : 'outline'}>
+                                            source: {status.source}
+                                        </Badge>
+                                    ) : null}
+                                    {status.provider ? <Badge variant="outline">{status.provider}</Badge> : null}
+                                    {status.model ? (
+                                        <span className="text-xs text-muted-foreground">{status.model}</span>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {status.hasSecret
+                                        ? `Running on your own key (${status.keyHint ?? 'saved'}). You are billed by your provider.`
+                                        : 'Running on the platform key. Connect your own to unlock gated tasks and pay your own provider.'}{' '}
+                                    <Link className="underline" to={PROFILE_PATH}>
+                                        Manage AI providers
+                                    </Link>
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">{statusError ?? 'Loading…'}</p>
+                        )}
                     </CardContent>
                 </Card>
             ) : null}
 
-            {/* ── Error Banner ────────────────────────────────────────────── */}
             {error ? (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                     {error}
@@ -251,247 +215,61 @@ export function CloudflareAIDemoPage() {
 
             {isInitialized && !authLoading && !isAuthenticated ? (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                    AI sending is disabled for guest users. Please sign in to send prompts.
+                    Every AI route requires an authenticated session — an anonymous request could otherwise carry a
+                    client-supplied organization header into a resolver that deliberately bypasses RLS. Sign in to send
+                    prompts.
                 </div>
             ) : null}
 
-            {/* ── Mode Selector ───────────────────────────────────────────── */}
+            {/* ── Compose ─────────────────────────────────────────────────── */}
             <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Chat Mode</CardTitle>
-                    <CardDescription>Choose how to route your AI request</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            variant={mode === 'workers-ai' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => {
-                                setMode('workers-ai');
-                                setSelectedProvider('workers-ai');
-                            }}
-                        >
-                            Workers AI
-                        </Button>
-                        <Button
-                            variant={mode === 'gateway' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setMode('gateway')}
-                        >
-                            AI Gateway
-                        </Button>
-                        <Button
-                            variant={mode === 'universal' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setMode('universal')}
-                        >
-                            Universal
-                        </Button>
-                    </div>
-
-                    <p className="mt-3 text-xs text-muted-foreground">
-                        {mode === 'workers-ai' &&
-                            'Direct Workers AI binding — runs models on Cloudflare edge. No API key needed.'}
-                        {mode === 'gateway' &&
-                            'AI Gateway proxy — route requests through any supported provider with caching & logging.'}
-                        {mode === 'universal' &&
-                            'Universal client — unified chat interface with multi-provider fallback.'}
-                    </p>
-                </CardContent>
-            </Card>
-
-            {/* ── Provider & Model ────────────────────────────────────────── */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Provider & Model</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {mode !== 'workers-ai' ? (
-                        <div className="space-y-2">
-                            <Label>Provider</Label>
-                            <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {providers.length > 0
-                                        ? providers.map((p) => (
-                                              <SelectItem key={p.key} value={p.key}>
-                                                  {p.name}
-                                              </SelectItem>
-                                          ))
-                                        : Object.keys(PROVIDER_MODELS).map((key) => (
-                                              <SelectItem key={key} value={key}>
-                                                  {key}
-                                              </SelectItem>
-                                          ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    ) : null}
-
-                    <div className="space-y-2">
-                        <Label>Model</Label>
-                        {currentModels.length > 0 ? (
-                            <Select value={selectedModel} onValueChange={setSelectedModel}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {currentModels.map((m) => (
-                                        <SelectItem key={m.value} value={m.value}>
-                                            {m.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <Input
-                                value={selectedModel}
-                                onChange={(e) => setSelectedModel(e.target.value)}
-                                placeholder="Enter model name"
-                            />
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* ── Fallback Chain (Universal mode only) ────────────────── */}
-            {mode === 'universal' ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Fallback Chain</CardTitle>
-                        <CardDescription>
-                            Add providers in priority order. If the primary fails, each fallback is tried sequentially.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {fallbackChain.map((step, idx) => {
-                            const stepModels = PROVIDER_MODELS[step.provider] || [];
-                            return (
-                                <div key={idx} className="flex items-end gap-2">
-                                    <span className="mb-2 text-xs font-medium text-muted-foreground">#{idx + 1}</span>
-                                    <div className="flex-1 space-y-1">
-                                        {idx === 0 && <Label className="text-xs">Provider</Label>}
-                                        <Select
-                                            value={step.provider}
-                                            onValueChange={(val) => {
-                                                setFallbackChain((prev) => {
-                                                    const next = [...prev];
-                                                    const firstModel = PROVIDER_MODELS[val]?.[0]?.value ?? '';
-                                                    next[idx] = {
-                                                        provider: val,
-                                                        model: firstModel,
-                                                    };
-                                                    return next;
-                                                });
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Object.keys(PROVIDER_MODELS).map((key) => (
-                                                    <SelectItem key={key} value={key}>
-                                                        {key}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        {idx === 0 && <Label className="text-xs">Model</Label>}
-                                        {stepModels.length > 0 ? (
-                                            <Select
-                                                value={step.model}
-                                                onValueChange={(val) => {
-                                                    setFallbackChain((prev) => {
-                                                        const next = [...prev];
-                                                        next[idx] = { ...next[idx], model: val };
-                                                        return next;
-                                                    });
-                                                }}
-                                            >
-                                                <SelectTrigger className="h-8 text-xs">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {stepModels.map((m) => (
-                                                        <SelectItem key={m.value} value={m.value}>
-                                                            {m.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <Input
-                                                className="h-8 text-xs"
-                                                value={step.model}
-                                                onChange={(e) => {
-                                                    setFallbackChain((prev) => {
-                                                        const next = [...prev];
-                                                        next[idx] = {
-                                                            ...next[idx],
-                                                            model: e.target.value,
-                                                        };
-                                                        return next;
-                                                    });
-                                                }}
-                                                placeholder="Model name"
-                                            />
-                                        )}
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="mb-0.5 h-8 px-2 text-muted-foreground hover:text-destructive"
-                                        onClick={() => setFallbackChain((prev) => prev.filter((_, i) => i !== idx))}
-                                    >
-                                        ✕
-                                    </Button>
-                                </div>
-                            );
-                        })}
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                const defaultProvider = 'workers-ai';
-                                const defaultModel = PROVIDER_MODELS[defaultProvider]?.[0]?.value ?? '';
-                                setFallbackChain((prev) => [
-                                    ...prev,
-                                    { provider: defaultProvider, model: defaultModel },
-                                ]);
-                            }}
-                        >
-                            + Add Fallback Provider
-                        </Button>
-
-                        {fallbackChain.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                                Primary: <strong>{selectedProvider}</strong> → Fallbacks:{' '}
-                                {fallbackChain.map((s) => s.provider).join(' → ')}
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
-            ) : null}
-
-            {/* ── Chat Input ──────────────────────────────────────────────── */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Send a Message</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Send a message</CardTitle>
+                    <CardDescription>
+                        You choose a TASK, not a provider or a key — that is the whole promise. An operator changes
+                        provisioning behaviour without touching this call site.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label>System Prompt (optional)</Label>
+                        <Label>Task</Label>
+                        <Select value={task} onValueChange={setTask}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select task" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {TASKS.map((entry) => (
+                                    <SelectItem key={entry.key} value={entry.key}>
+                                        {entry.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {activeTask ? <p className="text-xs text-muted-foreground">{activeTask.note}</p> : null}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>System prompt (optional)</Label>
                         <Input
                             value={systemPrompt}
                             onChange={(e) => setSystemPrompt(e.target.value)}
                             placeholder="e.g. You are a helpful assistant"
                         />
                     </div>
+
+                    <div className="space-y-2">
+                        <Label>Model override (optional)</Label>
+                        <Input
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            placeholder="e.g. gpt-4o — leave blank to use the resolved default"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Validated server-side: no path traversal, and{' '}
+                            <code className="text-xs">dynamic/&lt;route&gt;</code> is operator-only.
+                        </p>
+                    </div>
+
                     <div className="space-y-2">
                         <Label>Prompt</Label>
                         <Textarea
@@ -500,31 +278,23 @@ export function CloudflareAIDemoPage() {
                             placeholder="Ask anything..."
                             rows={3}
                             onKeyDown={(e) => {
-                                if (
-                                    e.key === 'Enter' &&
-                                    (e.ctrlKey || e.metaKey) &&
-                                    isInitialized &&
-                                    isAuthenticated &&
-                                    !authLoading
-                                ) {
-                                    void sendChat();
-                                }
+                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && signedIn) void send();
                             }}
                         />
                     </div>
-                    <Button
-                        onClick={() => void sendChat()}
-                        disabled={chatLoading || !prompt.trim() || !isInitialized || !isAuthenticated || authLoading}
-                    >
-                        {chatLoading ? 'Sending...' : 'Send'}
-                    </Button>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                        {!isInitialized || authLoading
-                            ? 'Checking authentication...'
-                            : isAuthenticated
-                              ? 'Ctrl+Enter to send'
-                              : 'Sign in required to send'}
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                        <Button onClick={() => void send()} disabled={sending || !prompt.trim() || !signedIn}>
+                            {sending ? 'Sending…' : 'Send'}
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                            {!isInitialized || authLoading
+                                ? 'Checking authentication…'
+                                : signedIn
+                                  ? 'Ctrl+Enter to send'
+                                  : 'Sign in required'}
+                        </span>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -533,67 +303,52 @@ export function CloudflareAIDemoPage() {
                 <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Response</CardTitle>
-                        <CardDescription>
-                            {response.provider ? (
-                                <>
-                                    Served by{' '}
-                                    <Badge variant="outline" className="ml-1 text-xs">
-                                        {response.provider}
-                                    </Badge>
-                                </>
+                        <CardDescription className="flex flex-wrap items-center gap-2">
+                            {response.source ? (
+                                <Badge variant={response.source === 'byok' ? 'default' : 'outline'}>
+                                    {response.source === 'byok' ? 'your key' : 'platform key'}
+                                </Badge>
                             ) : null}
-                            {response.model ? (
-                                <span className="ml-2 text-muted-foreground">· {response.model}</span>
-                            ) : null}
-                            {/* Highlight when a fallback provider served the response */}
-                            {mode === 'universal' &&
-                                fallbackChain.length > 0 &&
-                                response.provider &&
-                                response.provider !== selectedProvider && (
-                                    <Badge variant="secondary" className="ml-2 text-xs">
-                                        fallback
-                                    </Badge>
-                                )}
+                            {response.provider ? <Badge variant="outline">{response.provider}</Badge> : null}
+                            {response.model ? <span className="text-muted-foreground">· {response.model}</span> : null}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {response.text ? (
-                            <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm ring-1 ring-border">
-                                {response.text}
-                            </div>
-                        ) : (
-                            <pre className="overflow-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
-                                {JSON.stringify(response.response ?? response, null, 2)}
-                            </pre>
-                        )}
+                        <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm ring-1 ring-border">
+                            {response.text}
+                        </div>
                         {response.usage ? (
                             <div className="mt-3 text-xs text-muted-foreground">
-                                Usage: {JSON.stringify(response.usage)}
+                                {response.usage.input} in · {response.usage.output} out
+                                {response.usage.cached !== undefined ? ` · ${response.usage.cached} cached` : ''}
                             </div>
                         ) : null}
                     </CardContent>
                 </Card>
             ) : null}
 
-            {/* ── Setup Info ──────────────────────────────────────────────── */}
+            {/* ── Setup ───────────────────────────────────────────────────── */}
             <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                        <strong>Workers AI</strong> — enabled by default via{' '}
-                        <code className="text-xs">ai: &#123; binding: &quot;AI&quot; &#125;</code> in wrangler.jsonc.
+                        <strong>Required</strong> — <code className="text-xs">AI_CREDENTIAL_SECRET</code> (the master
+                        key that encrypts tenant credentials). Without it the feature stays dormant and every AI route
+                        returns 501.
                     </p>
                     <p>
-                        <strong>AI Gateway</strong> — set <code className="text-xs">CFAI_GATEWAY_NAME</code> and{' '}
-                        <code className="text-xs">CLOUDFLARE_ACCOUNT_ID</code> in your vars / .dev.vars.
+                        <strong>Gateway</strong> — <code className="text-xs">CLOUDFLARE_ACCOUNT_ID</code> and{' '}
+                        <code className="text-xs">CFAI_GATEWAY_NAME</code>, plus{' '}
+                        <code className="text-xs">CFAI_GATEWAY_TOKEN</code> when the gateway is authenticated.
                     </p>
                     <p>
-                        <strong>External Providers</strong> — add API keys (
-                        <code className="text-xs">CFAI_OPENAI_API_KEY</code>,{' '}
-                        <code className="text-xs">CFAI_ANTHROPIC_API_KEY</code>,{' '}
-                        <code className="text-xs">CFAI_GOOGLE_AI_API_KEY</code>) in .dev.vars or Cloudflare secrets.
+                        <strong>Platform floor (optional)</strong> —{' '}
+                        <code className="text-xs">OTTAAI_PLATFORM_PROVIDER</code>,{' '}
+                        <code className="text-xs">OTTAAI_PLATFORM_MODEL</code> and the matching{' '}
+                        <code className="text-xs">CFAI_&lt;PROVIDER&gt;_API_KEY</code>. Leave unset to ship BYOK-only,
+                        where every task upsells instead of falling back.
                     </p>
                 </CardContent>
             </Card>

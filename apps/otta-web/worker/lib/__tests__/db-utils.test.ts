@@ -115,13 +115,19 @@ describe('ensureDbConnection', () => {
         const env = { OBCF_D1: { id: 'binding-1' } } as any;
 
         ensureDbConnection(env);
+        const policyCallsAfterFirst = mockRegisterPolicy.mock.calls.length;
         ensureDbConnection(env);
 
         expect(mockCreateD1Driver).toHaveBeenCalledTimes(1);
         expect(mockRegisterConnection).toHaveBeenCalledTimes(1);
         expect(mockRegisterModels).toHaveBeenCalledTimes(1);
-        expect(mockRegisterPolicy).toHaveBeenCalledTimes(1);
         expect(mockInitRLS).toHaveBeenCalledTimes(1);
+        // Asserted as "unchanged by the second call", NOT as a fixed number: the policy
+        // count is a function of which packages are enabled (media, plus ottaai's credential
+        // policy, plus the ottablog org-mode overrides), so a hard-coded 1 would break every
+        // time a package is added — while saying nothing about the invariant under test.
+        expect(mockRegisterPolicy.mock.calls.length).toBe(policyCallsAfterFirst);
+        expect(policyCallsAfterFirst).toBeGreaterThan(0);
     });
 
     it('reinitializes when the D1 binding changes', () => {

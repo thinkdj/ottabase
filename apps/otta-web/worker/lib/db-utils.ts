@@ -1,6 +1,7 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/ottaorm';
 import {
     OttablogPlugin,
     OttablogTheme,
@@ -124,6 +125,7 @@ function registerAppModels(env: CloudflareEnv): void {
         ...(packages.comments ? [Comment, CommentReaction] : []),
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
+        ...(packages.ottaai ? [AiProviderCredential] : []),
     ];
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
@@ -132,6 +134,18 @@ function registerAppModels(env: CloudflareEnv): void {
     registerPolicy(mediaLibraryPolicy);
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
     initRLS();
+
+    // AI provider credentials — registered AFTER initRLS() for the same reason as the
+    // ottablog overrides below: the RLS registry is last-write-wins, so a policy registered
+    // before initRLS() would be silently replaced by the built-ins if the name ever collided.
+    //
+    // The STRATEGY here MUST match the one passed to createAiProvisioningWithStorage
+    // (worker/lib/ai.ts) — both read `config.features.ottaai.strategy`, which is what makes
+    // the match structural rather than a comment in two files. Mismatch them and tenants
+    // manage one set of rows while their calls use another, with NO error.
+    if (packages.ottaai) {
+        registerPolicy(createCredentialPolicy({ strategy: config.features.ottaai.strategy }));
+    }
 
     // Org-mode blogs: taxonomy and studio state become tenant data, not app-global.
     // Registered AFTER initRLS so these overrides win (the RLS registry is last-write-wins).

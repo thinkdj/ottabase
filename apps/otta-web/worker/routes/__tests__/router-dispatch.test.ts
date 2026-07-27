@@ -119,14 +119,6 @@ vi.mock('../brand', () => ({
     handleBrandApi: vi.fn(async () => null),
 }));
 
-vi.mock('../cloudflare-ai', () => ({
-    handleAIChat: handlerMock('handleAIChat'),
-    handleAIGatewayChat: handlerMock('handleAIGatewayChat'),
-    handleAIProviders: handlerMock('handleAIProviders'),
-    handleAIStatus: handlerMock('handleAIStatus'),
-    handleAIUniversalChat: handlerMock('handleAIUniversalChat'),
-}));
-
 vi.mock('../cloudflare-d1', () => ({
     handleD1Init: handlerMock('handleD1Init'),
     handleD1TodoById: handlerMock('handleD1TodoById'),
@@ -288,13 +280,6 @@ import {
     handleBlogTagBySlug,
 } from '../blog';
 import { handleBrandApi } from '../brand';
-import {
-    handleAIChat,
-    handleAIGatewayChat,
-    handleAIProviders,
-    handleAIStatus,
-    handleAIUniversalChat,
-} from '../cloudflare-ai';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from '../cloudflare-d1';
 import { handleCloudflareQueue } from '../cloudflare-queue';
 import { handleRateLimiting } from '../cloudflare-rate';
@@ -411,11 +396,6 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleBlogStudioState,
     handleBlogTagBySlug,
     handleBrandApi,
-    handleAIChat,
-    handleAIGatewayChat,
-    handleAIProviders,
-    handleAIStatus,
-    handleAIUniversalChat,
     handleD1Init,
     handleD1TodoById,
     handleD1Todos,

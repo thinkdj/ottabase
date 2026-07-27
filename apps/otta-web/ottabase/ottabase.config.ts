@@ -43,6 +43,10 @@ export default defineOttabaseConfig({
         ottablog: true,
         shortlinks: true,
         referrals: true,
+        // AI provisioning / BYOK. Dormant until AI_CREDENTIAL_SECRET is set — the routes,
+        // the table and the settings UI all stay off, so the app boots and serves fine
+        // without any AI configuration at all.
+        ottaai: true,
     },
 
     // ── Custom / Premium Packages ─────────────────────────────
@@ -83,6 +87,40 @@ export default defineOttabaseConfig({
             urlBase: 'crudhub',
             urlBaseListing: 'browse',
         },
+        // ── AI provisioning / BYOK (non-secret dials) ──────────
+        // Secrets stay in env: AI_CREDENTIAL_SECRET (or AI_CREDENTIAL_KEYRING +
+        // AI_CREDENTIAL_KEY_ID for rotation), CFAI_GATEWAY_TOKEN, CFAI_<PROVIDER>_API_KEY.
+        // These dials are FROZEN AT MAJOR and logged once at boot — changing mode or
+        // strategy silently re-points which key a tenant's calls use.
+        ottaai: {
+            // 'auto' = platform floor with a tenant upgrade — what makes a free tier viable.
+            mode: 'auto',
+            // B2C default. Use 'org-then-user' for a shared-workspace/B2B product.
+            strategy: 'user-then-org',
+            // The only safe FIRST configuration: turning app scoping on later orphans
+            // every pre-existing row, silently, with an empty result.
+            appScope: 'strict',
+            // The kill switch. false ⇒ every task runs on the platform and every
+            // 'required' gate degrades to 'soft'. NOT expressed as mode, on purpose.
+            byokEnabled: true,
+            // Org-wide keys need the ai:manage permission (owner/admin hold it).
+            allowOrgCredentials: true,
+            // Inference calls per minute, checked on ALL THREE dimensions before any is
+            // charged. Best-effort burst control, NOT a billing quota — the counters are
+            // eventually consistent, so the effective ceiling is roughly the limit plus the
+            // in-flight concurrency count.
+            //
+            // It matters most when `platformProvider` is set below: without it, any
+            // authenticated user can loop `/api/ai/complete` on the operator's key.
+            // `perUser`/`perOrganization` may be 0 to disable them. `perApp` may NOT — it is
+            // the only AGGREGATE limit, so a deployment that can bill the operator and sets
+            // it to 0 has its platform calls refused. Use a large number for a high cap.
+            rateLimit: { perUser: 20, perOrganization: 120, perApp: 600 },
+            // Platform floor. Leave null to ship BYOK-only (every gate becomes the upsell).
+            platformProvider: null,
+            platformModel: null,
+        },
+
         // ── Auth behaviour (non-secret flags) ──────────────────
         // These replace the AUTH_SESSION_MAX_AGE, AUTH_REQUIRE_EMAIL_VERIFIED,
         // AUTH_DISABLE_CREDENTIALS, and AUTH_VERBOSE env vars.

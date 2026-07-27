@@ -50,8 +50,8 @@ export function CloudflareDemoIndexPage() {
             href: '/demo/cloudflare/realtime',
         },
         {
-            name: 'AI (Workers AI + Gateway)',
-            description: 'Multi-provider AI chat via Workers AI, AI Gateway, and Universal client',
+            name: 'AI chat (BYOK)',
+            description: 'Tenant-aware chat via AI Gateway — user key → org key → platform floor, gated server-side',
             href: '/demo/cloudflare/ai',
         },
     ];

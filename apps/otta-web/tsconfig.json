@@ -17,6 +17,24 @@
             "@ottabase/db/drizzle": ["../../packages/db/src/drizzle/drizzle.ts"],
             "@ottabase/db/*": ["../../packages/db/src/*"],
             "@ottabase/ottablog": ["../../packages/ottablog/src/index.ts"],
+            "@ottabase/ottaai": ["../../packages/ottaai/src/index.ts"],
+            "@ottabase/ottaai/*": ["../../packages/ottaai/src/*"],
+            /*
+             * ottaorm subpaths MUST be mapped explicitly.
+             *
+             * The `@ottabase/*` catch-all below expands `@ottabase/ottaorm/models` to
+             * `packages/ottaorm/models/src`, which does not exist — so TypeScript silently
+             * falls back to node resolution and picks up `dist`, while a bare
+             * `@ottabase/ottaorm` import resolves to `src`. That gives the program TWO
+             * DISTINCT `BaseModel` classes, and every `registerModels([...])` call fails
+             * with "Property 'getTable' is protected but type 'BaseModel' is not a class
+             * derived from 'BaseModel'". Reproduce with a one-liner:
+             *     registerModels([VerificationToken])
+             */
+            "@ottabase/ottaorm": ["../../packages/ottaorm/src/index.ts"],
+            "@ottabase/ottaorm/models": ["../../packages/ottaorm/src/models/index.ts"],
+            "@ottabase/ottaorm/base": ["../../packages/ottaorm/src/base/index.ts"],
+            "@ottabase/ottaorm/client": ["../../packages/ottaorm/src/client/index.ts"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["@cloudflare/workers-types"]

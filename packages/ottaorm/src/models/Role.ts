@@ -26,6 +26,17 @@ export const PLATFORM_ADMIN_PERMISSION = 'platform:admin';
 export const ORG_ADMIN_PERMISSION = 'org:admin';
 
 /**
+ * Permission to manage the ORGANISATION's AI provider credentials (@ottabase/ottaai).
+ *
+ * A provider key is a SPENDING INSTRUMENT for the org, and RLS isolates tenants, not
+ * members — without a named permission, every member of an org could replace the shared
+ * key with one they control and every colleague's prompts would flow through their
+ * provider account. Deliberately NOT covered by the `*:create`/`*:update` wildcards an
+ * editor holds: `ai:manage` matches only an explicit grant (or platform_owner's '*:*').
+ */
+export const AI_MANAGE_PERMISSION = 'ai:manage';
+
+/**
  * Scoped permission set for the org-level 'owner' / 'admin' roles.
  *
  * Full CRUD on all resources within the org, plus the `org:admin` capability and
@@ -49,6 +60,8 @@ export const ORG_OWNER_PERMISSIONS: string[] = [
     // the own-posts-only RLS dimension (edit anyone's post in the org).
     'posts:publish',
     'posts:manage',
+    // The org's AI provider key is a spending instrument; owners/admins manage it.
+    AI_MANAGE_PERMISSION,
 ];
 
 /**

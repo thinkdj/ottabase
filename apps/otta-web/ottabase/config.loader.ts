@@ -106,6 +106,14 @@ export const PAGE_SIZE_OPTIONS = appConfig.features.pagination.sizeOptions;
 
 export const SPOTLIGHT_CONFIG = appConfig.features.spotlight;
 export const REFERRALS_CONFIG = appConfig.features.referrals;
+/**
+ * AI provisioning dials, for the CLIENT.
+ *
+ * Non-secret only, and only ever a UX affordance: the authoritative gate is
+ * `requireByok` on the server, implemented by the same resolver as the runtime path.
+ * A browser-side flag stops nobody with a fetch call.
+ */
+export const OTTAAI_CONFIG = baseCfg.features.ottaai;
 
 // ── Package toggles (SSOT from ottabase.config.ts) ──
 export const PACKAGES_ENABLED = baseCfg.packages;

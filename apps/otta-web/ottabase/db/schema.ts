@@ -49,6 +49,8 @@ export { todosTable } from '../models/Todo';
 // ============================================================
 // PACKAGE TABLES (from enabled packages)
 // ============================================================
+// Statically re-exported so drizzle-kit sees them without evaluating config.
+export { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 export {
     categoriesTable,
     commentsTable,

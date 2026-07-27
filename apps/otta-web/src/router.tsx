@@ -590,6 +590,16 @@ const adminReferralsRoute = makeAdminRoute(
     { scope: 'org' },
 );
 
+// AI providers: an ORG admin manages the workspace key, and any admin manages their own.
+// The server re-checks ` ai:manage ` on every org-scoped mutation, so this scope is a UX
+// affordance only — a route gate is not an authorization boundary.
+const adminAiProvidersRoute = makeAdminRoute(
+    '/admin/growth/ai-providers',
+    () => import('@/pages/admin/growth/AiProvidersPage'),
+    'AiProvidersPage',
+    { scope: 'org' },
+);
+
 // ─── /demo gallery ───────────────────────────────────────────────────────────
 
 const demoLayoutRoute = new Route({
@@ -758,6 +768,7 @@ const packageRoutes = [
     { route: studioSeriesRoute, pkg: 'ottablog' as const },
     { route: studioThemesRoute, pkg: 'ottablog' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
+    { route: adminAiProvidersRoute, pkg: 'ottaai' as const },
 ];
 
 const routeTree = rootRoute.addChildren([

@@ -24,6 +24,7 @@ module.exports = {
         '../../packages/ottarenderer/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottablog/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/medialibrary/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ottaai/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {
