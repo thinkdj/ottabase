@@ -361,7 +361,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         icon: Terminal,
         label: 'Scripts (CLI)',
         title: 'Scripts (CLI)',
-        description: 'CLI tools for Cloudflare setup, schema generation, cache management, and database cleanup.',
+        description: 'CLI tools for command discovery, Cloudflare setup, local env secrets, and cache/state cleanup.',
         buttonVariant: 'outline',
     },
     {

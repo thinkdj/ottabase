@@ -1,6 +1,7 @@
 /**
  * Scripts Demo Page
- * Demonstrates @ottabase/scripts: CLI tools for Cloudflare setup, schema, migrations, and cache management.
+ * Demonstrates @ottabase/scripts: CLI tools for command discovery, Cloudflare setup, local env
+ * secrets, and cache/state cleanup.
  */
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Cloud, Database, Key, Plug, RotateCcw, Terminal, Trash2 } from 'lucide-react';
@@ -9,7 +10,7 @@ import { DemoPageHeader } from '../DemoPageHeader';
 /**
  * The pnpm scripts wired at the repo root for @ottabase/scripts' CLIs.
  *
- * These are NOT runnable via `npx <bin-name>` — @ottabase/scripts is never declared as a
+ * These are NOT runnable via `npx <bin-name>`. @ottabase/scripts is never declared as a
  * dependency of any workspace package (it's invoked only via `pnpm --filter`), so pnpm
  * never links its `bin` entries into any node_modules/.bin, and npx falls through to the
  * public registry (404). Always go through the `pnpm <name>` script below.
@@ -33,7 +34,7 @@ const CLI_COMMANDS = [
     {
         name: 'cf:setup',
         icon: Cloud,
-        desc: 'Interactively create Cloudflare resources: D1 databases, KV namespaces, R2 buckets, Queues. Prints the resource IDs for use as GitHub Secrets — does not modify wrangler.jsonc.',
+        desc: 'Interactively create Cloudflare resources: D1 databases, KV namespaces, R2 buckets, Queues. Prints the resource IDs for use as GitHub Secrets. Does not modify wrangler.jsonc.',
         usage: 'pnpm cf:setup',
         category: 'Cloudflare',
     },
@@ -61,7 +62,7 @@ const CLI_COMMANDS = [
     {
         name: 'clean:d1',
         icon: Database,
-        desc: 'Delete local D1 state (.wrangler/state/*/d1). Local only — your Cloudflare account is untouched.',
+        desc: 'Delete local D1 state (.wrangler/state/*/d1). Local only, your Cloudflare account is untouched.',
         usage: 'pnpm clean:d1 -- -y',
         category: 'Cleanup',
     },
@@ -75,7 +76,7 @@ const CLI_COMMANDS = [
     {
         name: 'clean:state',
         icon: Database,
-        desc: 'Delete all local Wrangler state — D1, KV and R2. Re-run bootstrap afterwards to bring the platform back up.',
+        desc: 'Delete all local Wrangler state: D1, KV and R2. Re-run bootstrap afterwards to bring the platform back up.',
         usage: 'pnpm clean:state -- -y',
         category: 'Cleanup',
     },
@@ -95,6 +96,17 @@ const CLI_COMMANDS = [
     },
 ];
 
+/**
+ * Notes rendered under a category heading. Mirrors GROUP_NOTES in help.ts, so the
+ * local-vs-remote distinction is stated once per category rather than repeated
+ * (or inconsistently omitted) in every individual command's description.
+ */
+const CATEGORY_NOTES: Partial<Record<string, string>> = {
+    Cloudflare: 'Acts on your remote Cloudflare account: creates or verifies real resources.',
+    Cleanup:
+        'Local only: deletes files in your working copy, never your Cloudflare account. Prompts for a typed YES unless you pass -- -y.',
+};
+
 export function ScriptsDemoPage() {
     const categories = [...new Set(CLI_COMMANDS.map((c) => c.category))];
 
@@ -102,7 +114,7 @@ export function ScriptsDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Scripts"
-                description="CLI tools for Cloudflare setup, validation, cache management, and database cleanup. These are terminal commands — not runtime code."
+                description="Discover, set up, and clean up from the terminal: list every command, provision Cloudflare resources, fill in local secrets, or clear cache and state. These are terminal commands, not runtime code."
                 actions={
                     <Badge
                         variant="outline"
@@ -127,7 +139,7 @@ export function ScriptsDemoPage() {
                                 @ottabase/scripts
                             </code>
                             , but that package isn&apos;t a dependency of anything else in the workspace, so its{' '}
-                            <code>bin</code> entries are never linked — <code>npx &lt;bin-name&gt;</code> won&apos;t
+                            <code>bin</code> entries are never linked, so <code>npx &lt;bin-name&gt;</code> won&apos;t
                             find them. Always run the <code>pnpm</code> script wired at the repo root instead, shown
                             under each command below. <code>pnpm commands</code> lists every one of them.
                         </p>
@@ -144,6 +156,9 @@ pnpm clean:cache -- -y && pnpm dev:kill && pnpm dev`}</code>
                 <Card key={category} className="rounded-xl border-transparent bg-muted/40 shadow-none">
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">{category} Commands</CardTitle>
+                        {CATEGORY_NOTES[category] && (
+                            <CardDescription className="text-xs">{CATEGORY_NOTES[category]}</CardDescription>
+                        )}
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
