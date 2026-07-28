@@ -481,6 +481,13 @@ export const { useList, useCreate, ... } = createModelHooks({ entityName: "short
 ## Commands
 
 ```bash
+pnpm commands         # Every script in one annotated table — start here
+pnpm commands clean   # Filter to a topic
+```
+
+The table is generated from `package.json`, so it always matches the scripts that actually exist. The essentials:
+
+```bash
 pnpm dev              # Start all (Vite + Wrangler)
 pnpm build            # Build everything
 pnpm build:pkg        # Build packages only

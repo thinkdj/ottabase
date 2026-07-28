@@ -8,14 +8,14 @@ import {
     generateMissingKeys,
     isFillableKey,
     resolveTargetAppDir,
-} from '../cli/key-gen';
+} from '../cli/env-secrets';
 
 const GENERATED_VALUE_RE = /^[A-Z]{3}[A-Za-z0-9]{32}$/;
 
 let tempRoots: string[] = [];
 
 function makeRoot(): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ottabase-key-gen-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ottabase-env-secrets-'));
     tempRoots.push(root);
     fs.mkdirSync(path.join(root, 'apps'), { recursive: true });
     fs.writeFileSync(
@@ -53,7 +53,7 @@ afterEach(() => {
     tempRoots = [];
 });
 
-describe('key-gen', () => {
+describe('env-secrets', () => {
     it('uses an explicit allowlist for generated local secrets', () => {
         expect(GENERATED_ENV_CONFIG).toEqual([
             { key: 'AUTH_SECRET', prefix: 'AUT' },

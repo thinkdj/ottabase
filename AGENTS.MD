@@ -625,10 +625,17 @@ otta clean otta-web              # Clean build artifacts
 
 ### pnpm Commands
 
+`pnpm commands` prints every root script as a grouped table (filter with `pnpm commands <text>`). It is generated from
+`package.json`, so prefer it over guessing a script name. When you add a root script, add its description to
+`COMMAND_REGISTRY` in `packages/scripts/src/cli/help.ts` — a test fails otherwise.
+
 ```bash
+# Discovery
+pnpm commands                     # Every script, grouped and annotated
+
 # Dev
 pnpm dev                          # All apps
-pnpm dev:worker                   # Worker only
+pnpm dev:be                       # Worker only
 
 # Build
 pnpm build                        # Everything

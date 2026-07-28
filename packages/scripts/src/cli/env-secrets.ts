@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /**
- * Generate development-safe environment values for the target app.
+ * env:secrets – Fill the target app's .env.local with development-safe secrets.
+ *
+ * Uses the app's .env.example as the source of truth for which keys exist, then generates
+ * values for the allowlisted Ottabase secrets that are still empty. Existing values are
+ * never overwritten, so the command is safe to re-run.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -84,19 +88,19 @@ function findAppFromCwd(root: string, cwd = process.cwd()): string | undefined {
     return undefined;
 }
 
-export interface KeyGenOptions {
+export interface EnvSecretsOptions {
     app?: string;
     cwd?: string;
     env?: NodeJS.ProcessEnv;
 }
 
-export interface KeyGenResult {
+export interface EnvSecretsResult {
     appName: string;
     targetPath: string;
     generated: string[];
 }
 
-export function resolveTargetAppDir(options: KeyGenOptions = {}): string {
+export function resolveTargetAppDir(options: EnvSecretsOptions = {}): string {
     const cwd = options.cwd ?? process.cwd();
     const env = options.env ?? process.env;
     const root = getMonorepoRoot(cwd);
@@ -183,7 +187,7 @@ function writeLines(filePath: string, lines: string[]): void {
     fs.writeFileSync(filePath, `${lines.join('\n')}\n`, 'utf8');
 }
 
-export function generateMissingKeys(options: KeyGenOptions = {}): KeyGenResult {
+export function generateMissingKeys(options: EnvSecretsOptions = {}): EnvSecretsResult {
     const appDir = resolveTargetAppDir(options);
     const appName = path.basename(appDir);
     const templatePath = path.join(appDir, TEMPLATE_FILE);
@@ -234,7 +238,7 @@ export function generateMissingKeys(options: KeyGenOptions = {}): KeyGenResult {
     return { appName, targetPath, generated };
 }
 
-export function main(options: KeyGenOptions = {}) {
+export function main(options: EnvSecretsOptions = {}) {
     const result = generateMissingKeys(options);
     if (!result.generated.length) {
         console.log(`No missing fillable env keys for ${result.appName}. Existing values preserved.`);

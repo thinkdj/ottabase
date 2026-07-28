@@ -13,14 +13,16 @@
         }
     },
     "bin": {
-        "key-gen": "bin/key-gen.cjs",
+        "otta-help": "bin/help.cjs",
+        "env-secrets": "bin/env-secrets.cjs",
         "cloudflare-login": "bin/cloudflare-login.cjs",
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
         "clean-cache": "bin/clean-cache.cjs",
-        "clean-reset": "bin/clean-reset.mjs",
-        "clean-db": "bin/clean-db.mjs",
+        "clean-d1": "bin/clean-d1.mjs",
         "clean-kv": "bin/clean-kv.mjs",
+        "clean-state": "bin/clean-state.mjs",
+        "clean-all": "bin/clean-all.mjs",
         "kill-ports": "bin/kill-ports.cjs"
     },
     "files": [
@@ -29,14 +31,16 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/key-gen.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/key-gen.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
-        "key:gen": "node bin/key-gen.cjs",
-        "clean-reset": "node bin/clean-reset.mjs",
-        "clean-db": "node bin/clean-db.mjs",
+        "otta-help": "node bin/help.cjs",
+        "env-secrets": "node bin/env-secrets.cjs",
+        "clean-d1": "node bin/clean-d1.mjs",
         "clean-kv": "node bin/clean-kv.mjs",
+        "clean-state": "node bin/clean-state.mjs",
+        "clean-all": "node bin/clean-all.mjs",
         "kill-ports": "node bin/kill-ports.cjs",
         "cloudflare-login": "node bin/cloudflare-login.cjs",
         "cloudflare-setup": "node bin/cloudflare-setup.cjs",

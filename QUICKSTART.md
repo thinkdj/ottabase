@@ -67,10 +67,19 @@ which avoids the common first-load race where the frontend boots before the back
 ## Step 2: Configure Environment (30 seconds)
 
 ```bash
-# Copy the environment template
-cp apps/otta-web/.env.example apps/otta-web/.env.local
+# Creates apps/otta-web/.env.local from .env.example and fills in every local secret
+pnpm env:secrets
+```
 
-# Generate secrets (choose one method)
+That generates `AUTH_SECRET`, `MIGRATION_SECRET`, `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET` and friends. It never
+overwrites a value you already set, so it is safe to re-run, and it deliberately leaves third-party credentials (OAuth
+client secrets, provider API keys) empty for you to fill in.
+
+<details>
+<summary>Prefer to do it by hand?</summary>
+
+```bash
+cp apps/otta-web/.env.example apps/otta-web/.env.local
 
 # macOS/Linux:
 openssl rand -base64 32
@@ -79,8 +88,10 @@ openssl rand -base64 32
 [Convert]::ToBase64String([byte[]][Security.Cryptography.RNGCryptoServiceProvider]::new().GetBytes(32))
 ```
 
-Edit `.env.local` and fill in the `AUTH_SECRET`, `MIGRATION_SECRET`, and `BOOTSTRAP_OWNER_SECRET` with the generated
-values. For local dev, you can use the same value for all three.
+Then fill in `AUTH_SECRET`, `MIGRATION_SECRET`, and `BOOTSTRAP_OWNER_SECRET`. For local dev the same value works for all
+three.
+
+</details>
 
 In production, set these as Wrangler secrets before first bootstrap:
 
@@ -336,16 +347,18 @@ The `__bootstrap__/api/*` routes are only active on first setup. Once the platfo
 reset:
 
 ```bash
-# Full reset (clears db + kv + everything)
-pnpm clean:reset
+# Local state only — D1 + KV + R2 (keeps build output)
+pnpm clean:state
 
-# Cloudflare local state reset only (D1 + KV)
-pnpm clean:cf
+# Everything: local state + build caches + packages/*/dist
+pnpm clean:all
 
 # Then re-run bootstrap (Step 4)
 ```
 
-Use `pnpm clean:cf` when you want to wipe local Cloudflare-emulated persistence without doing a broader repo reset.
+Use `pnpm clean:state` when you want to wipe local Cloudflare-emulated persistence without doing a broader repo reset.
+Both commands are local only — your Cloudflare account is never touched — and both prompt for a typed `YES` (add
+`-- --yes` to skip).
 
 Use bootstrap for the first-time platform bring-up. Use Admin → Migrate later when the app is already running and you
 need to apply schema updates from the UI.
@@ -414,11 +427,20 @@ pnpm format
 
 ## Common Commands
 
+Forgot what's available? `pnpm commands` prints every script in a grouped table, generated from `package.json` so it
+never drifts. `pnpm commands <text>` filters it (`pnpm commands clean`), and `pnpm commands --all` includes the internal
+lifecycle scripts.
+
 ```bash
+# Discovery
+pnpm commands                # Every script, grouped and annotated
+pnpm commands cf             # Filter by name, description or group
+
 # Development
 pnpm dev                     # Start Vite + Wrangler
 pnpm dev:full                # Install + build + test + start dev
-pnpm dev:worker             # Wrangler only (3004)
+pnpm dev:be                 # Wrangler only (3004)
+pnpm dev:kill               # Free ports 3003/3004
 
 # Building
 pnpm build:pkg              # Build shared packages (required first)
@@ -429,14 +451,14 @@ pnpm lint                   # ESLint all packages
 pnpm type-check             # TypeScript check all packages
 pnpm test --filter=pkg      # Vitest filter
 
-# Database
+# Database (all local only — never touches your Cloudflare account)
 curl -X POST http://localhost:3004/api/ottaorm/init  # Create/update tables
-pnpm clean:db               # Clear D1 (local)
-pnpm clean:kv               # Clear KV (local)
-pnpm clean:cf               # Clear both local D1 + local KV
+pnpm clean:d1               # Clear local D1
+pnpm clean:kv               # Clear local KV
+pnpm clean:state            # Clear all local state (D1 + KV + R2)
 
 # Full reset
-pnpm clean:reset            # Clear everything (db + kv + state)
+pnpm clean:all              # Local state + build caches + packages/*/dist
 ```
 
 ---

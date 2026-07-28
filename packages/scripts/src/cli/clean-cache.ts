@@ -34,6 +34,11 @@ function prompt(question: string): Promise<string> {
     });
 }
 
+/** Shared with the clean:* scripts in bin/clean-lib.mjs so every one of them skips its prompt the same way. */
+function hasYesFlag(): boolean {
+    return process.argv.includes('--yes') || process.argv.includes('-y');
+}
+
 async function main() {
     const root = process.cwd();
 
@@ -42,10 +47,14 @@ async function main() {
     log('This will remove Turborepo caches (.turbo and node_modules/.cache/turbo).', YELLOW);
     log('');
 
-    const answer = await prompt(`${BOLD}Type YES to continue: ${NC}`);
-    if (answer !== 'YES') {
-        log('Aborted.', RED);
-        process.exit(0);
+    if (hasYesFlag()) {
+        log('--yes passed: skipping confirmation prompt.', YELLOW);
+    } else {
+        const answer = await prompt(`${BOLD}Type YES to continue: ${NC}`);
+        if (answer !== 'YES') {
+            log('Aborted.', RED);
+            process.exit(0);
+        }
     }
 
     log('');
