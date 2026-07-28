@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { GENERATED_ENV_KEYS, generateMissingKeys, isFillableKey, resolveTargetAppDir } from '../cli/key-gen';
+import {
+    GENERATED_ENV_CONFIG,
+    GENERATED_ENV_KEYS,
+    generateMissingKeys,
+    isFillableKey,
+    resolveTargetAppDir,
+} from '../cli/key-gen';
 
 const GENERATED_VALUE_RE = /^[A-Z]{3}[A-Za-z0-9]{32}$/;
 
@@ -49,6 +55,14 @@ afterEach(() => {
 
 describe('key-gen', () => {
     it('uses an explicit allowlist for generated local secrets', () => {
+        expect(GENERATED_ENV_CONFIG).toEqual([
+            { key: 'AUTH_SECRET', prefix: 'AUT' },
+            { key: 'MIGRATION_SECRET', prefix: 'MIG' },
+            { key: 'BOOTSTRAP_OWNER_SECRET', prefix: 'BOS' },
+            { key: 'CRON_SECRET', prefix: 'CRN' },
+            { key: 'AI_CREDENTIAL_SECRET', prefix: 'AIC' },
+            { key: 'BLOG_PREVIEW_SECRET', prefix: '' },
+        ]);
         expect(GENERATED_ENV_KEYS).toEqual([
             'AUTH_SECRET',
             'MIGRATION_SECRET',
@@ -117,6 +131,17 @@ describe('key-gen', () => {
         const second = generateMissingKeys({ cwd: root, env: {} });
         expect(second.generated).toEqual([]);
         expect(fs.readFileSync(second.targetPath, 'utf8')).toBe(firstText);
+    });
+
+    it('uses no prefix when the allowlist configuration prefix is empty', () => {
+        const root = makeRoot();
+        writeApp(root, 'otta-web', 'BLOG_PREVIEW_SECRET=\n');
+
+        const result = generateMissingKeys({ cwd: root, env: {} });
+        const env = readEnv(result.targetPath);
+
+        expect(result.generated).toHaveLength(1);
+        expect(env.BLOG_PREVIEW_SECRET).toMatch(/^[A-Za-z0-9]{32}$/);
     });
 
     it('resolves the target app from env, flags, cwd, and the root default', () => {

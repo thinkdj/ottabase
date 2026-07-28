@@ -12,25 +12,17 @@ const TARGET_FILE = '.env.local';
 
 const ENV_ASSIGNMENT_RE = /^([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/;
 
-export const GENERATED_ENV_KEYS = [
-    'AUTH_SECRET',
-    'MIGRATION_SECRET',
-    'BOOTSTRAP_OWNER_SECRET',
-    'CRON_SECRET',
-    'AI_CREDENTIAL_SECRET',
-    'BLOG_PREVIEW_SECRET',
+export const GENERATED_ENV_CONFIG = [
+    { key: 'AUTH_SECRET', prefix: 'AUT' },
+    { key: 'MIGRATION_SECRET', prefix: 'MIG' },
+    { key: 'BOOTSTRAP_OWNER_SECRET', prefix: 'BOS' },
+    { key: 'CRON_SECRET', prefix: 'CRN' },
+    { key: 'AI_CREDENTIAL_SECRET', prefix: 'AIC' },
+    { key: 'BLOG_PREVIEW_SECRET', prefix: '' },
 ] as const;
 
-const PREFIX_BY_KEY: Record<(typeof GENERATED_ENV_KEYS)[number], string> = {
-    AUTH_SECRET: 'AUT',
-    MIGRATION_SECRET: 'MIG',
-    BOOTSTRAP_OWNER_SECRET: 'BOS',
-    CRON_SECRET: 'CRN',
-    AI_CREDENTIAL_SECRET: 'AIC',
-    BLOG_PREVIEW_SECRET: 'BPS',
-};
-
-const KEY_PREFIX = 'DEV';
+export const GENERATED_ENV_KEYS = GENERATED_ENV_CONFIG.map(({ key }) => key);
+type GeneratedEnvKey = (typeof GENERATED_ENV_CONFIG)[number]['key'];
 const RANDOM_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const RANDOM_SUFFIX_LENGTH = 32;
 
@@ -155,12 +147,12 @@ function isMissingValue(value: string): boolean {
     return stripQuotes(value).length === 0;
 }
 
-export function isFillableKey(key: string): key is (typeof GENERATED_ENV_KEYS)[number] {
-    return (GENERATED_ENV_KEYS as readonly string[]).includes(key);
+export function isFillableKey(key: string): key is GeneratedEnvKey {
+    return GENERATED_ENV_CONFIG.some((entry) => entry.key === key);
 }
 
-function prefixForKey(key: (typeof GENERATED_ENV_KEYS)[number]): string {
-    return PREFIX_BY_KEY[key] || KEY_PREFIX;
+function prefixForKey(key: GeneratedEnvKey): string {
+    return GENERATED_ENV_CONFIG.find((entry) => entry.key === key)?.prefix ?? '';
 }
 
 function makeRandomSuffix(length: number): string {
