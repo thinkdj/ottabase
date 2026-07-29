@@ -31,16 +31,11 @@ export {
     toMediaViewerItem,
 } from './utils';
 
+// Pure lightbox state machine (no React, no JSX, no icons).
 export { clampMediaIndex, createMediaLightboxState, getAdjacentMediaIndex } from './viewer/lightbox-state';
-export { MediaImmersiveLightbox } from './viewer/MediaImmersiveLightbox';
-export { MediaLightbox } from './viewer/MediaLightbox';
-export {
-    MediaLightboxProvider,
-    useMediaLightboxRegistration,
-    useOptionalMediaLightbox,
-} from './viewer/MediaLightboxProvider';
-export type { MediaLightboxProviderProps } from './viewer/MediaLightboxProvider';
-export { MediaPreview } from './viewer/MediaPreview';
+
+// Headless URL-sync hook — react-only, no rendered UI. Stays on the pure root.
+// The rendered viewer surface (MediaLightbox, MediaPreview, ZoomableImage, the
+// provider, and its registration hooks) lives at `@ottabase/medialibrary/react`.
 export { useMediaLightboxUrlSync } from './viewer/useMediaLightboxUrlSync';
 export type { MediaLightboxUrlSyncOptions } from './viewer/useMediaLightboxUrlSync';
-export { ZoomableImage, type ZoomStartGesture } from './viewer/ZoomableImage';

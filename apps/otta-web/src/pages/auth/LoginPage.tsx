@@ -2,7 +2,8 @@ import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
-import { getLoginConfig, LoginForm } from '@ottabase/auth/components';
+import { getLoginConfig } from '@ottabase/auth/config';
+import { LoginForm } from '@ottabase/auth/components';
 import {
     Button,
     Card,

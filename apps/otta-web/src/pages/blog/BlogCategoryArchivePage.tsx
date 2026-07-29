@@ -5,7 +5,8 @@
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
-import { defaultTheme, formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
+import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
+import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';

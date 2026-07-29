@@ -1,4 +1,4 @@
-import { useMediaLightboxRegistration } from '@ottabase/medialibrary';
+import { useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import React from 'react';

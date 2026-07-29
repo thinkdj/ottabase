@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import MediaGallery from './MediaGallery';
 
-vi.mock('@ottabase/medialibrary', () => ({
+vi.mock('@ottabase/medialibrary/react', () => ({
     MediaPreview: ({ item, mode }: { item: { mediaKind: string; title: string | null }; mode: string }) => (
         <div data-testid="media-preview" data-kind={item.mediaKind} data-mode={mode}>
             {item.title ?? 'untitled'}

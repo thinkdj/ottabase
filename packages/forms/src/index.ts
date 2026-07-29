@@ -1,15 +1,14 @@
 // ============================================================
-// @ottabase/forms - Auto-generated CRUD Forms for OttaORM Models
+// @ottabase/forms - Headless CRUD config for OttaORM Models
 // ============================================================
-// Complete CRUD interface from model metadata
+// This is the PURE entry: config builders + Zod schema
+// generation + types only. It imports ZERO rendered UI, so its
+// whole import graph stays UI-free and tree-shakeable.
+//
+// The rendered components (FormField, ModelForm, ModelTable,
+// ModelDetail, ModelCrud) live behind the '@ottabase/forms/react'
+// subpath (see ./react). Import them from there.
 // ============================================================
-
-// Components
-export { FormField } from './components/FormField';
-export { ModelForm } from './components/ModelForm';
-export { ModelTable } from './components/ModelTable';
-export { ModelDetail } from './components/ModelDetail';
-export { ModelCrud } from './components/ModelCrud';
 
 // Utilities
 export { createModelConfig, defineModelConfig } from './utils/modelConfig';

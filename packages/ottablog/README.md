@@ -26,6 +26,28 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 
 ```bash
 pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
+
+# Only needed if you render posts (i.e. import from @ottabase/ottablog/renderer)
+pnpm add @ottabase/ottarenderer
+```
+
+## Module Entry Points
+
+The package is split so the pure core never pulls in rendered UI or `@ottabase/ottarenderer` (an **optional** peer
+dependency — install it only if you render). Importing the pure root loads zero React components.
+
+| Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
+| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                                                                                                                                   | Yes                   |
+| `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
+| `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
+
+Register a custom theme (pure) from the root and render it from `/renderer`:
+
+```tsx
+import { registerTheme, setActiveTheme, type Theme } from '@ottabase/ottablog';
+import { BlogRenderer } from '@ottabase/ottablog/renderer';
 ```
 
 ## Quick Start
@@ -770,14 +792,15 @@ Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)*
 
 ## Styling
 
-The package includes a `BlogRenderer` component for rendering blog posts with theme support.
+The `@ottabase/ottablog/renderer` subpath includes a `BlogRenderer` component for rendering blog posts with theme
+support. (It is not exported from the pure root — see [Module Entry Points](#module-entry-points).)
 
 ### Option 1: Tailwind Classes (Recommended)
 
 The default theme uses Tailwind CSS classes. No additional CSS import required:
 
 ```tsx
-import { BlogRenderer, initOttablog } from '@ottabase/ottablog';
+import { BlogRenderer, initOttablog } from '@ottabase/ottablog/renderer';
 
 initOttablog({ defaultThemeId: 'default' });
 

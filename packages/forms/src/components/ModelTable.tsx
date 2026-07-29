@@ -11,7 +11,8 @@ import type {
     DataTablePaginationState,
     DataTableSortingState,
 } from '@ottabase/ui-datatable';
-import { actionsColumn, createColumns, DataTable, selectColumn, useDataTable } from '@ottabase/ui-datatable';
+import { useDataTable } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable, selectColumn } from '@ottabase/ui-datatable/react';
 import { Edit2, Eye, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { ModelFieldDescriptor, ModelTableProps } from '../types';

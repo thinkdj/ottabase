@@ -1,4 +1,5 @@
-import { DocsLayout, buildPageSlug } from '@ottabase/docs';
+import { DocsLayout } from '@ottabase/docs/react';
+import { buildPageSlug } from '@ottabase/docs';
 import '@ottabase/docs/styles.css';
 import { useLayoutMeta } from '@ottabase/ottalayout/react';
 import { useLocation, useNavigate } from '@tanstack/react-router';

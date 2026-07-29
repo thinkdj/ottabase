@@ -11,22 +11,37 @@
         "./schema": {
             "types": "./src/schema.ts",
             "default": "./src/schema.ts"
+        },
+        "./react": {
+            "types": "./src/react.ts",
+            "default": "./src/react.ts"
         }
     },
+    "sideEffects": false,
     "scripts": {
         "clean": "rm -rf .turbo node_modules",
         "test": "vitest"
     },
     "peerDependencies": {
         "@ottabase/ottaorm": "workspace:*",
+        "@tabler/icons-react": "catalog:",
         "drizzle-orm": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
     },
-    "dependencies": {
-        "@tabler/icons-react": "catalog:"
+    "peerDependenciesMeta": {
+        "@tabler/icons-react": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        },
+        "react-dom": {
+            "optional": true
+        }
     },
     "devDependencies": {
+        "@tabler/icons-react": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",

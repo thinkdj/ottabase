@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import type { MenuItemTreeNode } from '@ottabase/ottamenu';
-import { buildItemTree, renderMenu } from '@ottabase/ottamenu';
+import { buildItemTree } from '@ottabase/ottamenu';
+import { renderMenu } from '@ottabase/ottamenu/render';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,

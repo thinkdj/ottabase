@@ -6,8 +6,8 @@
  */
 
 import { OttablogPlugin, OttablogTheme } from '../ottaorm-models';
-import { activatePlugin } from '../plugins';
-import { setActiveTheme } from '../themes';
+import { activatePlugin } from '../plugins/registry';
+import { setActiveTheme } from '../themes/registry';
 
 export interface StudioThemeState {
     id: string;

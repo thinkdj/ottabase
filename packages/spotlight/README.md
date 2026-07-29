@@ -24,12 +24,27 @@ search.
 pnpm add @ottabase/spotlight
 ```
 
+## Entry Points
+
+The package ships two entry points so consumers only pull in UI dependencies when they actually render UI:
+
+- `@ottabase/spotlight` — **pure**. Context, hooks and API helpers (`useSpotlight`, `useSpotlightSearch`,
+  `createApiSearchHandler`, `createApiSearchHandlerWithSignal`) plus all types. No UI dependencies.
+- `@ottabase/spotlight/react` — the **rendered** components (`SpotlightProvider`, `Spotlight`). These pull in the
+  optional peer dependencies `@ottabase/ui-shadcn`, `@radix-ui/react-dialog` and `@tabler/icons-react`.
+
+Install the UI peers alongside the package when you render components:
+
+```bash
+pnpm add @ottabase/spotlight @ottabase/ui-shadcn @radix-ui/react-dialog @tabler/icons-react
+```
+
 ## Usage
 
 ### Basic Usage
 
 ```tsx
-import { SpotlightProvider } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
 
 function App() {
     return (
@@ -45,7 +60,8 @@ function App() {
 #### Using Fetch API
 
 ```tsx
-import { SpotlightProvider, type SpotlightResult } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import type { SpotlightResult } from '@ottabase/spotlight';
 
 function App() {
     const handleSearch = async (query: string, signal?: AbortSignal): Promise<SpotlightResult[]> => {
@@ -87,7 +103,8 @@ function App() {
 #### Using @ottabase/api Package
 
 ```tsx
-import { SpotlightProvider, createApiSearchHandler } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import { createApiSearchHandler } from '@ottabase/spotlight';
 import { api } from '@ottabase/api';
 import { useRouter } from '@tanstack/react-router';
 
@@ -124,7 +141,8 @@ function App() {
 #### Using @ottabase/api with Full AbortSignal Support
 
 ```tsx
-import { SpotlightProvider, createApiSearchHandlerWithSignal } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import { createApiSearchHandlerWithSignal } from '@ottabase/spotlight';
 
 function App() {
     const handleSearch = createApiSearchHandlerWithSignal({
@@ -149,7 +167,8 @@ function App() {
 #### Using Custom API Client with AbortSignal Support
 
 ```tsx
-import { SpotlightProvider, type SpotlightResult } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import type { SpotlightResult } from '@ottabase/spotlight';
 import { createApiClient } from '@ottabase/api';
 
 // Create API client with abort signal support
@@ -245,7 +264,8 @@ function MyComponent() {
 ### Custom Renderers (Loading, Empty, Error, Results)
 
 ```tsx
-import { SpotlightProvider, type SpotlightResult } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import type { SpotlightResult } from '@ottabase/spotlight';
 
 function App() {
     const renderResult = (result: SpotlightResult, index: number, isSelected: boolean) => {
@@ -295,7 +315,8 @@ function App() {
 ### With Default Results
 
 ```tsx
-import { SpotlightProvider, type SpotlightResult } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
+import type { SpotlightResult } from '@ottabase/spotlight';
 
 const defaultResults: SpotlightResult[] = [
     { id: 'home', label: 'Home', onSelect: () => navigate('/') },

@@ -51,6 +51,16 @@ export default defineConfig({
             ),
             '@ottabase/ottaai/react': path.resolve(__dirname, '../../packages/ottaai/src/react/index.ts'),
             '@ottabase/ottaai': path.resolve(__dirname, '../../packages/ottaai/src/index.ts'),
+            // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json) — dist-only exports
+            // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
+            '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),
+            '@ottabase/forms/react': path.resolve(__dirname, '../../packages/forms/src/react.ts'),
+            '@ottabase/ui-datatable/react': path.resolve(__dirname, '../../packages/ui-datatable/src/react.ts'),
+            '@ottabase/spotlight/react': path.resolve(__dirname, '../../packages/spotlight/src/react.ts'),
+            '@ottabase/docs/react': path.resolve(__dirname, '../../packages/docs/src/react.ts'),
+            '@ottabase/medialibrary/react': path.resolve(__dirname, '../../packages/medialibrary/src/react.ts'),
+            '@ottabase/ottablog/renderer': path.resolve(__dirname, '../../packages/ottablog/src/renderer.ts'),
+            '@ottabase/ottamenu/render': path.resolve(__dirname, '../../packages/ottamenu/src/render/index.tsx'),
             '@ottabase/cf-realtime/server': path.resolve(__dirname, './src/test-mocks/cf-realtime-server.ts'),
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../../packages/ottarouter/src/index.ts'),

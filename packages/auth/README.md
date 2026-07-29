@@ -370,16 +370,43 @@ and malformed-response failures set `sessionError` while retaining the last conf
 handlers should call `invalidateAuthSession()`, which clears persisted auth state and notifies the root so app and
 tenant query caches can be cleared together.
 
-## UI Components
+## Login Config Helpers (pure)
 
-Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). They never depended on
-Auth.js and take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
+The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. They use
+type-only imports and pull **zero** UI dependencies, so a worker/edge route (e.g. `GET /api/auth/config`) can decide
+which sign-in methods to show without ever loading shadcn or lucide:
 
 ```typescript
-import { LoginForm, getLoginConfig } from '@ottabase/auth/components';
+import {
+    getLoginConfig,
+    getConfiguredSocialProviders,
+    isCredentialsConfigured,
+    isEmailProviderConfigured,
+} from '@ottabase/auth/config';
+
+const config = getLoginConfig(env);
+// { socialProviders, showCredentials, showMagicLink, hasSocialProviders, hasEmailProvider }
+```
+
+- `getConfiguredSocialProviders(env)` - social providers with credentials configured
+- `isEmailProviderConfigured(env)` - true if the dev trap, SMTP, or Resend is configured
+- `isCredentialsConfigured(env)` - true unless `AUTH_DISABLE_CREDENTIALS` is set
+- `getLoginConfig(env)` - all of the above combined into one config object
+
+## UI Components
+
+Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
+**only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
+and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
+stay free of them. The components never depended on Auth.js and take plain callback props, so you wire them to
+`@ottabase/auth/client` yourself.
+
+```typescript
+import { LoginForm } from '@ottabase/auth/components';
+import { getLoginConfig } from '@ottabase/auth/config';
 import { signInWithCredentials, signInWithProvider, sendMagicLink } from '@ottabase/auth/client';
 
-// Auto-detect configured providers/methods from env vars
+// Auto-detect configured providers/methods from env vars (pure helper — no UI deps)
 const config = getLoginConfig(process.env);
 
 <LoginForm
@@ -394,12 +421,7 @@ const config = getLoginConfig(process.env);
 ```
 
 Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `RegisterForm`, `SocialLoginButtons` +
-`SocialLoginDivider`. Helper functions in the same subpath:
-
-- `getConfiguredSocialProviders(env)` - social providers with credentials configured
-- `isEmailProviderConfigured(env)` - true if the dev trap, SMTP, or Resend is configured
-- `isCredentialsConfigured(env)` - true unless `AUTH_DISABLE_CREDENTIALS` is set
-- `getLoginConfig(env)` - all of the above combined into one config object
+`SocialLoginDivider`.
 
 ## Environment Variables
 
@@ -447,8 +469,19 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
 ├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
-└── components/            Framework-agnostic login/register UI (shadcn/ui)
+└── components/            Framework-agnostic login/register UI (shadcn/ui) — the `./components` subpath
+    └── helpers.ts         Pure, type-only env→login-config helpers — the `./config` subpath (no UI deps)
 ```
+
+### Subpath purity
+
+Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui-shadcn` and `lucide-react` are optional peer
+dependencies that only `@ottabase/auth/components` pulls in:
+
+| Subpath                                                                         | Rendered UI? | Notable deps                                           |
+| ------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------ |
+| `.`, `./providers`, `./session`, `./backend`, `./client`, `./react`, `./config` | No (pure)    | none of the UI packages                                |
+| `./components`                                                                  | Yes          | `@ottabase/ui-shadcn`, `lucide-react` (optional peers) |
 
 DB access goes through the existing OttaORM models (`User`, `Account`, `VerificationToken`, `OrganizationMember` from
 `@ottabase/ottaorm/models`) — there is no hand-rolled adapter layer. Every cryptographic primitive runs on

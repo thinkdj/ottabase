@@ -43,6 +43,14 @@
         "@tanstack/react-router": "catalog:",
         "react": "catalog:"
     },
+    "peerDependenciesMeta": {
+        "@tanstack/react-router": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
     "devDependencies": {
         "@types/react": "catalog:",
         "react": "catalog:",

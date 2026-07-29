@@ -7,7 +7,7 @@ import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
-import { MediaLightboxProvider } from '@ottabase/medialibrary';
+import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import type { HeroImage } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';

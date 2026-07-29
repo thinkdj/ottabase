@@ -5,6 +5,7 @@
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
+    "sideEffects": false,
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -25,6 +26,11 @@
             "types": "./dist/components/index.d.ts",
             "import": "./dist/components/index.mjs",
             "require": "./dist/components/index.js"
+        },
+        "./config": {
+            "types": "./dist/components/helpers.d.ts",
+            "import": "./dist/components/helpers.mjs",
+            "require": "./dist/components/helpers.js"
         },
         "./backend": {
             "types": "./dist/backend-handler.d.ts",
@@ -79,27 +85,37 @@
         "@ottabase/cf": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "jotai": "catalog:",
+        "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        }
     },
     "dependencies": {
         "@ottabase/cf": "workspace:*",
         "@ottabase/email": "workspace:*",
-        "@ottabase/utils": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
-        "lucide-react": "catalog:"
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "jotai": "catalog:",
+        "lucide-react": "catalog:",
         "typescript": "catalog:",
         "tsup": "catalog:",
         "rimraf": "catalog:",

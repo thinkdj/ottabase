@@ -11,6 +11,11 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.mjs",
+            "require": "./dist/react.js"
         }
     },
     "files": [
@@ -36,18 +41,23 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@ottabase/config": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
-        "@tabler/icons-react": "catalog:"
+        "@ottabase/config": "workspace:*"
     },
     "peerDependencies": {
+        "@ottabase/ui-shadcn": "workspace:*",
         "@radix-ui/react-dialog": "^1.1.4",
         "@tabler/icons-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
     },
     "peerDependenciesMeta": {
-        "@ottabase/api": {
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "@radix-ui/react-dialog": {
+            "optional": true
+        },
+        "@tabler/icons-react": {
             "optional": true
         }
     },

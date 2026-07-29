@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-    entry: ['src/index.ts'],
+    entry: ['src/index.ts', 'src/react.ts'],
     format: ['cjs', 'esm'],
     dts: {
         compilerOptions: {
@@ -11,12 +11,5 @@ export default defineConfig({
     },
     clean: true,
     treeshake: true,
-    external: [
-        '@ottabase/ui-shadcn',
-        '@tanstack/react-table',
-        '@tanstack/react-query',
-        'lucide-react',
-        'react',
-        'react-dom',
-    ],
+    external: ['@tanstack/react-table', '@tanstack/react-query', 'clsx', 'lucide-react', 'react', 'react-dom'],
 });

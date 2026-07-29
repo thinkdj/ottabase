@@ -31,7 +31,7 @@ const PROVIDER_CONFIG: Record<string, { name: string; order: number }> = {
  *
  * @example
  * ```typescript
- * import { getConfiguredSocialProviders } from "@ottabase/auth/components";
+ * import { getConfiguredSocialProviders } from "@ottabase/auth/config";
  *
  * const providers = getConfiguredSocialProviders(process.env);
  * // Returns providers that have credentials configured
@@ -117,7 +117,7 @@ export function isCredentialsConfigured(env?: ProviderEnv): boolean {
  *
  * @example
  * ```typescript
- * import { isEmailProviderConfigured } from "@ottabase/auth/components";
+ * import { isEmailProviderConfigured } from "@ottabase/auth/config";
  *
  * const showMagicLink = isEmailProviderConfigured(process.env);
  * ```
@@ -148,7 +148,7 @@ export function isEmailProviderConfigured(env: ProviderEnv): boolean {
  *
  * @example
  * ```typescript
- * import { getLoginConfig } from "@ottabase/auth/components";
+ * import { getLoginConfig } from "@ottabase/auth/config";
  *
  * const config = getLoginConfig(process.env);
  *

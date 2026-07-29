@@ -9,74 +9,15 @@ import '@ottabase/ottarenderer/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 import { applyFilters, doAction, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
-import type { EditorJSData, HeroImage, PostAuthor, SeoMeta } from '../types';
+import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
 import './BlogRenderer.css';
+import type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
 
-export interface BlogPostData {
-    id: string;
-    title: string;
-    slug: string;
-    excerpt?: string | null;
-    content?: EditorJSData | null;
-    contentType?: string;
-    status?: string;
-    heroImage?: HeroImage | null;
-    seoMeta?: SeoMeta | null;
-    footnotes?: EditorJSData | null;
-    authorId?: string | null;
-    /** Author from User relationship */
-    author?: PostAuthor | null;
-    readingTimeMinutes?: number | null;
-    wordCount?: number | null;
-    isFeatured?: boolean;
-    publishedAt?: Date | string | number | null;
-    createdAt?: Date | string | number | null;
-    // Series info
-    seriesId?: string | null;
-    seriesOrder?: number | null;
-    seriesTitle?: string | null;
-    seriesTotalParts?: number | null;
-    /** Password protection: when true, full content is hidden until unlocked */
-    isProtected?: boolean;
-    /** Optional hint shown on the lock screen (never expose passwordHash) */
-    passwordHint?: string | null;
-}
-
-export interface BlogRendererProps {
-    /** The blog post data to render */
-    post: BlogPostData;
-    /** Whether to show the hero image */
-    showHeroImage?: boolean;
-    /** Whether to show the title */
-    showTitle?: boolean;
-    /** Whether to show metadata (author, date, reading time) */
-    showMetadata?: boolean;
-    /** Whether to show the excerpt */
-    showExcerpt?: boolean;
-    /** Whether to show footnotes */
-    showFootnotes?: boolean;
-    /** Whether to show series navigation */
-    showSeries?: boolean;
-    /** Custom class name for the container */
-    className?: string;
-    /** Custom class name for the content area */
-    contentClassName?: string;
-    /** Custom date formatter */
-    formatDate?: (date: Date | string | number) => string;
-    /** Render custom header above the title */
-    renderHeader?: () => React.ReactNode;
-    /** Render custom footer below the content */
-    renderFooter?: () => React.ReactNode;
-    /** Render series navigation */
-    renderSeriesNav?: (post: BlogPostData) => React.ReactNode;
-    /** On author click */
-    onAuthorClick?: (authorId: string) => void;
-    /** Theme ID to use (defaults to active theme) */
-    themeId?: string;
-    /** Disable hooks (for testing) */
-    disableHooks?: boolean;
-}
+// The prop/data interfaces are declared in the pure `./blog-renderer-types` module so that
+// pure sites can reference them without importing this rendered file. Re-export them here so
+// relative importers (tests, theme/plugin type modules) keep resolving them from this path.
+export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
 
 /**
  * BlogRenderer - Renders a complete blog post with all metadata
@@ -316,24 +257,6 @@ export function BlogRenderer({
 /**
  * BlogExcerptCard - Renders a blog post card for listings
  */
-export interface BlogExcerptCardProps {
-    post: BlogPostData;
-    showHeroImage?: boolean;
-    showExcerpt?: boolean;
-    showMetadata?: boolean;
-    className?: string;
-    formatDate?: (date: Date | string) => string;
-    onClick?: () => void;
-    href?: string;
-    LinkComponent?: React.ComponentType<{
-        href: string;
-        className?: string;
-        children: React.ReactNode;
-    }>;
-    /** Theme ID override (defaults to active theme) */
-    themeId?: string;
-}
-
 export function BlogExcerptCard({
     post,
     showHeroImage = true,

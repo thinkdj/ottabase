@@ -9,20 +9,34 @@ styling.
 Every admin panel, CMS, and SaaS dashboard needs a rich data table. **OttaORM** and **@ottabase/forms** handle
 create/edit; this package handles **list views** — closing the full CRUD loop.
 
+## Two entry points (headless vs rendered)
+
+This package is split so the root import stays UI-free:
+
+| Import                         | Contains                                                                                                                                                                     | Renders React? |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `@ottabase/ui-datatable`       | `useDataTable`, `useServerTable`, `truncateText`, all types, TanStack re-exports (`ColumnDef`, `flexRender`, …)                                                              | No — headless  |
+| `@ottabase/ui-datatable/react` | `DataTable`, `DataTableToolbar`, `DataTablePagination`, `DataTableColumnHeader`, `DataTableViewOptions`, `createColumns`, `selectColumn`, `actionsColumn`, `formatCellValue` | Yes            |
+
+Import hooks and types from the root; import the rendered components and the column factories from `/react`. Pulling
+from the root never drags in `lucide-react` or `clsx`.
+
 ## Installation
 
 ```bash
 pnpm add @ottabase/ui-datatable
 ```
 
-**Peer dependencies:** `react`, `react-dom`, `@ottabase/ui-shadcn`
+**Peer dependencies:** `react`, `react-dom` (required), plus `lucide-react` and `clsx` (**optional** — only needed when
+you use the `/react` subpath). `@tanstack/react-query` is an optional peer required only by `useServerTable`.
 
 ## Quick Start
 
 ### 1. Define columns
 
 ```tsx
-import { createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable';
+// Column factories render React → import them from the /react subpath.
+import { createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable/react';
 
 const columns = createColumns<TodoType>([
     { key: 'title', header: 'Title', sortable: true },
@@ -34,7 +48,9 @@ const columns = createColumns<TodoType>([
 ### 2. Create the table instance
 
 ```tsx
-import { useDataTable, DataTable } from '@ottabase/ui-datatable';
+// Hook from the headless root; rendered component from /react.
+import { useDataTable } from '@ottabase/ui-datatable';
+import { DataTable } from '@ottabase/ui-datatable/react';
 
 function TodosPage() {
     const { table } = useDataTable({
@@ -58,6 +74,10 @@ function TodosPage() {
 ### 3. With row selection & bulk actions
 
 ```tsx
+// selectColumn/actionsColumn/createColumns come from /react; useDataTable from the root.
+import { useDataTable } from '@ottabase/ui-datatable';
+import { DataTable, createColumns, selectColumn, actionsColumn } from '@ottabase/ui-datatable/react';
+
 const columns = [
     selectColumn<TodoType>(),
     ...createColumns<TodoType>([
@@ -88,7 +108,8 @@ const { table, getSelectedRows, clearSelection } = useDataTable({
 `useServerTable` connects directly to the OttaORM CRUD API for server-driven sorting, pagination, and search:
 
 ```tsx
-import { useServerTable, DataTable } from '@ottabase/ui-datatable';
+import { useServerTable } from '@ottabase/ui-datatable';
+import { DataTable } from '@ottabase/ui-datatable/react';
 
 function TodosPage() {
     const { table, isLoading, pagination, setSearchQuery, refetch } = useServerTable<TodoType>({
@@ -131,12 +152,16 @@ function UsersPage() {
 
 ### Hooks
 
+Exported from the headless root `@ottabase/ui-datatable`.
+
 | Hook                      | Description                                                                  |
 | ------------------------- | ---------------------------------------------------------------------------- |
 | `useDataTable(options)`   | Core hook — wraps TanStack Table with sorting, pagination, selection bridges |
 | `useServerTable(options)` | Server-side hook — fetches data from OttaORM API with auto-pagination/sort   |
 
 ### Components
+
+Exported from `@ottabase/ui-datatable/react`.
 
 | Component               | Description                                             |
 | ----------------------- | ------------------------------------------------------- |
@@ -148,11 +173,18 @@ function UsersPage() {
 
 ### Column Helpers
 
+Exported from `@ottabase/ui-datatable/react` (they emit React elements). `formatCellValue` (cell renderer) lives there
+too.
+
 | Helper                   | Description                                              |
 | ------------------------ | -------------------------------------------------------- |
 | `createColumns(defs)`    | Convert declarative column configs to TanStack ColumnDef |
 | `selectColumn()`         | Checkbox selection column (place first)                  |
 | `actionsColumn(actions)` | Row actions column with dropdown (place last)            |
+
+### Pure helpers
+
+`truncateText(text, maxLength)` is a plain string helper exported from the headless root `@ottabase/ui-datatable`.
 
 ### Column Definition (`DataTableColumnDef<T>`)
 
@@ -218,7 +250,9 @@ function UsersPage() {
 
 ## Theming
 
-Uses CSS variables from `@ottabase/ui-shadcn`. Fully supports light and dark mode out of the box. Key variables used:
+The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui-shadcn` /
+`@ottabase/ui-tailwind` define). This package does **not** depend on those design-system packages — it just consumes the
+variables the host app already provides, so it works out of the box in light and dark mode. Key variables used:
 
 - `--background`, `--foreground` — base colors
 - `--muted`, `--muted-foreground` — headers, empty states
@@ -232,7 +266,8 @@ Uses CSS variables from `@ottabase/ui-shadcn`. Fully supports light and dark mod
 ```
 @ottabase/ui-datatable
 ├── src/
-│   ├── index.ts                        # Public exports
+│   ├── index.ts                        # `.` barrel — PURE (hooks, types, truncateText)
+│   ├── react.ts                        # `/react` barrel — rendered UI + column factories
 │   ├── types.ts                        # Core type definitions
 │   ├── hooks/
 │   │   ├── useDataTable.ts             # Client-side table hook
@@ -244,9 +279,10 @@ Uses CSS variables from `@ottabase/ui-shadcn`. Fully supports light and dark mod
 │   │   ├── DataTableColumnHeader.tsx   # Sortable headers
 │   │   └── DataTableViewOptions.tsx    # Column visibility
 │   ├── columns/
-│   │   └── createColumns.ts           # Column definition helpers
+│   │   └── createColumns.ts           # Column definition helpers (emit React)
 │   └── utils/
-│       └── formatters.ts              # Cell value formatters
+│       ├── formatters.ts              # Cell value formatters (return React nodes)
+│       └── text.ts                    # Pure string helpers (truncateText)
 └── __tests__/
     └── DataTable.test.tsx
 ```
@@ -287,7 +323,9 @@ bulk action buttons + selection count. Clearing the selection restores the searc
 
 ## Dependencies
 
-- **@tanstack/react-table** v8 — headless table core
-- **lucide-react** — icons
-- **clsx** — className merging
-- **@ottabase/ui-shadcn** (peer) — theme variables and base styles
+- **@tanstack/react-table** v8 — headless table core (real dependency; the pure hooks use its runtime, so it is never
+  optional)
+- **react**, **react-dom** — required peers
+- **@tanstack/react-query** — optional peer, needed only by `useServerTable`
+- **lucide-react** — icons — optional peer, needed only by the `/react` subpath
+- **clsx** — className merging — optional peer, needed only by the `/react` subpath

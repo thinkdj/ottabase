@@ -5,7 +5,8 @@
 // ============================================================
 
 import type { ModelConfig } from '@ottabase/forms';
-import { ModelCrud, createModelConfig, defineModelConfig } from '@ottabase/forms';
+import { createModelConfig, defineModelConfig } from '@ottabase/forms';
+import { ModelCrud } from '@ottabase/forms/react';
 import { Post } from '@ottabase/ottablog';
 import { Tag, User } from '@ottabase/ottaorm/models';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
@@ -246,7 +247,8 @@ export function OttaFormsDemoPage() {
                         </CardHeader>
                         <CardContent>
                             <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm text-foreground ring-1 ring-border">
-                                <code>{`import { ModelCrud, createModelConfig } from "@ottabase/forms";
+                                <code>{`import { createModelConfig } from "@ottabase/forms";
+import { ModelCrud } from "@ottabase/forms/react";
 import { User } from "@ottabase/ottaorm/models";
 
 // Create config from OttaORM model - metadata comes from model SSOT

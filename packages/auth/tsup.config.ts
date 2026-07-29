@@ -6,6 +6,8 @@ export default defineConfig({
         'src/providers.ts',
         'src/session.ts',
         'src/components/index.ts',
+        // Pure, dependency-free login-config helpers exposed via the `./config` subpath.
+        'src/components/helpers.ts',
         'src/backend-handler.ts',
         'src/client-api.ts',
         'src/react-hooks.ts',

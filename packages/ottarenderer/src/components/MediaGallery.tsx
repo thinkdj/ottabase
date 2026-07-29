@@ -1,9 +1,5 @@
-import {
-    MediaPreview,
-    useMediaLightboxRegistration,
-    type MediaKind,
-    type MediaViewerItem,
-} from '@ottabase/medialibrary';
+import { type MediaKind, type MediaViewerItem } from '@ottabase/medialibrary';
+import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import React from 'react';
 

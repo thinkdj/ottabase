@@ -11,7 +11,8 @@ import { actionsColumn, createColumns, selectColumn } from '../src/columns/creat
 import { DataTable } from '../src/components/DataTable';
 import { useDataTable } from '../src/hooks/useDataTable';
 import type { DataTableAction, DataTableColumnDef } from '../src/types';
-import { formatCellValue, truncateText } from '../src/utils/formatters';
+import { formatCellValue } from '../src/utils/formatters';
+import { truncateText } from '../src/utils/text';
 
 // ── Test data ────────────────────────────────────────────────
 

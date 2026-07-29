@@ -35,6 +35,21 @@
             "@ottabase/ottaorm/models": ["../../packages/ottaorm/src/models/index.ts"],
             "@ottabase/ottaorm/base": ["../../packages/ottaorm/src/base/index.ts"],
             "@ottabase/ottaorm/client": ["../../packages/ottaorm/src/client/index.ts"],
+            /*
+             * Headless-decoupling subpaths. These packages moved their rendered React behind an
+             * isolated subpath (or, for auth, the pure config helpers to ./config). They must be
+             * mapped explicitly to source: the `@ottabase/*` catch-all below expands e.g.
+             * `@ottabase/forms/react` to `packages/forms/react/src` (nonexistent), and the
+             * dist-only fallback is unreliable. Mirror these in apps/otta-web/vitest.config.ts.
+             */
+            "@ottabase/auth/config": ["../../packages/auth/src/components/helpers.ts"],
+            "@ottabase/forms/react": ["../../packages/forms/src/react.ts"],
+            "@ottabase/ui-datatable/react": ["../../packages/ui-datatable/src/react.ts"],
+            "@ottabase/spotlight/react": ["../../packages/spotlight/src/react.ts"],
+            "@ottabase/docs/react": ["../../packages/docs/src/react.ts"],
+            "@ottabase/medialibrary/react": ["../../packages/medialibrary/src/react.ts"],
+            "@ottabase/ottablog/renderer": ["../../packages/ottablog/src/renderer.ts"],
+            "@ottabase/ottamenu/render": ["../../packages/ottamenu/src/render/index.tsx"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["@cloudflare/workers-types"]

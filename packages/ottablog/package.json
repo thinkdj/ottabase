@@ -3,14 +3,18 @@
     "version": "0.0.1",
     "description": "Blog and content management system for Ottabase apps - supports blog posts, changelogs, and documentation",
     "type": "module",
+    "sideEffects": [
+        "**/*.css",
+        "**/BlogRenderer.tsx"
+    ],
     "exports": {
         ".": {
             "types": "./src/index.ts",
             "default": "./src/index.ts"
         },
         "./renderer": {
-            "types": "./src/components/BlogRenderer.tsx",
-            "default": "./src/components/BlogRenderer.tsx"
+            "types": "./src/renderer.ts",
+            "default": "./src/renderer.ts"
         },
         "./router": {
             "types": "./src/router/index.ts",
@@ -32,9 +36,13 @@
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*"
     },
+    "peerDependenciesMeta": {
+        "@ottabase/ottarenderer": {
+            "optional": true
+        }
+    },
     "dependencies": {
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },

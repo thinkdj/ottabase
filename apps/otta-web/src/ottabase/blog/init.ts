@@ -14,7 +14,6 @@ import {
     deactivatePlugin,
     getTheme,
     hasPlugin,
-    initOttablog,
     registerPlugin,
     registerTheme,
     setActiveTheme,
@@ -22,6 +21,7 @@ import {
     type StudioPluginState,
     type StudioState,
 } from '@ottabase/ottablog';
+import { initOttablog } from '@ottabase/ottablog/renderer';
 
 /**
  * Style-element id shared with the edge injector (worker/lib/blog-theme-inject.ts).

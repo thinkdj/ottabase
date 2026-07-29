@@ -10,10 +10,7 @@ export {
     type SocialProvider,
 } from './SocialLoginButtons';
 
-// Helper utilities
-export {
-    getConfiguredSocialProviders,
-    isCredentialsConfigured,
-    isEmailProviderConfigured,
-    getLoginConfig,
-} from './helpers';
+// NOTE: The pure login-config helpers (getLoginConfig, getConfiguredSocialProviders,
+// isCredentialsConfigured, isEmailProviderConfigured) live on the dependency-free
+// `@ottabase/auth/config` subpath so backend/edge callers pull zero UI deps. This
+// `./components` barrel is UI-only (rendered shadcn/lucide forms).

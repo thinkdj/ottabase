@@ -12,11 +12,48 @@ This package provides:
 > **Note:** The `media` table schema and `Media` model now live in `@ottabase/ottaorm` as a core table. This package
 > re-exports them for backward compatibility.
 
-## What Lives Here
+## Entry Points
 
-- Schema (re-exported from `@ottabase/ottaorm`): `mediaTable`
-- Helpers: `createMediaLibraryRecordInput()`, `getMediaKindFromMimeType()`, `toMediaSelectionPayload()`
-- Viewer UI: `MediaPreview`, `MediaLightboxProvider`
+The package is split so that non-UI consumers never pull in rendered React or icon dependencies. All rendered UI lives
+behind a single isolated subpath.
+
+| Import                          | Contents                                                                                                                                                                                                                         | Pulls in React / icons? |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `@ottabase/medialibrary`        | **Pure.** mime/kind helpers, upload-to-record normalization, selection/viewer payload mappers, the lightbox **state machine**, the headless `useMediaLightboxUrlSync` hook, and all type-only exports. Imports zero rendered UI. | No (hook is react-only) |
+| `@ottabase/medialibrary/schema` | `mediaTable` + `MediaType` / `NewMediaType` (re-exported from `@ottabase/ottaorm`). Schema/migration wiring.                                                                                                                     | No                      |
+| `@ottabase/medialibrary/react`  | **Rendered UI.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`.                                             | Yes                     |
+
+Because rendered UI is isolated, `react`, `react-dom`, and `@tabler/icons-react` are **optional** peer dependencies —
+callers that only use the pure helpers, schema, or the state machine do not need them installed. The package sets
+`"sideEffects": false` for tree-shaking.
+
+### Pure root
+
+```typescript
+import {
+    getMediaKindFromMimeType, // mime → 'image' | 'video' | 'audio' | 'document'
+    createMediaLibraryRecordInput, // upload result → DB record input
+    toMediaSelectionPayload, // media → editor picker payload
+    createMediaLightboxState, // pure lightbox state machine
+    getAdjacentMediaIndex,
+    clampMediaIndex,
+    useMediaLightboxUrlSync, // headless deep-link hook (react-only, no JSX)
+} from '@ottabase/medialibrary';
+```
+
+### Rendered UI
+
+```tsx
+import {
+    MediaLightboxProvider,
+    MediaLightbox,
+    MediaImmersiveLightbox,
+    MediaPreview,
+    ZoomableImage,
+    useMediaLightboxRegistration,
+    useOptionalMediaLightbox,
+} from '@ottabase/medialibrary/react';
+```
 
 The app still owns the OttaORM `BaseModel` class and route wiring, which keeps the package reusable across multiple
 Ottabase apps.
@@ -41,7 +78,7 @@ const record = createMediaLibraryRecordInput({
 ## Wrap Renderer Output
 
 ```tsx
-import { MediaLightboxProvider } from '@ottabase/medialibrary';
+import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 
 // Admin / editor preview — shows metadata sidebar
@@ -153,7 +190,7 @@ window.dispatchEvent(
 Scroll-to-zoom image wrapper used inside both lightbox variants for image media.
 
 ```tsx
-import { ZoomableImage } from '@ottabase/medialibrary';
+import { ZoomableImage } from '@ottabase/medialibrary/react';
 
 <ZoomableImage src="/photo.jpg" alt="Description" mode="lightbox" />;
 ```

@@ -11,7 +11,7 @@ import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
-import { MediaLightboxProvider } from '@ottabase/medialibrary';
+import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
     CONTENT_TYPES,
     formatDate,

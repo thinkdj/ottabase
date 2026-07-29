@@ -26,9 +26,12 @@ vi.mock('@ottabase/ottablog', () => ({
     createContentInjectorPlugin: (opts: unknown) => mockCreateContentInjectorPlugin(opts),
     registerPlugin: (plugin: unknown) => mockRegisterPlugin(plugin),
     activatePlugin: (id: string) => mockActivatePlugin(id),
-    initOttablog: vi.fn(),
     blogThemeTokensToCss: vi.fn(() => ''),
     contentInjectorPlugin: { end: vi.fn() },
+}));
+
+vi.mock('@ottabase/ottablog/renderer', () => ({
+    initOttablog: vi.fn(),
 }));
 
 describe('blog init applyStudioStateFromApi', () => {

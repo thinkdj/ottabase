@@ -5,11 +5,17 @@
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
+    "sideEffects": false,
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.mjs",
+            "require": "./dist/react.js"
         }
     },
     "files": [
@@ -17,34 +23,54 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/react.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/react.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts,.tsx",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"
     },
-    "dependencies": {
+    "peerDependencies": {
+        "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
         "@ottabase/ui-datatable": "workspace:*",
-        "clsx": "catalog:",
-        "lucide-react": "catalog:"
-    },
-    "peerDependencies": {
-        "@ottabase/ottaorm": "workspace:*",
         "@tanstack/react-query": "catalog:",
+        "clsx": "catalog:",
+        "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "zod": "catalog:"
     },
+    "peerDependenciesMeta": {
+        "@ottabase/ottaselect": {
+            "optional": true
+        },
+        "@ottabase/ui-components": {
+            "optional": true
+        },
+        "@ottabase/ui-datatable": {
+            "optional": true
+        },
+        "clsx": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        }
+    },
     "devDependencies": {
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottaselect": "workspace:*",
+        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-datatable": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
+        "clsx": "catalog:",
         "eslint": "catalog:",
+        "lucide-react": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:",

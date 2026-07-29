@@ -1,27 +1,21 @@
 // ============================================================
-// @ottabase/ui-datatable - Advanced Data Table
+// @ottabase/ui-datatable - Advanced Data Table (headless core)
 // ============================================================
 // Headless-first data table built on TanStack Table v8.
 // Supports server-side sort/filter/pagination (via OttaORM),
 // column visibility, row selection, inline editing, and bulk actions.
+//
+// This `.` barrel is PURE: hooks, types, and string helpers only —
+// ZERO rendered UI. The rendered DataTable components and the
+// column factories live behind `@ottabase/ui-datatable/react`.
 // ============================================================
-
-// ── Components ───────────────────────────────────────────────
-export { DataTable } from './components/DataTable';
-export { DataTableColumnHeader } from './components/DataTableColumnHeader';
-export { DataTablePagination } from './components/DataTablePagination';
-export { DataTableToolbar } from './components/DataTableToolbar';
-export { DataTableViewOptions } from './components/DataTableViewOptions';
 
 // ── Hooks ────────────────────────────────────────────────────
 export { useDataTable } from './hooks/useDataTable';
 export { useServerTable } from './hooks/useServerTable';
 
-// ── Column Helpers ───────────────────────────────────────────
-export { createColumns, selectColumn, actionsColumn } from './columns/createColumns';
-
-// ── Utilities ────────────────────────────────────────────────
-export { formatCellValue, truncateText } from './utils/formatters';
+// ── Utilities (pure, UI-free) ────────────────────────────────
+export { truncateText } from './utils/text';
 
 // ── Types ────────────────────────────────────────────────────
 export type {

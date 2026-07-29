@@ -4,11 +4,13 @@ vi.mock('../../ottaorm-models', () => ({
     OttablogTheme: { active: vi.fn(), where: vi.fn() },
     OttablogPlugin: { enabled: vi.fn(), where: vi.fn() },
 }));
-vi.mock('../../themes', () => ({ setActiveTheme: vi.fn() }));
-vi.mock('../../plugins', () => ({ activatePlugin: vi.fn() }));
+// StudioManager imports these from the pure registry modules (not the UI-tainted barrels),
+// so the mocks must target the registries to intercept the calls.
+vi.mock('../../themes/registry', () => ({ setActiveTheme: vi.fn() }));
+vi.mock('../../plugins/registry', () => ({ activatePlugin: vi.fn() }));
 
-import { activatePlugin } from '../../plugins';
-import { setActiveTheme } from '../../themes';
+import { activatePlugin } from '../../plugins/registry';
+import { setActiveTheme } from '../../themes/registry';
 import { OttablogPlugin, OttablogTheme } from '../../ottaorm-models';
 import { StudioManager } from '../StudioManager';
 

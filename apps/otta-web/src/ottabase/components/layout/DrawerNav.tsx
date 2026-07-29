@@ -1,7 +1,7 @@
 import { isAdminUser, useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
-import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
-import { MenuSlotRenderer } from '@ottabase/ottamenu';
+import type { ResolvedMenuSlotData } from '@ottabase/ottamenu/render';
+import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
 import { APP_META } from '@/ottabase/config';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';

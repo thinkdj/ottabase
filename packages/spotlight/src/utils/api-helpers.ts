@@ -28,7 +28,7 @@ export type ApiFunction = {
  *
  * @example
  * ```tsx
- * import { createApiSearchHandler } from "@ottabase/spotlight/utils/api-helpers";
+ * import { createApiSearchHandler } from "@ottabase/spotlight";
  * import { api } from "@ottabase/api";
  *
  * const handleSearch = createApiSearchHandler({

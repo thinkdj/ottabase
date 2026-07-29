@@ -22,11 +22,21 @@ table of contents. Colors from Brand Kit; layout themes control spacing and dens
 pnpm add @ottabase/docs
 ```
 
+## Imports
+
+The package splits along a UI boundary so the `.` barrel pulls in zero rendered React:
+
+- `@ottabase/docs` — pure, tree-shakeable helpers and types: `buildPageSlug`, `extractTitle`, `extractToc`,
+  `fileNameToSlug`, `findPageBySlug`, `organizePages`, `slugToTitle`, the `useDocs` hook, and all type re-exports.
+- `@ottabase/docs/react` — rendered components: `DocsLayout`, `DocsSidebar`, `MarkdownRenderer`, `TableOfContents` (this
+  is the only entry that value-imports `@ottabase/ui-code-highlight`, an optional peer).
+
 ## Quick Start
 
 ```tsx
 import { useState } from 'react';
-import { DocsLayout } from '@ottabase/docs';
+import { DocsLayout } from '@ottabase/docs/react';
+import { buildPageSlug, extractTitle, slugToTitle, fileNameToSlug, useDocs } from '@ottabase/docs';
 import '@ottabase/docs/styles.css';
 
 const config = {

@@ -1,5 +1,5 @@
 import { APP_META } from '@/ottabase/config';
-import { MediaLightboxProvider } from '@ottabase/medialibrary';
+import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { useMemo } from 'react';

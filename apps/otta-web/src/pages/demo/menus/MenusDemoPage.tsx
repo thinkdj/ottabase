@@ -1,5 +1,6 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Switch } from '@ottabase/ui-shadcn';
-import { MenuRenderer, type MenuForRender, type MenuItemDto, type MenuRenderType } from '@ottabase/ottamenu';
+import { MenuRenderer, type MenuForRender } from '@ottabase/ottamenu/render';
+import { type MenuItemDto, type MenuRenderType } from '@ottabase/ottamenu';
 import { IconLayoutNavbar, IconMenu2 } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

@@ -1,4 +1,4 @@
-import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary';
+import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import React from 'react';
 

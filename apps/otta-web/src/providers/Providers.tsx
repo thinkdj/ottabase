@@ -27,7 +27,7 @@ import type { FullBrandConfig } from '@ottabase/brand-engine-react';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
-import { SpotlightProvider } from '@ottabase/spotlight';
+import { SpotlightProvider } from '@ottabase/spotlight/react';
 import { ProviderState } from '@ottabase/state';
 import { ProviderUIBase } from '@ottabase/ui-base';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';

@@ -173,7 +173,7 @@ activatePlugin('my-plugin');
 Initialize ottablog in your app:
 
 ```typescript
-import { initOttablog } from '@ottabase/ottablog';
+import { initOttablog } from '@ottabase/ottablog/renderer';
 
 // Initialize with default theme
 initOttablog({ defaultThemeId: 'default' });
@@ -183,7 +183,8 @@ initOttablog({ defaultThemeId: 'default' });
 
 ```typescript
 // apps/my-app/src/ottabase/blog/init.ts
-import { initOttablog, registerTheme, registerPlugin, activatePlugin, postContentPlugin } from '@ottabase/ottablog';
+import { registerTheme, registerPlugin, activatePlugin, postContentPlugin } from '@ottabase/ottablog';
+import { initOttablog } from '@ottabase/ottablog/renderer';
 
 export function initBlogSystem() {
     // Initialize ottablog

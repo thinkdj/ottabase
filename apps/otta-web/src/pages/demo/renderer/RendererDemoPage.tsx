@@ -1,4 +1,4 @@
-import { MediaLightboxProvider } from '@ottabase/medialibrary';
+import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs, HtmlRenderer } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import {

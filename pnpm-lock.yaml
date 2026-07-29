@@ -794,15 +794,9 @@ importers:
       '@ottabase/email':
         specifier: workspace:*
         version: link:../email
-      '@ottabase/ui-shadcn':
-        specifier: workspace:*
-        version: link:../ui-shadcn
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../utils
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.468.0(react@19.2.4)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
@@ -813,6 +807,9 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
       '@types/node':
         specifier: 'catalog:'
         version: 20.19.28
@@ -828,6 +825,9 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.16.2(@babel/core@7.28.6)(@babel/template@7.28.6)(@types/react@19.2.7)(react@19.2.4)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1157,21 +1157,6 @@ importers:
 
   packages/forms:
     dependencies:
-      '@ottabase/ottaselect':
-        specifier: workspace:*
-        version: link:../ottaselect
-      '@ottabase/ui-components':
-        specifier: workspace:*
-        version: link:../ui-components
-      '@ottabase/ui-datatable':
-        specifier: workspace:*
-        version: link:../ui-datatable
-      clsx:
-        specifier: 'catalog:'
-        version: 2.1.1
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.468.0(react@19.2.4)
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1182,6 +1167,15 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+      '@ottabase/ottaselect':
+        specifier: workspace:*
+        version: link:../ottaselect
+      '@ottabase/ui-components':
+        specifier: workspace:*
+        version: link:../ui-components
+      '@ottabase/ui-datatable':
+        specifier: workspace:*
+        version: link:../ui-datatable
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.16(react@19.2.4)
@@ -1191,9 +1185,15 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.7)
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
       eslint:
         specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2
@@ -1307,10 +1307,10 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+    devDependencies:
       '@tabler/icons-react':
         specifier: 'catalog:'
         version: 3.35.0(react@19.2.4)
-    devDependencies:
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2127,16 +2127,7 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      clsx:
-        specifier: 'catalog:'
-        version: 2.1.1
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.468.0(react@19.2.4)
     devDependencies:
-      '@ottabase/ui-shadcn':
-        specifier: workspace:*
-        version: link:../ui-shadcn
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.16(react@19.2.4)
@@ -2152,12 +2143,18 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.7)
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
       eslint:
         specifier: 'catalog:'
         version: 9.39.2(jiti@2.6.1)
       jsdom:
         specifier: 'catalog:'
         version: 27.4.0(@noble/hashes@1.8.0)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
       react:
         specifier: 'catalog:'
         version: 19.2.4

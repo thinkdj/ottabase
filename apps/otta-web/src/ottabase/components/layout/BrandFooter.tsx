@@ -1,7 +1,7 @@
 import { useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
-import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
-import { MenuSlotRenderer } from '@ottabase/ottamenu';
+import type { ResolvedMenuSlotData } from '@ottabase/ottamenu/render';
+import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
 import { useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
 

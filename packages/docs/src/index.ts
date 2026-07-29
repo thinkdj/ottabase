@@ -1,8 +1,5 @@
-// Components
-export { DocsLayout } from './components/DocsLayout';
-export type { DocsLayoutProps } from './components/DocsLayout';
-export { DocsSidebar } from './components/DocsSidebar';
-export { MarkdownRenderer, TableOfContents } from './components/MarkdownRenderer';
+// Rendered React (DocsLayout, DocsSidebar, MarkdownRenderer, TableOfContents) lives
+// behind the isolated `@ottabase/docs/react` subpath so this `.` barrel stays UI-free.
 
 // Hooks
 export { useDocs } from './hooks/useDocs';

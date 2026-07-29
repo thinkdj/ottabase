@@ -12,6 +12,11 @@
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
         },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.mjs",
+            "require": "./dist/react.js"
+        },
         "./styles.css": "./src/styles.css",
         "./themes/compact.css": "./src/themes/compact.css",
         "./themes/standard.css": "./src/themes/standard.css",

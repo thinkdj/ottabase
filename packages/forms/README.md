@@ -3,6 +3,28 @@
 Auto-generated CRUD Forms for OttaORM fat models. Zero config, real-time Zod validation, works standalone or with
 ModelCrud.
 
+## Two entry points (headless vs rendered UI)
+
+This package ships as two subpaths so a consumer that only needs config/schema logic never pulls in the React UI (or its
+UI dependencies):
+
+| Import                  | Contents                                                                                     | Deps pulled in                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                                     |
+| `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui-components`, `-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
+
+The UI packages are declared as **optional peer dependencies**, so installing `@ottabase/forms` for headless use does
+not force them into your dependency tree. Install them only when you import from `@ottabase/forms/react`.
+
+```tsx
+// Headless — config + schema only, no UI
+import { createModelConfig, defineModelConfig } from '@ottabase/forms';
+import type { ModelConfig } from '@ottabase/forms';
+
+// Rendered components live under the /react subpath
+import { ModelCrud, ModelForm } from '@ottabase/forms/react';
+```
+
 ## Features
 
 - **Auto-generated Forms**: Create/edit forms instantly from OttaORM model field metadata.
@@ -28,7 +50,8 @@ pnpm add @ottabase/forms @ottabase/ottaorm zod
 ### From OttaORM Model (recommended)
 
 ```tsx
-import { ModelCrud, createModelConfig } from '@ottabase/forms';
+import { createModelConfig } from '@ottabase/forms';
+import { ModelCrud } from '@ottabase/forms/react';
 import { User } from '@ottabase/ottaorm/models';
 
 const userConfig = createModelConfig(User);
@@ -41,7 +64,8 @@ export function UserManagement() {
 ### Standalone Form (no ModelCrud)
 
 ```tsx
-import { ModelForm, defineModelConfig } from '@ottabase/forms';
+import { defineModelConfig } from '@ottabase/forms';
+import { ModelForm } from '@ottabase/forms/react';
 
 const todoConfig = defineModelConfig({
     entity: 'todos',
@@ -67,7 +91,7 @@ const todoConfig = defineModelConfig({
 ### Individual Components
 
 ```tsx
-import { ModelForm, ModelTable, ModelDetail, FormField } from '@ottabase/forms';
+import { ModelForm, ModelTable, ModelDetail, FormField } from '@ottabase/forms/react';
 ```
 
 ## Validation
@@ -181,6 +205,13 @@ const config = defineModelConfig({
 
 ## Exports
 
-- **Components**: `ModelCrud`, `ModelForm`, `ModelTable`, `ModelDetail`, `FormField`
+`@ottabase/forms` (headless — no rendered UI in its import graph):
+
 - **Utilities**: `createModelConfig`, `defineModelConfig`
-- **Types**: `ModelConfig`, `ModelCrudProps`, `ModelFormProps`, `ModelTableProps`, `ModelDetailProps`, `FormFieldProps`
+- **Types**: `ModelConfig`, `ModelCrudProps`, `ModelFormProps`, `ModelTableProps`, `ModelDetailProps`, `FormFieldProps`,
+  `FormFieldType`, `CrudViewMode`, `OttaModelClass`, and the re-exported OttaORM types (`ModelFieldType`,
+  `ModelFieldDescriptor`, `ModelFields`, `RelationshipConfig`)
+
+`@ottabase/forms/react` (rendered React components):
+
+- **Components**: `ModelCrud`, `ModelForm`, `ModelTable`, `ModelDetail`, `FormField` (plus their prop types)

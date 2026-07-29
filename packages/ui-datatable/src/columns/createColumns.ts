@@ -7,7 +7,8 @@
 import type { CellContext, ColumnDef } from '@tanstack/react-table';
 import React from 'react';
 import type { DataTableAction, DataTableColumnDef } from '../types';
-import { formatCellValue, truncateText } from '../utils/formatters';
+import { formatCellValue } from '../utils/formatters';
+import { truncateText } from '../utils/text';
 
 /**
  * Create TanStack Table column definitions from a simplified config array.

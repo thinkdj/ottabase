@@ -121,22 +121,29 @@ export type { PreviewTokenPayload } from './preview-token';
 export { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from './seo';
 export type { PostSeoInput } from './seo';
 
-// Components (React)
-export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
-export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';
-export { BlogRendererErrorBoundary } from './components/BlogRendererErrorBoundary';
+// Blog-renderer prop/data types (pure, type-only). The rendered components (BlogRenderer,
+// BlogExcerptCard, BlogRendererErrorBoundary), the default/minimal themes, and initOttablog are
+// UI — import them from the '@ottabase/ottablog/renderer' subpath.
+export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/blog-renderer-types';
 
 // Hooks System
 export * from './hooks';
 
-// Theme System
-export * from './themes';
+// Theme System (pure): registry + types only. The rendered default/minimal themes live behind
+// '@ottabase/ottablog/renderer'; re-exporting the barrel here would leak @ottabase/ottarenderer.
+export {
+    getActiveTheme,
+    getAllThemes,
+    getTheme,
+    hasTheme,
+    registerTheme,
+    setActiveTheme,
+    themeRegistry,
+} from './themes/registry';
+export type { Theme, ThemeConfig, ThemeMetadata, ThemeRegistry, ThemeRenderers } from './themes/types';
 
 // Plugin System
 export * from './plugins';
 
 // Studio (themes/plugins management)
 export * from './studio';
-
-// Initialization
-export { initOttablog } from './init';

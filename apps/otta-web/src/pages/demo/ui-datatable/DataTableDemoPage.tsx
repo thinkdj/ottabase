@@ -5,7 +5,8 @@
 // ============================================================
 
 import type { DataTableBulkAction, DataTablePaginationState, DataTableSortingState } from '@ottabase/ui-datatable';
-import { actionsColumn, createColumns, DataTable, selectColumn, useDataTable } from '@ottabase/ui-datatable';
+import { useDataTable } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable, selectColumn } from '@ottabase/ui-datatable/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { CheckCircle2, Edit2, Info, Trash2, X, XCircle } from 'lucide-react';
 import { createContext, useCallback, useContext, useState } from 'react';
@@ -190,7 +191,8 @@ export function DataTableDemoPage() {
                 </CardHeader>
                 <CardContent>
                     <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm text-foreground ring-1 ring-border">
-                        <code>{`import { DataTable, useDataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable';
+                        <code>{`import { useDataTable } from '@ottabase/ui-datatable';
+import { DataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable/react';
 
 // 1. Define columns declaratively
 const columns = createColumns<TodoType>([

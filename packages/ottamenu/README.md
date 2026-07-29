@@ -3,8 +3,11 @@
 Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in render types, zero persistence.
 
 > **Architecture**: ottamenu is a pure package (no ORM, no database). Menu models, schema, and CRUD handlers live in
-> `@ottabase/brand-engine`. Ottamenu provides the shared types (`MenuItemDto`, `MenuRenderType`) and React renderers
-> that consume them.
+> `@ottabase/brand-engine`. The package root `@ottabase/ottamenu` is **headless** — it exports only framework-agnostic
+> types (`MenuItemDto`, `MenuRenderType`, `MenuWithItemsDto`) and the pure `buildItemTree` tree utility, so it stays
+> import-safe in non-React (edge/worker) contexts. Every rendered React component (`MenuRenderer`, `renderMenu`,
+> `MenuSlotRenderer`, and the six standalone renderers) is isolated behind the `@ottabase/ottamenu/render` subpath, and
+> `react` / `@tanstack/react-router` are **optional peer dependencies** needed only when you import from `/render`.
 
 ## Render Types
 
@@ -28,8 +31,10 @@ Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in rende
 
 ## Quick Start
 
+Renderers live on the `/render` subpath; the menu types stay on the headless root.
+
 ```tsx
-import { renderMenu } from '@ottabase/ottamenu';
+import { renderMenu } from '@ottabase/ottamenu/render';
 import type { MenuItemDto } from '@ottabase/ottamenu';
 
 const items: MenuItemDto[] = [
@@ -47,7 +52,7 @@ const nav = renderMenu({ items }, 'mega', {
 Or use the component form:
 
 ```tsx
-import { MenuRenderer } from '@ottabase/ottamenu';
+import { MenuRenderer } from '@ottabase/ottamenu/render';
 
 <MenuRenderer menu={{ items }} type="mega" options={{ isAuthenticated: true, pathname: '/about' }} />;
 ```
@@ -88,7 +93,7 @@ Render menus assigned to named layout slots. Works with resolved data from the `
 fetch needed.
 
 ```tsx
-import { MenuSlotRenderer } from '@ottabase/ottamenu';
+import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
 
 <MenuSlotRenderer
     slot="header-nav"
@@ -114,10 +119,13 @@ import { MenuSlotRenderer } from '@ottabase/ottamenu';
 
 ## Exports
 
-| Path                        | Contents                                                            |
-| --------------------------- | ------------------------------------------------------------------- |
-| `@ottabase/ottamenu`        | Types (`MenuItemDto`, `MenuRenderType`), `buildItemTree`, renderers |
-| `@ottabase/ottamenu/render` | Individual renderer components                                      |
+| Path                        | Contents                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/ottamenu`        | **Headless** (no React): types (`MenuItemDto`, `MenuRenderType`, `MenuWithItemsDto`), `buildItemTree` + `MenuItemTreeNode`                                                                        |
+| `@ottabase/ottamenu/render` | **All React UI**: `MenuRenderer`, `renderMenu`, `MenuSlotRenderer`, `MenuItemLink`, the six standalone renderers, and render types (`MenuForRender`, `RenderMenuOptions`, `ResolvedMenuSlotData`) |
+
+`react` and `@tanstack/react-router` are optional peer dependencies — only required when importing from
+`@ottabase/ottamenu/render`. Importing the headless root pulls in no framework.
 
 Menu persistence (models, schema, CRUD handlers) is in `@ottabase/brand-engine`. See
 [brand-engine README](../brand-engine/README.md).

@@ -8,7 +8,8 @@
 // ---------------------------------------------------------------------------
 
 import { docsConfig } from '@/pages/docs/docs.config';
-import { DocsLayout, buildPageSlug } from '@ottabase/docs';
+import { DocsLayout } from '@ottabase/docs/react';
+import { buildPageSlug } from '@ottabase/docs';
 import '@ottabase/docs/styles.css';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { useTheme } from 'next-themes';

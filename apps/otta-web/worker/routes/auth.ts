@@ -7,7 +7,7 @@ import {
     revokeAllUserSessions,
     verifyPassword,
 } from '@ottabase/auth/backend';
-import { getLoginConfig } from '@ottabase/auth/components';
+import { getLoginConfig } from '@ottabase/auth/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';

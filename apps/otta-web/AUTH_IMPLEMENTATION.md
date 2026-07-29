@@ -52,7 +52,9 @@ packages/auth/src/
   `verifyEmail`, `requestPasswordReset`, `resetPassword`, `changePassword`
 - `@ottabase/auth/react` - React hooks (`useSession`)
 - `@ottabase/auth/components` - UI components (`LoginForm`, `RegisterForm`, `CredentialsForm`, `MagicLinkForm`,
-  `SocialLoginButtons`, `getLoginConfig` helper)
+  `SocialLoginButtons`)
+- `@ottabase/auth/config` - Auto-configuration helpers (`getLoginConfig`, `getConfiguredSocialProviders`,
+  `isCredentialsConfigured`, `isEmailProviderConfigured`)
 - `@ottabase/auth/session` - Pure session helpers: `isAuthenticated`, `requireAuth`, `getUserId`, `getUserEmail`,
   `hasVerifiedEmail`
 - `@ottabase/auth/providers` - OAuth presets (`createGoogleProvider`, `createGitHubProvider`, `createDiscordProvider`,
@@ -60,9 +62,8 @@ packages/auth/src/
   senders (`resolveMagicLinkSender`, `createDevEmailTrapMagicLinkSender`, `createNodemailerMagicLinkSender`,
   `createResendMagicLinkSender`)
 
-There is no `./adapter`, `./adapters/drizzle`, or `./config` subpath — DB access goes through the existing OttaORM
-models (`User`, `Account`, `VerificationToken`, `OrganizationMember`) directly, and there is no NextAuth-style config
-object.
+There is no `./adapter` or `./adapters/drizzle` subpath — DB access goes through the existing OttaORM models (`User`,
+`Account`, `VerificationToken`, `OrganizationMember`) directly, and there is no NextAuth-style config object.
 
 ### App (Minimal Glue Code)
 
@@ -167,7 +168,8 @@ function MyComponent() {
 
 ```typescript
 import { signInWithCredentials, signInWithProvider } from "@ottabase/auth/client";
-import { LoginForm, getLoginConfig } from "@ottabase/auth/components";
+import { LoginForm } from "@ottabase/auth/components";
+import { getLoginConfig } from "@ottabase/auth/config";
 
 function LoginPage() {
   const config = getLoginConfig(import.meta.env);
