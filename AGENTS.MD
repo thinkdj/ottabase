@@ -90,10 +90,20 @@ Use this as the default decision tree when shipping new work.
     - App owns the `BaseModel` class (`apps/*/ottabase/models/*`).
     - Add model to `worker/lib/db-utils.ts` initDbConnection (registerModels array).
     - App exports table from `apps/*/ottabase/db/schema.ts`; app tables also go in `ottabase/db/schemas-helper.ts`.
-3. **Dependency protocol**
+3. **Headless and rendered entrypoints (required when both exist)**
+    - Keep the root entrypoint (`@ottabase/<pkg>`) headless: export types, pure utilities, models, schemas, and hooks
+      that do not render UI.
+    - Place rendered React components and helpers that create React nodes behind an explicit subpath such as
+      `@ottabase/<pkg>/react` (or a domain-specific name such as `/renderer`).
+    - Define each entrypoint in `package.json` `exports`, build and emit declarations for each distributable entrypoint,
+      and move UI-only dependencies to optional peers where appropriate.
+    - Update every first-party import, README/example, demo snippet, test alias, and TypeScript path mapping when
+      introducing or changing a subpath.
+    - Add boundary tests that assert the root does not export rendered UI and the rendered subpath exposes it.
+4. **Dependency protocol**
     - Internal deps: `workspace:*`
     - Shared external deps: `catalog:`
-4. **Docs + tests are required**
+5. **Docs + tests are required**
     - Every new package must create/update its own `README.MD` and include/update tests.
 
 ### Quick examples
