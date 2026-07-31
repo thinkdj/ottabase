@@ -39,7 +39,7 @@
         "build": "tsup && node scripts/copy-css.js",
         "dev": "tsup --watch",
         "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

@@ -28,6 +28,8 @@ import {
     scheduledTasksTable,
     sessionsTable,
     tagsTable,
+    userGroupMembersTable,
+    userGroupsTable,
     userRolesTable,
     usersTable,
     verificationTokensTable,
@@ -56,6 +58,8 @@ export function getAllSchemas() {
         permissionsTable,
         userRolesTable,
         auditLogsTable,
+        userGroupsTable,
+        userGroupMembersTable,
     };
 
     // 2. App-specific schemas
@@ -98,6 +102,8 @@ export function getSchemaSummary() {
         permissionsTable,
         userRolesTable,
         auditLogsTable,
+        userGroupsTable,
+        userGroupMembersTable,
     };
 
     const appTables = {

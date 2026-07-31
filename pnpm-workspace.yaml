@@ -46,6 +46,7 @@ catalog:
     drizzle-kit: ^0.31.8
     drizzle-orm: ^0.45.2
     eslint: ^9.39.2
+    eslint-plugin-react-hooks: ^7.0.1
     eslint-plugin-storybook: ^10.2.10
     handlebars: ^4.7.9
     highlight.js: ^11.11.1

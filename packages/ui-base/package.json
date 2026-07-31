@@ -23,7 +23,7 @@
         "build": "tsup src/index.ts --format cjs,esm --dts --clean",
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts,.tsx",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

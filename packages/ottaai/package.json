@@ -35,7 +35,7 @@
     },
     "scripts": {
         "clean": "rm -rf .turbo node_modules",
-        "lint": "eslint src --ext .ts,.tsx",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

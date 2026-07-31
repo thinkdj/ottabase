@@ -45,7 +45,7 @@
         "build": "tsup --config tsup.config.ts",
         "dev": "tsup --config tsup.config.ts --watch",
         "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

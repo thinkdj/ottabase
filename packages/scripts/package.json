@@ -45,7 +45,7 @@
         "cloudflare-login": "node bin/cloudflare-login.cjs",
         "cloudflare-setup": "node bin/cloudflare-setup.cjs",
         "cloudflare-validate": "node bin/cloudflare-validate.cjs",
-        "lint": "eslint src --ext .ts",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

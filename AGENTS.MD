@@ -43,12 +43,40 @@ Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Wor
 - **Controller/service anti-pattern**: keep business logic in models, not controllers/services.
 - **Relationship safety**: use dynamic imports inside `BaseModel` relationship methods to avoid circular dependencies.
 - **Cloudflare binding parity**: when bindings change, keep `wrangler.jsonc` and `cloudflare-env.d.ts` in sync.
-- **Error response consistency**: for API failures, use `errorResponse(...)` from `@ottabase/utils/http-errors`.
+- **Error response consistency**: for API failures, use `errorResponse(...)` from `@ottabase/utils/http-errors`
+  (lint-enforced — see "Enforced by Lint").
+- **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
+  not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
+  invisible to CI.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
 - **Type-safe only**: use TypeScript; do not invent APIs or rely on implicit behavior.
 - **Ask when uncertain**: if architecture or behavior is unclear, ask rather than guessing.
+
+## Enforced by Lint (do not work around)
+
+`eslint.config.mjs` at the repo root is the single config for every workspace; ESLint finds it by walking up from each
+package. These rules exist because the prose above was not enough on its own — `errorResponse(...)` was an Always-On
+Rule for months while hand-rolled JSON error responses kept shipping.
+
+| Rule                                 | What it blocks                                 | Do this instead                                                          |
+| ------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `no-restricted-globals` (client)     | raw `fetch()` in `apps/*/src/**`               | `useApiQuery` / `createModelHooks` / `useApiMutation` / `useApiClient()` |
+| `no-restricted-imports` (client)     | `createApiClient` outside `src/lib/api.ts`     | build the client once, pass it to `OttaQueryProvider`                    |
+| `no-restricted-syntax` (server)      | `new Response(JSON.stringify(...))`            | `errorResponse(...)` / `jsonResponse(...)` from `@ottabase/utils`        |
+| `no-restricted-syntax` (server)      | `process.env` in edge code                     | read the env binding via `getOttabaseConfig(env)`                        |
+| `ottabase/no-raw-error-log` (server) | `console.error(error)` with a raw thrown value | `redactErrorForLog(error)` from `@ottabase/utils/http-errors`            |
+| `react-hooks/rules-of-hooks`         | hooks called after an early return             | call every hook unconditionally, branch in the returned JSX              |
+
+Rules of engagement:
+
+- **Never add a package-local `eslint.config.*`.** It shadows the root config and silently opts the package out of every
+  invariant above. Rules live in one file on purpose.
+- **Never silence one of these with an inline `eslint-disable`.** If a rule looks wrong for your case, that is a
+  discussion, not a directive to suppress.
+- The `RATCHET` block at the bottom of `eslint.config.mjs` lists pre-existing violations. It may **shrink, never grow**
+  — adding a new file to it is a visible config diff and must be justified in review. New code does not belong there.
 
 ## High-Impact Nuances (Agent Checklist)
 
@@ -73,7 +101,12 @@ Use this as the default decision tree when shipping new work.
 5. **Minimal route logic & Error Handling**
     - Worker routes should orchestrate/auth/validate; model should own persistence behavior.
     - Return API failures using `errorResponse(...)` from `@ottabase/utils/http-errors` instead of standard responses.
-6. **Docs + tests are required**
+    - 5xx bodies must not carry exception text; log a redacted structured event instead. See "Error & Logging
+      Boundaries".
+6. **Fetch through the framework client, never `fetch()`**
+    - Reads: `useApiQuery` / `createModelHooks` / `useEntityQuery`. Writes: `useApiMutation` or a model mutation hook.
+    - Do not add retry, backoff, or request deduplication yourself — the cache owns all three. See "Client Data Layer".
+7. **Docs + tests are required**
     - Every new feature must create/update its respective `README.MD` and include/update tests.
 
 ### If adding a new package
@@ -103,7 +136,12 @@ Use this as the default decision tree when shipping new work.
 4. **Dependency protocol**
     - Internal deps: `workspace:*`
     - Shared external deps: `catalog:`
-5. **Docs + tests are required**
+5. **Wire it into the gates**
+    - Declare `lint`, `type-check`, `test`, and `build` scripts. Turbo skips undeclared tasks without reporting
+      anything, so a package missing them is not covered by CI at all.
+    - Use `"lint": "eslint src"`. Do NOT add a package-local `eslint.config.*` — it shadows the root config and drops
+      every framework invariant. Do NOT pass `--ext` (removed in ESLint 9 flat config).
+6. **Docs + tests are required**
     - Every new package must create/update its own `README.MD` and include/update tests.
 
 ### Quick examples
@@ -204,6 +242,35 @@ export class Todo extends BaseModel {
 - **Pre-requisite**: An `initRLS()` must be executed during app initialization. Never bypass RLS rules without explicit
   architecture approvals.
 
+### Security Context: what may be trusted
+
+The `SecurityContext` handed to RLS decides which rows exist for a caller. Getting its provenance wrong is a tenant
+leak, not a bug report.
+
+- **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper; a previous
+  `extractSecurityContext(request)` was removed because request headers are trivially spoofable by any client.
+- **`appId` comes from server configuration** (`getOttabaseConfig(env)`), never from a browser `x-app-id` header. The
+  same applies to ownership fields on uploads and any other row-scoping column — take them from the resolved context,
+  never from request/upload metadata.
+- **`x-org-id` is a request, not an answer.** Validate it against authoritative active membership before it becomes the
+  RLS organization; drop it to `null` if the membership list does not contain it.
+- **Fail closed, never open.** If membership cannot be resolved, return `503 SECURITY_CONTEXT_UNAVAILABLE`. An unknown
+  membership list must never be treated as "no restrictions" — that silently disables enforcement. Caches (KV) are an
+  optimization only: a cache miss, malformed value, or failed write must never change the authorization outcome.
+
+### Error & Logging Boundaries
+
+- **5xx responses are opaque.** `errorResponse()` strips messages, details, hints, field errors, and metadata for any
+  status >= 500 and returns a stable `code` plus `requestId`. Only pass `exposure: 'public'` for a message deliberately
+  written as public API copy — never for an exception message.
+- **Authorization denials say nothing.** Unauthenticated → generic 401, authenticated → generic 403. Never return policy
+  text, security context, attempted request data, or the model registry.
+- **Redact before logging.** Wrap any thrown value in `redactErrorForLog()`; raw errors carry tokens, cookies, and
+  request bodies into log sinks. Prefer one bounded structured JSON event over free-text logging.
+- **Provisioning is transactional and fail-closed.** An account without its organization, active membership, and scoped
+  role grant is not a successful signup: roll back and surface the failure rather than issuing a session for a
+  half-provisioned account.
+
 ### Schema Collection (3 Sources)
 
 Tables are collected from 3 sources for auto-migrations. `getAllSchemas()` in `ottabase/db/schemas-helper.ts` combines:
@@ -267,6 +334,27 @@ export const {
 // Usage:
 // const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
 ```
+
+### Client Data Layer (mandatory rules)
+
+There is exactly **one** request path in the browser. It is not optional, and it is not a style preference — it is the
+boundary that keeps one tenant's cached rows from being read by another.
+
+1. **One client, built once.** `createApiClient()` is called in `apps/*/src/lib/api.ts` and passed to
+   `OttaQueryProvider`. A second client gets its own auth/tenant headers and sits outside the scope boundary.
+2. **`OttaQueryProvider` requires a `visibilityScope`** (`appId`, `organizationId`, `principalId`,
+   `authorizationVersion`). Each distinct scope gets its own `QueryClient`; when the scope changes, in-flight queries
+   are cancelled and the old cache is destroyed before it can be observed. Never pass a pre-built `QueryClient` — the
+   provider does not accept one, precisely so cache ownership stays unambiguous.
+3. **The transport does one HTTP attempt.** It does not retry and does not coalesce. Retry/backoff belongs to TanStack
+   Query and is framework-owned (`retry`, `retryDelay`, and the `refetchOn*` options are `Omit`ted from hook option
+   types — if you are reaching for them, you are working against the design).
+4. **Reads go through a query hook. Writes go through a mutation hook.** For an imperative read inside React, go through
+   the cache (`queryClient.fetchQuery`), not the transport — that is what preserves dedup and caching.
+5. **Never retry a mutation.** Repeat protection for writes is a server-side idempotency key, never a client retry.
+6. **Errors are presented once, at the query boundary.** The provider's `errorReporter` fires for terminal failures. Use
+   `meta: { errorPresentation: 'local' | 'silent' }` when a component owns its own error UI. The transport itself never
+   produces toasts, redirects, or any other UI.
 
 ## Package Guide
 

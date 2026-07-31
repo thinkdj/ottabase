@@ -7,6 +7,7 @@
 import { handleCrud, type CrudRequest, type CrudResponse } from '../crud';
 import { getModel } from '../registry';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
 import { globalRLS, RLSError } from './engine';
 import { logSecurityViolation } from './logger';
 import type { SecurityContext } from './types';
@@ -229,10 +230,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             });
         }
 
-        return new Response(JSON.stringify(result), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return jsonResponse(result, 200);
     } catch (error) {
         if (error instanceof RLSError) {
             if (error.violation) {

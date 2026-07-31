@@ -1,4 +1,3 @@
-/* eslint-disable react/no-inline-styles */
 import type { Meta, StoryObj } from '@storybook/react-webpack5';
 import { useState } from 'react';
 import { getDomainName, getSegment, isValidUrl, joinPaths, makeSlug, replaceDoubleSlashes } from './url';

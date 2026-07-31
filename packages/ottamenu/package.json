@@ -27,7 +27,7 @@
         "dev": "tsup src/index.ts src/render/index.tsx --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "test": "vitest run",
-        "lint": "eslint src --ext .ts,.tsx",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit"
     },
     "keywords": [

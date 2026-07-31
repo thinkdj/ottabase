@@ -106,7 +106,7 @@
         "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts --format cjs,esm --dts --clean",
         "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage",

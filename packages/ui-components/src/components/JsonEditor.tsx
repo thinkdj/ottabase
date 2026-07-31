@@ -309,7 +309,6 @@ function TreeNode({
         <div className="group/node">
             <div
                 className={cn('flex items-start gap-1 px-1 rounded hover:bg-muted', 'transition-colors')}
-                // eslint-disable-next-line react/forbid-dom-props
                 style={{ paddingLeft: `${depth * 14}px` }}
             >
                 {/* Chevron (containers) or spacer */}
@@ -532,7 +531,6 @@ function KeyInput({
                     }
                 }}
                 className="bg-transparent border-b border-primary focus:outline-none text-primary min-w-[2ch] px-0.5 h-6 leading-6 py-0 box-border"
-                // eslint-disable-next-line react/forbid-dom-props
                 style={{ width: `${Math.max(draft.length, 2) + 1}ch` }}
                 spellCheck={false}
             />
@@ -647,7 +645,6 @@ function ValueInput({
                 type === 'string' && 'text-success border-success',
                 type === 'number' && 'text-info border-info',
             )}
-            // eslint-disable-next-line react/forbid-dom-props
             style={{ width: `${Math.max(draft.length, 4) + 1}ch` }}
             spellCheck={false}
             inputMode={type === 'number' ? 'decimal' : undefined}

@@ -2,7 +2,7 @@
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
     "globalEnv": ["PATH"],
-    "globalPassThroughEnv": ["PATH", "ESLINT_USE_FLAT_CONFIG"],
+    "globalPassThroughEnv": ["PATH"],
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
