@@ -27,86 +27,18 @@ await api('/api/posts/1', 'GET');
 const api = createApiClient({
     baseUrl: '/api',
     getAuthToken: () => localStorage.getItem('token'),
-    onError: (error) => toast.error(error.message),
-    onUnauthorized: () => redirect('/login'),
     timeout: 30000,
-    dedupe: true,
-    retry: {
-        attempts: 4,
-        baseDelayMs: 250,
-        maxDelayMs: 1500,
-        retryableStatuses: [502, 503, 504],
-        retryableMethods: ['GET', 'HEAD', 'OPTIONS'],
-    },
 });
 ```
 
-### Transient retries
+### One request, one HTTP attempt
 
-Use `retry` for safe, idempotent reads when the backend may need a moment to warm up in cases like cold boot (CF:1101)
-or temporary network issues.
+The transport deliberately performs exactly one fetch. It does not retry or coalesce requests. A query orchestrator such
+as TanStack Query owns safe-read deduplication and retry policy, which guarantees one retry budget and one terminal
+error event. Mutation repeat protection belongs on the server behind an explicit idempotency key.
 
-```ts
-const api = createApiClient({
-    retry: {
-        attempts: 4,
-        baseDelayMs: 250,
-        maxDelayMs: 1500,
-        retryableStatuses: [502, 503, 504],
-        retryableMethods: ['GET', 'HEAD', 'OPTIONS'],
-    },
-});
-
-await api('/api/health');
-```
-
-You can also override retry behavior per request:
-
-```ts
-await api('/api/health', {
-    retry: { attempts: 2, baseDelayMs: 100 },
-});
-```
-
-### Optional behavior tweaks
-
-### In-flight request deduping
-
-By default, identical in-flight requests are deduped so parallel callers share a single fetch. This is not caching; once
-the request completes, the next call will hit the network again.
-
-```ts
-// Disable dedupe per request
-await api('/api/metrics', { dedupe: false });
-
-// Provide a custom dedupe key
-await api('/api/metrics', { dedupeKey: 'metrics:today' });
-
-// Tag deduped logs with a caller id
-await api('/api/metrics', { callerId: 'MetricsPage:load' });
-```
-
-Use `skipUnauthorizedHandler: true` when you want to handle a 401 response explicitly (`/api/blog/posts/unlock` is one
-example). This tells the client not to run the global `onUnauthorized` callback so you can surface a local error message
-instead of redirecting to the login screen.
-
-```ts
-await api('/api/blog/posts/unlock', {
-    method: 'POST',
-    body: { slug: 'secret-post', password: 'guess' },
-    skipUnauthorizedHandler: true,
-});
-```
-
-Use `suppressGlobalErrorHandler: true` when the global `onError` toast/handler should not run (for example a background
-sync loop that catches and interprets errors). The request still throws `ApiError` on failure.
-
-```ts
-await api('/api/ottaorm/todos/xyz', {
-    method: 'DELETE',
-    suppressGlobalErrorHandler: true,
-});
-```
+The client is intentionally presentation-free: it normalizes and throws `ApiError`, while a query cache or interaction
+boundary decides whether to show a toast, inline message, redirect, or remain silent.
 
 ## Error Handling
 
@@ -120,6 +52,15 @@ try {
         console.log(error.details); // Additional context
         console.log(error.hint); // Actionable suggestion
         console.log(error.fieldErrors); // Form validation errors
+        console.log(error.metadata); // Safe machine-readable conflict context
+        console.log(error.requestId); // Correlation ID for server-side logs
+        console.log(error.retryable); // Safe for a read orchestrator to retry
+        console.log(error.retryAfterMs); // Parsed Retry-After delay, when supplied
     }
 }
 ```
+
+Caller cancellation is composed with the request timeout through response-body consumption and preserved as an
+`AbortError`; it is never converted into a network failure. Invalid JSON from an otherwise successful response becomes a
+non-retryable `INVALID_RESPONSE` error. Malformed error bodies retain their HTTP status and are never misclassified as
+network failures.

@@ -94,7 +94,7 @@ export function UserRBACPage() {
         entity: 'users',
         queryKey: ['admin', userId],
         endpoint: `/api/admin/users/${userId}`,
-        transform: (r) => ({
+        select: (r) => ({
             id: r.data.id,
             name: r.data.name,
             email: r.data.email,

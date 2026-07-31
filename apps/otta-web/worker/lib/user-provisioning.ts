@@ -72,7 +72,7 @@ export async function provisionDefaultOrganizationForUser(params: {
 }): Promise<{
     organizationId: string;
     organizationRole: 'owner' | 'member';
-    assignedRole: string | null;
+    assignedRole: string;
     brandSetupError?: string;
 }> {
     const {
@@ -81,9 +81,11 @@ export async function provisionDefaultOrganizationForUser(params: {
         name = null,
         organizationRole = 'owner',
         assignedBy,
-        roleFallbacks = ['member', 'viewer'],
+        roleFallbacks,
         appId = null,
     } = params;
+    const resolvedRoleFallbacks: ProvisionRoleName[] =
+        roleFallbacks ?? (organizationRole === 'owner' ? ['owner'] : ['member', 'viewer']);
 
     const userId = String(user.get('id') || '');
     if (!userId) {
@@ -91,10 +93,14 @@ export async function provisionDefaultOrganizationForUser(params: {
     }
 
     let organizationId: string | null = null;
+    let createdOrganizationId: string | null = null;
     let resolvedOrganizationRole: 'owner' | 'member' = organizationRole;
     const fallbackBrandName = (name || email?.split('@')[0] || 'My App').trim() || 'My App';
 
-    const existingMembership = await OrganizationMember.first({ userId, status: 'active' });
+    const [existingMembership] = await OrganizationMember.where(
+        { userId, status: 'active', role: organizationRole },
+        { orderBy: 'createdAt', orderDirection: 'asc', limit: 1 },
+    );
     if (existingMembership) {
         organizationId = String(existingMembership.get('organizationId') || '');
         const existingRole = existingMembership.get('role');
@@ -162,33 +168,58 @@ export async function provisionDefaultOrganizationForUser(params: {
             }
             throw err;
         }
-    }
 
-    let brandSetupError: string | undefined;
-
-    if (organizationId) {
-        try {
-            await ensureAppBrandDefaults(fallbackBrandName, appId ?? null);
-        } catch (brandError) {
-            brandSetupError = brandError instanceof Error ? brandError.message : String(brandError);
-            console.error('[user-provisioning] Default brand setup failed:', brandError);
-        }
-    }
-
-    await Role.ensureDefaultRoles();
-
-    let assignedRole: string | null = null;
-    for (const roleName of roleFallbacks) {
-        const role = await Role.findByName(roleName);
-        if (role) {
-            await user.assignRole(String(role.get('id')), assignedBy, organizationId);
-            assignedRole = String(role.get('name'));
-            break;
-        }
+        createdOrganizationId = organizationId;
     }
 
     if (!organizationId) {
         throw new Error('Failed to resolve organization id for user provisioning');
+    }
+
+    let assignedRole: string | null = null;
+    try {
+        await Role.ensureDefaultRoles();
+
+        for (const roleName of resolvedRoleFallbacks) {
+            const role = await Role.findByName(roleName);
+            if (role) {
+                await user.assignRole(String(role.get('id')), assignedBy, organizationId);
+                assignedRole = String(role.get('name'));
+                break;
+            }
+        }
+
+        if (!assignedRole) {
+            throw new Error(
+                `None of the requested organization roles exist: ${resolvedRoleFallbacks.join(', ') || '(none)'}`,
+            );
+        }
+    } catch (error) {
+        // The organization, active membership, and scoped RBAC grant are one required
+        // provisioning unit. If this invocation created the tenant, remove it when role
+        // setup fails so a retry cannot inherit an ownerless or authorization-less org.
+        if (createdOrganizationId) {
+            try {
+                await Organization.delete(createdOrganizationId);
+            } catch (rollbackError) {
+                console.error(
+                    '[user-provisioning] Failed to roll back organization after role setup failed:',
+                    rollbackError,
+                );
+            }
+        }
+        throw error;
+    }
+
+    // Brand defaults are optional presentation data. Seed them only after all required
+    // tenant and RBAC facts exist, and never turn a successful security boundary into
+    // a failed registration because presentation setup is temporarily unavailable.
+    let brandSetupError: string | undefined;
+    try {
+        await ensureAppBrandDefaults(fallbackBrandName, appId ?? null);
+    } catch (brandError) {
+        brandSetupError = brandError instanceof Error ? brandError.message : String(brandError);
+        console.error('[user-provisioning] Default brand setup failed:', brandError);
     }
 
     return {

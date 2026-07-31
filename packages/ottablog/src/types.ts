@@ -69,8 +69,6 @@ export interface PostAuthor {
     id: string;
     /** Display name */
     name: string | null;
-    /** Author email */
-    email?: string | null;
     /** Author avatar/profile image URL */
     image?: string | null;
 }

@@ -19,6 +19,7 @@ import {
     autoInit,
     clearConnection,
     coreMigrations,
+    Organization,
     registerConnection,
     Role,
     runMigrations,
@@ -558,6 +559,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
     // Tracks the platform owner row once created, so any failure after that point can roll it back.
     let createdUserId: string | null = null;
+    let createdOrganizationId: string | null = null;
     try {
         ensureOrmConnection(env);
         await ensureMetaTable(env);
@@ -592,6 +594,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
         if (userCount > 0) {
+            await releaseOwnerClaim(env);
             return jsonResp(
                 {
                     success: false,
@@ -628,12 +631,13 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 appId: (env as { APP_ID?: string }).APP_ID ?? 'otta-web',
             });
             organizationId = provisioned.organizationId;
+            createdOrganizationId = organizationId;
             assignedRole = provisioned.assignedRole;
         } catch (error) {
             // Provisioning failed after the user row was created. Roll back the orphan user AND
             // release the claim — otherwise the userCount / OWNER_EXISTS guards above permanently
             // block a legitimate retry.
-            await rollbackOwnerCreation(env, createdUserId);
+            await rollbackOwnerCreation(env, createdUserId, createdOrganizationId);
             return jsonResp(
                 {
                     success: false,
@@ -691,7 +695,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     } catch (error: any) {
         // Roll back any partially-created platform owner (orphan user row + held claim) so the
         // OWNER_EXISTS / userCount guards don't permanently block a legitimate retry.
-        await rollbackOwnerCreation(env, createdUserId);
+        await rollbackOwnerCreation(env, createdUserId, createdOrganizationId);
 
         if (error.message?.toLowerCase().includes('unique')) {
             return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
@@ -711,12 +715,22 @@ async function releaseOwnerClaim(env: CloudflareEnv): Promise<void> {
 }
 
 /**
- * Best-effort rollback of a failed platform-owner-creation attempt: delete the just-created user
- * row (if any) and release the claim. Both must be undone together — a leftover user trips the
- * `userCount > 0` guard and a held claim trips OWNER_EXISTS, either of which would otherwise
- * permanently brick a legitimate retry of first-time setup.
+ * Best-effort rollback of a failed platform-owner-creation attempt: delete the just-created
+ * organization and user rows, then release the claim. All three must be undone together so a
+ * later retry cannot inherit an orphan tenant or trip the user/claim guards.
  */
-async function rollbackOwnerCreation(env: CloudflareEnv, userId: string | null): Promise<void> {
+async function rollbackOwnerCreation(
+    env: CloudflareEnv,
+    userId: string | null,
+    organizationId: string | null,
+): Promise<void> {
+    if (organizationId) {
+        try {
+            await Organization.delete(organizationId);
+        } catch {
+            /* best-effort - init can clear a leftover tenant during first-time setup */
+        }
+    }
     if (userId) {
         try {
             await User.delete(userId);

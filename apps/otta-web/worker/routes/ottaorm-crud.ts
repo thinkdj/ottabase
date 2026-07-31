@@ -4,7 +4,7 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -422,9 +422,9 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 if (!Number.isFinite(currentTimestamp) || currentTimestamp !== expectedTimestamp) {
                     return errorResponse('Post was updated by another session', 409, {
                         code: 'CONFLICT',
-                        details: {
+                        metadata: {
                             expectedUpdatedAt: expectedTimestamp,
-                            currentUpdatedAt: currentTimestamp,
+                            currentUpdatedAt: Number.isFinite(currentTimestamp) ? currentTimestamp : null,
                         },
                     });
                 }
@@ -555,9 +555,15 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                             200,
                         );
                     } catch (err) {
+                        console.error(
+                            JSON.stringify({
+                                event: 'comment_reaction_update_failed',
+                                commentId: String(comment.get('id')).slice(0, 128),
+                                error: redactErrorForLog(err),
+                            }),
+                        );
                         return errorResponse('Failed to update reaction', 500, {
                             code: 'REACTION_UPDATE_FAILED',
-                            details: err instanceof Error ? err.message : 'Unknown error',
                         });
                     }
                 }
@@ -624,12 +630,20 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     const result = await executeSecureCrudRequest(crudRequest, effectiveSecurityContext);
 
     if (!result.success) {
-        console.error(`[CRUD Error] ${crudRequest.method} ${crudRequest.model}:`, {
-            error: result.error,
-            code: result.code,
-            details: result.details,
-            hint: result.hint,
-        });
+        // Expected 4xx outcomes are not server errors and RLS denials already have
+        // their own redacted audit event. For 5xx, log bounded routing metadata only;
+        // result text/details may contain a driver exception.
+        if (result.status >= 500) {
+            console.error(
+                JSON.stringify({
+                    event: 'ottaorm_crud_failed',
+                    method: crudRequest.method,
+                    model: crudRequest.model.slice(0, 128),
+                    status: result.status,
+                    code: result.code?.slice(0, 64),
+                }),
+            );
+        }
 
         return errorResponse(result.error || 'Unknown error', result.status, {
             code: result.code,
@@ -670,14 +684,26 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 try {
                     await Organization.delete(orgId);
                 } catch (rollbackErr) {
-                    console.error('Failed to roll back orphaned organization', orgId, rollbackErr);
+                    console.error(
+                        JSON.stringify({
+                            event: 'organization_rollback_failed',
+                            organizationId: String(orgId).slice(0, 128),
+                            error: redactErrorForLog(rollbackErr),
+                        }),
+                    );
                 }
+                console.error(
+                    JSON.stringify({
+                        event: 'organization_owner_membership_create_failed',
+                        organizationId: String(orgId).slice(0, 128),
+                        error: redactErrorForLog(err),
+                    }),
+                );
                 return errorResponse(
                     'Failed to create organization; membership setup failed and was rolled back',
                     500,
                     {
                         code: 'ORG_MEMBER_CREATE_FAILED',
-                        details: err instanceof Error ? err.message : 'Unknown error',
                     },
                 );
             }

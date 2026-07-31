@@ -1,17 +1,17 @@
 /**
  * Configured API client for the Vite app.
- * - Automatic error toast notifications
- * - Auth token injection (when implemented)
+ * - Request-only transport (presentation happens at the Query boundary)
  * - Type-safe error handling
  * - x-app-id and x-org-id headers from global state
  */
 
 import { appIdAtom, globalStore, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
-import { createApiClient, type ApiError } from '@ottabase/api';
+import { ApiError, createApiClient } from '@ottabase/api';
 import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
 import { toast } from 'sonner';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
+let authInvalidationStarted = false;
 
 /**
  * Get auth token from storage/context.
@@ -66,12 +66,25 @@ function getOrganizationId(): string | null {
 }
 
 /**
- * Global error handler for API errors.
- * Shows toast notifications for errors.
+ * Report one terminal framework request failure.
+ *
+ * OttaQueryProvider invokes this after its retry budget is exhausted. Keeping
+ * presentation here, rather than inside the transport, prevents intermediate
+ * attempts and deduped observers from producing duplicate toasts.
  */
-function handleApiError(error: ApiError): void {
+export function reportApiError(error: unknown): void {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+    }
+
+    if (!(error instanceof ApiError)) {
+        console.error('Unexpected query error:', error);
+        toast.error('Something went wrong');
+        return;
+    }
+
     // Skip toast for certain error types that are handled locally
-    if (error.code === 'HANDLED') {
+    if (error.code === 'HANDLED' || error.status === 422) {
         return;
     }
 
@@ -100,8 +113,13 @@ function handleApiError(error: ApiError): void {
 
     // Show different toast styles based on error type
     if (error.isUnauthorized()) {
-        toast.error('Session expired', {
-            description: 'Please log in again',
+        handleUnauthorized();
+        return;
+    }
+
+    if (error.isForbidden()) {
+        toast.error('Access denied', {
+            description: error.hint || 'Your account does not have permission to perform this action.',
         });
         return;
     }
@@ -118,15 +136,57 @@ function handleApiError(error: ApiError): void {
             description:
                 error.messages.length > 1
                     ? error.messages.join(' • ')
-                    : error.details || error.hint || 'Something went wrong',
+                    : (typeof error.details === 'string' ? error.details : undefined) ||
+                      error.hint ||
+                      'Something went wrong',
         });
         return;
     }
 
     // Default error toast
     toast.error(error.message, {
-        description: error.messages.length > 1 ? error.messages.join(' • ') : error.details || error.hint,
+        description:
+            error.messages.length > 1
+                ? error.messages.join(' • ')
+                : (typeof error.details === 'string' ? error.details : undefined) || error.hint,
     });
+}
+
+function handleUnauthorized(): void {
+    // A successful sign-in can occur without reloading the module (for example
+    // while already on /login). Re-arm the guard for that new session.
+    if (authInvalidationStarted) {
+        try {
+            if (globalStore.get(isAuthenticatedAtom)) {
+                authInvalidationStarted = false;
+            }
+        } catch {
+            // Keep the existing guard when auth state cannot be read.
+        }
+    }
+
+    if (authInvalidationStarted) return;
+    authInvalidationStarted = true;
+
+    toast.error('Session expired', {
+        description: 'Please log in again',
+    });
+    invalidateAuthSession();
+    try {
+        globalStore.set(organizationIdAtom, null);
+        globalStore.set(isAuthenticatedAtom, false);
+        globalStore.set(userAtom, null);
+    } catch {
+        // ignore store update failures
+    }
+    try {
+        localStorage.removeItem(CURRENT_ORG_KEY);
+    } catch {
+        // ignore storage failures
+    }
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+    }
 }
 
 /**
@@ -154,7 +214,7 @@ function handleApiError(error: ApiError): void {
  * await api("/api/posts/1", "DELETE");
  * await api("/api/posts/1", "GET");
  *
- * // Skip global error handling for local handling
+ * // Transport errors are always thrown; interaction/query boundaries present them.
  * try {
  *   await api("/api/sensitive", { skipAuth: true });
  * } catch (error) {
@@ -165,25 +225,6 @@ function handleApiError(error: ApiError): void {
 export const api = createApiClient({
     baseUrl: '',
     getAuthToken,
-    onError: handleApiError,
-    onUnauthorized: () => {
-        invalidateAuthSession();
-        try {
-            globalStore.set(organizationIdAtom, null);
-            globalStore.set(isAuthenticatedAtom, false);
-            globalStore.set(userAtom, null);
-        } catch {
-            // ignore store update failures
-        }
-        try {
-            localStorage.removeItem(CURRENT_ORG_KEY);
-        } catch {
-            // ignore storage failures
-        }
-        if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-        }
-    },
     defaultHeaders: () => {
         const headers: Record<string, string> = {
             Accept: 'application/json',
@@ -204,13 +245,6 @@ export const api = createApiClient({
         return headers;
     },
     timeout: 30000,
-    retry: {
-        attempts: 4,
-        baseDelayMs: 250,
-        maxDelayMs: 1500,
-        retryableStatuses: [502, 503, 504],
-        retryableMethods: ['GET', 'HEAD', 'OPTIONS'],
-    },
 });
 
 // Re-export types for convenience

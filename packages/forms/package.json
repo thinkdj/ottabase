@@ -85,5 +85,8 @@
     "bugs": {
         "url": "https://github.com/thinkdj/ottabase/issues"
     },
+    "dependencies": {
+        "@ottabase/utils": "workspace:*"
+    },
     "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/forms#readme"
 }

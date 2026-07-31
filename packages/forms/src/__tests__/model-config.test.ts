@@ -126,16 +126,6 @@ describe('createModelConfig', () => {
         expect(config.apiPath).toBe('/api/users');
     });
 
-    it('should accept fetchFn option', () => {
-        const mockFetchFn = vi.fn();
-
-        const config = createModelConfig(mockModel, {
-            fetchFn: mockFetchFn,
-        });
-
-        expect(config.fetchFn).toBe(mockFetchFn);
-    });
-
     it('should use provided zodCreateSchema', () => {
         const mockSchema = { parse: vi.fn() };
 
@@ -212,7 +202,7 @@ describe('createModelConfig', () => {
     });
 
     it('should respect writable field allowlists', () => {
-        const modelWithWritable: OttaModelClass = {
+        const modelWithWritable = {
             ...mockModel,
             writable: {
                 create: ['name', 'email'],
@@ -320,7 +310,6 @@ describe('defineModelConfig', () => {
     });
 
     it('should accept all ModelConfig properties', () => {
-        const mockFetchFn = vi.fn();
         const mockSchema = { parse: vi.fn() };
 
         const config = defineModelConfig({
@@ -331,7 +320,6 @@ describe('defineModelConfig', () => {
             defaultSort: 'title',
             defaultSortDirection: 'asc',
             fields: mockFields,
-            fetchFn: mockFetchFn,
             zodCreateSchema: mockSchema as any,
             zodUpdateSchema: mockSchema as any,
         });
@@ -339,7 +327,6 @@ describe('defineModelConfig', () => {
         expect(config.apiPath).toBe('/api/articles');
         expect(config.defaultSort).toBe('title');
         expect(config.defaultSortDirection).toBe('asc');
-        expect(config.fetchFn).toBe(mockFetchFn);
         expect(config.zodCreateSchema).toBe(mockSchema);
         expect(config.zodUpdateSchema).toBe(mockSchema);
     });

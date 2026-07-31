@@ -40,8 +40,9 @@ import {
 import type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
 
 export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAuthorizeOptions } from './types';
+export type { FirstUserBootstrapResult } from './bootstrap';
 export { hashPassword, verifyPassword, hashToken } from './crypto';
-export { bootstrapFirstUser } from './bootstrap';
+export { bootstrapFirstUser, provisionPlatformOwnerOrganization } from './bootstrap';
 export { getSession, revokeAllUserSessions, revokeSession, createSessionCookieForUser } from './session-store';
 
 const CSRF_COOKIE_BASE = 'ottabase.csrf-token';
@@ -240,7 +241,18 @@ async function handleCredentialsCallback(
     }
 
     ensureOrmConnection(env);
-    await bootstrapFirstUser(env, user);
+    try {
+        await bootstrapFirstUser(env, user);
+    } catch (error) {
+        console.error('First-user account provisioning failed during credentials sign-in:', error);
+        return jsonResponse(
+            {
+                error: 'Account setup could not be completed. Please try again.',
+                code: 'ACCOUNT_PROVISIONING_FAILED',
+            },
+            500,
+        );
+    }
     await options.onSignIn?.({ userId: user.id, email: user.email });
 
     const { cookie, session } = await createSessionCookieForUser(
@@ -458,7 +470,12 @@ async function handleOAuthCallback(
         return oauthErrorRedirect(env, options, 'Verification', request);
     }
 
-    await bootstrapFirstUser(env, { id: userId, email: userEmail, name: userName });
+    try {
+        await bootstrapFirstUser(env, { id: userId, email: userEmail, name: userName });
+    } catch (error) {
+        console.error(`First-user account provisioning failed for OAuth provider "${providerId}":`, error);
+        return oauthErrorRedirect(env, options, 'AccountProvisioning', request);
+    }
     await options.onSignIn?.({ userId, email: userEmail });
 
     const { cookie } = await createSessionCookieForUser(
@@ -581,7 +598,12 @@ async function handleMagicLinkCallback(
     const userName = (user.get('name') as string | null) ?? null;
     const userImage = (user.get('image') as string | null) ?? null;
 
-    await bootstrapFirstUser(env, { id: userId, email, name: userName });
+    try {
+        await bootstrapFirstUser(env, { id: userId, email, name: userName });
+    } catch (error) {
+        console.error('First-user account provisioning failed during magic-link sign-in:', error);
+        return errorRedirect(env, options, 'AccountProvisioning');
+    }
     await options.onSignIn?.({ userId, email });
 
     const { cookie } = await createSessionCookieForUser(

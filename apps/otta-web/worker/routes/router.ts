@@ -15,12 +15,13 @@
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { buildBlogRouter } from '@ottabase/ottablog/router';
 import { Router, withHeaders, type Ctx } from '@ottabase/ottarouter';
-import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
+import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { handleUnhandledRequestError } from '../lib/http-error-boundary';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
@@ -513,13 +514,7 @@ apiRouter.onError((err, c) => {
     if (err instanceof URIError) {
         return errorResponse('Invalid identifier', 400, { code: 'BAD_REQUEST' });
     }
-    console.error('Worker unhandled error:', err);
-    if (err instanceof ServiceError) {
-        return errorResponse(err.message, err.status, err.toApiResponse());
-    }
-    return errorResponse(err instanceof Error ? err.message : 'An unexpected error occurred', 500, {
-        code: 'INTERNAL_SERVER_ERROR',
-    });
+    return handleUnhandledRequestError(err, c.req);
 });
 
 /**

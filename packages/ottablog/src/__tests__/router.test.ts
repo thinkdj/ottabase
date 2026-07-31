@@ -190,6 +190,51 @@ describe('createBlogHandlers', () => {
         expect(response).toBe(dbError);
     });
 
+    it('projects public author data without exposing the account email', async () => {
+        const authorFields = {
+            id: 'author-1',
+            name: 'Ada',
+            email: 'private-login@example.com',
+            image: '/ada.png',
+        };
+        const postFields = {
+            id: 'post-1',
+            slug: 'public-post',
+            title: 'Public post',
+            status: 'published',
+            contentType: 'blog',
+            authorId: 'author-1',
+            isProtected: false,
+        };
+        const author = {
+            get: (field: string) => authorFields[field as keyof typeof authorFields],
+        };
+        const record = {
+            get: (field: string) => postFields[field as keyof typeof postFields] ?? null,
+            toJson: () => ({ ...postFields, privateNotes: 'never public' }),
+            author: vi.fn(async () => author),
+            tags: vi.fn(async () => []),
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(record as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/public-post'), 'public-post');
+        const body = (await response.json()) as {
+            author?: Record<string, unknown>;
+            privateNotes?: unknown;
+        };
+
+        expect(response.status).toBe(200);
+        expect(record.author).toHaveBeenCalledWith(['id', 'name', 'image']);
+        expect(body.author).toEqual({
+            id: 'author-1',
+            name: 'Ada',
+            image: '/ada.png',
+        });
+        expect(body.author).not.toHaveProperty('email');
+        expect(body).not.toHaveProperty('privateNotes');
+    });
+
     describe('platform mode (default)', () => {
         it('adds no organizationId filter and never calls resolveOrganizationId', async () => {
             const resolveOrganizationId = vi.fn(async () => 'org-1');

@@ -1157,6 +1157,9 @@ importers:
 
   packages/forms:
     dependencies:
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
       react:
         specifier: 'catalog:'
         version: 19.2.4

@@ -35,11 +35,6 @@ export interface OttaModelClass {
         defaultSort?: string;
         defaultSortDirection?: 'asc' | 'desc';
     };
-    // Writable allowlists
-    writable?: {
-        create?: string[];
-        update?: string[];
-    };
 }
 
 /**
@@ -49,16 +44,16 @@ export interface OttaModelClass {
  *
  * @example
  * ```typescript
- * import { User } from "@ottabase/ottaorm/models";
+ * import { Tag } from "@ottabase/ottaorm/models";
  * import { createModelConfig } from "@ottabase/forms";
  *
- * const userConfig = createModelConfig(User, {
- *   displayName: "User",
- *   displayNamePlural: "Users",
+ * const tagConfig = createModelConfig(Tag, {
+ *   displayName: "Topic",
+ *   displayNamePlural: "Topics",
  * });
  *
  * // Use in ModelCrud
- * <ModelCrud config={userConfig} />
+ * <ModelCrud config={tagConfig} />
  * ```
  */
 export function createModelConfig<T = Record<string, unknown>>(
@@ -102,7 +97,6 @@ export function createModelConfig<T = Record<string, unknown>>(
         defaultSort: options?.defaultSort || modelConfig.defaultSort,
         defaultSortDirection: options?.defaultSortDirection || modelConfig.defaultSortDirection,
         searchFields: options?.searchFields || getSearchableFields(fields),
-        fetchFn: options?.fetchFn,
         zodCreateSchema,
         zodUpdateSchema,
     };
@@ -150,7 +144,6 @@ export function defineModelConfig<T = Record<string, unknown>>(
         defaultSort: config.defaultSort,
         defaultSortDirection: config.defaultSortDirection,
         searchFields: config.searchFields || getSearchableFields(config.fields),
-        fetchFn: config.fetchFn,
         zodCreateSchema,
         zodUpdateSchema,
     };

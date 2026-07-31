@@ -358,7 +358,6 @@ export function BlogDetailPage() {
             const full = await api<BlogPost>('/api/blog/posts/unlock', {
                 method: 'POST',
                 body: { slug, password: password.trim() },
-                skipUnauthorizedHandler: true,
             });
             setUnlockedPost(full);
             setPassword('');

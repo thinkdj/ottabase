@@ -4,8 +4,12 @@
  *
  * Cache layer: all queries and mutations route through the framework's
  * standard cache — createModelHooks for ottaorm CRUD, useApiQuery for
- * the custom audit-log endpoint, and raw useMutation with meta.entity
- * for the five hooks that carry optimistic updates.
+ * the custom audit-log endpoint, and raw useMutation for the hooks that
+ * carry optimistic updates. There is no global invalidation observer;
+ * every mutation below explicitly invalidates the query families its
+ * write affects in onSuccess. `meta: { entity }` is retained only to
+ * tag the entity on terminal-error reports (see QueryProvider), not for
+ * invalidation.
  */
 
 import { api } from '@/lib/api';
@@ -105,6 +109,10 @@ export function useCreateOrganization() {
                 queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previous);
             }
         },
+        onSuccess: async () => {
+            // Replaces the optimistic temp-<timestamp> row with the canonical server list.
+            await queryClient.invalidateQueries({ queryKey: organizationHooks.queryKeys.lists() });
+        },
     });
 }
 
@@ -163,6 +171,11 @@ export function useUpdateOrganization() {
                 queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previousOrgs);
             }
         },
+        onSuccess: async (updatedOrg) => {
+            // Reconcile the optimistic patch with the server's canonical record.
+            await queryClient.invalidateQueries({ queryKey: organizationHooks.queryKeys.detail(updatedOrg.id) });
+            await queryClient.invalidateQueries({ queryKey: organizationHooks.queryKeys.lists() });
+        },
     });
 }
 
@@ -195,6 +208,10 @@ export function useDeleteOrganization() {
                 queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previous);
             }
         },
+        onSuccess: async (_data, id) => {
+            queryClient.removeQueries({ queryKey: organizationHooks.queryKeys.detail(id) });
+            await queryClient.invalidateQueries({ queryKey: organizationHooks.queryKeys.lists() });
+        },
     });
 }
 
@@ -223,8 +240,8 @@ export function useOrganizationMembers(organizationId: string, page = 1, perPage
 // ============================================================================
 
 /**
- * Invite a new member — no optimistic update needed; delegates cache
- * invalidation to the global observer via meta.entity.
+ * Invite a new member — no optimistic update needed; invalidates the
+ * member list directly in onSuccess.
  */
 export function useInviteMember() {
     const queryClient = useQueryClient();

@@ -1,8 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { createModelHooks } from '../createModelHooks';
-
-// Mock fetch globally
-global.fetch = vi.fn();
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createModelClient, createModelHooks } from '../createModelHooks';
+import type { ApiClientError, ApiClientFunction } from '../types';
 
 interface TestModel {
     id: string;
@@ -10,209 +8,131 @@ interface TestModel {
     title: string;
 }
 
-describe('createModelHooks - useFind', () => {
+const record: TestModel = {
+    id: 'record/with?reserved',
+    slug: 'test-slug',
+    title: 'Test Title',
+};
+
+function apiError(status: number): ApiClientError {
+    return Object.assign(new Error(`HTTP ${status}`), {
+        name: 'ApiError' as const,
+        status,
+        messages: [`HTTP ${status}`],
+        retryable: false,
+    });
+}
+
+function mockApi(result: unknown = record): {
+    api: ApiClientFunction;
+    fn: ReturnType<typeof vi.fn>;
+} {
+    const fn = vi.fn().mockResolvedValue(result);
+    return {
+        api: fn as unknown as ApiClientFunction,
+        fn,
+    };
+}
+
+describe('createModelHooks query keys', () => {
+    it('includes find identity and infinite page size', () => {
+        const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
+
+        expect(hooks.queryKeys.find('slug', 'test-slug')).toEqual(['posts', 'find', 'slug', 'test-slug']);
+        expect(hooks.queryKeys.infinite({ search: 'query' }, 25)).toEqual([
+            'posts',
+            'infinite',
+            {
+                filters: { search: 'query' },
+                perPage: 25,
+            },
+        ]);
+    });
+});
+
+describe('createModelClient', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    describe('queryKeys.find', () => {
-        it('should generate correct query key', () => {
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const queryKey = hooks.queryKeys.find('slug', 'test-slug');
+    it('uses the mandatory client and forwards the query AbortSignal', async () => {
+        const { api, fn } = mockApi({ data: [record] });
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, api);
+        const controller = new AbortController();
 
-            expect(queryKey).toEqual(['posts', 'find', 'slug', 'test-slug']);
-        });
-
-        it('should generate correct query key for numeric values', () => {
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const queryKey = hooks.queryKeys.find('id', 123);
-
-            expect(queryKey).toEqual(['posts', 'find', 'id', 123]);
+        await expect(client.fetchList({ search: 'hello' }, controller.signal)).resolves.toEqual([record]);
+        expect(fn).toHaveBeenCalledWith('/api/ottaorm/posts?search=hello', {
+            method: 'GET',
+            signal: controller.signal,
         });
     });
 
-    describe('fetchers.fetchFind', () => {
-        it('should fetch single object by field/value', async () => {
-            const mockData: TestModel = {
-                id: 'test-1',
-                slug: 'test-slug',
-                title: 'Test Title',
-            };
+    it('encodes resource IDs before placing them in a URL path', async () => {
+        const { api, fn } = mockApi(record);
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, api);
 
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => mockData,
-            });
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchFind('slug', 'test-slug');
-
-            expect(result).toEqual(mockData);
-            expect(global.fetch).toHaveBeenCalledWith('/api/ottaorm/posts?field=slug&value=test-slug');
-        });
-
-        it('should return null when record not found (404)', async () => {
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: false,
-                status: 404,
-                json: async () => ({ error: 'Not found' }),
-            });
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchFind('slug', 'non-existent');
-
-            expect(result).toBeNull();
-            expect(global.fetch).toHaveBeenCalledWith('/api/ottaorm/posts?field=slug&value=non-existent');
-        });
-
-        it('should throw error on non-404 errors', async () => {
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: false,
-                status: 500,
-                json: async () => ({ error: 'Server error' }),
-            });
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-
-            await expect(hooks.fetchers.fetchFind('slug', 'test-slug')).rejects.toThrow();
-        });
-
-        it('should handle numeric values', async () => {
-            const mockData: TestModel = {
-                id: '123',
-                slug: 'test-slug',
-                title: 'Test Title',
-            };
-
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => mockData,
-            });
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchFind('id', 123);
-
-            expect(result).toEqual(mockData);
-            expect(global.fetch).toHaveBeenCalledWith('/api/ottaorm/posts?field=id&value=123');
-        });
-
-        it('should use custom API path when provided', async () => {
-            const mockData: TestModel = {
-                id: 'test-1',
-                slug: 'test-slug',
-                title: 'Test Title',
-            };
-
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => mockData,
-            });
-
-            const hooks = createModelHooks<TestModel>({
-                entityName: 'posts',
-                apiPath: '/api/custom/posts',
-            });
-            const result = await hooks.fetchers.fetchFind('slug', 'test-slug');
-
-            expect(result).toEqual(mockData);
-            expect(global.fetch).toHaveBeenCalledWith('/api/custom/posts?field=slug&value=test-slug');
-        });
-
-        it('should handle empty string value', async () => {
-            const mockData: TestModel = {
-                id: 'test-1',
-                slug: '',
-                title: 'Test Title',
-            };
-
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => mockData,
-            });
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchFind('slug', '');
-
-            expect(result).toEqual(mockData);
-            expect(global.fetch).toHaveBeenCalledWith('/api/ottaorm/posts?field=slug&value=');
-        });
-
-        it('should handle network errors', async () => {
-            (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
-
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-
-            await expect(hooks.fetchers.fetchFind('slug', 'test-slug')).rejects.toThrow('Network error');
+        await expect(client.fetchDetail(record.id)).resolves.toEqual(record);
+        expect(fn).toHaveBeenCalledWith('/api/ottaorm/posts/record%2Fwith%3Freserved', {
+            method: 'GET',
+            signal: undefined,
         });
     });
 
-    describe('fetchers.fetchList / normalizeListResponse', () => {
-        it('should return array when API returns plain array', async () => {
-            const mockList: TestModel[] = [
-                { id: '1', slug: 'a', title: 'A' },
-                { id: '2', slug: 'b', title: 'B' },
-            ];
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => mockList,
-            });
+    it('maps a typed 404 lookup failure to null', async () => {
+        const fn = vi.fn().mockRejectedValue(apiError(404));
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, fn as unknown as ApiClientFunction);
 
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchList();
-
-            expect(result).toEqual(mockList);
-            expect(Array.isArray(result)).toBe(true);
+        await expect(client.fetchFind('slug', 'missing')).resolves.toBeNull();
+        expect(fn).toHaveBeenCalledWith('/api/ottaorm/posts?field=slug&value=missing', {
+            method: 'GET',
+            signal: undefined,
         });
+    });
 
-        it('should return data array when API returns { data: array, pagination } (version history shape)', async () => {
-            const mockList: TestModel[] = [
-                { id: '1', slug: 'a', title: 'A' },
-                { id: '2', slug: 'b', title: 'B' },
-            ];
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => ({ data: mockList, pagination: { page: 1, perPage: 10, total: 2 } }),
-            });
+    it('preserves non-404 structured failures', async () => {
+        const error = apiError(403);
+        const fn = vi.fn().mockRejectedValue(error);
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, fn as unknown as ApiClientFunction);
 
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchList();
+        await expect(client.fetchDetail('forbidden')).rejects.toBe(error);
+    });
 
-            expect(result).toEqual(mockList);
-            expect(result).toHaveLength(2);
+    it('normalizes the supported list envelope', async () => {
+        const { api } = mockApi({
+            data: {
+                data: [record],
+                pagination: { page: 1, perPage: 10, total: 1 },
+            },
         });
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, api);
 
-        it('should return inner data when API returns { data: { data: array, pagination } }', async () => {
-            const mockList: TestModel[] = [{ id: '1', slug: 'x', title: 'X' }];
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => ({ data: { data: mockList, pagination: {} } }),
-            });
+        await expect(client.fetchList()).resolves.toEqual([record]);
+    });
 
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchList();
+    it('normalizes wrapped mutation records', async () => {
+        const { api, fn } = mockApi({ data: record });
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, api);
 
-            expect(result).toEqual(mockList);
-            expect(result).toHaveLength(1);
+        await expect(client.createItem({ slug: 'test-slug' })).resolves.toEqual(record);
+        expect(fn).toHaveBeenCalledWith('/api/ottaorm/posts', {
+            method: 'POST',
+            body: { slug: 'test-slug' },
         });
+    });
 
-        it('should return empty array when API returns empty or unexpected shape', async () => {
-            (global.fetch as any).mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => ({}),
-            });
+    it('encodes update/delete IDs', async () => {
+        const { api, fn } = mockApi(record);
+        const client = createModelClient<TestModel>({ entityName: 'posts' }, api);
 
-            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
-            const result = await hooks.fetchers.fetchList();
+        await client.updateItem(record.id, { title: 'Updated' });
+        await client.deleteItem(record.id);
 
-            expect(result).toEqual([]);
+        expect(fn).toHaveBeenNthCalledWith(1, '/api/ottaorm/posts/record%2Fwith%3Freserved', {
+            method: 'PATCH',
+            body: { title: 'Updated' },
+        });
+        expect(fn).toHaveBeenNthCalledWith(2, '/api/ottaorm/posts/record%2Fwith%3Freserved', {
+            method: 'DELETE',
         });
     });
 });

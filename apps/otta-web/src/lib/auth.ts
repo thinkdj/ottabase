@@ -21,7 +21,6 @@ import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { APP_ID } from '@/ottabase/config';
-import { useQueryClient } from '@tanstack/react-query';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
@@ -103,7 +102,6 @@ export function resolveEffectiveOrgId(
 
 /** Mirrors the shared auth session into the app's organization-aware state atoms. */
 function useAppSessionState(sessionData: SessionState): SessionState {
-    const queryClient = useQueryClient();
     const setGlobalUser = useSetAtom(userAtom);
     const setGlobalIsAuthenticated = useSetAtom(isAuthenticatedAtom);
     const setAppId = useSetAtom(appIdAtom);
@@ -143,7 +141,10 @@ function useAppSessionState(sessionData: SessionState): SessionState {
 
     useEffect(() => {
         const clearClientAuthState = () => {
-            queryClient.clear();
+            // Clearing the auth atoms changes OttaQueryProvider's visibility
+            // scope. That boundary cancels and destroys the old QueryClient,
+            // so session bootstrap does not need (and must not require) a
+            // QueryClient of its own.
             setGlobalUser(null);
             setGlobalIsAuthenticated(false);
             setOrganizationId(null);
@@ -163,7 +164,7 @@ function useAppSessionState(sessionData: SessionState): SessionState {
             window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, clearClientAuthState);
             window.removeEventListener('storage', handleStorage);
         };
-    }, [queryClient, setGlobalIsAuthenticated, setGlobalUser, setOrganizationId]);
+    }, [setGlobalIsAuthenticated, setGlobalUser, setOrganizationId]);
 
     return sessionData;
 }

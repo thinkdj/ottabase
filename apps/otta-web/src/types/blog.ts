@@ -12,7 +12,6 @@ import type { OutputData } from '@ottabase/ottaeditor';
 export interface PostAuthor {
     id: string;
     name: string | null;
-    email: string | null;
     image: string | null;
 }
 

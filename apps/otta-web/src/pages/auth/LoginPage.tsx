@@ -60,6 +60,7 @@ export function LoginPage() {
             OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
             OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
             Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
+            AccountProvisioning: 'Your account workspace could not be initialized. Please try signing in again.',
         };
         setError(messages[code] ?? 'Sign-in failed. Please try again.');
     }, []);

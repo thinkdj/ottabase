@@ -1,5 +1,6 @@
 import { api, isApiError } from '@/lib/api';
-import type { PaginatedResponse, Pagination } from '@/lib/api-types';
+import type { PaginatedResponse } from '@/lib/api-types';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -39,16 +40,16 @@ import {
     Plus,
     Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { ShortlinkForm } from './components/ShortlinkForm';
 
 type ShortlinksResponse = PaginatedResponse<ShortlinkRecord>;
 
 export function ShortlinksPage() {
-    const [shortlinks, setShortlinks] = useState<ShortlinkRecord[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+    const [actionError, setActionError] = useState<string | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingShortlink, setEditingShortlink] = useState<ShortlinkRecord | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -57,31 +58,27 @@ export function ShortlinksPage() {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(15);
-    const [pagination, setPagination] = useState<Pagination | null>(null);
-
-    const fetchShortlinks = useCallback(async (page: number = 1, itemsPerPage: number = 15) => {
-        try {
-            setLoading(true);
-            setError(null);
-            const response = await api<ShortlinksResponse>(`/api/shortlinks?page=${page}&per_page=${itemsPerPage}`, {
-                method: 'GET',
-                callerId: 'ShortlinksPage:fetchShortlinks',
-            });
-            if (response.data) {
-                setShortlinks(response.data);
-                setPagination(response.pagination);
-                setCurrentPage(response.pagination.page);
-            }
-        } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load shortlinks');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const {
+        data: shortlinksResponse,
+        error: queryError,
+        isFetching: loading,
+    } = useApiQuery<ShortlinksResponse>({
+        entity: 'shortlinks',
+        queryKey: ['list', currentPage, perPage],
+        endpoint: `/api/shortlinks?page=${currentPage}&per_page=${perPage}`,
+        queryOptions: {
+            meta: { errorPresentation: 'local' },
+        },
+    });
+    const shortlinks = shortlinksResponse?.data ?? [];
+    const pagination = shortlinksResponse?.pagination ?? null;
+    const error = actionError ?? queryError?.message ?? null;
 
     useEffect(() => {
-        fetchShortlinks(currentPage, perPage);
-    }, [fetchShortlinks, currentPage, perPage]);
+        if (pagination && pagination.page !== currentPage) {
+            setCurrentPage(pagination.page);
+        }
+    }, [currentPage, pagination]);
 
     const handleCreate = () => {
         setEditingShortlink(null);
@@ -102,10 +99,11 @@ export function ShortlinksPage() {
 
         const id = deleteDialog;
         try {
+            setActionError(null);
             await api(`/api/shortlinks/${id}`, { method: 'DELETE' });
-            await fetchShortlinks(currentPage, perPage);
+            await queryClient.invalidateQueries({ queryKey: ['shortlinks'] });
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to delete shortlink');
+            setActionError(isApiError(err) ? err.message : 'Failed to delete shortlink');
         } finally {
             setDeleteDialog(null);
         }
@@ -114,7 +112,8 @@ export function ShortlinksPage() {
     const handleSuccess = async () => {
         setIsDialogOpen(false);
         setEditingShortlink(null);
-        await fetchShortlinks(currentPage, perPage);
+        setActionError(null);
+        await queryClient.invalidateQueries({ queryKey: ['shortlinks'] });
     };
 
     const copyToClipboard = async (text: string, id: string) => {
@@ -152,6 +151,7 @@ export function ShortlinksPage() {
 
     // Pagination handlers
     const goToPage = (page: number) => {
+        setActionError(null);
         setCurrentPage(page);
     };
 
@@ -179,6 +179,7 @@ export function ShortlinksPage() {
 
     const handlePerPageChange = (value: string) => {
         const newPerPage = parseInt(value, 10);
+        setActionError(null);
         setPerPage(newPerPage);
         setCurrentPage(1); // Reset to first page when changing page size
     };

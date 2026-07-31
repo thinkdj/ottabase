@@ -5,8 +5,10 @@
 // ============================================================
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStableQuerySignal } from '@ottabase/ottaorm/client';
 import { clsx } from 'clsx';
 import { useCallback, useState } from 'react';
+import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { CrudViewMode, ModelCrudProps } from '../types';
 import { ModelDetail } from './ModelDetail';
 import { ModelForm } from './ModelForm';
@@ -47,11 +49,11 @@ export function ModelCrud<T extends Record<string, unknown>>({
     apiBasePath = '/api/ottaorm',
     perPage = 10,
     selectable = false,
-    fetchFn = fetch,
 }: ModelCrudProps<T>) {
     const queryClient = useQueryClient();
     const primaryKey = config.primaryKey || 'id';
     const apiPath = config.apiPath || `${apiBasePath}/${config.entity}`;
+    const request = useFormRequest();
 
     // View state
     const [viewMode, setViewMode] = useState<CrudViewMode>(initialMode);
@@ -73,11 +75,13 @@ export function ModelCrud<T extends Record<string, unknown>>({
     // Build query key
     const listQueryKey = [config.entity, 'list', { page, perPage, sortField, sortDirection, searchQuery }];
     const detailQueryKey = [config.entity, 'detail', selectedRecordId];
+    const recordPath = useCallback((id: string | number) => `${apiPath}/${encodeURIComponent(String(id))}`, [apiPath]);
 
     // Fetch list
     const listQuery = useQuery<PaginationResult<T>>({
         queryKey: listQueryKey,
-        queryFn: async () => {
+        queryFn: async (context) => {
+            const signal = await getStableQuerySignal(context);
             const params = new URLSearchParams();
             params.set('page', String(page));
             params.set('perPage', String(perPage));
@@ -89,12 +93,7 @@ export function ModelCrud<T extends Record<string, unknown>>({
                 params.set('search', searchQuery);
             }
 
-            const response = await fetchFn(`${apiPath}?${params}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch data');
-            }
-
-            const data = await response.json();
+            const data = await request<Record<string, unknown> | T[]>(`${apiPath}?${params}`, { signal });
 
             // Handle both paginated and simple array responses
             if (Array.isArray(data)) {
@@ -110,25 +109,29 @@ export function ModelCrud<T extends Record<string, unknown>>({
             }
 
             // Handle wrapped response { users: [...] } or { data: [...], pagination?: {...} } (OttaORM standard)
-            const items = data[config.entity] || data.data || data;
+            const responseData = data as Record<string, unknown>;
+            const items = responseData[config.entity] || responseData.data || data;
             if (Array.isArray(items)) {
-                const pagination = data.pagination;
-                const total = data.total ?? pagination?.total ?? items.length;
-                const page = data.page ?? pagination?.page ?? 1;
-                const perPage = data.perPage ?? pagination?.perPage ?? items.length;
-                const totalPages = data.totalPages ?? pagination?.totalPages ?? Math.max(1, Math.ceil(total / perPage));
+                const pagination = responseData.pagination as Partial<PaginationResult<T>> | undefined;
+                const total = (responseData.total as number | undefined) ?? pagination?.total ?? items.length;
+                const page = (responseData.page as number | undefined) ?? pagination?.page ?? 1;
+                const perPage = (responseData.perPage as number | undefined) ?? pagination?.perPage ?? items.length;
+                const totalPages =
+                    (responseData.totalPages as number | undefined) ??
+                    pagination?.totalPages ??
+                    Math.max(1, Math.ceil(total / perPage));
                 return {
                     data: items,
                     total,
                     page,
                     perPage,
                     totalPages,
-                    hasNextPage: data.hasNextPage ?? page < totalPages,
-                    hasPrevPage: data.hasPrevPage ?? page > 1,
+                    hasNextPage: (responseData.hasNextPage as boolean | undefined) ?? page < totalPages,
+                    hasPrevPage: (responseData.hasPrevPage as boolean | undefined) ?? page > 1,
                 };
             }
 
-            return data;
+            return data as unknown as PaginationResult<T>;
         },
         enabled: viewMode === 'list',
     });
@@ -136,18 +139,19 @@ export function ModelCrud<T extends Record<string, unknown>>({
     // Fetch single record
     const detailQuery = useQuery<T>({
         queryKey: detailQueryKey,
-        queryFn: async () => {
-            const response = await fetchFn(`${apiPath}/${selectedRecordId}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch record');
+        queryFn: async (context) => {
+            const signal = await getStableQuerySignal(context);
+            if (selectedRecordId === null) {
+                throw new Error('Cannot fetch a record without an ID');
             }
 
-            const data = await response.json();
+            const data = await request<Record<string, unknown> | T>(recordPath(selectedRecordId), { signal });
             // Handle wrapped response
             const singularEntity = singularize(config.entity);
-            return data[singularEntity] || data.data || data;
+            const responseData = data as Record<string, unknown>;
+            return (responseData[singularEntity] || responseData.data || data) as T;
         },
-        enabled: (viewMode === 'detail' || viewMode === 'edit') && !!selectedRecordId,
+        enabled: (viewMode === 'detail' || viewMode === 'edit') && selectedRecordId !== null,
     });
 
     // Helper: parse server field errors from API responses
@@ -169,21 +173,20 @@ export function ModelCrud<T extends Record<string, unknown>>({
 
     // Create mutation
     const createMutation = useMutation<T, Error, Partial<T>>({
+        meta: { errorPresentation: 'local' },
         mutationFn: async (data) => {
             setServerFieldErrors({});
-            const response = await fetchFn(apiPath, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                parseServerErrors(body);
-                throw new Error(body.error || body.message || 'Failed to create record');
+            try {
+                const result = await request<Record<string, unknown> | T>(apiPath, {
+                    method: 'POST',
+                    body: data,
+                });
+                const singularEntity = singularize(config.entity);
+                return (result as Record<string, T>)[singularEntity] || (result as { data?: T }).data || (result as T);
+            } catch (error) {
+                parseServerErrors(getServerErrorData(error));
+                throw error;
             }
-            const result = await response.json();
-            const singularEntity = singularize(config.entity);
-            return result[singularEntity] || result.data || result;
         },
         onSuccess: (record) => {
             setServerFieldErrors({});
@@ -196,21 +199,24 @@ export function ModelCrud<T extends Record<string, unknown>>({
 
     // Update mutation
     const updateMutation = useMutation<T, Error, Partial<T>>({
+        meta: { errorPresentation: 'local' },
         mutationFn: async (data) => {
             setServerFieldErrors({});
-            const response = await fetchFn(`${apiPath}/${selectedRecordId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                parseServerErrors(body);
-                throw new Error(body.error || body.message || 'Failed to update record');
+            try {
+                if (selectedRecordId === null) {
+                    throw new Error('Cannot update a record without an ID');
+                }
+
+                const result = await request<Record<string, unknown> | T>(recordPath(selectedRecordId), {
+                    method: 'PATCH',
+                    body: data,
+                });
+                const singularEntity = singularize(config.entity);
+                return (result as Record<string, T>)[singularEntity] || (result as { data?: T }).data || (result as T);
+            } catch (error) {
+                parseServerErrors(getServerErrorData(error));
+                throw error;
             }
-            const result = await response.json();
-            const singularEntity = singularize(config.entity);
-            return result[singularEntity] || result.data || result;
         },
         onSuccess: (record) => {
             setServerFieldErrors({});
@@ -222,14 +228,11 @@ export function ModelCrud<T extends Record<string, unknown>>({
 
     // Delete mutation
     const deleteMutation = useMutation<void, Error, string | number>({
+        meta: { errorPresentation: 'local' },
         mutationFn: async (id) => {
-            const response = await fetchFn(`${apiPath}/${id}`, {
+            await request<void>(recordPath(id), {
                 method: 'DELETE',
             });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error || error.message || 'Failed to delete record');
-            }
         },
         onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: [config.entity] });
@@ -279,6 +282,14 @@ export function ModelCrud<T extends Record<string, unknown>>({
         setSelectedRecordId(null);
     }, []);
 
+    const handleServerErrorClear = useCallback((field: string) => {
+        setServerFieldErrors((current) => {
+            if (!(field in current)) return current;
+            const { [field]: _removed, ...remaining } = current;
+            return remaining;
+        });
+    }, []);
+
     const handleSortChange = useCallback((field: string, direction: 'asc' | 'desc') => {
         setSortField(field);
         setSortDirection(direction);
@@ -289,6 +300,8 @@ export function ModelCrud<T extends Record<string, unknown>>({
         setSearchQuery(query);
         setPage(1);
     }, []);
+
+    const visibleError = listQuery.error ?? detailQuery.error ?? deleteMutation.error;
 
     return (
         <div className={clsx('space-y-4', className)}>
@@ -336,11 +349,14 @@ export function ModelCrud<T extends Record<string, unknown>>({
                 <ModelForm
                     config={config}
                     mode="create"
-                    onSubmit={(data) => createMutation.mutate(data)}
+                    onSubmit={async (data) => {
+                        await createMutation.mutateAsync(data);
+                    }}
                     onCancel={handleBack}
                     isLoading={createMutation.isPending}
                     apiBasePath={apiBasePath}
                     serverErrors={serverFieldErrors}
+                    onServerErrorClear={handleServerErrorClear}
                 />
             )}
 
@@ -350,11 +366,14 @@ export function ModelCrud<T extends Record<string, unknown>>({
                     config={config}
                     mode="edit"
                     initialData={detailQuery.data}
-                    onSubmit={(data) => updateMutation.mutate(data)}
+                    onSubmit={async (data) => {
+                        await updateMutation.mutateAsync(data);
+                    }}
                     onCancel={() => setViewMode('detail')}
                     isLoading={updateMutation.isPending}
                     apiBasePath={apiBasePath}
                     serverErrors={serverFieldErrors}
+                    onServerErrorClear={handleServerErrorClear}
                 />
             )}
 
@@ -370,22 +389,7 @@ export function ModelCrud<T extends Record<string, unknown>>({
             )}
 
             {/* Error Display */}
-            {(listQuery.error ||
-                detailQuery.error ||
-                createMutation.error ||
-                updateMutation.error ||
-                deleteMutation.error) && (
-                <ErrorBanner
-                    error={
-                        listQuery.error?.message ||
-                        detailQuery.error?.message ||
-                        createMutation.error?.message ||
-                        updateMutation.error?.message ||
-                        deleteMutation.error?.message ||
-                        'An error occurred'
-                    }
-                />
-            )}
+            {visibleError && <ErrorBanner error={visibleError} />}
         </div>
     );
 }
@@ -450,13 +454,32 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
 }
 
 interface ErrorBannerProps {
-    error: string;
+    error: Error;
 }
 
 function ErrorBanner({ error }: ErrorBannerProps) {
+    const status = (error as Error & { status?: unknown }).status;
+
+    if (status === 403) {
+        return (
+            <div
+                role="alert"
+                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+                <p className="font-medium">Access denied</p>
+                <p className="mt-1 text-destructive/80">
+                    You do not have permission to access this resource. The server blocked the request.
+                </p>
+            </div>
+        );
+    }
+
     return (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+        <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+            {error.message || 'An error occurred'}
         </div>
     );
 }

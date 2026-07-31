@@ -1,5 +1,5 @@
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
-import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
+import { errorResponse } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from './cloudflare-env';
 import { queueHandler } from './ottabase/queue';
 import {
@@ -12,6 +12,7 @@ import { injectBlogPostSeo } from './worker/lib/blog-seo-inject';
 import { injectBlogThemeCss } from './worker/lib/blog-theme-inject';
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { ensureDbConnection } from './worker/lib/db-utils';
+import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
 import { checkKillSwitches } from './worker/lib/killswitch';
 import { handleApiRequest } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
@@ -132,15 +133,7 @@ export default {
 
             return response;
         } catch (err) {
-            console.error('Worker unhandled error:', err);
-
-            if (err instanceof ServiceError) {
-                return errorResponse(err.message, err.status, err.toApiResponse());
-            }
-
-            return errorResponse(err instanceof Error ? err.message : 'An unexpected error occurred', 500, {
-                code: 'INTERNAL_SERVER_ERROR',
-            });
+            return handleUnhandledRequestError(err, request);
         }
     },
     queue: queueHandler,

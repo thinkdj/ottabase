@@ -4,55 +4,8 @@ import { BaseModel } from '../../base/BaseModel';
 import * as crud from '../../crud';
 import { clearModelRegistry, registerModel } from '../../registry';
 import { globalRLS } from '../engine';
-import { executeSecureCrudRequest, extractSecurityContext, parseSqliteUniqueConstraintForApi } from '../secure-crud';
+import { executeSecureCrudRequest, parseSqliteUniqueConstraintForApi, secureCrud } from '../secure-crud';
 import { RLSPolicies } from '../types';
-
-describe('extractSecurityContext', () => {
-    it('extracts userId, organizationId, appId from headers', () => {
-        const request = new Request('https://api.example.com', {
-            headers: {
-                'x-user-id': 'user-123',
-                'x-org-id': 'org-456',
-                'x-app-id': 'app-789',
-            },
-        });
-        const ctx = extractSecurityContext(request);
-        expect(ctx.userId).toBe('user-123');
-        expect(ctx.organizationId).toBe('org-456');
-        expect(ctx.appId).toBe('app-789');
-    });
-
-    it('parses comma-separated roles and permissions', () => {
-        const request = new Request('https://api.example.com', {
-            headers: {
-                'x-user-id': 'u1',
-                'x-user-roles': 'admin, member',
-                'x-user-permissions': 'posts:read, posts:write',
-            },
-        });
-        const ctx = extractSecurityContext(request);
-        expect(ctx.roles).toEqual(['admin', 'member']);
-        expect(ctx.permissions).toEqual(['posts:read', 'posts:write']);
-    });
-
-    it('treats "null" organizationId as null', () => {
-        const request = new Request('https://api.example.com', {
-            headers: { 'x-org-id': 'null' },
-        });
-        const ctx = extractSecurityContext(request);
-        expect(ctx.organizationId).toBeNull();
-    });
-
-    it('returns undefined for missing headers', () => {
-        const request = new Request('https://api.example.com');
-        const ctx = extractSecurityContext(request);
-        expect(ctx.userId).toBeUndefined();
-        expect(ctx.organizationId).toBeUndefined();
-        expect(ctx.appId).toBeUndefined();
-        expect(ctx.roles).toBeUndefined();
-        expect(ctx.permissions).toBeUndefined();
-    });
-});
 
 describe('parseSqliteUniqueConstraintForApi', () => {
     it('prefers slug in composite constraint messages', () => {
@@ -63,6 +16,85 @@ describe('parseSqliteUniqueConstraintForApi', () => {
     it('maps snake_case columns to API fields', () => {
         expect(parseSqliteUniqueConstraintForApi('UNIQUE constraint failed: users.email')).toBe('email');
         expect(parseSqliteUniqueConstraintForApi('UNIQUE constraint failed: posts.app_id')).toBe('appId');
+    });
+});
+
+describe('secureCrud response boundary', () => {
+    beforeEach(() => {
+        globalRLS.clear();
+    });
+
+    afterEach(() => {
+        globalRLS.clear();
+        vi.restoreAllMocks();
+    });
+
+    it.each([
+        {
+            name: 'invalid JSON body',
+            request: () =>
+                new Request('https://api.example.com/api/ottaorm/posts', {
+                    method: 'POST',
+                    body: '{invalid',
+                }),
+            expected: { status: 400, code: 'INVALID_BODY', error: 'Invalid JSON body' },
+        },
+        {
+            name: 'invalid where query',
+            request: () => new Request('https://api.example.com/api/ottaorm/posts?where=%7Binvalid'),
+            expected: { status: 400, code: 'INVALID_QUERY', error: 'Invalid JSON in where parameter' },
+        },
+        {
+            name: 'missing model',
+            request: () => new Request('https://api.example.com/api/ottaorm'),
+            expected: { status: 404, code: 'MODEL_NOT_FOUND', error: 'Model not found' },
+        },
+    ])('returns the canonical ApiError shape for $name', async ({ request: makeRequest, expected }) => {
+        const request = makeRequest();
+        const response = await secureCrud({
+            request,
+            url: new URL(request.url),
+            context: {},
+        });
+
+        expect(response.status).toBe(expected.status);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(await response.json()).toEqual({
+            error: expected.error,
+            code: expected.code,
+            messages: [expected.error],
+        });
+    });
+
+    it('preserves safe structured 4xx fields from the CRUD result', async () => {
+        globalRLS.register({
+            model: 'posts',
+            policy: RLSPolicies.TenantScoped(false),
+        });
+        vi.spyOn(crud, 'handleCrud').mockResolvedValue({
+            success: false,
+            error: 'Validation failed',
+            code: 'VALIDATION_ERROR',
+            hint: 'Correct the highlighted fields',
+            fieldErrors: { title: ['Title is required'] },
+            status: 422,
+        });
+        const request = new Request('https://api.example.com/api/ottaorm/posts');
+
+        const response = await secureCrud({
+            request,
+            url: new URL(request.url),
+            context: { userId: 'u1', organizationId: 'org-1' },
+        });
+
+        expect(response.status).toBe(422);
+        expect(await response.json()).toEqual({
+            error: 'Validation failed',
+            code: 'VALIDATION_ERROR',
+            messages: ['Validation failed'],
+            hint: 'Correct the highlighted fields',
+            fieldErrors: { title: ['Title is required'] },
+        });
     });
 });
 
@@ -81,8 +113,12 @@ describe('executeSecureCrudRequest', () => {
         const result = await executeSecureCrudRequest({ method: 'GET', model: 'unknown_entity' }, context);
         expect(result.success).toBe(false);
         expect(result.status).toBe(403);
-        expect(result.code).toBe('RLS_ERROR');
-        expect(result.error).toMatch(/No RLS policy/);
+        expect(result).toMatchObject({
+            error: 'Forbidden',
+            code: 'FORBIDDEN',
+        });
+        expect(result.details).toBeUndefined();
+        expect(result.hint).toBeUndefined();
     });
 
     it('GET: applies RLS filter and calls handleCrud with merged where', async () => {
@@ -174,7 +210,12 @@ describe('executeSecureCrudRequest', () => {
         );
         expect(result.success).toBe(false);
         expect(result.status).toBe(403);
-        expect(result.code).toBe('RLS_ERROR');
+        expect(result).toMatchObject({
+            error: 'Forbidden',
+            code: 'FORBIDDEN',
+        });
+        expect(JSON.stringify(result)).not.toContain('org-2');
+        expect(JSON.stringify(result)).not.toContain('Hi');
     });
 
     it('POST: injects organizationId and calls handleCrud', async () => {
@@ -224,7 +265,7 @@ describe('executeSecureCrudRequest', () => {
         expect(result.status).toBe(400);
     });
 
-    it('Hierarchical: denies with 403 (no 500, no query) when userId is missing from context', async () => {
+    it('Hierarchical: denies with generic 401 (no 500, no query) when userId is missing from context', async () => {
         globalRLS.register({
             model: 'posts',
             policy: RLSPolicies.Hierarchical(false),
@@ -239,9 +280,41 @@ describe('executeSecureCrudRequest', () => {
         );
 
         expect(result.success).toBe(false);
-        expect(result.status).toBe(403);
-        expect(result.code).toBe('RLS_ERROR');
+        expect(result.status).toBe(401);
+        expect(result).toMatchObject({
+            error: 'Authentication required',
+            code: 'UNAUTHORIZED',
+        });
+        expect(result.details).toBeUndefined();
+        expect(result.hint).toBeUndefined();
         expect(handleCrudSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns a generic 500 and logs only redacted structured error data', async () => {
+        globalRLS.register({
+            model: 'posts',
+            policy: RLSPolicies.TenantScoped(false),
+        });
+        vi.spyOn(crud, 'handleCrud').mockRejectedValue(
+            new Error('Database failed with password=super-secret and token=secret-token'),
+        );
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const result = await executeSecureCrudRequest(
+            { method: 'GET', model: 'posts' },
+            { userId: 'u1', organizationId: 'org-1' },
+        );
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Internal server error',
+            code: 'INTERNAL_SERVER_ERROR',
+            status: 500,
+        });
+        const logged = JSON.stringify(consoleSpy.mock.calls);
+        expect(logged).not.toContain('super-secret');
+        expect(logged).not.toContain('secret-token');
+        expect(logged).toContain('[REDACTED]');
     });
 
     describe('parseError fail-closed behavior', () => {
@@ -321,12 +394,19 @@ describe('RLS fails closed on misconfigured policy columns', () => {
         globalRLS.register({ model: 'notes', policy: RLSPolicies.TenantScoped(false) });
         const handleCrudSpy = vi.spyOn(crud, 'handleCrud');
 
-        const result = await executeSecureCrudRequest({ method: 'GET', model: 'notes' }, { organizationId: 'org-1' });
+        const result = await executeSecureCrudRequest(
+            { method: 'GET', model: 'notes' },
+            { userId: 'u1', organizationId: 'org-1' },
+        );
 
         expect(result.success).toBe(false);
         expect(result.status).toBe(403);
-        expect(result.code).toBe('RLS_ERROR');
-        expect(result.error).toMatch(/not a column|misconfiguration/i);
+        expect(result).toMatchObject({
+            error: 'Forbidden',
+            code: 'FORBIDDEN',
+        });
+        expect(result.details).toBeUndefined();
+        expect(result.hint).toBeUndefined();
         // Critically: it must NOT have reached the model/query layer with a dropped filter.
         expect(handleCrudSpy).not.toHaveBeenCalled();
     });

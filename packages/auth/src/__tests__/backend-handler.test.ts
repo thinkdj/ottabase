@@ -156,6 +156,54 @@ describe('handleAuthRequest', () => {
         );
         expect(res.status).toBe(403);
     });
+
+    it('does not issue a credentials session when first-user provisioning fails', async () => {
+        const failingD1 = {
+            prepare() {
+                const statement = {
+                    bind: () => statement,
+                    first: async () => null,
+                    run: async () => {
+                        throw new Error('D1 provisioning failure');
+                    },
+                };
+                return statement;
+            },
+        };
+        const env = createEnv({ OBCF_D1: failingD1 as any });
+        const { token, cookie } = await getCsrf(env);
+
+        const response = await handleAuthRequest(
+            request('/api/auth/callback/credentials', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Cookie: cookie,
+                    Origin: 'https://app.example.com',
+                },
+                body: JSON.stringify({
+                    email: 'founder@example.com',
+                    password: 'irrelevant-to-custom-authorize',
+                    csrfToken: token,
+                }),
+            }),
+            env,
+            {
+                authorize: async () => ({
+                    id: 'user-1',
+                    email: 'founder@example.com',
+                    name: 'Founder',
+                }),
+            },
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(body).toMatchObject({
+            code: 'ACCOUNT_PROVISIONING_FAILED',
+        });
+        expect(response.headers.get('Set-Cookie')).toBeNull();
+    });
 });
 
 describe('re-exported crypto helpers', () => {

@@ -6,9 +6,11 @@
 
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { JsonEditor, type JsonValue } from '@ottabase/ui-components';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { clsx } from 'clsx';
 import { AlertCircle, Calendar, Check, Eye, EyeOff, Loader2, Upload, X } from 'lucide-react';
 import React, { useCallback } from 'react';
+import { useFormRequest } from '../hooks/useFormRequest';
 import type { FormFieldProps, ModelFieldDescriptor } from '../types';
 
 export type { FormFieldProps };
@@ -489,6 +491,17 @@ function SelectField({
     const relationship = formConfig.relationship;
     const staticOptions = formConfig.options;
     const [fetchError, setFetchError] = React.useState<string | null>(null);
+    const request = useFormRequest();
+    const requestSequenceRef = React.useRef(0);
+    const abortControllerRef = React.useRef<AbortController | null>(null);
+    const latestLoadRef = React.useRef<Promise<OttaSelectItem[]> | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            requestSequenceRef.current += 1;
+            abortControllerRef.current?.abort();
+        };
+    }, []);
 
     // Convert value to OttaSelectItem format
     const normalizedValue = React.useMemo(() => {
@@ -517,7 +530,11 @@ function SelectField({
         async (searchQuery: string) => {
             if (!relationship) return [];
 
-            // Clear previous error
+            const sequence = requestSequenceRef.current + 1;
+            requestSequenceRef.current = sequence;
+            abortControllerRef.current?.abort();
+            const controller = new AbortController();
+            abortControllerRef.current = controller;
             setFetchError(null);
 
             const endpoint = relationship.endpoint || `${apiBasePath}/${relationship.entity}`;
@@ -531,39 +548,53 @@ function SelectField({
                 params.set('where', JSON.stringify(relationship.where));
             }
 
-            try {
+            const loadPromise = (async (): Promise<OttaSelectItem[]> => {
                 const url = params.toString() ? `${endpoint}?${params}` : endpoint;
-                const response = await fetch(url);
-
-                if (!response.ok) {
-                    const errorMsg = `Failed to load ${relationship.entity} (${response.status})`;
-                    setFetchError(errorMsg);
-                    console.error(`[OttaForms] ${errorMsg}:`, await response.text().catch(() => ''));
-                    return [];
-                }
-
-                const data = await response.json();
-                const items = data[relationship.entity] || data.data || data;
+                const data = await request<Record<string, unknown> | Record<string, unknown>[]>(url, {
+                    signal: controller.signal,
+                });
+                const responseData = data as Record<string, unknown>;
+                const items = responseData[relationship.entity] || responseData.data || data;
 
                 if (!Array.isArray(items)) {
-                    setFetchError(`Invalid response format for ${relationship.entity}`);
+                    throw new Error(`Invalid response format for ${relationship.entity}`);
+                }
+
+                // Spread server fields first so configured canonical identifiers
+                // cannot be overwritten by a differently named raw id/name field.
+                return items.map((item: Record<string, unknown>) => ({
+                    ...item,
+                    id: String(item[relationship.valueField || 'id']),
+                    name: String(item[relationship.labelField || 'name'] || item.label || item.title || item.id),
+                }));
+            })();
+
+            const safeLoadPromise = loadPromise.catch((error: unknown) => {
+                if (sequence !== requestSequenceRef.current || controller.signal.aborted) {
                     return [];
                 }
 
-                // Map to OttaSelectItem format
-                return items.map((item: Record<string, unknown>) => ({
-                    id: String(item[relationship.valueField || 'id']),
-                    name: String(item[relationship.labelField || 'name'] || item.label || item.title || item.id),
-                    ...item,
-                }));
-            } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : 'Network error';
                 setFetchError(`Failed to load options: ${errorMsg}`);
                 console.error(`[OttaForms] Fetch error for ${relationship.entity}:`, error);
                 return [];
+            });
+            latestLoadRef.current = safeLoadPromise;
+
+            const items = await safeLoadPromise;
+            if (sequence !== requestSequenceRef.current && latestLoadRef.current) {
+                // OttaSelect does not sequence async completions itself. Returning
+                // the newest result from stale calls prevents an older request from
+                // overwriting the latest search results.
+                return latestLoadRef.current;
             }
+
+            if (abortControllerRef.current === controller) {
+                abortControllerRef.current = null;
+            }
+            return items;
         },
-        [relationship, apiBasePath],
+        [relationship, apiBasePath, request],
     );
 
     const handleChange = useCallback(
@@ -622,16 +653,43 @@ function FileField({
     uploadEndpoint?: string;
 }) {
     const inputRef = React.useRef<HTMLInputElement>(null);
-    const [preview, setPreview] = React.useState<string | null>(null);
+    const localPreviewRef = React.useRef<string | null>(null);
+    const uploadControllerRef = React.useRef<AbortController | null>(null);
+    const mountedRef = React.useRef(true);
+    const [localPreview, setLocalPreview] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
     const [uploading, setUploading] = React.useState(false);
-    const [uploadProgress, setUploadProgress] = React.useState(0);
+    const request = useFormRequest();
+
+    const clearLocalPreview = useCallback(() => {
+        if (localPreviewRef.current) {
+            URL.revokeObjectURL(localPreviewRef.current);
+            localPreviewRef.current = null;
+        }
+        setLocalPreview(null);
+    }, []);
+
+    const serverPreview = React.useMemo(() => {
+        if (!isImage || typeof value !== 'string' || !value) return null;
+        const sanitized = sanitizeUrl(value);
+        return sanitized === '#' ? null : sanitized;
+    }, [isImage, value]);
+    const preview = localPreview || serverPreview;
 
     React.useEffect(() => {
-        if (isImage && typeof value === 'string' && value) {
-            setPreview(value);
-        }
-    }, [value, isImage]);
+        // React StrictMode runs an extra setup/cleanup cycle in development.
+        // Reset this flag in setup so a later upload can always leave its
+        // loading state after the component's real mount.
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            uploadControllerRef.current?.abort();
+            if (localPreviewRef.current) {
+                URL.revokeObjectURL(localPreviewRef.current);
+                localPreviewRef.current = null;
+            }
+        };
+    }, []);
 
     const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -646,43 +704,44 @@ function FileField({
 
         // Show preview for images
         if (isImage) {
-            const reader = new FileReader();
-            reader.onload = () => setPreview(reader.result as string);
-            reader.readAsDataURL(file);
+            clearLocalPreview();
+            const objectUrl = URL.createObjectURL(file);
+            localPreviewRef.current = objectUrl;
+            setLocalPreview(objectUrl);
         }
 
         // If upload endpoint is provided, upload the file
         if (uploadEndpoint) {
+            uploadControllerRef.current?.abort();
+            const controller = new AbortController();
+            uploadControllerRef.current = controller;
             setUploading(true);
-            setUploadProgress(0);
 
             try {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('name', file.name);
 
-                const response = await fetch(uploadEndpoint, {
+                const result = await request<unknown>(uploadEndpoint, {
                     method: 'POST',
                     body: formData,
+                    signal: controller.signal,
                 });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Upload failed (${response.status})`);
-                }
-
-                const result = await response.json();
-                // Expect response to contain { url: string } or { key: string }
-                const fileUrl = result.url || result.key || result.path;
+                const fileUrl = getUploadLocation(result);
                 onChange(fileUrl);
-                setUploadProgress(100);
             } catch (err) {
+                if (controller.signal.aborted) return;
                 const errorMsg = err instanceof Error ? err.message : 'Upload failed';
                 setError(errorMsg);
                 console.error('[OttaForms] File upload error:', err);
-                setPreview(null);
+                clearLocalPreview();
             } finally {
-                setUploading(false);
+                if (uploadControllerRef.current === controller) {
+                    uploadControllerRef.current = null;
+                }
+                if (mountedRef.current) {
+                    setUploading(false);
+                }
             }
         } else {
             // No upload endpoint - just pass the File object
@@ -704,9 +763,7 @@ function FileField({
                 {uploading ? (
                     <div className="flex flex-col items-center justify-center px-4 py-8">
                         <Loader2 className="mb-2 h-6 w-6 animate-spin text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                            Uploading… {uploadProgress > 0 && `${uploadProgress}%`}
-                        </p>
+                        <p className="text-sm text-muted-foreground">Uploading…</p>
                     </div>
                 ) : isImage && preview ? (
                     <div className="relative w-full p-2">
@@ -715,7 +772,7 @@ function FileField({
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setPreview(null);
+                                clearLocalPreview();
                                 onChange(null);
                                 if (inputRef.current) inputRef.current.value = '';
                             }}
@@ -766,6 +823,22 @@ function FileField({
 // ============================================================
 // Utility Functions
 // ============================================================
+
+function getUploadLocation(result: unknown): string {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error('Upload response must be an object containing url, key, or path');
+    }
+
+    const response = result as Record<string, unknown>;
+    for (const field of ['url', 'key', 'path'] as const) {
+        const value = response[field];
+        if (typeof value === 'string' && value.trim()) {
+            return value.trim();
+        }
+    }
+
+    throw new Error('Upload response is missing a valid url, key, or path');
+}
 
 /**
  * Infer field type from model field descriptor

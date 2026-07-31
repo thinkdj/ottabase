@@ -84,8 +84,6 @@ export interface ModelConfig<T = Record<string, unknown>> {
     defaultSortDirection?: 'asc' | 'desc';
     /** Fields to search on */
     searchFields?: string[];
-    /** Custom fetch function */
-    fetchFn?: typeof fetch;
     /** Pre-built Zod schema for create mode (auto-generated from fields) */
     zodCreateSchema?: z.ZodObject<any>;
     /** Pre-built Zod schema for update mode (auto-generated from fields) */
@@ -123,8 +121,6 @@ export interface ModelCrudProps<T = Record<string, unknown>> {
     perPage?: number;
     /** Enable row selection */
     selectable?: boolean;
-    /** Custom fetch function */
-    fetchFn?: typeof fetch;
 }
 
 /**
@@ -215,6 +211,8 @@ export interface ModelFormProps<T = Record<string, unknown>> {
      * Format: { fieldName: "error message" }
      */
     serverErrors?: Record<string, string>;
+    /** Clears a parent-controlled server error after the user edits a field. */
+    onServerErrorClear?: (field: string) => void;
 }
 
 /**

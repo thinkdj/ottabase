@@ -1,5 +1,5 @@
-import { api, isApiError } from '@/lib/api';
 import { PACKAGES_ENABLED } from '@/ottabase/config';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Button,
     Card,
@@ -25,7 +25,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconChartBar, IconLink, IconLoader2, IconRefresh, IconUsers } from '@tabler/icons-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export interface AnalyticsRow {
     dimension: string;
@@ -212,41 +212,26 @@ export function AnalyticsPage() {
 }
 
 function ShortlinkAnalyticsTab() {
-    const [data, setData] = useState<AnalyticsRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [shortCode, setShortCode] = useState<string>('');
     const [days, setDays] = useState<string>('7');
     const [groupBy, setGroupBy] = useState<string>('country');
 
-    const fetchAnalytics = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const params = new URLSearchParams();
-            if (shortCode) params.set('shortCode', shortCode);
-            params.set('days', days);
-            params.set('groupBy', groupBy);
-            const response = await api<AnalyticsResponse>(`/api/shortlinks/analytics?${params.toString()}`, {
-                method: 'GET',
-                callerId: 'ShortlinkAnalyticsTab:fetchAnalytics',
-            });
-            if (response?.data) {
-                setData(response.data);
-            } else {
-                setData([]);
-            }
-        } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load analytics');
-            setData([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [shortCode, days, groupBy]);
-
-    useEffect(() => {
-        fetchAnalytics();
-    }, [fetchAnalytics]);
+    const params = new URLSearchParams({ days, groupBy });
+    if (shortCode) params.set('shortCode', shortCode);
+    const {
+        data: response,
+        error,
+        isFetching: loading,
+        refetch,
+    } = useApiQuery<AnalyticsResponse>({
+        entity: 'analytics',
+        queryKey: ['shortlinks', shortCode, days, groupBy],
+        endpoint: `/api/shortlinks/analytics?${params.toString()}`,
+        queryOptions: {
+            meta: { errorPresentation: 'local' },
+        },
+    });
+    const data = error ? [] : (response?.data ?? []);
 
     const formatDimension = (dim: string) => {
         if (groupBy === 'day' && /^\d{4}-\d{2}-\d{2}/.test(dim)) {
@@ -311,7 +296,7 @@ function ShortlinkAnalyticsTab() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button variant="secondary" size="icon" onClick={fetchAnalytics} disabled={loading}>
+                        <Button variant="secondary" size="icon" onClick={() => void refetch()} disabled={loading}>
                             {loading ? (
                                 <IconLoader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -322,9 +307,9 @@ function ShortlinkAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error && (
+            {error?.message && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
+                    {error.message}
                 </div>
             )}
 
@@ -347,41 +332,26 @@ function ShortlinkAnalyticsTab() {
 }
 
 function ReferralAnalyticsTab() {
-    const [data, setData] = useState<AnalyticsRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [referralCode, setReferralCode] = useState<string>('');
     const [days, setDays] = useState<string>('7');
     const [groupBy, setGroupBy] = useState<string>('country');
 
-    const fetchAnalytics = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const params = new URLSearchParams();
-            if (referralCode) params.set('referralCode', referralCode);
-            params.set('days', days);
-            params.set('groupBy', groupBy);
-            const response = await api<AnalyticsResponse>(`/api/referrals/analytics?${params.toString()}`, {
-                method: 'GET',
-                callerId: 'ReferralAnalyticsTab:fetchAnalytics',
-            });
-            if (response?.data) {
-                setData(response.data);
-            } else {
-                setData([]);
-            }
-        } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load analytics');
-            setData([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [referralCode, days, groupBy]);
-
-    useEffect(() => {
-        fetchAnalytics();
-    }, [fetchAnalytics]);
+    const params = new URLSearchParams({ days, groupBy });
+    if (referralCode) params.set('referralCode', referralCode);
+    const {
+        data: response,
+        error,
+        isFetching: loading,
+        refetch,
+    } = useApiQuery<AnalyticsResponse>({
+        entity: 'analytics',
+        queryKey: ['referrals', referralCode, days, groupBy],
+        endpoint: `/api/referrals/analytics?${params.toString()}`,
+        queryOptions: {
+            meta: { errorPresentation: 'local' },
+        },
+    });
+    const data = error ? [] : (response?.data ?? []);
 
     const formatDimension = (dim: string) => {
         if (groupBy === 'day' && /^\d{4}-\d{2}-\d{2}/.test(dim)) {
@@ -446,7 +416,7 @@ function ReferralAnalyticsTab() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button variant="secondary" size="icon" onClick={fetchAnalytics} disabled={loading}>
+                        <Button variant="secondary" size="icon" onClick={() => void refetch()} disabled={loading}>
                             {loading ? (
                                 <IconLoader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -457,9 +427,9 @@ function ReferralAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error && (
+            {error?.message && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
+                    {error.message}
                 </div>
             )}
 
@@ -483,41 +453,26 @@ function ReferralAnalyticsTab() {
 }
 
 function CoreAnalyticsTab() {
-    const [data, setData] = useState<AnalyticsRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [eventFilter, setEventFilter] = useState<string>('');
     const [days, setDays] = useState<string>('7');
     const [groupBy, setGroupBy] = useState<string>('event');
 
-    const fetchAnalytics = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const params = new URLSearchParams();
-            if (eventFilter) params.set('event', eventFilter);
-            params.set('days', days);
-            params.set('groupBy', groupBy);
-            const response = await api<AnalyticsResponse>(`/api/analytics/core?${params.toString()}`, {
-                method: 'GET',
-                callerId: 'CoreAnalyticsTab:fetchAnalytics',
-            });
-            if (response?.data) {
-                setData(response.data);
-            } else {
-                setData([]);
-            }
-        } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load analytics');
-            setData([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [eventFilter, days, groupBy]);
-
-    useEffect(() => {
-        fetchAnalytics();
-    }, [fetchAnalytics]);
+    const params = new URLSearchParams({ days, groupBy });
+    if (eventFilter) params.set('event', eventFilter);
+    const {
+        data: response,
+        error,
+        isFetching: loading,
+        refetch,
+    } = useApiQuery<AnalyticsResponse>({
+        entity: 'analytics',
+        queryKey: ['core', eventFilter, days, groupBy],
+        endpoint: `/api/analytics/core?${params.toString()}`,
+        queryOptions: {
+            meta: { errorPresentation: 'local' },
+        },
+    });
+    const data = error ? [] : (response?.data ?? []);
 
     const formatDimension = (dim: string) => {
         if (groupBy === 'day' && /^\d{4}-\d{2}-\d{2}/.test(dim)) {
@@ -580,7 +535,7 @@ function CoreAnalyticsTab() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button variant="secondary" size="icon" onClick={fetchAnalytics} disabled={loading}>
+                        <Button variant="secondary" size="icon" onClick={() => void refetch()} disabled={loading}>
                             {loading ? (
                                 <IconLoader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -591,9 +546,9 @@ function CoreAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error && (
+            {error?.message && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
+                    {error.message}
                 </div>
             )}
 

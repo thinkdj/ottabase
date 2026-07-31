@@ -15,7 +15,7 @@ const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
     contentType: 'blog',
     status: 'published',
     authorId: 'author-1',
-    author: { id: 'author-1', name: 'Test Author', email: null, image: null },
+    author: { id: 'author-1', name: 'Test Author', image: null },
     createdAt: Date.parse('2024-01-15T00:00:00Z'),
     ...overrides,
 });

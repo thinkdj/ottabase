@@ -85,6 +85,18 @@ These routes already didn't depend on Auth.js and are unaffected by this package
 | `/api/auth/config`                 | GET       |
 | `/api/users/me`                    | GET/PATCH |
 
+## First-user provisioning
+
+`bootstrapFirstUser()` runs before credentials, OAuth, or magic-link session issuance. Exactly one user can atomically
+claim the system-scoped `platform_owner` grant. With `MULTI_TENANT_ENABLED` enabled (the default), that owner must also
+have an active organization membership and its matching org-scoped `owner` grant. The organization, membership, and
+owner grant are written in one transactional D1 batch.
+
+Critical provisioning failures are fail-closed: no session is issued, the platform-owner claim remains bound to its
+original user, and the error is surfaced to the sign-in flow. If a request stops after committing the system claim, the
+same owner's next sign-in repairs the missing organization; another user cannot take over that claim. Set
+`MULTI_TENANT_ENABLED=false` only when the deployment intentionally does not require a personal organization.
+
 ## Session Model
 
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained

@@ -85,9 +85,9 @@ export async function applyStudioStateFromApi() {
     studioStateFetchPromise = (async () => {
         try {
             // Runtime blog state is mounted globally (public + authenticated visitors).
-            // skipUnauthorizedHandler avoids triggering the global /login redirect if this ever 401s,
-            // which previously caused an infinite redirect loop for unauthenticated blog visitors.
-            const state = await api<StudioState>('/api/blog/studio/state', { skipUnauthorizedHandler: true });
+            // The request client is presentation-free, so this optional probe handles
+            // failures locally without causing an auth redirect.
+            const state = await api<StudioState>('/api/blog/studio/state');
             await applyState(state);
             return state;
         } catch (err) {

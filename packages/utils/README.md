@@ -160,6 +160,25 @@ Use the appropriate sanitizer helper for each untrusted renderer input type:
 - `sanitizeJsonForScript` for `application/ld+json` and other inline JSON script tags
 - `sanitizeCssForStyleTag` for generated theme CSS inserted via `dangerouslySetInnerHTML`
 
+### HTTP Errors (`@ottabase/utils/http-errors`)
+
+`errorResponse()` maps HTTP statuses to stable codes and adds `Cache-Control: no-store`. Responses with a 5xx status are
+opaque by default: exception messages, details, hints, field errors, and metadata are not serialized. Preserve an
+internal failure code and optional request ID for correlation:
+
+```typescript
+import { errorResponse } from '@ottabase/utils/http-errors';
+
+return errorResponse(error instanceof Error ? error.message : 'Database failure', 503, {
+    code: 'DATABASE_UNAVAILABLE',
+    requestId,
+});
+```
+
+Use `exposure: 'public'` only when the 5xx message is deliberately authored as safe public API copy. Use `metadata` for
+JSON-safe machine-readable context on 4xx responses; `details` remains human-readable text. A typed `ServiceError` may
+carry `internalCause` for the server error boundary to redact and log once; it is never part of `toApiResponse()`.
+
 ### Environment Utilities (`@ottabase/utils/env`) - Server-side
 
 - **`isDev: boolean`** - Check if running in development environment

@@ -628,7 +628,8 @@ GET /api/blog/posts?page=1&perPage=10&contentType=blog&categoryId=xyz&tagId=abc&
 ```
 
 Supports filtering by content type, category, tag, series, and full-text search. Responses include enriched tag,
-category, and series data.
+category, series, and public author data (`id`, display `name`, and `image`). Account email and `privateNotes` are never
+included in public responses.
 
 ### Post by Slug
 

@@ -1,10 +1,11 @@
 import { CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
 import { userKey } from '@ottabase/cf';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
-import { invalidateCache, invalidateCacheByPrefix, withCache } from '@ottabase/cf/kv-cache';
+import { invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
 import { Account, OrganizationMember, UserGroup, UserGroupMember, VerificationToken } from '@ottabase/ottaorm/models';
+import { redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { resolveAppMailer } from './email-provider';
@@ -89,7 +90,12 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
             // instead of after MEMBERSHIP_CACHE_TTL_SECONDS.
             await invalidateMembershipCache(env.OBCF_KV, userId);
         } catch (error) {
-            console.warn('Failed to activate pending invites on sign-in:', error);
+            console.warn(
+                JSON.stringify({
+                    event: 'pending_invite_activation_failed',
+                    error: redactErrorForLog(error),
+                }),
+            );
         }
     };
 
@@ -109,25 +115,64 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
  */
 const MEMBERSHIP_CACHE_TTL_SECONDS = 300;
 
+export class SecurityContextUnavailableError extends ServiceError {
+    public readonly membershipScope: 'organization' | 'group';
+
+    constructor(membershipScope: 'organization' | 'group', internalCause?: unknown) {
+        super('Security context temporarily unavailable', 503, {
+            code: 'SECURITY_CONTEXT_UNAVAILABLE',
+            internalCause,
+        });
+        this.name = 'SecurityContextUnavailableError';
+        this.membershipScope = membershipScope;
+    }
+}
+
+function normalizeMembershipIds(value: unknown): string[] {
+    if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+        throw new Error('Membership resolver returned an invalid result');
+    }
+
+    return [...new Set(value)];
+}
+
 /**
  * Read-through cached membership lookup (KV in front of D1).
  *
- * Any cache-layer failure falls back to the direct D1 query — a KV outage must
- * never weaken membership resolution. (An `undefined` membership list is treated
- * as "membership unknown" by the RLS engine and skips enforcement, so failing
- * open here would be a security downgrade; only a D1 failure may produce it.)
+ * KV is strictly an optimization: malformed/stale-unreadable cache data falls
+ * back to one authoritative D1 lookup, and cache writes are best-effort. Keeping
+ * cache and source failures separate avoids accidentally retrying a failed D1
+ * query and ensures a cache outage cannot weaken membership resolution.
  */
 async function cachedMembershipLookup(
     kv: CloudflareEnv['OBCF_KV'] | undefined,
     key: string,
     fetcher: () => Promise<string[]>,
 ): Promise<string[]> {
-    if (!kv) return fetcher();
-    try {
-        return await withCache(kv, key, MEMBERSHIP_CACHE_TTL_SECONDS, fetcher);
-    } catch {
-        return fetcher();
+    if (kv) {
+        try {
+            const cached = await kv.get(key, 'text');
+            if (cached !== null) {
+                return normalizeMembershipIds(JSON.parse(cached));
+            }
+        } catch {
+            // Cache reads and malformed cached values never replace the authoritative lookup.
+        }
     }
+
+    const memberships = normalizeMembershipIds(await fetcher());
+
+    if (kv) {
+        try {
+            await kv.put(key, JSON.stringify(memberships), {
+                expirationTtl: MEMBERSHIP_CACHE_TTL_SECONDS,
+            });
+        } catch {
+            // Membership was resolved authoritatively; a failed cache write must not fail the request.
+        }
+    }
+
+    return memberships;
 }
 
 /**
@@ -169,7 +214,12 @@ export async function bumpProfileVersion(env: CloudflareEnv, userId: string | un
             expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
         });
     } catch (error) {
-        console.warn('Failed to bump profile version:', error);
+        console.warn(
+            JSON.stringify({
+                event: 'profile_version_bump_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
     }
 }
 
@@ -199,7 +249,12 @@ export async function reconcileSystemRoleSessions(env: CloudflareEnv): Promise<v
         const userIds = [...new Set(holders.map((h) => String(h.get('userId'))).filter(Boolean))];
         await Promise.allSettled(userIds.map((userId) => bumpProfileVersion(env, userId)));
     } catch (error) {
-        console.warn('Failed to refresh platform-owner sessions after role reconcile:', error);
+        console.warn(
+            JSON.stringify({
+                event: 'platform_owner_session_reconcile_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
     }
 }
 
@@ -249,9 +304,10 @@ export async function getSecurityContext(
         }
     }
 
-    // Resolve appId: header > config > fallback
+    // App scope is trusted server configuration. A browser-controlled x-app-id
+    // header must never select an RLS partition.
     const configAppId = env ? getOttabaseConfig(env).appId : undefined;
-    const appId = request.headers.get('x-app-id') || configAppId || 'web';
+    const appId = configAppId || 'web';
     const roles = session?.user?.roles as string[] | undefined;
     const permissions = session?.user?.permissions as string[] | undefined;
     // Scope-aware platform-admin flag (derived server-side from a SYSTEM-scoped grant). RLS
@@ -272,9 +328,8 @@ export async function getSecurityContext(
                 userKey('auth', userId, 'member-orgs'),
                 () => OrganizationMember.organizationIdsForUser(userId),
             );
-        } catch {
-            // If tables don't exist yet (e.g. before migrations), leave undefined so membership
-            // is treated as unknown (no-op) rather than "no orgs" (deny everything).
+        } catch (error) {
+            throw new SecurityContextUnavailableError('organization', error);
         }
     }
 
@@ -306,8 +361,8 @@ export async function getSecurityContext(
                 userKey('auth', userId, 'member-groups', organizationId ?? 'none'),
                 () => UserGroup.groupIdsForUser(userId, organizationId ?? undefined),
             );
-        } catch {
-            // Tables may not exist yet (before migrations) — leave undefined (RLS treats as unknown).
+        } catch (error) {
+            throw new SecurityContextUnavailableError('group', error);
         }
     }
 

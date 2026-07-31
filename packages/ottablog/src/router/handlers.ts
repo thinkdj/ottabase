@@ -59,6 +59,9 @@ async function findPublishedPostBySlug(
 
 /** Conservative D1 bound-parameter chunk size for IN (...) lists that carry no other bound conditions. */
 const D1_IN_CHUNK = 100;
+// Public responses use an explicit allowlist. A user's account/login email is
+// private even when that user is the author of public content.
+const PUBLIC_AUTHOR_FIELDS = ['id', 'name', 'image'] as const;
 
 /**
  * Chunk size for id-list queries that also carry the list handler's other bound
@@ -150,18 +153,17 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
     const uniqueAuthorIds = [
         ...new Set(records.map((r) => r.get('authorId') as string | null).filter(Boolean)),
     ] as string[];
-    const authorById = new Map<string, { id: unknown; name: unknown; email: unknown; image: unknown }>();
+    const authorById = new Map<string, { id: unknown; name: unknown; image: unknown }>();
     if (uniqueAuthorIds.length > 0) {
         try {
             const { User } = await import('@ottabase/ottaorm');
             const authors = await chunkedFetch(uniqueAuthorIds, (ids) =>
-                User.whereIn('id', ids, { select: ['id', 'name', 'email', 'image'] }),
+                User.whereIn('id', ids, { select: [...PUBLIC_AUTHOR_FIELDS] }),
             );
             for (const author of authors) {
                 authorById.set(author.get('id') as string, {
                     id: author.get('id'),
                     name: author.get('name'),
-                    email: author.get('email'),
                     image: author.get('image'),
                 });
             }
@@ -237,12 +239,11 @@ async function publicPostJson(
     // Enrich with author info from User relationship
     if (options?.enrichAuthor && rest.authorId) {
         try {
-            const author = await record.author(['id', 'name', 'email', 'image']);
+            const author = await record.author([...PUBLIC_AUTHOR_FIELDS]);
             if (author) {
                 rest.author = {
                     id: author.get('id'),
                     name: author.get('name'),
-                    email: author.get('email'),
                     image: author.get('image'),
                 };
             } else {

@@ -1,15 +1,17 @@
 /**
  * @ottabase/api
  *
- * Type-safe API client with standardized error handling.
- * Supports auth token injection, configurable base URLs, and error callbacks.
+ * Single-attempt, type-safe HTTP transport with standardized errors.
+ * Retry, deduplication, and presentation belong to higher-level orchestrators.
  */
 
 // ============================================================
 // Error Types
 // ============================================================
 
-import { ApiErrorResponse } from '@ottabase/utils';
+import type { ApiErrorResponse } from '@ottabase/utils';
+
+export type { ApiErrorResponse } from '@ottabase/utils';
 
 /**
  * Custom error class for API errors.
@@ -21,10 +23,19 @@ export class ApiError extends Error {
     public readonly hint?: string;
     public readonly messages: string[];
     public readonly fieldErrors?: Record<string, string[]>;
+    public readonly metadata?: ApiErrorResponse['metadata'];
+    public readonly requestId?: string;
     public readonly status: number;
     public readonly response?: Response;
+    /** True only when repeating a safe read can reasonably recover. */
+    public readonly retryable: boolean;
+    /** Server-requested retry delay parsed from Retry-After, when present. */
+    public readonly retryAfterMs?: number;
 
-    constructor(data: ApiErrorResponse & { status: number }, response?: Response) {
+    constructor(
+        data: ApiErrorResponse & { status: number; retryable?: boolean; retryAfterMs?: number },
+        response?: Response,
+    ) {
         super(data.error);
         this.name = 'ApiError';
         this.code = data.code;
@@ -32,8 +43,12 @@ export class ApiError extends Error {
         this.hint = data.hint;
         this.messages = data.messages ?? [data.error];
         this.fieldErrors = data.fieldErrors;
+        this.metadata = data.metadata;
+        this.requestId = data.requestId;
         this.status = data.status;
         this.response = response;
+        this.retryable = data.retryable ?? false;
+        this.retryAfterMs = data.retryAfterMs;
 
         // Maintains proper stack trace for where error was thrown
         if (Error.captureStackTrace) {
@@ -77,7 +92,7 @@ export class ApiError extends Error {
     }
 
     /** Convert to a plain object for logging/serialization */
-    toJSON(): ApiErrorResponse & { status: number } {
+    toJSON(): ApiErrorResponse & { status: number; retryable: boolean; retryAfterMs?: number } {
         return {
             error: this.message,
             code: this.code,
@@ -85,7 +100,11 @@ export class ApiError extends Error {
             hint: this.hint,
             messages: this.messages,
             fieldErrors: this.fieldErrors,
+            metadata: this.metadata,
+            requestId: this.requestId,
             status: this.status,
+            retryable: this.retryable,
+            retryAfterMs: this.retryAfterMs,
         };
     }
 }
@@ -97,23 +116,6 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 // API Client Configuration
 // ============================================================
 
-export interface ApiRetryOptions {
-    /** Total attempts including the first request (default: 1, meaning no retry) */
-    attempts?: number;
-
-    /** Base backoff delay in milliseconds (default: 250) */
-    baseDelayMs?: number;
-
-    /** Maximum backoff delay in milliseconds (default: 2000) */
-    maxDelayMs?: number;
-
-    /** HTTP statuses that should be retried for allowed methods (default: 502, 503, 504) */
-    retryableStatuses?: number[];
-
-    /** HTTP methods eligible for retries (default: GET, HEAD, OPTIONS) */
-    retryableMethods?: string[];
-}
-
 export interface ApiClientConfig {
     /** Base URL for all requests (e.g., "https://api.example.com") */
     baseUrl?: string;
@@ -121,34 +123,16 @@ export interface ApiClientConfig {
     /** Function to get auth token. Called before each request. */
     getAuthToken?: () => string | null | Promise<string | null>;
 
-    /** Global error handler. Called for all errors. */
-    onError?: (error: ApiError) => void;
-
-    /** Called when a 401 is received. Useful for redirecting to login. */
-    onUnauthorized?: (error: ApiError) => void;
-
     /** Default headers to include in all requests */
     defaultHeaders?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
 
     /** Default timeout in milliseconds (default: 30000) */
     timeout?: number;
-
-    /** Deduplicate in-flight requests with identical inputs (default: true) */
-    dedupe?: boolean;
-
-    /** Retry transient failures for eligible requests */
-    retry?: number | ApiRetryOptions;
 }
 
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
     /** Skip auth token injection for this request */
     skipAuth?: boolean;
-
-    /** Skip invoking the unauthorized handler (useful for local 401 handling, Protected Post unlock etc.) */
-    skipUnauthorizedHandler?: boolean;
-
-    /** When true, the client does not invoke the global {@link ApiClientConfig.onError} handler for this request (caller handles errors). */
-    suppressGlobalErrorHandler?: boolean;
 
     /** URL query parameters */
     params?: Record<string, string | number | boolean | undefined | null>;
@@ -161,18 +145,6 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
 
     /** Custom headers for this request */
     headers?: Record<string, string>;
-
-    /** Disable in-flight request deduplication for this request */
-    dedupe?: boolean;
-
-    /** Optional custom dedupe key for this request */
-    dedupeKey?: string;
-
-    /** Optional identifier for logging/debugging deduped calls */
-    callerId?: string;
-
-    /** Retry transient failures for this request */
-    retry?: number | ApiRetryOptions;
 }
 
 /** API function signature with overloads for shorthand method syntax */
@@ -183,119 +155,107 @@ export interface ApiFunction {
     <T = unknown>(endpoint: string, method: HttpMethod): Promise<T>;
 }
 
-// ============================================================
-// In-flight Request Deduplication
-// ============================================================
+const QUERY_RETRYABLE_STATUSES = new Set([408, 429, 502, 503, 504]);
+const NON_RETRYABLE_CODES = new Set(['PLATFORM_NOT_READY', 'READONLY_MODE']);
 
-// DO NOT REMOVE: This dedupe layer prevents duplicate in-flight requests from multiple
-// callers by sharing the same fetch Promise and cloning the Response for safe reads.
-// It builds a dedupe key from url + method + normalized headers + body + timeout +
-// fetch options (cache/credentials/mode/redirect).
-// Optional: set `callerId` per request to tag deduped logs without stack parsing.
+function abortReason(signal: AbortSignal): unknown {
+    return signal.reason ?? new DOMException('The operation was aborted', 'AbortError');
+}
 
-const inFlightRequests = new Map<string, Promise<Response>>();
+function parseRetryAfterMs(response: Response): number | undefined {
+    const value = response.headers.get('Retry-After');
+    if (!value) return undefined;
 
-/**
- * Stable key material for deduping in-flight multipart POSTs. Cannot read bytes (async) here;
- * we use field name + File name + byte length (and non-file fields) so parallel *different*
- * uploads to the same URL stay distinct, while accidental double-submit of the same payload
- * can still coalesce.
- *
- * Limitation: two different files with the same filename and size will share a fingerprint (rare).
- */
-export function formDataDedupeSignature(fd: FormData): string {
-    const parts: string[] = [];
-    for (const [key, value] of fd.entries()) {
-        if (typeof File !== 'undefined' && value instanceof File) {
-            parts.push(`F:${key}:${value.name}:${value.size}`);
-        } else if (typeof Blob !== 'undefined' && value instanceof Blob) {
-            parts.push(`B:${key}:${value.size}`);
-        } else {
-            parts.push(`S:${key}:${String(value)}`);
-        }
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+        return seconds * 1000;
     }
-    parts.sort();
-    return parts.join('\x1e');
+
+    const date = Date.parse(value);
+    if (!Number.isFinite(date)) return undefined;
+    return Math.max(0, date - Date.now());
 }
 
-function normalizeHeaders(headers: Record<string, string>): Record<string, string> {
-    const entries = Object.entries(headers).sort(([a], [b]) => a.localeCompare(b));
-    const normalized: Record<string, string> = {};
-    for (const [key, value] of entries) {
-        normalized[key.toLowerCase()] = value;
+function isQueryRetryableFailure(method: string, status: number, code?: string): boolean {
+    return (
+        (method === 'GET' || method === 'HEAD') &&
+        QUERY_RETRYABLE_STATUSES.has(status) &&
+        !NON_RETRYABLE_CODES.has((code ?? '').toUpperCase())
+    );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+    return typeof value === 'string' ? value : undefined;
+}
+
+function normalizeErrorResponse(raw: unknown, response: Response): ApiErrorResponse {
+    if (!isRecord(raw)) {
+        return {
+            error: response.statusText || `HTTP ${response.status}`,
+        };
     }
-    return normalized;
-}
 
-function buildDedupeKey(params: {
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    body: string | FormData | undefined;
-    timeout: number;
-    fetchOptions: Pick<RequestInit, 'cache' | 'credentials' | 'mode' | 'redirect'>;
-    retry: ResolvedRetryOptions;
-}): string {
-    return JSON.stringify({
-        url: params.url,
-        method: params.method,
-        headers: normalizeHeaders(params.headers),
-        body:
-            params.body instanceof FormData
-                ? `__formdata__:${formDataDedupeSignature(params.body)}`
-                : (params.body ?? null),
-        timeout: params.timeout,
-        cache: params.fetchOptions.cache ?? null,
-        credentials: params.fetchOptions.credentials ?? null,
-        mode: params.fetchOptions.mode ?? null,
-        redirect: params.fetchOptions.redirect ?? null,
-        retry: params.retry,
-    });
-}
-
-const DEFAULT_RETRYABLE_STATUSES = [502, 503, 504];
-const DEFAULT_RETRYABLE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
-const DEFAULT_RETRY_BASE_DELAY_MS = 250;
-const DEFAULT_RETRY_MAX_DELAY_MS = 2000;
-
-interface ResolvedRetryOptions {
-    attempts: number;
-    baseDelayMs: number;
-    maxDelayMs: number;
-    retryableStatuses: number[];
-    retryableMethods: string[];
-}
-
-function normalizeRetryOptions(retry: number | ApiRetryOptions | undefined): ResolvedRetryOptions {
-    const retryOptions = typeof retry === 'number' ? { attempts: retry } : (retry ?? {});
-    const attempts = Math.max(1, Math.floor(retryOptions.attempts ?? 1));
+    const messages = Array.isArray(raw.messages)
+        ? raw.messages.filter((message): message is string => typeof message === 'string')
+        : undefined;
+    const fieldErrors = isRecord(raw.fieldErrors)
+        ? Object.fromEntries(
+              Object.entries(raw.fieldErrors)
+                  .filter((entry): entry is [string, string[]] => {
+                      const [, errors] = entry;
+                      return Array.isArray(errors) && errors.every((error) => typeof error === 'string');
+                  })
+                  .map(([field, errors]) => [field, errors]),
+          )
+        : undefined;
 
     return {
-        attempts,
-        baseDelayMs: Math.max(0, retryOptions.baseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS),
-        maxDelayMs: Math.max(0, retryOptions.maxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS),
-        retryableStatuses: retryOptions.retryableStatuses ?? DEFAULT_RETRYABLE_STATUSES,
-        retryableMethods: (retryOptions.retryableMethods ?? DEFAULT_RETRYABLE_METHODS).map((method) =>
-            method.toUpperCase(),
-        ),
+        error: optionalString(raw.error) || response.statusText || `HTTP ${response.status}`,
+        code: optionalString(raw.code),
+        details: optionalString(raw.details),
+        hint: optionalString(raw.hint),
+        messages: messages?.length ? messages : undefined,
+        fieldErrors: fieldErrors && Object.keys(fieldErrors).length ? fieldErrors : undefined,
+        metadata: isRecord(raw.metadata) ? (raw.metadata as ApiErrorResponse['metadata']) : undefined,
+        requestId: optionalString(raw.requestId),
     };
 }
 
-function isRetryableMethod(method: string, retry: ResolvedRetryOptions): boolean {
-    return retry.attempts > 1 && retry.retryableMethods.includes(method.toUpperCase());
+class RequestTimeoutError extends Error {
+    constructor() {
+        super('Request timeout');
+        this.name = 'RequestTimeoutError';
+    }
 }
 
-function isRetryableStatus(status: number, retry: ResolvedRetryOptions): boolean {
-    return retry.retryableStatuses.includes(status);
-}
+function createAttemptSignal(callerSignal: AbortSignal | undefined, timeout: number) {
+    const controller = new AbortController();
+    let timedOut = false;
 
-function getRetryDelayMs(attempt: number, retry: ResolvedRetryOptions): number {
-    const exponentialDelay = retry.baseDelayMs * Math.pow(2, Math.max(0, attempt - 1));
-    return Math.min(exponentialDelay, retry.maxDelayMs);
-}
+    const handleCallerAbort = () => controller.abort(abortReason(callerSignal!));
+    if (callerSignal?.aborted) {
+        handleCallerAbort();
+    } else {
+        callerSignal?.addEventListener('abort', handleCallerAbort, { once: true });
+    }
 
-function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    const timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort(new DOMException('Request timed out', 'AbortError'));
+    }, timeout);
+
+    return {
+        signal: controller.signal,
+        didTimeOut: () => timedOut,
+        dispose: () => {
+            clearTimeout(timeoutId);
+            callerSignal?.removeEventListener('abort', handleCallerAbort);
+        },
+    };
 }
 
 // ============================================================
@@ -311,7 +271,6 @@ function delay(ms: number): Promise<void> {
  * const api = createApiClient({
  *   baseUrl: "/api",
  *   getAuthToken: () => localStorage.getItem("token"),
- *   onUnauthorized: () => redirect("/login"),
  * });
  *
  * // Make requests
@@ -325,16 +284,7 @@ function delay(ms: number): Promise<void> {
  * ```
  */
 export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
-    const {
-        baseUrl = '',
-        getAuthToken,
-        onError,
-        onUnauthorized,
-        defaultHeaders = {},
-        timeout: defaultTimeout = 30000,
-        dedupe: dedupeDefault = true,
-        retry: retryDefault,
-    } = config;
+    const { baseUrl = '', getAuthToken, defaultHeaders = {}, timeout: defaultTimeout = 30000 } = config;
 
     return async function api<T = unknown>(
         endpoint: string,
@@ -346,16 +296,10 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
 
         const {
             skipAuth = false,
-            skipUnauthorizedHandler = false,
-            suppressGlobalErrorHandler = false,
             params,
             body,
             timeout = defaultTimeout,
             headers: requestHeaders = {},
-            dedupe,
-            dedupeKey,
-            callerId,
-            retry,
             ...fetchOptions
         } = options;
 
@@ -401,136 +345,102 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
 
         const requestBody = body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined;
         const requestMethod = (fetchOptions.method ?? 'GET').toUpperCase();
-        const resolvedRetry = normalizeRetryOptions(retry ?? retryDefault);
-
-        const shouldDedupe = dedupe ?? dedupeDefault;
-        const inFlightKey = shouldDedupe
-            ? (dedupeKey ??
-              buildDedupeKey({
-                  url,
-                  method: requestMethod,
-                  headers,
-                  body: requestBody,
-                  timeout,
-                  fetchOptions,
-                  retry: resolvedRetry,
-              }))
-            : null;
-
-        const executeFetch = async (): Promise<Response> => {
-            for (let attempt = 1; attempt <= resolvedRetry.attempts; attempt += 1) {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-                try {
-                    const response = await fetch(url, {
-                        ...fetchOptions,
-                        headers,
-                        body: requestBody,
-                        signal: controller.signal,
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (
-                        attempt < resolvedRetry.attempts &&
-                        isRetryableMethod(requestMethod, resolvedRetry) &&
-                        isRetryableStatus(response.status, resolvedRetry)
-                    ) {
-                        await delay(getRetryDelayMs(attempt, resolvedRetry));
-                        continue;
-                    }
-
-                    return response;
-                } catch (error) {
-                    clearTimeout(timeoutId);
-
-                    if (attempt < resolvedRetry.attempts && isRetryableMethod(requestMethod, resolvedRetry)) {
-                        await delay(getRetryDelayMs(attempt, resolvedRetry));
-                        continue;
-                    }
-
-                    throw error;
-                }
-            }
-
-            throw new Error('Request retry loop exited unexpectedly');
-        };
+        const callerSignal = fetchOptions.signal ?? undefined;
 
         try {
-            let response: Response;
-            if (shouldDedupe && inFlightKey) {
-                const existing = inFlightRequests.get(inFlightKey);
-                if (existing) {
-                    console.log('[ottabase/api] Deduped in-flight request', {
-                        url,
-                        method: requestMethod,
-                        inFlightCount: inFlightRequests.size,
-                        callerId,
-                    });
-                    response = await existing;
-                } else {
-                    const fetchPromise = executeFetch().finally(() => {
-                        inFlightRequests.delete(inFlightKey);
-                    });
-                    inFlightRequests.set(inFlightKey, fetchPromise);
-                    response = await fetchPromise;
-                }
-            } else {
-                response = await executeFetch();
+            if (callerSignal?.aborted) {
+                throw abortReason(callerSignal);
             }
 
-            const responseForRead = shouldDedupe ? response.clone() : response;
+            const attemptSignal = createAttemptSignal(callerSignal, timeout);
+            try {
+                const responseForRead = await fetch(url, {
+                    ...fetchOptions,
+                    headers,
+                    body: requestBody,
+                    signal: attemptSignal.signal,
+                });
 
-            // Handle non-OK responses
-            if (!responseForRead.ok) {
-                let errorData: ApiErrorResponse;
+                // Handle non-OK responses.
+                if (!responseForRead.ok) {
+                    let errorData: ApiErrorResponse;
+
+                    try {
+                        errorData = normalizeErrorResponse(await responseForRead.json(), responseForRead);
+                    } catch (error) {
+                        // Cancellation and timeout apply through body consumption,
+                        // not only until the response headers arrive.
+                        if (
+                            callerSignal?.aborted ||
+                            attemptSignal.didTimeOut() ||
+                            (error instanceof DOMException && error.name === 'AbortError')
+                        ) {
+                            throw error;
+                        }
+                        errorData = {
+                            error: responseForRead.statusText || `HTTP ${responseForRead.status}`,
+                        };
+                    }
+
+                    const apiError = new ApiError(
+                        {
+                            ...errorData,
+                            error: errorData.error || responseForRead.statusText,
+                            status: responseForRead.status,
+                            retryable: isQueryRetryableFailure(requestMethod, responseForRead.status, errorData.code),
+                            retryAfterMs: parseRetryAfterMs(responseForRead),
+                        },
+                        responseForRead,
+                    );
+
+                    throw apiError;
+                }
+
+                // Handle empty responses
+                const contentType = responseForRead.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    // For non-JSON responses, there is no typed payload. Callers should use
+                    // a union type (e.g. `T | void`) when invoking this helper for endpoints
+                    // that may return non-JSON or empty bodies.
+                    return undefined as unknown as T;
+                }
+
+                // Handle 204 No Content
+                if (responseForRead.status === 204) {
+                    // 204 responses are defined to have no body. Callers should use a union
+                    // type (e.g. `T | void`) for endpoints that may return 204.
+                    return undefined as unknown as T;
+                }
 
                 try {
-                    errorData = await responseForRead.json();
-                } catch {
-                    errorData = {
-                        error: responseForRead.statusText || `HTTP ${responseForRead.status}`,
-                    };
+                    return await responseForRead.json();
+                } catch (error) {
+                    if (
+                        callerSignal?.aborted ||
+                        attemptSignal.didTimeOut() ||
+                        (error instanceof DOMException && error.name === 'AbortError')
+                    ) {
+                        throw error;
+                    }
+
+                    throw new ApiError(
+                        {
+                            error: 'Invalid JSON response',
+                            code: 'INVALID_RESPONSE',
+                            status: responseForRead.status,
+                            retryable: false,
+                        },
+                        responseForRead,
+                    );
                 }
-
-                const apiError = new ApiError(
-                    {
-                        ...errorData,
-                        error: errorData.error || responseForRead.statusText,
-                        status: responseForRead.status,
-                    },
-                    responseForRead,
-                );
-
-                // Call error handlers
-                if (onUnauthorized && apiError.isUnauthorized() && !skipUnauthorizedHandler) {
-                    onUnauthorized(apiError);
+            } catch (error) {
+                if (callerSignal?.aborted) {
+                    throw error;
                 }
-
-                if (onError && !suppressGlobalErrorHandler) {
-                    onError(apiError);
-                }
-
-                throw apiError;
+                throw attemptSignal.didTimeOut() ? new RequestTimeoutError() : error;
+            } finally {
+                attemptSignal.dispose();
             }
-
-            // Handle empty responses
-            const contentType = responseForRead.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                // For non-JSON responses, there is no typed payload. Callers should use
-                // a union type (e.g. `T | void`) when invoking this helper for endpoints
-                // that may return non-JSON or empty bodies.
-                return undefined as unknown as T;
-            }
-
-            // Handle 204 No Content
-            if (responseForRead.status === 204) {
-                // 204 responses are defined to have no body. Callers should use a union
-                // type (e.g. `T | void`) for endpoints that may return 204.
-                return undefined as unknown as T;
-            }
-
-            return await responseForRead.json();
         } catch (error) {
             // Re-throw ApiError as-is
             if (error instanceof ApiError) {
@@ -538,19 +448,21 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             }
 
             // Handle abort/timeout
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (error instanceof RequestTimeoutError) {
                 const timeoutError = new ApiError({
                     error: 'Request timeout',
                     code: 'TIMEOUT',
                     details: `Request to ${endpoint} timed out after ${timeout}ms`,
                     status: 0,
+                    retryable: requestMethod === 'GET' || requestMethod === 'HEAD',
                 });
-
-                if (onError && !suppressGlobalErrorHandler) {
-                    onError(timeoutError);
-                }
-
                 throw timeoutError;
+            }
+
+            // Preserve caller cancellation so TanStack Query can discard it without
+            // surfacing a network error or scheduling another attempt.
+            if (callerSignal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+                throw error;
             }
 
             // Handle network errors
@@ -559,11 +471,8 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
                 code: 'NETWORK_ERROR',
                 details: 'Unable to connect to the server',
                 status: 0,
+                retryable: requestMethod === 'GET' || requestMethod === 'HEAD',
             });
-
-            if (onError && !suppressGlobalErrorHandler) {
-                onError(networkError);
-            }
 
             throw networkError;
         }

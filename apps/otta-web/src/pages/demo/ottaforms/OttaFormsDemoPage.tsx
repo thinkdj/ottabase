@@ -9,7 +9,8 @@ import { createModelConfig, defineModelConfig } from '@ottabase/forms';
 import { ModelCrud } from '@ottabase/forms/react';
 import { Post } from '@ottabase/ottablog';
 import { Tag, User } from '@ottabase/ottaorm/models';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -73,27 +74,6 @@ const todosConfig = defineModelConfig({
                 colWidth: 100,
             },
         },
-        userId: {
-            type: 'string',
-            editable: true,
-            filterable: true,
-            uiConfig: {
-                label: 'Assigned To',
-            },
-            formConfig: {
-                visible: true,
-                fieldType: 'select',
-                relationship: {
-                    entity: 'users',
-                    labelField: 'name',
-                    valueField: 'id',
-                },
-            },
-            tableConfig: {
-                visible: true,
-                colWidth: 150,
-            },
-        },
         createdAt: {
             type: 'datetime',
             editable: false,
@@ -118,10 +98,10 @@ const modelConfigs: Record<ModelKey, ModelConfig> = {
 };
 
 const modelDescriptions: Record<ModelKey, string> = {
-    users: 'Manage user accounts with profile information',
+    users: 'Protected model: demonstrates that generated CRUD cannot bypass server authorization',
     posts: 'Blog posts with author relationships and publishing status',
     tags: 'Tags for categorizing content',
-    todos: 'Simple todo list with user assignment',
+    todos: 'Simple todo list with completion tracking',
 };
 
 export function OttaFormsDemoPage() {
@@ -149,6 +129,7 @@ export function OttaFormsDemoPage() {
                                 config={modelConfigs[selectedModel]}
                                 apiBasePath="/api/ottaorm"
                                 perPage={10}
+                                header={selectedModel === 'users' ? <ProtectedUsersNotice /> : undefined}
                                 onCreate={(record) => {
                                     console.log('Created:', record);
                                 }}
@@ -173,8 +154,16 @@ export function OttaFormsDemoPage() {
                                 onClick={() => setSelectedModel(key)}
                             >
                                 <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold capitalize">
-                                        {modelConfigs[key].displayNamePlural}
+                                    <CardTitle className="flex items-center justify-between gap-3 text-[0.9375rem] font-semibold capitalize">
+                                        <span>{modelConfigs[key].displayNamePlural}</span>
+                                        {key === 'users' ? (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-warning/40 bg-warning/10 text-warning"
+                                            >
+                                                Protected
+                                            </Badge>
+                                        ) : null}
                                     </CardTitle>
                                     <CardDescription>{modelDescriptions[key]}</CardDescription>
                                 </CardHeader>
@@ -198,7 +187,7 @@ export function OttaFormsDemoPage() {
                                         )}
                                     </div>
                                     <Button className="mt-4 w-full" variant="outline">
-                                        Open CRUD Interface
+                                        {key === 'users' ? 'Test Access Boundary' : 'Open CRUD Interface'}
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -233,8 +222,8 @@ export function OttaFormsDemoPage() {
                                     description="Built-in data fetching, caching, and mutations"
                                 />
                                 <FeatureItem
-                                    title="Full CRUD"
-                                    description="List, detail, create, and edit views in one component"
+                                    title="Authorization Boundaries"
+                                    description="Generated UI enables CRUD where allowed but never bypasses server RBAC or RLS"
                                 />
                             </div>
                         </CardContent>
@@ -249,19 +238,19 @@ export function OttaFormsDemoPage() {
                             <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm text-foreground ring-1 ring-border">
                                 <code>{`import { createModelConfig } from "@ottabase/forms";
 import { ModelCrud } from "@ottabase/forms/react";
-import { User } from "@ottabase/ottaorm/models";
+import { Tag } from "@ottabase/ottaorm/models";
 
 // Create config from OttaORM model - metadata comes from model SSOT
-const usersConfig = createModelConfig(User);
+const tagsConfig = createModelConfig(Tag);
 
 // Or override specific options if needed:
-// const usersConfig = createModelConfig(User, { displayName: "Member" });
+// const tagsConfig = createModelConfig(Tag, { displayName: "Topic" });
 
 // Use in your component
-function UsersPage() {
+function TagsPage() {
   return (
     <ModelCrud
-      config={usersConfig}
+      config={tagsConfig}
       apiBasePath="/api/ottaorm"
       onCreate={(record) => console.log("Created:", record)}
     />
@@ -272,6 +261,31 @@ function UsersPage() {
                     </Card>
                 </>
             )}
+        </div>
+    );
+}
+
+function ProtectedUsersNotice() {
+    return (
+        <div role="note" className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+            <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">Protected model demonstration</p>
+                    <Badge variant="outline" className="border-warning/40 text-warning">
+                        Expected 403
+                    </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    OttaForms can generate this interface from the User model metadata, but metadata never grants API
+                    access. The server deliberately blocks generic User CRUD, so the request below should produce one
+                    clear access-denied result.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    Expected flow: <code className="font-mono text-foreground">GET /api/ottaorm/users</code> → 403,
+                    shown once as a toast and once as persistent inline context.
+                </p>
+            </div>
         </div>
     );
 }

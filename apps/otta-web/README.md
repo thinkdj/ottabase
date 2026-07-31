@@ -21,6 +21,9 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 Worker runtime note: database/model/RLS setup is cached once per Cloudflare isolate and reused across later requests, so
 the worker avoids rebuilding OttaORM state on every request. Static asset requests skip that setup entirely.
 
+The router and outer Worker handler share one final error boundary. Unhandled 5xx responses expose only a stable error
+code plus request ID, while the server emits one bounded, secret-redacted JSON log for correlation.
+
 ## Quick Start
 
 ```bash
@@ -101,21 +104,27 @@ This template ships with a custom, dependency-free auth implementation + D1 inte
   remount-driven `/api/auth/session` loops and loading-state flicker. Refreshes are causally ordered, auth-service
   outages are not mistaken for logout, and logout/401 invalidation clears auth, organization state, and tenant query
   caches together.
-- **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
-  session into all API calls; these values are also mirrored in global state atoms for UI needs.
+- **Tenant/app scope**: `X-Org-Id` is validated against authoritative active membership before it can become the RLS
+  organization. App scope always comes from `ottabase.config.ts`; browser `X-App-Id` values are never trusted for RLS or
+  media ownership.
+- **Fail-closed membership lookup**: If D1 cannot resolve a signed-in user's organization or group memberships, the
+  Worker returns `503 SECURITY_CONTEXT_UNAVAILABLE` instead of running with an unknown security scope.
+- **Visible authorization demo**: OttaForms intentionally includes the protected `User` model. Its generated UI proves
+  that model metadata does not grant access: generic `/api/ottaorm/users` CRUD returns one clear 403, while dedicated
+  administration routes remain the only user-management path.
 
 ### Auth API Endpoints
 
-| Endpoint                           | Method  | Notes                                                                                                                                                   |
-| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/register`               | `POST`  | Credentials registration + auto organization/role setup. Returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`. |
-| `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                |
-| `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                     |
-| `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                               |
-| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                       |
-| `/api/auth/password/change`        | `POST`  | Authenticated password change (requires current password), validates strength, then revokes active JWTs.                                                |
-| `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                             |
-| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                 |
+| Endpoint                           | Method  | Notes                                                                                                                                                                                                                              |
+| ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/register`               | `POST`  | Credentials registration + required organization/owner-role setup. It rolls back the new user if tenant provisioning fails; success returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`. |
+| `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                                                                                           |
+| `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                                                                                                |
+| `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                                                                                                          |
+| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                                                                                                  |
+| `/api/auth/password/change`        | `POST`  | Authenticated password change (requires current password), validates strength, then revokes active JWTs.                                                                                                                           |
+| `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                                                                                                        |
+| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                                                                                            |
 
 ### Required Env (production)
 
@@ -181,12 +190,15 @@ feature to Vectorize deliberately rather than treating the playground as a vecto
 
 ### First-user + admin guard
 
-- First successful sign-in when `users.count() === 1` auto-creates a system-scoped `platform_owner` role
-  (organizationId: `system`) — the bootstrapped app owner, distinct from the org-scoped `owner` role.
-- If `MULTI_TENANT_ENABLED` is true (default), a personal org is created for that first user and linked as owner.
+- The first successful sign-in atomically claims the system-scoped `platform_owner` grant (`organizationId: system`) —
+  the bootstrapped app owner, distinct from the org-scoped `owner` role.
+- If `MULTI_TENANT_ENABLED` is true (default), session issuance also requires a personal organization, active owner
+  membership, and matching org-scoped `owner` grant. Those tenant records are transactional; failed setup is surfaced
+  instead of returning a partial account, and the same owner can safely retry.
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
 - Manual recovery: `POST /api/admin/platform-owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET`
-  and body `{ "userId": "..." }` or `{ "email": "..." }` to grant the `platform_owner` role.
+  and body `{ "userId": "..." }` or `{ "email": "..." }` to provision the owner's workspace (in multi-tenant mode) and
+  grant the `platform_owner` role.
 - Admin APIs now require system-scope platform_owner/admin (org admins remain scoped to their orgs only).
 
 ## Database Setup

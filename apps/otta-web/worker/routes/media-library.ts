@@ -8,7 +8,6 @@ import { deleteFileFromR2 } from '@ottabase/ottaupload/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { buildMediaLibraryAccessFilter } from '../../ottabase/models/mediaLibraryPolicy';
 import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
 import { initDbConnection } from '../lib/db-utils';
@@ -16,19 +15,9 @@ import type { ApiRouteContext } from './router';
 
 async function getResolvedMediaSecurityContext(request: Request, env: CloudflareEnv) {
     const session = await getSession(request, env as any, getAuthOptions(env));
-    const config = getOttabaseConfig(env as Record<string, unknown>);
     const securityContext = await getSecurityContext(request, session, env);
 
-    // Prefer explicit header, then configured appId, then the generic default.
-    // config.appId takes precedence over securityContext.appId ('web') so that
-    // uploads without the X-App-Id header still get the correct app identity.
-    return {
-        session,
-        securityContext: {
-            ...securityContext,
-            appId: request.headers.get('x-app-id') || config.appId || securityContext.appId,
-        },
-    };
+    return { session, securityContext };
 }
 
 export async function persistUploadedMediaRecord(
@@ -48,11 +37,14 @@ export async function persistUploadedMediaRecord(
 
     initDbConnection(env);
 
+    // Ownership fields always come from the authenticated, server-resolved
+    // security context. Upload metadata is untrusted input and cannot select a
+    // different app, organization, or user partition.
     const createData = createMediaLibraryRecordInput({
         ...input,
-        appId: input.appId ?? securityContext.appId ?? null,
-        organizationId: input.organizationId ?? securityContext.organizationId ?? null,
-        userId: input.userId ?? userId,
+        appId: securityContext.appId ?? null,
+        organizationId: securityContext.organizationId ?? null,
+        userId,
     });
 
     if (options?.upsertByStorageKey) {

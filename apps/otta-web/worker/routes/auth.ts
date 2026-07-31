@@ -698,7 +698,21 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             organizationRole = provisioned.organizationRole;
             assignedRole = provisioned.assignedRole;
         } catch (error) {
-            console.warn('Failed to initialize organization or roles:', error);
+            // A registered account without its active organization + owner grant is not a
+            // successful registration. Remove the just-created user and let the client retry
+            // after the underlying provisioning problem is fixed.
+            try {
+                await User.delete(newUserId);
+            } catch (rollbackError) {
+                console.error('Failed to roll back user after organization provisioning failed:', rollbackError);
+            }
+            console.error('Failed to initialize the registration organization or roles:', error);
+            return withAuthCors(
+                errorResponse('Account workspace setup could not be completed. Please try again.', 500, {
+                    code: 'ACCOUNT_PROVISIONING_FAILED',
+                    exposure: 'public',
+                }),
+            );
         }
 
         let attributionResult;

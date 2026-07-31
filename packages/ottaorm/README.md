@@ -1009,11 +1009,18 @@ and applied automatically by the secure CRUD handler.
 **Fail-closed by design:**
 
 - **No policy → no access.** A model without a registered policy throws, rather than returning unscoped rows.
+- **Required tenant means non-null.** `TenantScoped(false)` rejects both `undefined` and normalized `null` organization
+  IDs on reads and writes; only `TenantScoped(true)` permits system/single-founder rows.
 - **Unknown filter column → no access.** If a policy's filter field isn't a real column on the model, the secure CRUD
   layer throws instead of silently dropping the filter (which would otherwise leak across tenants). Keep policy `field`
   / `contextFields` / `enforceOnWrite` names in sync with your table columns.
 - **Caller `where` can't widen scope.** The RLS filter is merged last, so a client can't override a security field.
 - **Read-before-write.** Update/delete first verify the record is visible under the caller's RLS filter.
+- **Denials are opaque at the API boundary.** Unauthenticated callers receive a generic 401 and authenticated callers a
+  generic 403. Policy text, security context, attempted request data, and stack traces are never returned to clients.
+- **Unknown models stay private.** `MODEL_NOT_FOUND` never lists registered models or server registration paths.
+- **Runtime failures stay private.** Generic and secure CRUD return a stable, opaque 500 while emitting only bounded,
+  credential-redacted structured diagnostics on the server.
 
 ### Policy Levels
 
@@ -1115,8 +1122,9 @@ interface SecurityContext {
 > });
 > ```
 >
-> A header-based helper, `extractSecurityContext(request)`, exists for gateways that set/strip trusted headers
-> (`x-user-id`, `x-org-id`, …). **It is spoofable if exposed to clients directly** — only use it behind a trusted proxy.
+> OttaORM intentionally does not construct a security context from request headers. Identity, organization, roles,
+> permissions, and app scope must come from a verified session/token and trusted server configuration before being
+> passed to `executeSecureCrudRequest` or the `rlsMiddleware` context callback.
 
 ### Permission Wildcards
 
@@ -1138,8 +1146,10 @@ enforcement.
 ### Audit Integration
 
 RLS violations are persisted to the `audit_logs` table via the `AuditLog` model. Logging happens at the secure-CRUD
-boundary (awaited as part of the request), so it is reliable on edge runtimes. `getRecentViolations(n)` returns the
-**most recent `n`** violations, ordered and limited at the database layer (it does not load the whole table):
+boundary (awaited as part of the request), so it is reliable on edge runtimes. Console and D1 audit entries retain only
+bounded scope identifiers, the operation, and attempted field names; request values, roles, and permissions are
+discarded before logging. `getRecentViolations(n)` returns the **most recent `n`** violations, ordered and limited at
+the database layer (it does not load the whole table); the framework caps `n` at 1,000:
 
 ```typescript
 import { getRecentViolations } from '@ottabase/ottaorm';
@@ -1243,6 +1253,75 @@ Values exceeding these limits are silently capped to the maximum.
 TanStack Query hooks for React components. Mutations include built-in optimistic updates — `useUpdate` patches the
 detail cache immediately and rolls back on error, `useDelete` removes the cached item and restores it on failure.
 
+#### Provider and visibility scope
+
+`OttaQueryProvider` requires the configured `@ottabase/api` client and the complete visibility scope used by server-side
+authorization. It creates a separate `QueryClient` for each stable app, organization, principal, and authorization
+version. When any scope field changes, in-flight queries are cancelled and the previous cache is cleared before it can
+be observed in the new scope. The scoped subtree is remounted so existing query observers and component-local server
+data cannot remain attached to the prior authorization boundary.
+
+The provider deliberately does not accept a pre-built `QueryClient`. Supplying one would make cache ownership ambiguous
+across visibility scopes and could bypass the framework-owned retry, mutation, and terminal-error policies. Customize
+safe options through `config`, inject a test or subtree transport through `apiClient`, and use a single provider above
+multiple component trees that must share one scope-local cache.
+
+```tsx
+import { createApiClient } from '@ottabase/api';
+import { OttaQueryProvider } from '@ottabase/ottaorm/client';
+import type { ReactNode } from 'react';
+
+// The transport always performs one attempt; TanStack Query owns safe-read retries.
+const api = createApiClient();
+
+interface AppDataProviderProps {
+    children: ReactNode;
+    appId: string;
+    organizationId: string | null;
+    userId: string | null;
+    authorizationVersion: number;
+}
+
+export function AppDataProvider({
+    children,
+    appId,
+    organizationId,
+    userId,
+    authorizationVersion,
+}: AppDataProviderProps) {
+    return (
+        <OttaQueryProvider
+            apiClient={api}
+            visibilityScope={{
+                appId,
+                organizationId,
+                principalId: userId,
+                authorizationVersion,
+            }}
+            errorReporter={(error, context) => {
+                // Called once for a terminal query/mutation failure.
+                console.error(`[${context.source}]`, error);
+            }}
+        >
+            {children}
+        </OttaQueryProvider>
+    );
+}
+```
+
+Queries retry only when `@ottabase/api` marks a safe request error as `retryable`. The framework permits at most three
+total attempts for network failures and HTTP 408, 429, 502, 503, and 504. `Retry-After` is honored; other retries use
+full-jitter exponential delay. Deterministic failures do not retry or automatically refetch on focus, reconnect, or
+remount. Framework query functions let React StrictMode's simulated effect cycle settle for one microtask before reading
+TanStack's abort signal, so the second subscription reuses the same request; real unmounts and scope changes still
+cancel it. Mutations never retry, and the transport never coalesces requests.
+
+The terminal reporter is the default presentation boundary. A consumer mutation `onError` conventionally owns local
+presentation; `meta: { errorPresentation: 'global' }` opts back into the reporter when a callback only performs rollback
+or analytics. Query or mutation metadata may explicitly use `'local'` or `'silent'` to suppress global presentation.
+OttaORM's internal optimistic rollback callbacks stamp this metadata automatically so they never hide an unhandled
+error.
+
 ```typescript
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
@@ -1277,27 +1356,29 @@ function BlogDetailPage() {
 
 ### Cache & Invalidation
 
-Ottabase uses **entity-namespaced query keys** and a **global mutation observer** to make cache invalidation automatic —
-similar to SWR, but layered on TanStack Query.
+Queries use entity-namespaced keys inside their visibility-scoped `QueryClient`. Mutation hooks explicitly invalidate
+the families they affect; there is no provider-level mutation observer or hidden `meta.entity` behavior.
 
 #### How it works
 
-Every query that belongs to an entity is namespaced under `[entityName, ...]`. Every mutation that changes an entity
-broadcasts `meta: { entity: entityName }`. The `OttaQueryProvider` subscribes to the mutation cache and calls
-`invalidateQueries([entity])` on success, which TanStack propagates to all matching queries via prefix matching —
-regardless of which endpoint they hit.
+Every query belonging to an entity is namespaced under `[entityName, ...]`. `createModelHooks` applies
+operation-specific cache behavior:
 
-This means a delete in the admin panel automatically busts the public blog list, the detail page, infinite scroll — any
-query for that entity, anywhere in the app.
+- Create stores the returned detail and invalidates list, infinite-list, and find families.
+- Update replaces the optimistic detail with the canonical server record and invalidates collection/find families.
+- Delete removes the detail and invalidates collection/find families.
+
+This avoids refetching unrelated detail records while keeping every collection representation current.
 
 #### `createModelHooks` — automatic, zero config
 
-All mutations from `createModelHooks` carry `meta.entity` automatically. No extra config needed.
+All model hooks use the mandatory provider client, forward TanStack cancellation signals for reads, URL-encode resource
+IDs, and preserve framework mutation behavior when consumer lifecycle callbacks are supplied.
 
 ```typescript
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 
-// Deleting a post invalidates ALL ['posts', ...] queries everywhere
+// Deleting a post removes its detail and invalidates post collections/finds.
 const deletePost = blogPostHooks.useDelete();
 await deletePost.mutateAsync(id);
 ```
@@ -1305,22 +1386,24 @@ await deletePost.mutateAsync(id);
 #### `useApiQuery` — custom endpoints, same invalidation
 
 Use the `entity` option for any custom endpoint query. The key is namespaced as `[entity, ...queryKey]`, so it's busted
-by mutations on that entity automatically.
+by a custom mutation that declares the entity. `useApiQuery` is GET-only. Use `select` for observer-local projections;
+the shared cache always retains the endpoint response type.
 
 ```typescript
 // Key becomes ['posts', 'list', { page, contentType }]
-const { data } = useApiQuery<BlogListResponse>({
+const { data } = useApiQuery<BlogListResponse, BlogPost[]>({
     entity: 'posts',
     queryKey: ['list', { page, contentType }],
     endpoint: `/api/blog/posts?page=${page}`,
+    select: (response) => response.data,
     queryOptions: BLOG_LIST_QUERY_CONFIG,
 });
 ```
 
 #### `useEntityQuery` — custom queryFn, same invalidation
 
-When you need a fully custom `queryFn` (not just an endpoint string), use `useEntityQuery`. The hook always provides a
-non-null `api` function — the injected client when available, a raw fetch adapter otherwise. No null-guarding needed.
+When you need a fully custom `queryFn`, use `useEntityQuery`. Its non-empty `subKey` is required, and the provided API
+function is automatically bound to the active query cancellation signal.
 
 ```typescript
 const { data } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts/by-slug/${slug}`), {
@@ -1332,35 +1415,25 @@ const { data } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts
 
 #### `useApiMutation` — custom mutations with entity invalidation
 
-Invalidation runs on **success only** — failed mutations leave the cache untouched.
+Invalidation runs on success only. Consumer `onSuccess` handlers are composed after framework invalidation and cannot
+replace it.
 
 ```typescript
 const publishAll = useApiMutation({
     endpoint: '/api/blog/publish-all',
     method: 'POST',
-    invalidateEntities: ['posts'], // busts all ['posts', ...] queries on success
-});
-```
-
-#### Opting in from raw `useMutation`
-
-Any `useMutation` call participates in automatic invalidation by setting `meta.entity`:
-
-```typescript
-useMutation({
-    meta: { entity: 'posts' }, // observer picks this up
-    mutationFn: (id) => api(`/api/posts/${id}`, { method: 'DELETE' }),
+    invalidateEntities: ['posts'],
 });
 ```
 
 #### Convention: always declare `entity`
 
-| Scenario                        | Correct hook                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------- |
-| Standard CRUD on a model        | `createModelHooks`                                                              |
-| Custom endpoint, standard fetch | `useApiQuery({ entity, queryKey, endpoint })`                                   |
-| Custom endpoint, custom queryFn | `useEntityQuery(entity, queryFn, { subKey })`                                   |
-| Custom mutation                 | `useApiMutation({ invalidateEntities })` or `useMutation({ meta: { entity } })` |
+| Scenario                 | Correct hook                                  |
+| ------------------------ | --------------------------------------------- |
+| Standard CRUD on a model | `createModelHooks`                            |
+| Custom GET endpoint      | `useApiQuery({ entity, queryKey, endpoint })` |
+| Custom query function    | `useEntityQuery(entity, queryFn, { subKey })` |
+| Custom mutation          | `useApiMutation({ invalidateEntities })`      |
 
 Queries without an `entity` declaration are not invalidated by any mutation. This is intentional for truly static or
 cross-entity data (e.g. config, stats).

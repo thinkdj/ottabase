@@ -1,12 +1,14 @@
 /**
  * Tests for the security-context membership cache in auth-utils:
- * - read-through caching of org/group membership lookups (60s KV TTL)
+ * - read-through caching of org/group membership lookups (300s KV TTL)
  * - fail-safe fallback: KV failures must fall back to D1, never weaken
- *   membership resolution to `undefined`
+ *   membership resolution
+ * - authoritative membership failures stop the request with a typed 503
+ * - app scope comes from trusted server configuration, never x-app-id
  * - org validation still uses the (possibly cached) membership list
  * - invalidateMembershipCache drops both key families
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const organizationIdsForUser = vi.fn<(...args: any[]) => Promise<string[]>>();
 const groupIdsForUser = vi.fn<(...args: any[]) => Promise<string[]>>();
@@ -30,7 +32,12 @@ vi.mock('../../../ottabase/config.loader', () => ({
 }));
 vi.mock('../email-provider', () => ({ resolveAppMailer: vi.fn() }));
 
-import { bumpProfileVersion, getSecurityContext, invalidateMembershipCache } from '../auth-utils';
+import {
+    bumpProfileVersion,
+    getSecurityContext,
+    invalidateMembershipCache,
+    SecurityContextUnavailableError,
+} from '../auth-utils';
 
 /** Minimal KV fake backed by a Map, with list() for prefix invalidation. */
 function makeKv() {
@@ -64,6 +71,10 @@ beforeEach(() => {
     groupIdsForUser.mockReset().mockResolvedValue(['group-1']);
 });
 
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe('getSecurityContext — membership caching', () => {
     it('caches org + group lookups in KV (fetcher called once across requests)', async () => {
         const kv = makeKv();
@@ -93,14 +104,45 @@ describe('getSecurityContext — membership caching', () => {
         expect(organizationIdsForUser).toHaveBeenCalled();
     });
 
-    it('keeps "membership unknown" semantics when the D1 lookup itself fails', async () => {
+    it('fails closed with a typed 503 when the authoritative organization lookup fails', async () => {
         organizationIdsForUser.mockRejectedValue(new Error('no such table'));
-        groupIdsForUser.mockRejectedValue(new Error('no such table'));
         const env = { OBCF_KV: makeKv() } as any;
 
-        const ctx = await getSecurityContext(makeRequest('org-a'), session, env);
-        expect(ctx.memberOrganizationIds).toBeUndefined();
-        expect(ctx.memberGroupIds).toBeUndefined();
+        await expect(getSecurityContext(makeRequest('org-a'), session, env)).rejects.toMatchObject({
+            name: 'SecurityContextUnavailableError',
+            status: 503,
+            code: 'SECURITY_CONTEXT_UNAVAILABLE',
+            membershipScope: 'organization',
+            internalCause: expect.any(Error),
+        });
+        expect(organizationIdsForUser).toHaveBeenCalledTimes(1);
+        expect(groupIdsForUser).not.toHaveBeenCalled();
+    });
+
+    it('fails closed with a typed 503 when the authoritative group lookup fails', async () => {
+        groupIdsForUser.mockRejectedValue(new Error('D1 unavailable'));
+        const env = { OBCF_KV: makeKv() } as any;
+
+        const promise = getSecurityContext(makeRequest('org-a'), session, env);
+        await expect(promise).rejects.toBeInstanceOf(SecurityContextUnavailableError);
+        await expect(promise).rejects.toMatchObject({
+            status: 503,
+            code: 'SECURITY_CONTEXT_UNAVAILABLE',
+            membershipScope: 'group',
+        });
+    });
+
+    it('ignores browser x-app-id and uses the configured app scope', async () => {
+        const env = { OBCF_KV: makeKv() } as any;
+        const request = new Request('http://localhost/api/test', {
+            headers: {
+                'x-org-id': 'org-a',
+                'x-app-id': 'attacker-selected-app',
+            },
+        });
+
+        const ctx = await getSecurityContext(request, session, env);
+        expect(ctx.appId).toBe('test-app');
     });
 
     it('nulls a caller-supplied org the (cached) membership list does not contain', async () => {

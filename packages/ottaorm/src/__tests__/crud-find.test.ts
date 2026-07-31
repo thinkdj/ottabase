@@ -319,7 +319,7 @@ describe('OttaORM field/value find functionality', () => {
     });
 
     describe('handleCrud - model not found', () => {
-        it('should include available models in error hint', async () => {
+        it('returns a generic error without exposing the registry or implementation details', async () => {
             registerModel(TestModel);
 
             const result = await handleCrud({
@@ -330,7 +330,10 @@ describe('OttaORM field/value find functionality', () => {
             expect(result.success).toBe(false);
             expect(result.status).toBe(404);
             expect(result.code).toBe('MODEL_NOT_FOUND');
-            expect(result.hint).toContain('tests');
+            expect(result.error).toBe('Model not found');
+            expect(result.hint).toBeUndefined();
+            expect(JSON.stringify(result)).not.toContain('tests');
+            expect(JSON.stringify(result)).not.toContain('db-utils');
         });
     });
 
@@ -338,10 +341,13 @@ describe('OttaORM field/value find functionality', () => {
         it('should flag invalid JSON in "where" query param as parseError', async () => {
             const url = new URL('http://localhost/api/ottaorm/tests?where=not-json');
             const request = new Request(url.toString(), { method: 'GET' });
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
             const parsed = await parseCrudRequest(request, url, '/api/ottaorm');
 
             expect(parsed?.parseError).toBeDefined();
             expect(parsed?.parseError?.code).toBe('INVALID_QUERY');
+            expect(warnSpy).not.toHaveBeenCalled();
+            warnSpy.mockRestore();
         });
 
         it('should flag invalid JSON body on POST as parseError', async () => {
@@ -394,6 +400,37 @@ describe('OttaORM field/value find functionality', () => {
             expect(result.fieldErrors).toBeDefined();
             expect(result.fieldErrors!.email).toContain('Email is required');
             expect(result.fieldErrors!.name).toContain('Name is too short');
+        });
+
+        it('returns an opaque 500 and emits one bounded redacted log for unknown errors', async () => {
+            vi.spyOn(TestModel, 'create').mockRejectedValue(
+                new Error('D1_ERROR password=private-password token=private-token'),
+            );
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'POST',
+                model: 'tests',
+                body: { email: 'test@example.com' },
+            });
+
+            expect(result).toEqual({
+                success: false,
+                error: 'Internal server error',
+                code: 'INTERNAL_SERVER_ERROR',
+                messages: ['Internal server error'],
+                status: 500,
+            });
+            expect(consoleSpy).toHaveBeenCalledTimes(1);
+            const logged = String(consoleSpy.mock.calls[0]![0]);
+            expect(logged).not.toContain('private-password');
+            expect(logged).not.toContain('private-token');
+            expect(JSON.parse(logged)).toMatchObject({
+                event: 'ottaorm_crud_failed',
+                model: 'tests',
+                method: 'POST',
+            });
         });
     });
 });

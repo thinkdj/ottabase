@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    ApiError,
-    createApiClient,
-    formDataDedupeSignature,
-    getErrorMessage,
-    getErrorMessages,
-    isApiError,
-} from '../index';
+import { ApiError, createApiClient, getErrorMessage, getErrorMessages, isApiError } from '../index';
 
 type MockResponseOptions = {
     ok?: boolean;
@@ -35,7 +28,21 @@ function createMockResponse(options: MockResponseOptions = {}): Response {
                 headers,
                 jsonData,
             }),
-    } as Response;
+    } as unknown as Response;
+}
+
+function getFetchCall(mockFetch: ReturnType<typeof vi.fn>, index = 0): [RequestInfo | URL, RequestInit] {
+    return mockFetch.mock.calls[index] as unknown as [RequestInfo | URL, RequestInit];
+}
+
+async function captureApiError(request: Promise<unknown>): Promise<ApiError> {
+    try {
+        await request;
+        throw new Error('Expected request to fail');
+    } catch (error) {
+        if (!(error instanceof ApiError)) throw error;
+        return error;
+    }
 }
 
 describe('API Client', () => {
@@ -68,7 +75,7 @@ describe('API Client', () => {
             const body = { name: 'test' };
             await api('/posts', { method: 'POST', body });
 
-            const callArgs = mockFetch.mock.calls[0];
+            const callArgs = getFetchCall(mockFetch);
             expect(callArgs[0]).toBe('/posts');
             expect(callArgs[1].method).toBe('POST');
             expect(callArgs[1].body).toBe(JSON.stringify(body));
@@ -83,7 +90,7 @@ describe('API Client', () => {
             });
             await api('/protected');
 
-            const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+            const headers = getFetchCall(mockFetch)[1].headers as Record<string, string>;
             expect(headers['Authorization']).toBe('Bearer test-token-123');
         });
 
@@ -96,7 +103,7 @@ describe('API Client', () => {
             });
             await api('/public', { skipAuth: true });
 
-            const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+            const headers = getFetchCall(mockFetch)[1].headers as Record<string, string>;
             expect(headers['Authorization']).toBeUndefined();
         });
 
@@ -107,7 +114,7 @@ describe('API Client', () => {
             const api = createApiClient({ baseUrl: '/api' });
             await api('/posts', { params: { limit: 10, skip: 5 } });
 
-            const url = mockFetch.mock.calls[0][0];
+            const url = getFetchCall(mockFetch)[0].toString();
             expect(url).toContain('limit=10');
             expect(url).toContain('skip=5');
         });
@@ -140,101 +147,6 @@ describe('API Client', () => {
             }
         });
 
-        it('should call onError callback on error', async () => {
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        ok: false,
-                        status: 500,
-                        statusText: 'Server Error',
-                        jsonData: { error: 'Server error' },
-                    }),
-                ),
-            );
-            global.fetch = mockFetch;
-
-            const onError = vi.fn();
-            const api = createApiClient({ onError });
-
-            try {
-                await api('/fail');
-            } catch (error) {
-                // error is expected
-            }
-
-            expect(onError).toHaveBeenCalledWith(expect.any(ApiError));
-        });
-
-        it('should not call onError when suppressGlobalErrorHandler is true', async () => {
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        ok: false,
-                        status: 404,
-                        statusText: 'Not Found',
-                        jsonData: { error: 'Not found' },
-                    }),
-                ),
-            );
-            global.fetch = mockFetch;
-
-            const onError = vi.fn();
-            const api = createApiClient({ onError });
-
-            await expect(api('/missing', { suppressGlobalErrorHandler: true })).rejects.toThrow(ApiError);
-            expect(onError).not.toHaveBeenCalled();
-        });
-
-        it('should call onUnauthorized for 401 responses', async () => {
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        ok: false,
-                        status: 401,
-                        statusText: 'Unauthorized',
-                        jsonData: { error: 'Unauthorized' },
-                    }),
-                ),
-            );
-            global.fetch = mockFetch;
-
-            const onUnauthorized = vi.fn();
-            const api = createApiClient({ onUnauthorized });
-
-            try {
-                await api('/protected');
-            } catch (error) {
-                // error is expected
-            }
-
-            expect(onUnauthorized).toHaveBeenCalled();
-        });
-
-        it('should skip onUnauthorized when skipUnauthorizedHandler is true', async () => {
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        ok: false,
-                        status: 401,
-                        statusText: 'Unauthorized',
-                        jsonData: { error: 'Unauthorized' },
-                    }),
-                ),
-            );
-            global.fetch = mockFetch;
-
-            const onUnauthorized = vi.fn();
-            const api = createApiClient({ onUnauthorized });
-
-            try {
-                await api('/protected', { skipUnauthorizedHandler: true });
-            } catch (error) {
-                // expected
-            }
-
-            expect(onUnauthorized).not.toHaveBeenCalled();
-        });
-
         it('should handle shorthand method syntax', async () => {
             const mockFetch = vi.fn(() => Promise.resolve(createMockResponse()));
             global.fetch = mockFetch;
@@ -242,10 +154,10 @@ describe('API Client', () => {
             const api = createApiClient();
             await api('/posts/1', 'DELETE');
 
-            expect(mockFetch.mock.calls[0][1].method).toBe('DELETE');
+            expect(getFetchCall(mockFetch)[1].method).toBe('DELETE');
         });
 
-        it('should dedupe parallel requests with identical inputs', async () => {
+        it('performs each request exactly once without hidden coalescing', async () => {
             const mockFetch = vi.fn(() => Promise.resolve(createMockResponse({ jsonData: { message: 'Hello' } })));
             global.fetch = mockFetch;
 
@@ -255,22 +167,12 @@ describe('API Client', () => {
                 api<{ message: string }>('/hello'),
             ]);
 
-            expect(mockFetch).toHaveBeenCalledTimes(1);
+            expect(mockFetch).toHaveBeenCalledTimes(2);
             expect(first).toEqual({ message: 'Hello' });
             expect(second).toEqual({ message: 'Hello' });
         });
 
-        it('should allow opt-out of dedupe per request', async () => {
-            const mockFetch = vi.fn(() => Promise.resolve(createMockResponse()));
-            global.fetch = mockFetch;
-
-            const api = createApiClient();
-            await Promise.all([api('/hello', { dedupe: false }), api('/hello', { dedupe: false })]);
-
-            expect(mockFetch).toHaveBeenCalledTimes(2);
-        });
-
-        it('dedupes parallel FormData POSTs when the multipart fingerprint matches', async () => {
+        it('performs parallel mutation requests independently', async () => {
             let id = 0;
             const mockFetch = vi.fn(() =>
                 Promise.resolve(
@@ -286,33 +188,6 @@ describe('API Client', () => {
             fd1.append('file', new Blob(['x']), 'same.txt');
             const fd2 = new FormData();
             fd2.append('file', new Blob(['x']), 'same.txt');
-
-            const [r1, r2] = await Promise.all([
-                api<{ uploadId: number }>('/upload', { method: 'POST', body: fd1 }),
-                api<{ uploadId: number }>('/upload', { method: 'POST', body: fd2 }),
-            ]);
-
-            expect(mockFetch).toHaveBeenCalledTimes(1);
-            expect(r1.uploadId).toBe(1);
-            expect(r2.uploadId).toBe(1);
-        });
-
-        it('does not dedupe parallel FormData POSTs when filenames or sizes differ', async () => {
-            let id = 0;
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        jsonData: { uploadId: ++id },
-                    }),
-                ),
-            );
-            global.fetch = mockFetch;
-
-            const api = createApiClient({ baseUrl: '/api' });
-            const fd1 = new FormData();
-            fd1.append('file', new Blob(['a']), 'a.txt');
-            const fd2 = new FormData();
-            fd2.append('file', new Blob(['b']), 'b.txt');
 
             const [r1, r2] = await Promise.all([
                 api<{ uploadId: number }>('/upload', { method: 'POST', body: fd1 }),
@@ -324,104 +199,150 @@ describe('API Client', () => {
             expect(r2.uploadId).toBe(2);
         });
 
-        it('does not dedupe parallel FormData when non-file fields differ', async () => {
-            let id = 0;
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
-                    createMockResponse({
-                        jsonData: { n: ++id },
-                    }),
-                ),
-            );
+        it('returns a retryable network error after one safe-read attempt', async () => {
+            const mockFetch = vi.fn().mockRejectedValue(new Error('socket hang up'));
             global.fetch = mockFetch;
 
-            const api = createApiClient({ baseUrl: '/api' });
-            const fd1 = new FormData();
-            fd1.append('file', new Blob(['x']), 'same.txt');
-            fd1.append('provider', 'r2');
-            const fd2 = new FormData();
-            fd2.append('file', new Blob(['x']), 'same.txt');
-            fd2.append('provider', 'cloudflare-images');
+            const api = createApiClient();
+            const error = await captureApiError(api('/health'));
 
-            await Promise.all([
-                api<{ n: number }>('/upload', { method: 'POST', body: fd1 }),
-                api<{ n: number }>('/upload', { method: 'POST', body: fd2 }),
-            ]);
-
-            expect(mockFetch).toHaveBeenCalledTimes(2);
+            expect(error.code).toBe('NETWORK_ERROR');
+            expect(error.retryable).toBe(true);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
         });
 
-        it('should retry transient network errors for eligible GET requests', async () => {
-            const mockFetch = vi
-                .fn()
-                .mockRejectedValueOnce(new Error('socket hang up'))
-                .mockResolvedValueOnce(createMockResponse({ jsonData: { ok: true } }));
-            global.fetch = mockFetch;
-
-            const api = createApiClient({
-                retry: {
-                    attempts: 2,
-                    baseDelayMs: 0,
-                    maxDelayMs: 0,
-                },
-            });
-
-            const result = await api<{ ok: boolean }>('/health');
-
-            expect(result).toEqual({ ok: true });
-            expect(mockFetch).toHaveBeenCalledTimes(2);
-        });
-
-        it('should retry transient 503 responses for eligible GET requests', async () => {
+        it('marks only explicitly transient safe-read responses as retryable', async () => {
             const mockFetch = vi
                 .fn()
                 .mockResolvedValueOnce(
                     createMockResponse({
                         ok: false,
-                        status: 503,
-                        statusText: 'Service Unavailable',
-                        jsonData: { error: 'warming up' },
+                        status: 403,
+                        jsonData: { error: 'Forbidden', code: 'FORBIDDEN' },
                     }),
                 )
-                .mockResolvedValueOnce(createMockResponse({ jsonData: { ready: true } }));
-            global.fetch = mockFetch;
-
-            const api = createApiClient({
-                retry: {
-                    attempts: 2,
-                    baseDelayMs: 0,
-                    maxDelayMs: 0,
-                },
-            });
-
-            const result = await api<{ ready: boolean }>('/health');
-
-            expect(result).toEqual({ ready: true });
-            expect(mockFetch).toHaveBeenCalledTimes(2);
-        });
-
-        it('should not retry non-idempotent POST requests by default', async () => {
-            const mockFetch = vi.fn(() =>
-                Promise.resolve(
+                .mockResolvedValueOnce(
                     createMockResponse({
                         ok: false,
                         status: 503,
-                        statusText: 'Service Unavailable',
-                        jsonData: { error: 'warming up' },
+                        headers: { ...defaultHeaders, 'Retry-After': '2' },
+                        jsonData: { error: 'Unavailable', code: 'UPSTREAM_UNAVAILABLE' },
                     }),
-                ),
+                );
+            global.fetch = mockFetch;
+
+            const api = createApiClient();
+            const forbidden = await captureApiError(api('/forbidden'));
+            const unavailable = await captureApiError(api('/unavailable'));
+
+            expect(forbidden.retryable).toBe(false);
+            expect(unavailable.retryable).toBe(true);
+            expect(unavailable.retryAfterMs).toBe(2000);
+        });
+
+        it('preserves the HTTP classification when an error body has an invalid shape', async () => {
+            const mockFetch = vi.fn().mockResolvedValue(
+                createMockResponse({
+                    ok: false,
+                    status: 403,
+                    statusText: 'Forbidden',
+                    jsonData: null,
+                }),
             );
             global.fetch = mockFetch;
 
-            const api = createApiClient({
-                retry: {
-                    attempts: 3,
-                    baseDelayMs: 0,
-                    maxDelayMs: 0,
-                },
-            });
+            const api = createApiClient();
+            const error = await captureApiError(api('/forbidden'));
 
-            await expect(api('/posts', { method: 'POST', body: { title: 'Hello' } })).rejects.toBeInstanceOf(ApiError);
+            expect(error.message).toBe('Forbidden');
+            expect(error.status).toBe(403);
+            expect(error.retryable).toBe(false);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('never marks a failed write as retryable and performs one attempt', async () => {
+            const mockFetch = vi.fn().mockResolvedValue(
+                createMockResponse({
+                    ok: false,
+                    status: 503,
+                    jsonData: { error: 'Unavailable' },
+                }),
+            );
+            global.fetch = mockFetch;
+
+            const api = createApiClient();
+            const error = await captureApiError(api('/items', { method: 'POST', body: { name: 'one' } }));
+
+            expect(error.retryable).toBe(false);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('classifies a safe-read timeout without issuing another fetch', async () => {
+            const mockFetch = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+                return new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+                });
+            });
+            global.fetch = mockFetch;
+
+            const api = createApiClient({ timeout: 1 });
+            const error = await captureApiError(api('/slow'));
+
+            expect(error.code).toBe('TIMEOUT');
+            expect(error.retryable).toBe(true);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps the timeout active while consuming the response body', async () => {
+            const mockFetch = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+                const response = createMockResponse();
+                response.json = vi.fn(
+                    () =>
+                        new Promise((_resolve, reject) => {
+                            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+                        }),
+                );
+                return Promise.resolve(response);
+            });
+            global.fetch = mockFetch;
+
+            const api = createApiClient({ timeout: 1 });
+            const error = await captureApiError(api('/slow-body'));
+
+            expect(error.code).toBe('TIMEOUT');
+            expect(error.retryable).toBe(true);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('classifies invalid success JSON as a deterministic response error', async () => {
+            const response = createMockResponse();
+            response.json = vi.fn().mockRejectedValue(new SyntaxError('Unexpected token'));
+            const mockFetch = vi.fn().mockResolvedValue(response);
+            global.fetch = mockFetch;
+
+            const api = createApiClient();
+            const error = await captureApiError(api('/invalid-json'));
+
+            expect(error.code).toBe('INVALID_RESPONSE');
+            expect(error.status).toBe(200);
+            expect(error.retryable).toBe(false);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('preserves caller cancellation instead of converting it to a network error', async () => {
+            const controller = new AbortController();
+            const mockFetch = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+                return new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+                });
+            });
+            global.fetch = mockFetch;
+
+            const api = createApiClient();
+            const request = api('/slow', { signal: controller.signal });
+            controller.abort(new DOMException('scope changed', 'AbortError'));
+
+            await expect(request).rejects.toMatchObject({ name: 'AbortError' });
             expect(mockFetch).toHaveBeenCalledTimes(1);
         });
     });
@@ -460,6 +381,22 @@ describe('API Client', () => {
 
             expect(error.getAllMessages()).toBe('Email is required, Password is too short');
         });
+
+        it('preserves safe metadata and request correlation fields', () => {
+            const error = new ApiError({
+                error: 'Conflict',
+                metadata: { currentVersion: 3 },
+                requestId: 'request-123',
+                status: 409,
+            });
+
+            expect(error.metadata).toEqual({ currentVersion: 3 });
+            expect(error.requestId).toBe('request-123');
+            expect(error.toJSON()).toMatchObject({
+                metadata: { currentVersion: 3 },
+                requestId: 'request-123',
+            });
+        });
     });
 
     describe('Type guards and helpers', () => {
@@ -485,18 +422,6 @@ describe('API Client', () => {
             });
 
             expect(getErrorMessages(apiError)).toEqual(['Error 1', 'Error 2']);
-        });
-    });
-
-    describe('formDataDedupeSignature', () => {
-        it('is stable regardless of append order', () => {
-            const a = new FormData();
-            a.append('z', '1');
-            a.append('file', new Blob(['a']), 'f.txt');
-            const b = new FormData();
-            b.append('file', new Blob(['a']), 'f.txt');
-            b.append('z', '1');
-            expect(formDataDedupeSignature(a)).toBe(formDataDedupeSignature(b));
         });
     });
 });

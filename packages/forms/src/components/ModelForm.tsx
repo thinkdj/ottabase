@@ -10,6 +10,7 @@ import { validateField } from '@ottabase/ottaorm';
 import { clsx } from 'clsx';
 import { AlertCircle, Loader2, Save, X } from 'lucide-react';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { ModelFieldDescriptor, ModelFormProps } from '../types';
 import { FormField } from './FormField';
 
@@ -34,10 +35,10 @@ interface FieldEntry {
  * @example Standalone usage
  * ```tsx
  * <ModelForm
- *   config={userConfig}
+ *   config={tagConfig}
  *   mode="create"
- *   action="/api/ottaorm/users"
- *   onSuccess={(user) => router.push(`/users/${user.id}`)}
+ *   action="/api/ottaorm/tags"
+ *   onSuccess={(tag) => router.push(`/tags/${tag.id}`)}
  *   onError={(err) => toast.error(err.message)}
  * />
  * ```
@@ -56,7 +57,10 @@ export function ModelForm<T extends Record<string, unknown>>({
     onSuccess,
     onError,
     serverErrors,
+    onServerErrorClear,
 }: ModelFormProps<T>) {
+    const request = useFormRequest();
+
     // Validate that at least one submit handler is provided
     if (!action && !onSubmit) {
         console.warn(
@@ -161,6 +165,7 @@ export function ModelForm<T extends Record<string, unknown>>({
         (key: string, value: unknown) => {
             setFormData((prev) => ({ ...prev, [key]: value }));
             setSubmitError(null);
+            onServerErrorClear?.(key);
             // If field was touched (blurred before), validate on change too
             if (touchedRef.current.has(key)) {
                 const error = validateSingleField(key, value);
@@ -171,16 +176,34 @@ export function ModelForm<T extends Record<string, unknown>>({
                 });
             }
         },
-        [validateSingleField],
+        [onServerErrorClear, validateSingleField],
     );
 
-    // Validate all fields using Zod schema from config
-    const validateAll = useCallback((): boolean => {
+    // Build the candidate DTO before validation so readonly/non-editable values
+    // can never be reintroduced after the schema strips them.
+    const buildSubmitData = useCallback((): Partial<T> => {
+        const submitData: Record<string, unknown> = {};
+        for (const { key, field } of visibleFields) {
+            if (field.editable === false) continue;
+            if (mode === 'create' && field.primaryKey) continue;
+
+            const value = formData[key as keyof T];
+            if (value !== undefined) {
+                submitData[key] = value;
+            }
+        }
+        return submitData as Partial<T>;
+    }, [visibleFields, formData, mode]);
+
+    // Validate all fields and return the parsed DTO. Zod coercions,
+    // transformations, and stripped fields are therefore honored on submit.
+    const validateAll = useCallback((): Partial<T> | null => {
         const schema = mode === 'create' ? config.zodCreateSchema : config.zodUpdateSchema;
+        const submitData = buildSubmitData();
 
         if (schema) {
             // Use the pre-built Zod schema
-            const result = schema.safeParse(formData);
+            const result = schema.safeParse(submitData);
             if (!result.success) {
                 const fieldErrors = result.error.flatten().fieldErrors;
                 const newErrors: Record<string, string> = {};
@@ -194,17 +217,17 @@ export function ModelForm<T extends Record<string, unknown>>({
                 for (const { key } of visibleFields) {
                     touchedRef.current.add(key);
                 }
-                return false;
+                return null;
             }
             setErrors({});
-            return true;
+            return result.data as Partial<T>;
         }
 
         // Fallback: validate each field individually
         const newErrors: Record<string, string> = {};
         for (const { key, field } of visibleFields) {
             if (field.editable === false) continue;
-            const value = formData[key as keyof T];
+            const value = submitData[key as keyof T];
             const error = validateField(field, value);
             if (error) newErrors[key] = error;
         }
@@ -213,47 +236,25 @@ export function ModelForm<T extends Record<string, unknown>>({
         for (const { key } of visibleFields) {
             touchedRef.current.add(key);
         }
-        return Object.keys(newErrors).length === 0;
-    }, [mode, config.zodCreateSchema, config.zodUpdateSchema, formData, visibleFields]);
-
-    // Build submit data (filter out readonly and non-editable fields)
-    const buildSubmitData = useCallback((): Partial<T> => {
-        const submitData: Record<string, unknown> = {};
-        for (const { key, field } of visibleFields) {
-            // Always exclude non-editable/readonly fields
-            if (field.editable === false) {
-                continue;
-            }
-            // On create, always exclude primary key fields
-            if (mode === 'create' && field.primaryKey) {
-                continue;
-            }
-            const value = formData[key as keyof T];
-            if (value !== undefined) {
-                submitData[key] = value;
-            }
-        }
-        return submitData as Partial<T>;
-    }, [visibleFields, formData, mode]);
+        return Object.keys(newErrors).length === 0 ? submitData : null;
+    }, [mode, config.zodCreateSchema, config.zodUpdateSchema, buildSubmitData, visibleFields]);
 
     // Handle standalone action submit (POST/PATCH to endpoint)
     // Parses server-side field errors from 422 responses (e.g. { errors: { email: "already exists" } })
     const submitToAction = useCallback(
         async (data: Partial<T>) => {
-            if (!action) return;
+            if (!action) {
+                throw new Error('ModelForm action is required for standalone submission');
+            }
 
             const httpMethod = method || (mode === 'create' ? 'POST' : 'PATCH');
-            const fetchFn = config.fetchFn || fetch;
-
-            const response = await fetchFn(action, {
-                method: httpMethod,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({ error: response.statusText }));
-
+            try {
+                return await request<T>(action, {
+                    method: httpMethod,
+                    body: data,
+                });
+            } catch (error) {
+                const body = getServerErrorData(error);
                 // Parse server-side field errors (422 validation errors)
                 // Supports: { errors: { field: "msg" } }, { errors: { field: ["msg"] } },
                 // or OttaORM format: { fieldErrors: { field: ["msg"] } }
@@ -272,13 +273,10 @@ export function ModelForm<T extends Record<string, unknown>>({
                     }
                 }
 
-                throw new Error(body.error || body.message || `Request failed: ${response.status}`);
+                throw error;
             }
-
-            const result = await response.json();
-            return result;
         },
-        [action, method, mode, config.fetchFn],
+        [action, method, mode, request],
     );
 
     // Handle form submission
@@ -286,12 +284,11 @@ export function ModelForm<T extends Record<string, unknown>>({
         e.preventDefault();
         setSubmitError(null);
 
-        if (!validateAll()) return;
+        const submitData = validateAll();
+        if (!submitData) return;
 
         setIsSubmitting(true);
         try {
-            const submitData = buildSubmitData();
-
             if (action) {
                 // Standalone mode: submit to action endpoint
                 const result = await submitToAction(submitData);

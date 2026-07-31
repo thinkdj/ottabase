@@ -60,6 +60,7 @@ export {
     handleAuthRequest,
     hashPassword,
     hashToken,
+    provisionPlatformOwnerOrganization,
     revokeAllUserSessions,
     revokeSession,
     verifyPassword,
@@ -67,6 +68,7 @@ export {
     type AuthorizedUser,
     type CreateAuthConfigOptions,
     type CredentialsAuthorizeOptions,
+    type FirstUserBootstrapResult,
 } from './backend-handler';
 
 // ============================================================

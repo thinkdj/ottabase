@@ -1,7 +1,7 @@
 // ============================================================
 // @ottabase/ottaorm/client - Model Hooks Factory
 // ============================================================
-// Creates type-safe TanStack Query hooks for any OttaORM model
+// Type-safe TanStack Query hooks for OttaORM resources
 // ============================================================
 
 import {
@@ -14,118 +14,87 @@ import {
     type UseQueryOptions,
 } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useApiClient } from './QueryProvider';
-import type { ApiClientFunction, ModelQueryConfig, MutationContext, PaginationResult, QueryOptions } from './types';
-import { createQueryKeys } from './types';
+import {
+    getStableQuerySignal,
+    queryRetryDelay,
+    shouldAutoRefetchQuery,
+    shouldRetryQuery,
+    useApiClient,
+} from './QueryProvider';
+import type {
+    ApiClientError,
+    ApiClientFunction,
+    ModelQueryConfig,
+    MutationContext,
+    PaginationResult,
+    QueryOptions,
+} from './types';
+import { createQueryKeys, isApiClientError } from './types';
 
-/**
- * Create a complete set of query hooks for an OttaORM model
- *
- * @example
- * ```typescript
- * // Define your model type
- * interface User {
- *   id: string;
- *   name: string;
- *   email: string;
- * }
- *
- * // Create hooks (uses /api/ottaorm/users by default)
- * const userHooks = createModelHooks<User>({ entityName: "users" });
- *
- * // Or with a custom API path
- * const userHooks = createModelHooks<User>({
- *   entityName: "users",
- *   apiPath: "/api/custom/users",
- * });
- *
- * // Use in components
- * function UserList() {
- *   const { data: users, isLoading } = userHooks.useList();
- *   const createUser = userHooks.useCreate();
- *
- *   return (
- *     <div>
- *       {users?.map(user => <div key={user.id}>{user.name}</div>)}
- *       <button onClick={() => createUser.mutate({ name: "New User" })}>
- *         Add User
- *       </button>
- *     </div>
- *   );
- * }
- * ```
- */
-export function createModelHooks<T extends { id: string | number }>(config: ModelQueryConfig) {
-    const { entityName } = config;
-    // Default to /api/ottaorm/{entityName} for the generic CRUD handler
-    const apiPath = config.apiPath ?? `/api/ottaorm/${entityName}`;
-    const queryKeys = createQueryKeys(entityName);
+export type ModelQueryHookOptions<TData> = Omit<
+    UseQueryOptions<TData, ApiClientError>,
+    | 'queryKey'
+    | 'queryFn'
+    | 'enabled'
+    | 'retry'
+    | 'retryDelay'
+    | 'refetchOnMount'
+    | 'refetchOnWindowFocus'
+    | 'refetchOnReconnect'
+> & {
+    enabled?: boolean;
+};
 
-    function normalizeListResponse(result: any, entity: string): T[] {
-        if (Array.isArray(result)) return result;
-        const obj = result as Record<string, unknown>;
-        const byEntity = obj?.[entity];
-        if (Array.isArray(byEntity)) return byEntity;
-        const data = obj?.data;
-        if (Array.isArray(data)) return data;
-        if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-            const inner = (data as Record<string, unknown>).data;
-            if (Array.isArray(inner)) return inner;
-        }
-        return [];
+export type ModelMutationHookOptions<TData, TVariables, TContext> = Omit<
+    UseMutationOptions<TData, ApiClientError, TVariables, TContext>,
+    'mutationFn' | 'retry' | 'retryDelay'
+>;
+
+export interface ModelClient<T extends { id: string | number }> {
+    fetchList(options?: QueryOptions, signal?: AbortSignal): Promise<T[]>;
+    fetchDetail(id: string | number, signal?: AbortSignal): Promise<T | null>;
+    fetchFind(field: string, value: string | number, signal?: AbortSignal): Promise<T | null>;
+    fetchPaginated(
+        page: number,
+        perPage: number,
+        options?: Omit<QueryOptions, 'offset' | 'limit'>,
+        signal?: AbortSignal,
+    ): Promise<PaginationResult<T>>;
+    createItem(data: Partial<T>): Promise<T>;
+    updateItem(id: string | number, data: Partial<T>): Promise<T>;
+    deleteItem(id: string | number): Promise<boolean>;
+}
+
+function normalizeListResponse<T>(result: unknown, entity: string): T[] {
+    if (Array.isArray(result)) return result as T[];
+
+    const object = result as Record<string, unknown> | null;
+    const byEntity = object?.[entity];
+    if (Array.isArray(byEntity)) return byEntity as T[];
+
+    const data = object?.data;
+    if (Array.isArray(data)) return data as T[];
+    if (typeof data === 'object' && data !== null) {
+        const inner = (data as Record<string, unknown>).data;
+        if (Array.isArray(inner)) return inner as T[];
     }
 
-    function normalizePaginatedResponse(result: any, entity: string, depth = 0): PaginationResult<T> {
-        // Guard against infinite recursion from deeply nested or circular responses
-        if (depth > 2) {
-            const list = normalizeListResponse(result, entity);
-            return {
-                data: list,
-                total: list.length,
-                page: 1,
-                perPage: list.length,
-                totalPages: 1,
-                hasNextPage: false,
-                hasPrevPage: false,
-            };
-        }
+    return [];
+}
 
-        // Already in PaginationResult shape
-        if (result && typeof result === 'object' && 'data' in result && 'total' in result && 'page' in result) {
-            return result as PaginationResult<T>;
+function normalizeItemResponse<T>(result: unknown): T {
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+        const data = (result as Record<string, unknown>).data;
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            return data as T;
         }
+    }
+    return result as T;
+}
 
-        // Handle CRUD response: { data: [...], pagination: {...} }
-        if (result && typeof result === 'object' && 'data' in result && 'pagination' in result) {
-            const obj = result as { data?: T[]; pagination?: any };
-            const items = Array.isArray(obj.data) ? obj.data : [];
-            const pagination = obj.pagination || {};
-            const total = pagination.total ?? items.length;
-            const page = pagination.page ?? 1;
-            const perPage = pagination.perPage ?? items.length;
-            const totalPages = pagination.totalPages ?? Math.max(1, Math.ceil(total / perPage));
-            return {
-                data: items,
-                total,
-                page,
-                perPage,
-                totalPages,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1,
-            };
-        }
-
-        // Wrapped response: { data: { data: [...], pagination: {...} } }
-        if (result && typeof result === 'object') {
-            const obj = result as Record<string, unknown>;
-            const inner = obj.data;
-            if (inner && typeof inner === 'object' && 'data' in (inner as any)) {
-                return normalizePaginatedResponse(inner, entity, depth + 1);
-            }
-        }
-
-        // Fallback to list normalization
-        const list = normalizeListResponse(result, entity);
+function normalizePaginatedResponse<T>(result: unknown, entity: string, depth = 0): PaginationResult<T> {
+    if (depth > 2) {
+        const list = normalizeListResponse<T>(result, entity);
         return {
             data: list,
             total: list.length,
@@ -137,429 +106,369 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
         };
     }
 
-    // ============================================================
-    // API Fetcher Factory - Creates fetchers that use API client
-    // ============================================================
+    if (result && typeof result === 'object' && 'data' in result && 'total' in result && 'page' in result) {
+        return result as PaginationResult<T>;
+    }
 
-    function createFetchers(apiClient: ApiClientFunction | undefined) {
-        async function fetchList(options?: QueryOptions): Promise<T[]> {
-            const params = new URLSearchParams();
-
-            if (options?.where) {
-                params.set('where', JSON.stringify(options.where));
-            }
-            if (options?.orderBy) {
-                params.set('orderBy', options.orderBy);
-            }
-            if (options?.orderDirection) {
-                params.set('orderDirection', options.orderDirection);
-            }
-            if (options?.search) {
-                params.set('search', options.search);
-            }
-            if (options?.limit) {
-                params.set('limit', String(options.limit));
-            }
-            if (options?.offset) {
-                params.set('offset', String(options.offset));
-            }
-
-            const queryString = params.toString();
-            const url = queryString ? `${apiPath}?${queryString}` : apiPath;
-
-            // Use API client if available, otherwise fall back to fetch
-            if (apiClient) {
-                const result = await apiClient<Record<string, T[]> & { data?: T[] | { data?: T[] } }>(url);
-                return normalizeListResponse(result, entityName);
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url);
-            if (!response.ok) {
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to fetch ${entityName}`);
-            }
-
-            const result = (await response.json()) as Record<string, T[]> & { data?: T[] | { data?: T[] } };
-            return normalizeListResponse(result, entityName);
-        }
-
-        async function fetchDetail(id: string | number): Promise<T | null> {
-            const url = `${apiPath}/${id}`;
-
-            // Use API client if available
-            if (apiClient) {
-                try {
-                    const result = await apiClient<T>(url);
-                    return result || null;
-                } catch (error: any) {
-                    if (error?.status === 404) return null;
-                    throw error;
-                }
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url);
-            if (!response.ok) {
-                if (response.status === 404) return null;
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to fetch ${entityName}`);
-            }
-
-            const result = (await response.json()) as T;
-            return result || null;
-        }
-
-        async function fetchFind(field: string, value: string | number): Promise<T | null> {
-            const params = new URLSearchParams();
-            params.set('field', field);
-            params.set('value', String(value));
-            const url = `${apiPath}?${params.toString()}`;
-
-            // Use API client if available
-            if (apiClient) {
-                try {
-                    const result = await apiClient<T>(url);
-                    return result || null;
-                } catch (error: any) {
-                    if (error?.status === 404) return null;
-                    throw error;
-                }
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url);
-            if (!response.ok) {
-                if (response.status === 404) return null;
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to find ${entityName}`);
-            }
-
-            const result = (await response.json()) as T;
-            return result || null;
-        }
-
-        async function fetchPaginated(
-            page: number,
-            perPage: number,
-            options?: Omit<QueryOptions, 'offset' | 'limit'>,
-        ): Promise<PaginationResult<T>> {
-            const params = new URLSearchParams();
-            params.set('page', String(page));
-            params.set('perPage', String(perPage));
-
-            if (options?.where) {
-                params.set('where', JSON.stringify(options.where));
-            }
-            if (options?.orderBy) {
-                params.set('orderBy', options.orderBy);
-            }
-            if (options?.orderDirection) {
-                params.set('orderDirection', options.orderDirection);
-            }
-            if (options?.search) {
-                params.set('search', options.search);
-            }
-
-            const url = `${apiPath}?${params.toString()}`;
-
-            // Use API client if available
-            if (apiClient) {
-                const result = await apiClient<any>(url);
-                return normalizePaginatedResponse(result, entityName);
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url);
-            if (!response.ok) {
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to fetch ${entityName}`);
-            }
-
-            const result = await response.json();
-            return normalizePaginatedResponse(result, entityName);
-        }
-
-        async function createItem(data: Partial<T>): Promise<T> {
-            // Use API client if available
-            if (apiClient) {
-                const result = await apiClient<T>(apiPath, {
-                    method: 'POST',
-                    body: data,
-                });
-                return result;
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(apiPath, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to create ${entityName}`);
-            }
-
-            const result = (await response.json()) as T;
-            return result;
-        }
-
-        async function updateItem(id: string | number, data: Partial<T>): Promise<T> {
-            const url = `${apiPath}/${id}`;
-
-            // Use API client if available
-            if (apiClient) {
-                const result = await apiClient<T>(url, {
-                    method: 'PATCH',
-                    body: data,
-                });
-                return result;
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to update ${entityName}`);
-            }
-
-            const result = (await response.json()) as T;
-            return result;
-        }
-
-        async function deleteItem(id: string | number): Promise<boolean> {
-            const url = `${apiPath}/${id}`;
-
-            // Use API client if available
-            if (apiClient) {
-                await apiClient(url, { method: 'DELETE' });
-                return true;
-            }
-
-            // Fallback to raw fetch
-            const response = await fetch(url, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                const error = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(error.error || `Failed to delete ${entityName}`);
-            }
-
-            return true;
-        }
-
+    if (result && typeof result === 'object' && 'data' in result && 'pagination' in result) {
+        const object = result as {
+            data?: T[];
+            pagination?: Partial<Omit<PaginationResult<T>, 'data'>>;
+        };
+        const items = Array.isArray(object.data) ? object.data : [];
+        const pagination = object.pagination ?? {};
+        const total = pagination.total ?? items.length;
+        const page = pagination.page ?? 1;
+        const perPage = pagination.perPage ?? items.length;
+        const totalPages =
+            pagination.totalPages ?? (perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : total > 0 ? 1 : 0);
         return {
-            fetchList,
-            fetchDetail,
-            fetchFind,
-            fetchPaginated,
-            createItem,
-            updateItem,
-            deleteItem,
+            data: items,
+            total,
+            page,
+            perPage,
+            totalPages,
+            hasNextPage: pagination.hasNextPage ?? page < totalPages,
+            hasPrevPage: pagination.hasPrevPage ?? page > 1,
         };
     }
 
-    // ============================================================
-    // Query Hooks
-    // ============================================================
+    if (result && typeof result === 'object') {
+        const inner = (result as Record<string, unknown>).data;
+        if (inner && typeof inner === 'object' && 'data' in inner) {
+            return normalizePaginatedResponse<T>(inner, entity, depth + 1);
+        }
+    }
 
-    function useList(options?: QueryOptions, queryOptions?: Partial<UseQueryOptions<T[], Error>>) {
+    const list = normalizeListResponse<T>(result, entity);
+    return {
+        data: list,
+        total: list.length,
+        page: 1,
+        perPage: list.length,
+        totalPages: list.length > 0 ? 1 : 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+    };
+}
+
+function appendListOptions(params: URLSearchParams, options?: QueryOptions): void {
+    if (options?.where) params.set('where', JSON.stringify(options.where));
+    if (options?.orderBy) params.set('orderBy', options.orderBy);
+    if (options?.orderDirection) params.set('orderDirection', options.orderDirection);
+    if (options?.search) params.set('search', options.search);
+    if (options?.limit !== undefined) params.set('limit', String(options.limit));
+    if (options?.offset !== undefined) params.set('offset', String(options.offset));
+}
+
+/**
+ * Create imperative model operations around the mandatory framework client.
+ * This is also the single transport implementation used by the React hooks.
+ */
+export function createModelClient<T extends { id: string | number }>(
+    config: ModelQueryConfig,
+    apiClient: ApiClientFunction,
+): ModelClient<T> {
+    const { entityName } = config;
+    const apiPath = config.apiPath ?? `/api/ottaorm/${entityName}`;
+
+    return {
+        async fetchList(options?: QueryOptions, signal?: AbortSignal): Promise<T[]> {
+            const params = new URLSearchParams();
+            appendListOptions(params, options);
+            const queryString = params.toString();
+            const url = queryString ? `${apiPath}?${queryString}` : apiPath;
+            const result = await apiClient<unknown>(url, { method: 'GET', signal });
+            return normalizeListResponse<T>(result, entityName);
+        },
+
+        async fetchDetail(id: string | number, signal?: AbortSignal): Promise<T | null> {
+            const url = `${apiPath}/${encodeURIComponent(String(id))}`;
+            try {
+                const result = await apiClient<unknown>(url, { method: 'GET', signal });
+                return result == null ? null : normalizeItemResponse<T>(result);
+            } catch (error) {
+                if (isApiClientError(error) && error.status === 404) return null;
+                throw error;
+            }
+        },
+
+        async fetchFind(field: string, value: string | number, signal?: AbortSignal): Promise<T | null> {
+            const params = new URLSearchParams({
+                field,
+                value: String(value),
+            });
+            try {
+                const result = await apiClient<unknown>(`${apiPath}?${params.toString()}`, {
+                    method: 'GET',
+                    signal,
+                });
+                return result == null ? null : normalizeItemResponse<T>(result);
+            } catch (error) {
+                if (isApiClientError(error) && error.status === 404) return null;
+                throw error;
+            }
+        },
+
+        async fetchPaginated(
+            page: number,
+            perPage: number,
+            options?: Omit<QueryOptions, 'offset' | 'limit'>,
+            signal?: AbortSignal,
+        ): Promise<PaginationResult<T>> {
+            const params = new URLSearchParams({
+                page: String(page),
+                perPage: String(perPage),
+            });
+            appendListOptions(params, options);
+            const result = await apiClient<unknown>(`${apiPath}?${params.toString()}`, {
+                method: 'GET',
+                signal,
+            });
+            return normalizePaginatedResponse<T>(result, entityName);
+        },
+
+        async createItem(data: Partial<T>): Promise<T> {
+            const result = await apiClient<unknown>(apiPath, {
+                method: 'POST',
+                body: data,
+            });
+            return normalizeItemResponse<T>(result);
+        },
+
+        async updateItem(id: string | number, data: Partial<T>): Promise<T> {
+            const result = await apiClient<unknown>(`${apiPath}/${encodeURIComponent(String(id))}`, {
+                method: 'PATCH',
+                body: data,
+            });
+            return normalizeItemResponse<T>(result);
+        },
+
+        async deleteItem(id: string | number): Promise<boolean> {
+            await apiClient(`${apiPath}/${encodeURIComponent(String(id))}`, {
+                method: 'DELETE',
+            });
+            return true;
+        },
+    };
+}
+
+/**
+ * Create a complete set of query hooks for an OttaORM model.
+ */
+export function createModelHooks<T extends { id: string | number }>(config: ModelQueryConfig) {
+    const { entityName } = config;
+    const queryKeys = createQueryKeys(entityName);
+
+    function useModelClient(): ModelClient<T> {
         const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
+        return useMemo(() => createModelClient<T>(config, apiClient), [apiClient]);
+    }
 
-        return useQuery<T[], Error>({
+    function useList(options?: QueryOptions, queryOptions?: ModelQueryHookOptions<T[]>) {
+        const client = useModelClient();
+        return useQuery<T[], ApiClientError>({
+            ...queryOptions,
             queryKey: queryKeys.list(options),
-            queryFn: () => fetchers.fetchList(options),
-            ...queryOptions,
+            queryFn: async (context) => client.fetchList(options, await getStableQuerySignal(context)),
+            retry: shouldRetryQuery,
+            retryDelay: queryRetryDelay,
+            refetchOnMount: shouldAutoRefetchQuery,
+            refetchOnWindowFocus: shouldAutoRefetchQuery,
+            refetchOnReconnect: shouldAutoRefetchQuery,
         });
     }
 
-    function useDetail(id: string | number, queryOptions?: Partial<UseQueryOptions<T | null, Error>>) {
-        const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
-
-        return useQuery<T | null, Error>({
+    function useDetail(id: string | number, queryOptions?: ModelQueryHookOptions<T | null>) {
+        const client = useModelClient();
+        const hasId = id !== undefined && id !== null && id !== '';
+        return useQuery<T | null, ApiClientError>({
+            ...queryOptions,
             queryKey: queryKeys.detail(id),
-            queryFn: () => fetchers.fetchDetail(id),
-            enabled: !!id,
-            ...queryOptions,
+            queryFn: async (context) => client.fetchDetail(id, await getStableQuerySignal(context)),
+            enabled: hasId && queryOptions?.enabled !== false,
+            retry: shouldRetryQuery,
+            retryDelay: queryRetryDelay,
+            refetchOnMount: shouldAutoRefetchQuery,
+            refetchOnWindowFocus: shouldAutoRefetchQuery,
+            refetchOnReconnect: shouldAutoRefetchQuery,
         });
     }
 
-    function useFind(field: string, value: string | number, queryOptions?: Partial<UseQueryOptions<T | null, Error>>) {
-        const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
-
-        return useQuery<T | null, Error>({
+    function useFind(field: string, value: string | number, queryOptions?: ModelQueryHookOptions<T | null>) {
+        const client = useModelClient();
+        const canFind = field.length > 0 && value !== undefined && value !== null && value !== '';
+        return useQuery<T | null, ApiClientError>({
+            ...queryOptions,
             queryKey: queryKeys.find(field, value),
-            queryFn: () => fetchers.fetchFind(field, value),
-            enabled: !!field && value !== undefined && value !== null && value !== '',
-            ...queryOptions,
+            queryFn: async (context) => client.fetchFind(field, value, await getStableQuerySignal(context)),
+            enabled: canFind && queryOptions?.enabled !== false,
+            retry: shouldRetryQuery,
+            retryDelay: queryRetryDelay,
+            refetchOnMount: shouldAutoRefetchQuery,
+            refetchOnWindowFocus: shouldAutoRefetchQuery,
+            refetchOnReconnect: shouldAutoRefetchQuery,
         });
     }
 
-    function useInfiniteList(options?: Omit<QueryOptions, 'offset' | 'limit'>, perPage: number = 10) {
-        const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
-
+    function useInfiniteList(options?: Omit<QueryOptions, 'offset' | 'limit'>, perPage = 10) {
+        const client = useModelClient();
         return useInfiniteQuery<
             PaginationResult<T>,
-            Error,
+            ApiClientError,
             InfiniteData<PaginationResult<T>>,
             ReturnType<typeof queryKeys.infinite>,
             number
         >({
-            queryKey: queryKeys.infinite(options),
-            queryFn: ({ pageParam }) => fetchers.fetchPaginated(pageParam, perPage, options),
+            queryKey: queryKeys.infinite(options, perPage),
+            queryFn: async (context) =>
+                client.fetchPaginated(context.pageParam, perPage, options, await getStableQuerySignal(context)),
             initialPageParam: 1,
             getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
             getPreviousPageParam: (firstPage) => (firstPage.hasPrevPage ? firstPage.page - 1 : undefined),
         });
     }
 
-    // ============================================================
-    // Mutation Hooks
-    // ============================================================
+    function invalidateCollections(queryClient: ReturnType<typeof useQueryClient>): void {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.infinites() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.finds() });
+    }
 
-    function useCreate(mutationOptions?: Partial<UseMutationOptions<T, Error, Partial<T>, MutationContext<T>>>) {
-        const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
+    function useCreate(mutationOptions?: ModelMutationHookOptions<T, Partial<T>, MutationContext<T>>) {
+        const client = useModelClient();
+        const queryClient = useQueryClient();
+        const { onSuccess: consumerOnSuccess, meta: consumerMeta, ...consumerOptions } = mutationOptions ?? {};
 
-        return useMutation<T, Error, Partial<T>, MutationContext<T>>({
-            // meta.entity feeds the global mutation observer in OttaQueryProvider,
-            // which invalidates ['entityName'] on success — no onSettled needed here.
-            meta: { entity: entityName },
-            mutationFn: fetchers.createItem,
-            ...mutationOptions,
+        return useMutation<T, ApiClientError, Partial<T>, MutationContext<T>>({
+            ...consumerOptions,
+            meta: { ...consumerMeta, entity: entityName },
+            mutationFn: client.createItem,
+            retry: false,
+            onSuccess: async (record, variables, onMutateResult, mutationContext) => {
+                queryClient.setQueryData(queryKeys.detail(record.id), record);
+                invalidateCollections(queryClient);
+                await consumerOnSuccess?.(record, variables, onMutateResult, mutationContext);
+            },
         });
     }
 
     function useUpdate(
-        mutationOptions?: Partial<
-            UseMutationOptions<T, Error, { id: string | number; data: Partial<T> }, MutationContext<T>>
-        >,
+        mutationOptions?: ModelMutationHookOptions<T, { id: string | number; data: Partial<T> }, MutationContext<T>>,
     ) {
-        const apiClient = useApiClient();
+        const client = useModelClient();
         const queryClient = useQueryClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
+        const {
+            onMutate: consumerOnMutate,
+            onError: consumerOnError,
+            onSuccess: consumerOnSuccess,
+            meta: consumerMeta,
+            ...consumerOptions
+        } = mutationOptions ?? {};
 
-        // Extract consumer handlers so the spread doesn't silently override optimistic behavior
-        const { onMutate: consumerOnMutate, onError: consumerOnError, ...restOptions } = mutationOptions ?? {};
-
-        return useMutation<T, Error, { id: string | number; data: Partial<T> }, MutationContext<T>>({
-            meta: { entity: entityName },
-            mutationFn: ({ id, data }) => fetchers.updateItem(id, data),
-            // Optimistic update: patch the detail cache, then call consumer handler
-            onMutate: async (variables: { id: string | number; data: Partial<T> }) => {
-                const { id, data } = variables;
-                await queryClient.cancelQueries({ queryKey: queryKeys.detail(id) });
-                const previousItem = queryClient.getQueryData<T>(queryKeys.detail(id)) ?? undefined;
+        return useMutation<T, ApiClientError, { id: string | number; data: Partial<T> }, MutationContext<T>>({
+            ...consumerOptions,
+            meta: {
+                ...consumerMeta,
+                entity: entityName,
+                errorPresentation: consumerMeta?.errorPresentation ?? (consumerOnError ? 'local' : 'global'),
+            },
+            mutationFn: ({ id, data }) => client.updateItem(id, data),
+            retry: false,
+            onMutate: async (variables, mutationContext) => {
+                await queryClient.cancelQueries({ queryKey: queryKeys.detail(variables.id) });
+                const previousItem = queryClient.getQueryData<T>(queryKeys.detail(variables.id)) ?? undefined;
                 if (previousItem) {
-                    queryClient.setQueryData<T>(queryKeys.detail(id), {
+                    queryClient.setQueryData<T>(queryKeys.detail(variables.id), {
                         ...previousItem,
-                        ...data,
+                        ...variables.data,
                     } as T);
                 }
+
                 const context: MutationContext<T> = { previousItem };
-                // Consumer onMutate may return extra context; merge it
-                if (consumerOnMutate) {
-                    const extra = await (consumerOnMutate as Function)(variables);
-                    if (extra && typeof extra === 'object') {
-                        Object.assign(context, extra);
-                    }
-                }
+                const consumerContext = await consumerOnMutate?.(variables, mutationContext);
+                if (consumerContext) Object.assign(context, consumerContext);
                 return context;
             },
-            onError: (
-                err: Error,
-                variables: { id: string | number; data: Partial<T> },
-                context: MutationContext<T> | undefined,
-            ) => {
-                // Rollback on error
+            onError: async (error, variables, context, mutationContext) => {
                 if (context?.previousItem) {
                     queryClient.setQueryData(queryKeys.detail(variables.id), context.previousItem);
                 }
-                if (consumerOnError) {
-                    (consumerOnError as Function)(err, variables, context);
-                }
+                await consumerOnError?.(error, variables, context, mutationContext);
             },
-            ...restOptions,
+            onSuccess: async (record, variables, context, mutationContext) => {
+                queryClient.setQueryData(queryKeys.detail(variables.id), record);
+                invalidateCollections(queryClient);
+                await consumerOnSuccess?.(record, variables, context, mutationContext);
+            },
         });
     }
 
-    function useDelete(
-        mutationOptions?: Partial<UseMutationOptions<boolean, Error, string | number, MutationContext<T>>>,
-    ) {
-        const apiClient = useApiClient();
+    function useDelete(mutationOptions?: ModelMutationHookOptions<boolean, string | number, MutationContext<T>>) {
+        const client = useModelClient();
         const queryClient = useQueryClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
+        const {
+            onMutate: consumerOnMutate,
+            onError: consumerOnError,
+            onSuccess: consumerOnSuccess,
+            meta: consumerMeta,
+            ...consumerOptions
+        } = mutationOptions ?? {};
 
-        const { onMutate: consumerOnMutate, onError: consumerOnError, ...restOptions } = mutationOptions ?? {};
-
-        return useMutation<boolean, Error, string | number, MutationContext<T>>({
-            meta: { entity: entityName },
-            mutationFn: fetchers.deleteItem,
-            // Optimistic delete: remove from detail cache, then call consumer handler
-            onMutate: async (id: string | number) => {
+        return useMutation<boolean, ApiClientError, string | number, MutationContext<T>>({
+            ...consumerOptions,
+            meta: {
+                ...consumerMeta,
+                entity: entityName,
+                errorPresentation: consumerMeta?.errorPresentation ?? (consumerOnError ? 'local' : 'global'),
+            },
+            mutationFn: client.deleteItem,
+            retry: false,
+            onMutate: async (id, mutationContext) => {
                 await queryClient.cancelQueries({ queryKey: queryKeys.detail(id) });
                 const previousItem = queryClient.getQueryData<T>(queryKeys.detail(id)) ?? undefined;
                 queryClient.removeQueries({ queryKey: queryKeys.detail(id) });
+
                 const context: MutationContext<T> = { previousItem };
-                if (consumerOnMutate) {
-                    const extra = await (consumerOnMutate as Function)(id);
-                    if (extra && typeof extra === 'object') {
-                        Object.assign(context, extra);
-                    }
-                }
+                const consumerContext = await consumerOnMutate?.(id, mutationContext);
+                if (consumerContext) Object.assign(context, consumerContext);
                 return context;
             },
-            onError: (err: Error, id: string | number, context: MutationContext<T> | undefined) => {
-                // Rollback on error
+            onError: async (error, id, context, mutationContext) => {
                 if (context?.previousItem) {
                     queryClient.setQueryData(queryKeys.detail(id), context.previousItem);
                 }
-                if (consumerOnError) {
-                    (consumerOnError as Function)(err, id, context);
-                }
+                await consumerOnError?.(error, id, context, mutationContext);
             },
-            ...restOptions,
+            onSuccess: async (result, id, context, mutationContext) => {
+                queryClient.removeQueries({ queryKey: queryKeys.detail(id) });
+                invalidateCollections(queryClient);
+                await consumerOnSuccess?.(result, id, context, mutationContext);
+            },
         });
     }
 
-    // ============================================================
-    // Utility Hooks
-    // ============================================================
-
     function usePrefetch() {
         const queryClient = useQueryClient();
-        const apiClient = useApiClient();
-        const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
+        const client = useModelClient();
 
         return {
             prefetchList: async (options?: QueryOptions) => {
                 await queryClient.prefetchQuery({
                     queryKey: queryKeys.list(options),
-                    queryFn: () => fetchers.fetchList(options),
+                    queryFn: async (context) => client.fetchList(options, await getStableQuerySignal(context)),
                 });
             },
             prefetchDetail: async (id: string | number) => {
                 await queryClient.prefetchQuery({
                     queryKey: queryKeys.detail(id),
-                    queryFn: () => fetchers.fetchDetail(id),
+                    queryFn: async (context) => client.fetchDetail(id, await getStableQuerySignal(context)),
                 });
             },
             prefetchFind: async (field: string, value: string | number) => {
                 await queryClient.prefetchQuery({
                     queryKey: queryKeys.find(field, value),
-                    queryFn: () => fetchers.fetchFind(field, value),
+                    queryFn: async (context) => client.fetchFind(field, value, await getStableQuerySignal(context)),
                 });
             },
         };
@@ -567,7 +476,6 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
 
     function useInvalidate() {
         const queryClient = useQueryClient();
-
         return {
             invalidateAll: () => queryClient.invalidateQueries({ queryKey: queryKeys.all() }),
             invalidateList: (options?: QueryOptions) =>
@@ -577,31 +485,16 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
         };
     }
 
-    // ============================================================
-    // Return All Hooks & Utilities
-    // ============================================================
-
     return {
-        // Query hooks
         useList,
         useDetail,
         useFind,
         useInfiniteList,
-
-        // Mutation hooks
         useCreate,
         useUpdate,
         useDelete,
-
-        // Utility hooks
         usePrefetch,
         useInvalidate,
-
-        // Query keys for manual cache manipulation
         queryKeys,
-
-        // Raw fetchers (for server-side or manual use)
-        // Note: These use raw fetch, not the injected API client
-        fetchers: createFetchers(undefined),
     };
 }

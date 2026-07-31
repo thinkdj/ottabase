@@ -9,6 +9,9 @@ import { createStore } from 'jotai';
 // Extend BaseUser if needed
 export interface AppUser extends BaseUser {
     role?: string;
+    roles?: string[];
+    permissions?: string[];
+    platformAdmin?: boolean;
     organizationId?: string | null;
     appId?: string;
 }

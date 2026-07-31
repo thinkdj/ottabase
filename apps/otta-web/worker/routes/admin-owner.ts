@@ -1,3 +1,4 @@
+import { provisionPlatformOwnerOrganization } from '@ottabase/auth/backend';
 import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -89,6 +90,7 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     }
 
     const roleId = platformOwnerRole.get('id') as string;
+    const targetUserId = String(user.get('id'));
     const existingGrants = await UserRole.where({
         roleId,
         organizationId: SYSTEM_ORGANIZATION_ID,
@@ -101,7 +103,39 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
         );
     }
 
-    await user.assignRole(roleId, undefined, SYSTEM_ORGANIZATION_ID);
+    let personalOrganizationId: string | null;
+    try {
+        // Provision the tenant facts before granting system authority. If this fails,
+        // no platform-owner grant has been written and there is nothing privileged to
+        // compensate or race with another promotion request.
+        personalOrganizationId = await provisionPlatformOwnerOrganization(env, {
+            id: targetUserId,
+            email: (user.get('email') as string | null) ?? null,
+            name: (user.get('name') as string | null) ?? null,
+        });
+    } catch (error) {
+        console.error('[platform-owner] Workspace provisioning failed during promotion:', error);
+        return errorResponse('Platform owner workspace setup could not be completed. Please try again.', 500, {
+            code: 'ACCOUNT_PROVISIONING_FAILED',
+            exposure: 'public',
+        });
+    }
+
+    try {
+        await user.assignRole(roleId, undefined, SYSTEM_ORGANIZATION_ID);
+    } catch (error) {
+        // User.assignRole() intentionally keeps model-level behavior simple, but two
+        // identical promotion requests can race its read-before-insert. A duplicate
+        // is success only after the desired system-scoped grant is authoritative.
+        const persistedGrant = await UserRole.first({
+            userId: targetUserId,
+            roleId,
+            organizationId: SYSTEM_ORGANIZATION_ID,
+        });
+        if (!persistedGrant) {
+            throw error;
+        }
+    }
 
     // Make the grant take effect on the target's live session. Without this the endpoint returns
     // success while the promoted user's cached session snapshot keeps platformAdmin=false (and the
@@ -117,5 +151,6 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
         userId: user.get('id'),
         role: platformOwnerRole.get('name'),
         organizationId: SYSTEM_ORGANIZATION_ID,
+        personalOrganizationId,
     });
 }

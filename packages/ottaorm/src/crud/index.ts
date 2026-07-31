@@ -4,11 +4,9 @@
 // Single handler for all model CRUD operations
 // ============================================================
 
-import { getModel, getRegisteredModels, hasModel } from '../registry';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { getModel, hasModel } from '../registry';
 import { ValidationError } from '../validation';
-
-// Type declaration for process (may not exist in Cloudflare Workers)
-declare const process: { env?: { NODE_ENV?: string } } | undefined;
 
 /** Maximum allowed limit for non-paginated list queries */
 const MAX_LIST_LIMIT = 1000;
@@ -90,15 +88,10 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
 
     // Check if model is registered
     if (!hasModel(entityName)) {
-        // Only show registered model names in non-production to avoid info leakage
-        const isProduction = typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production';
         return {
             success: false,
-            error: `Model '${entityName}' not found. Register it in worker/lib/db-utils.ts initDbConnection().`,
+            error: 'Model not found',
             code: 'MODEL_NOT_FOUND',
-            ...(isProduction
-                ? {}
-                : { hint: `Available models: ${getRegisteredModels().join(', ') || '(none registered)'}` }),
             status: 404,
         };
     }
@@ -367,17 +360,20 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             };
         }
 
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        const isD1Error = message.includes('D1_ERROR') || message.includes('SQLITE_ERROR');
+        console.error(
+            JSON.stringify({
+                event: 'ottaorm_crud_failed',
+                model: entityName.slice(0, 128),
+                method,
+                error: redactErrorForLog(error),
+            }),
+        );
 
         return {
             success: false,
-            error: message,
-            code: isD1Error ? 'DATABASE_ERROR' : 'INTERNAL_SERVER_ERROR',
-            messages: [message],
-            hint: isD1Error
-                ? 'Make sure your database tables are initialized and migrations are up to date.'
-                : undefined,
+            error: 'Internal server error',
+            code: 'INTERNAL_SERVER_ERROR',
+            messages: ['Internal server error'],
             status: 500,
         };
     }
@@ -488,10 +484,9 @@ export async function parseCrudRequest(
     if (whereParam) {
         try {
             query.where = JSON.parse(whereParam);
-        } catch (error) {
+        } catch {
             // Fail closed: reject malformed JSON in `where` instead of silently dropping it.
-            // Silently ignoring can mask bugs (query runs unfiltered) or leak data across tenants.
-            console.warn('ottaorm: Invalid JSON in "where" query parameter:', whereParam, error);
+            // Do not log the raw query: it is untrusted and may contain sensitive filter values.
             parseError = {
                 message: 'Invalid JSON in "where" query parameter',
                 code: 'INVALID_QUERY',

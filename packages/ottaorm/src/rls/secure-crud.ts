@@ -6,12 +6,23 @@
 
 import { handleCrud, type CrudRequest, type CrudResponse } from '../crud';
 import { getModel } from '../registry';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { globalRLS, RLSError } from './engine';
 import { logSecurityViolation } from './logger';
 import type { SecurityContext } from './types';
 
 /** DB column names SQLite lists in composite UNIQUE errors (snake_case). */
 const UNIQUE_FIELD_PRIORITY = ['slug', 'email', 'name', 'session_token', 'credential_id', 'referral_username'] as const;
+
+function publicRlsFailure(context: SecurityContext): CrudResponse {
+    const authenticated = Boolean(context.userId);
+    return {
+        success: false,
+        error: authenticated ? 'Forbidden' : 'Authentication required',
+        code: authenticated ? 'FORBIDDEN' : 'UNAUTHORIZED',
+        status: authenticated ? 403 : 401,
+    };
+}
 
 /**
  * Map SQLite "UNIQUE constraint failed: table.col1, table.col2" to a single API/model field
@@ -88,10 +99,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                 try {
                     body = JSON.parse(text);
                 } catch {
-                    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-                        status: 400,
-                        headers: { 'Content-Type': 'application/json' },
-                    });
+                    return errorResponse('Invalid JSON body', 400, { code: 'INVALID_BODY' });
                 }
             }
         }
@@ -104,10 +112,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             try {
                 query = JSON.parse(queryString);
             } catch {
-                return new Response(JSON.stringify({ error: 'Invalid JSON in query parameter' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' },
-                });
+                return errorResponse('Invalid JSON in query parameter', 400, { code: 'INVALID_QUERY' });
             }
         } else {
             query = {};
@@ -117,9 +122,8 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                 try {
                     query.where = JSON.parse(whereParam);
                 } catch {
-                    return new Response(JSON.stringify({ error: 'Invalid JSON in where parameter' }), {
-                        status: 400,
-                        headers: { 'Content-Type': 'application/json' },
+                    return errorResponse('Invalid JSON in where parameter', 400, {
+                        code: 'INVALID_QUERY',
                     });
                 }
             }
@@ -136,16 +140,10 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             if (limit) {
                 const parsedLimit = parseInt(limit, 10);
                 if (!Number.isFinite(parsedLimit)) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Invalid query parameter',
-                            message: 'limit must be a valid integer',
-                        }),
-                        {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
+                    return errorResponse('Invalid query parameter', 400, {
+                        code: 'INVALID_QUERY',
+                        details: 'limit must be a valid integer',
+                    });
                 }
                 query.limit = Math.min(Math.max(1, parsedLimit), 1000);
             }
@@ -154,16 +152,10 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             if (offset) {
                 const parsedOffset = parseInt(offset, 10);
                 if (!Number.isFinite(parsedOffset)) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Invalid query parameter',
-                            message: 'offset must be a valid integer',
-                        }),
-                        {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
+                    return errorResponse('Invalid query parameter', 400, {
+                        code: 'INVALID_QUERY',
+                        details: 'offset must be a valid integer',
+                    });
                 }
                 query.offset = Math.min(Math.max(0, parsedOffset), 100_000);
             }
@@ -172,16 +164,10 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             if (page) {
                 const parsedPage = parseInt(page, 10);
                 if (!Number.isFinite(parsedPage)) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Invalid query parameter',
-                            message: 'page must be a valid integer',
-                        }),
-                        {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
+                    return errorResponse('Invalid query parameter', 400, {
+                        code: 'INVALID_QUERY',
+                        details: 'page must be a valid integer',
+                    });
                 }
                 query.page = parsedPage;
             }
@@ -190,16 +176,10 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             if (perPage) {
                 const parsedPerPage = parseInt(perPage, 10);
                 if (!Number.isFinite(parsedPerPage)) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Invalid query parameter',
-                            message: 'perPage must be a valid integer',
-                        }),
-                        {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
+                    return errorResponse('Invalid query parameter', 400, {
+                        code: 'INVALID_QUERY',
+                        details: 'perPage must be a valid integer',
+                    });
                 }
                 query.perPage = parsedPerPage;
             }
@@ -227,10 +207,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
 
         // Execute secure CRUD operation
         if (!model) {
-            return new Response(JSON.stringify({ error: 'Model not specified' }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return errorResponse('Model not found', 404, { code: 'MODEL_NOT_FOUND' });
         }
 
         const result = await executeSecureCrud({
@@ -243,9 +220,12 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
         });
 
         if (!result.success) {
-            return new Response(JSON.stringify({ error: result.error }), {
-                status: result.status || 400,
-                headers: { 'Content-Type': 'application/json' },
+            return errorResponse(result.error || 'Request failed', result.status || 500, {
+                code: result.code,
+                details: result.details,
+                hint: result.hint,
+                messages: result.messages,
+                fieldErrors: result.fieldErrors,
             });
         }
 
@@ -259,32 +239,22 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                 try {
                     await logSecurityViolation(error.violation);
                 } catch {
-                    // Audit logging must never mask the original 403.
+                    // Audit logging must never mask the original authorization failure.
                 }
             }
-            return new Response(
-                JSON.stringify({
-                    error: 'Access denied',
-                    message: error.message,
-                    violation: error.violation,
-                }),
-                {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' },
-                },
-            );
+            const failure = publicRlsFailure(context);
+            return errorResponse(failure.error!, failure.status, { code: failure.code });
         }
 
-        return new Response(
+        console.error(
             JSON.stringify({
-                error: 'Internal server error',
-                message: error instanceof Error ? error.message : 'Unknown error',
+                event: 'ottaorm_secure_crud_failed',
+                method: request.method,
+                path: url.pathname.slice(0, 512),
+                error: redactErrorForLog(error),
             }),
-            {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            },
         );
+        return errorResponse('Internal server error', 500, { code: 'INTERNAL_SERVER_ERROR' });
     }
 }
 
@@ -328,17 +298,10 @@ export async function executeSecureCrudRequest(
                 try {
                     await logSecurityViolation(error.violation);
                 } catch {
-                    // Audit logging must never mask the original 403.
+                    // Audit logging must never mask the original authorization failure.
                 }
             }
-            return {
-                success: false,
-                error: error.message,
-                code: 'RLS_ERROR',
-                details: error.violation ? JSON.stringify(error.violation) : undefined,
-                hint: `RLS policy violation for model: ${model}`,
-                status: 403,
-            };
+            return publicRlsFailure(context);
         }
 
         // Handle ValidationError from BaseModel.create/update
@@ -378,21 +341,19 @@ export async function executeSecureCrudRequest(
             };
         }
 
-        const stack = error instanceof Error ? error.stack : undefined;
-        console.error(`[executeSecureCrudRequest] Error for ${model}:`, {
-            error: message,
-            stack,
-            model,
-            method,
-            context,
-        });
+        console.error(
+            JSON.stringify({
+                event: 'ottaorm_secure_crud_failed',
+                model: model.slice(0, 128),
+                method,
+                error: redactErrorForLog(error),
+            }),
+        );
 
         return {
             success: false,
-            error: message,
+            error: 'Internal server error',
             code: 'INTERNAL_SERVER_ERROR',
-            details: stack,
-            hint: `An error occurred while processing ${method} request for ${model}`,
             status: 500,
         };
     }
@@ -580,42 +541,6 @@ async function executeSecureCrud(params: {
     }
 
     return { success: false, error: 'Method not allowed', status: 405 };
-}
-
-/**
- * Build a SecurityContext from request headers (x-user-id, x-org-id, x-app-id,
- * x-user-roles, x-user-permissions).
- *
- * ⚠️ SECURITY — TRUSTED INPUT ONLY. These headers are trivially spoofable by any client.
- * Only use this when a trusted upstream (an authenticating gateway/proxy) sets these headers
- * and strips any client-supplied copies. In application code, derive the context from a
- * verified session or JWT and pass it to executeSecureCrudRequest / rlsMiddleware instead.
- */
-export function extractSecurityContext(request: Request): SecurityContext {
-    // Extract from headers
-    const userId = request.headers.get('x-user-id') || undefined;
-    const organizationId = request.headers.get('x-org-id') || undefined;
-    const appId = request.headers.get('x-app-id') || undefined;
-
-    // Parse roles and permissions from header (comma-separated)
-    const rolesHeader = request.headers.get('x-user-roles');
-    const roles = rolesHeader ? rolesHeader.split(',').map((r) => r.trim()) : undefined;
-
-    const permissionsHeader = request.headers.get('x-user-permissions');
-    const permissions = permissionsHeader ? permissionsHeader.split(',').map((p) => p.trim()) : undefined;
-
-    // Alternative: Extract from JWT (if using auth)
-    // const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    // const decoded = verifyJWT(token, env.JWT_SECRET);
-    // return decoded as SecurityContext;
-
-    return {
-        userId,
-        organizationId: organizationId === 'null' ? null : organizationId,
-        appId,
-        roles,
-        permissions,
-    };
 }
 
 /**

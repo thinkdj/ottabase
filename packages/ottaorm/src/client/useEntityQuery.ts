@@ -1,76 +1,66 @@
 // ============================================================
 // @ottabase/ottaorm/client - Entity Query Hook
 // ============================================================
-// Framework-standard hook for entity-namespaced queries.
-// Any query declared with an entityName automatically falls
-// under that entity's query key namespace, so all mutations
-// from createModelHooks (and useApiMutation with entity) will
-// invalidate it via prefix matching — no manual key alignment.
-// ============================================================
 
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
-import { useApiClient } from './QueryProvider';
-import type { ApiClientFunction } from './types';
+import {
+    getStableQuerySignal,
+    queryRetryDelay,
+    shouldAutoRefetchQuery,
+    shouldRetryQuery,
+    useApiClient,
+} from './QueryProvider';
+import type { ApiClientError, ApiClientFunction, ApiClientHttpMethod, ApiClientRequestOptions } from './types';
 
-type EntityQueryOptions<TData, TError = Error> = Omit<UseQueryOptions<TData, TError>, 'queryKey' | 'queryFn'>;
+type EntityQueryOptions<TData> = Omit<
+    UseQueryOptions<TData, ApiClientError>,
+    'queryKey' | 'queryFn' | 'retry' | 'retryDelay' | 'refetchOnMount' | 'refetchOnWindowFocus' | 'refetchOnReconnect'
+>;
+type NonEmptyQueryKey = readonly [unknown, ...unknown[]];
 
-// Minimal fetch adapter matching ApiClientFunction, used when no injected client is available.
-const fetchAdapter: ApiClientFunction = async (endpoint, options) => {
-    const response = await fetch(endpoint, {
-        method: options?.method ?? 'GET',
-        headers: options?.body ? { 'Content-Type': 'application/json' } : undefined,
-        body: options?.body ? JSON.stringify(options.body) : undefined,
-    });
-    if (!response.ok) {
-        const error = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
-        throw new Error(error.error || error.message || 'Request failed');
-    }
-    return response.json();
-};
+export interface UseEntityQueryOptions<TData> extends EntityQueryOptions<TData> {
+    /**
+     * Required operation identity within the entity namespace. Requiring at
+     * least one segment prevents unrelated endpoints from collapsing to the
+     * same `[entityName]` cache key.
+     */
+    subKey: NonEmptyQueryKey;
+}
+
+function bindSignal(apiClient: ApiClientFunction, signal: AbortSignal): ApiClientFunction {
+    return (async <T>(
+        endpoint: string,
+        optionsOrMethod: ApiClientRequestOptions | ApiClientHttpMethod = {},
+    ): Promise<T> => {
+        const options = typeof optionsOrMethod === 'string' ? { method: optionsOrMethod } : optionsOrMethod;
+        return apiClient<T>(endpoint, {
+            ...options,
+            signal,
+        });
+    }) as ApiClientFunction;
+}
 
 /**
- * Framework-standard hook for fetching entity data from any endpoint.
- *
- * Automatically namespaces the query key under [entityName, ...subKey] so
- * invalidation from any createModelHooks mutation fires correctly — without
- * manually aligning keys.
- *
- * The `queryFn` always receives a guaranteed non-null api function: the injected
- * api client from OttaQueryProvider when available, otherwise a raw fetch adapter.
- * No undefined-guarding required in the caller.
- *
- * @example
- * ```typescript
- * // Public blog list using a custom /api/blog/posts endpoint
- * const { data } = useEntityQuery<BlogListResponse>('posts', (api) => api('/api/blog/posts'), {
- *   subKey: ['list', { page, contentType }],
- *   ...BLOG_LIST_QUERY_CONFIG,
- * });
- *
- * // Post detail by slug
- * const { data: post } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts/by-slug/${slug}`), {
- *   subKey: ['by-slug', slug],
- *   enabled: !!slug,
- *   ...BLOG_DETAIL_QUERY_CONFIG,
- * });
- * ```
- *
- * When a post is deleted via blogPostHooks.useDelete(), the global mutation
- * observer invalidates ['posts'], which cascades to all queries starting with
- * ['posts', ...] — including the ones above — automatically.
+ * Fetch entity-related data from a custom endpoint while retaining entity
+ * invalidation semantics. The provided client is automatically bound to the
+ * TanStack query AbortSignal.
  */
-export function useEntityQuery<TData, TError = Error>(
+export function useEntityQuery<TData>(
     entityName: string,
     queryFn: (api: ApiClientFunction) => Promise<TData>,
-    options?: { subKey?: readonly unknown[] } & EntityQueryOptions<TData, TError>,
+    options: UseEntityQueryOptions<TData>,
 ) {
-    const { subKey = [], ...queryOptions } = options ?? {};
-    const injectedClient = useApiClient();
-    const api = injectedClient ?? fetchAdapter;
+    const { subKey, ...queryOptions } = options;
+    const apiClient = useApiClient();
 
-    return useQuery<TData, TError>({
-        queryKey: [entityName, ...subKey] as readonly unknown[],
-        queryFn: () => queryFn(api),
+    return useQuery<TData, ApiClientError>({
         ...queryOptions,
+        queryKey: [entityName, ...subKey],
+        queryFn: async (context) => queryFn(bindSignal(apiClient, await getStableQuerySignal(context))),
+        retry: shouldRetryQuery,
+        retryDelay: queryRetryDelay,
+        refetchOnMount: shouldAutoRefetchQuery,
+        refetchOnWindowFocus: shouldAutoRefetchQuery,
+        refetchOnReconnect: shouldAutoRefetchQuery,
     });
 }

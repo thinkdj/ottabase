@@ -76,6 +76,16 @@ describe('RLS Engine', () => {
             expect(() => engine.applyReadFilter('posts', ctx)).toThrow(/organizationId/);
         });
 
+        it('tenant level: also throws when organizationId is normalized to null', () => {
+            engine.register({
+                model: 'posts',
+                policy: RLSPolicies.TenantScoped(false),
+            });
+            const ctx: SecurityContext = { userId: 'u1', organizationId: null };
+            expect(() => engine.applyReadFilter('posts', ctx)).toThrow(RLSError);
+            expect(() => engine.applyReadFilter('posts', ctx)).toThrow(/organizationId/);
+        });
+
         it('tenant level: allows null tenant when allowNullTenant is true', () => {
             engine.register({
                 model: 'roles',
@@ -84,6 +94,15 @@ describe('RLS Engine', () => {
             const ctx: SecurityContext = { userId: 'u1' };
             const filter = engine.applyReadFilter('roles', ctx);
             expect(filter).toEqual({ organizationId: undefined });
+        });
+
+        it('tenant level: preserves an explicit null tenant when allowNullTenant is true', () => {
+            engine.register({
+                model: 'roles',
+                policy: RLSPolicies.TenantScoped(true),
+            });
+            const filter = engine.applyReadFilter('roles', { userId: 'u1', organizationId: null });
+            expect(filter).toEqual({ organizationId: null });
         });
 
         it('user level: returns filter by userId', () => {
@@ -334,6 +353,30 @@ describe('RLS Engine', () => {
             expect(() => engine.validateWrite('posts', ctx, data, 'create')).toThrow(/Cross-tenant/);
         });
 
+        it('tenant: throws before writing when organizationId is null and allowNullTenant is false', () => {
+            engine.register({
+                model: 'posts',
+                policy: RLSPolicies.TenantScoped(false),
+            });
+            const data = { title: 'Hi' };
+            expect(() => engine.validateWrite('posts', { userId: 'u1', organizationId: null }, data, 'create')).toThrow(
+                RLSError,
+            );
+            expect(data).toEqual({ title: 'Hi' });
+        });
+
+        it('tenant: injects null on create when allowNullTenant is true', () => {
+            engine.register({
+                model: 'settings',
+                policy: RLSPolicies.TenantScoped(true),
+            });
+            const data: Record<string, unknown> = { key: 'theme' };
+            expect(() =>
+                engine.validateWrite('settings', { userId: 'u1', organizationId: null }, data, 'create'),
+            ).not.toThrow();
+            expect(data.organizationId).toBeNull();
+        });
+
         it('readOnly policy: throws on write', () => {
             engine.register({
                 model: 'audit_logs',
@@ -362,6 +405,7 @@ describe('RLS Engine', () => {
             expect(err.violation!.type).toBe('cross_tenant_write');
             expect(err.violation!.model).toBe('posts');
             expect(err.violation!.context.organizationId).toBe('org-1');
+            expect(JSON.stringify(err)).not.toContain('org-1');
         });
     });
 });

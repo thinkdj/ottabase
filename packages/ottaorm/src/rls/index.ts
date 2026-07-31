@@ -37,7 +37,6 @@ export { MODEL_POLICIES, getRegisteredModels, initRLS, registerAllPolicies, regi
 // Secure CRUD
 export {
     executeSecureCrudRequest,
-    extractSecurityContext,
     parseSqliteUniqueConstraintForApi,
     rlsMiddleware,
     secureCrud,

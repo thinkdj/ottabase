@@ -117,7 +117,7 @@ export class RLSEngine {
                 if (!policy.field) {
                     throw new RLSError(`Tenant policy requires 'field' definition for ${model}`);
                 }
-                if (context.organizationId === undefined && !policy.allowNullTenant) {
+                if (context.organizationId == null && !policy.allowNullTenant) {
                     throw new RLSError(`Missing organizationId in context for ${model}`, {
                         type: 'cross_tenant_read',
                         model,
@@ -277,7 +277,7 @@ export class RLSEngine {
     ): void {
         // For tenant-scoped models, ensure organizationId matches
         if (policy.level === 'tenant' && policy.field) {
-            if (context.organizationId === undefined && !policy.allowNullTenant) {
+            if (context.organizationId == null && !policy.allowNullTenant) {
                 throw new RLSError(`Missing organizationId in context for ${model}`, {
                     type: 'unauthorized_access',
                     model,
@@ -453,13 +453,22 @@ export class RLSError extends Error {
         this.name = 'RLSError';
 
         if (violation) {
-            this.violation = {
+            const normalizedViolation: RLSViolation = {
                 type: violation.type || 'unauthorized_access',
                 model: violation.model || 'unknown',
                 context: violation.context || {},
                 attemptedAccess: violation.attemptedAccess,
                 timestamp: Date.now(),
             };
+            // Policy context and attempted request data are private audit inputs.
+            // Keep them available to the secure boundary without exposing them
+            // through accidental JSON serialization of the Error object.
+            Object.defineProperty(this, 'violation', {
+                value: normalizedViolation,
+                enumerable: false,
+                configurable: false,
+                writable: false,
+            });
 
             // NOTE: persistence is intentionally NOT done here. Firing an un-awaited async
             // write from a constructor is unreliable on edge runtimes (the isolate can be torn

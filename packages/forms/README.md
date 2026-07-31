@@ -52,14 +52,71 @@ pnpm add @ottabase/forms @ottabase/ottaorm zod
 ```tsx
 import { createModelConfig } from '@ottabase/forms';
 import { ModelCrud } from '@ottabase/forms/react';
-import { User } from '@ottabase/ottaorm/models';
+import { Tag } from '@ottabase/ottaorm/models';
 
-const userConfig = createModelConfig(User);
+const tagConfig = createModelConfig(Tag);
 
-export function UserManagement() {
-    return <ModelCrud config={userConfig} apiBasePath="/api/ottaorm" />;
+export function TagManagement() {
+    return <ModelCrud config={tagConfig} apiBasePath="/api/ottaorm" />;
 }
 ```
+
+### Request client integration
+
+Rendered OttaForms components require the request client provided by `OttaQueryProvider`. This keeps authentication
+headers, tenant context, cancellation, and structured HTTP status errors consistent with the rest of the app.
+`ModelCrud`, standalone `ModelForm` actions, relationship lookups, and uploads all follow this single request path.
+
+`ModelCrud` list/detail failures reach the provider's `errorReporter` once, after any safe-read retry budget is
+exhausted. Its create/update/delete failures and standalone form actions use inline state (plus standalone `onError`);
+relationship and upload failures render beside the field. The request transport itself never creates UI notifications.
+
+```tsx
+import { createApiClient } from '@ottabase/api';
+import { defineModelConfig } from '@ottabase/forms';
+import { ModelCrud } from '@ottabase/forms/react';
+import { OttaQueryProvider } from '@ottabase/ottaorm/client';
+
+const todoConfig = defineModelConfig({
+    entity: 'todos',
+    fields: {
+        id: { type: 'id', primaryKey: true },
+        title: { type: 'string', editable: true },
+    },
+});
+
+const api = createApiClient();
+
+function reportTerminalError(error: unknown) {
+    // Replace with the app's toast/telemetry integration.
+    console.error(error);
+}
+
+export function App({
+    currentOrganizationId,
+    currentUserId,
+}: {
+    currentOrganizationId: string | null;
+    currentUserId: string | null;
+}) {
+    return (
+        <OttaQueryProvider
+            apiClient={api}
+            visibilityScope={{
+                appId: 'my-app',
+                organizationId: currentOrganizationId,
+                principalId: currentUserId,
+            }}
+            errorReporter={reportTerminalError}
+        >
+            <ModelCrud config={todoConfig} />
+        </OttaQueryProvider>
+    );
+}
+```
+
+Configure custom transports once through `OttaQueryProvider`; model and field configuration cannot bypass the provider
+client. Create and update submissions are awaited, and canonical server `fieldErrors` are rendered inline.
 
 ### Standalone Form (no ModelCrud)
 
@@ -145,9 +202,9 @@ const result = User.validate({ name: 'John', email: 'bad' }, 'create');
 ### From Model (`createModelConfig`)
 
 ```typescript
-const config = createModelConfig(User, {
-    displayName: 'Member', // Override display name
-    apiPath: '/api/custom/users', // Override API path
+const config = createModelConfig(Tag, {
+    displayName: 'Topic', // Override display name
+    apiPath: '/api/custom/tags', // Override API path
 });
 ```
 

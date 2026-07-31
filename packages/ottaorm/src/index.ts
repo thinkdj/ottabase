@@ -27,7 +27,6 @@ export {
     RLSError,
     RLSPolicies,
     executeSecureCrudRequest,
-    extractSecurityContext,
     parseSqliteUniqueConstraintForApi,
     getRegisteredModels as getRLSModels,
     globalRLS,
