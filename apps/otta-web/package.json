@@ -54,6 +54,8 @@
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
+        "@ottabase/premium": "workspace:*",
+        "@ottabase/premium-webhooks": "workspace:*",
         "@ottabase/queue": "workspace:*",
         "@ottabase/referrals": "workspace:*",
         "@ottabase/shortlinks": "workspace:*",

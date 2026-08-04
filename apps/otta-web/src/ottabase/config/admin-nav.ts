@@ -10,6 +10,7 @@
  */
 
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { isPremiumPackageInstalled } from '@/ottabase/config/premium';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
@@ -18,6 +19,7 @@ import {
     Clock,
     Database,
     FileText,
+    Gem,
     Image as ImageIcon,
     Inbox,
     Layers,
@@ -36,6 +38,7 @@ import {
     UserCog,
     UserPlus,
     Users,
+    Webhook,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -65,6 +68,13 @@ export interface AdminNavItem {
     requiresPackage?: keyof typeof PACKAGES_ENABLED;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
+    /**
+     * Visible only when this PAID package is installed (see `ottabase/config.premium.ts`).
+     *
+     * Installed, not licensed: an unlicensed page still renders — with its upsell — because
+     * hiding it would leave the operator no route to the screen that fixes it.
+     */
+    requiresPremiumPackage?: string;
 }
 
 export interface AdminNavGroup {
@@ -267,6 +277,22 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
+            {
+                title: 'Webhooks',
+                description: 'Outbound event delivery with signed payloads, endpoint health, and a delivery log.',
+                href: '/admin/growth/webhooks',
+                icon: Webhook,
+                scope: 'org',
+                requiresPremiumPackage: 'webhooks',
+            },
+            {
+                // Always listed, even with nothing installed: it is the control plane for paid
+                // add-ons, and an operator handed a license key needs somewhere to put it.
+                title: 'Premium packages',
+                description: 'License status for paid add-ons, and where to activate a key.',
+                href: '/admin/growth/premium',
+                icon: Gem,
+            },
         ],
     },
 ];
@@ -290,6 +316,7 @@ export function getEnabledAdminNav(caps: AdminNavCapabilities): AdminNavGroup[] 
         items: group.items.filter((item) => {
             if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
             if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+            if (item.requiresPremiumPackage && !isPremiumPackageInstalled(item.requiresPremiumPackage)) return false;
             const scope = item.scope ?? 'platform';
             if (scope === 'platform' && !caps.isPlatformAdmin) return false;
             if (scope === 'org' && !caps.isOrgAdmin) return false;

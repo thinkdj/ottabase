@@ -44,6 +44,7 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
+import { getPremiumPackageModels } from './premium';
 import { readJson } from './utils';
 
 let initializedD1Binding: CloudflareEnv['OBCF_D1'] | null = null;
@@ -130,9 +131,20 @@ function registerAppModels(env: CloudflareEnv): void {
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     const appModels = [Todo];
+    // Paid packages (ottabase/config.premium.ts). Registered regardless of license state:
+    // registration only teaches the ORM about a table, and every paid route runs its own
+    // gate — generic CRUD refuses these models by default (GENERIC_CRUD_ALLOWLIST).
+    const premiumModels = getPremiumPackageModels() as typeof appModels;
 
     registerPolicy(mediaLibraryPolicy);
-    registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
+    registerModels([
+        ...coreModels,
+        ...ottablogModels,
+        ...packageModels,
+        ...brandModels,
+        ...appModels,
+        ...premiumModels,
+    ]);
     initRLS();
 
     // AI provider credentials — registered AFTER initRLS() for the same reason as the

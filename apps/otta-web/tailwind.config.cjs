@@ -25,6 +25,10 @@ module.exports = {
         '../../packages/ottablog/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/medialibrary/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottaai/src/**/*.{js,ts,jsx,tsx}',
+        // Paid packages (ottabase/config.premium.ts). Omitting a premium package here fails
+        // SILENTLY — its components render structurally correct and completely unstyled.
+        '../../packages/premium/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/premium-webhooks/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {

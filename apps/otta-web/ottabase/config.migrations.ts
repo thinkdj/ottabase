@@ -15,6 +15,10 @@
 // 1. Import tables, add to `PACKAGE_REGISTRY` with key matching ottabase.config `customPackages`
 // 2. Register routes in config.routes.ts
 // 3. Add to ottabase.config.ts `customPackages`
+//
+// PAID / PREMIUM PACKAGES need NONE of the above: their tables and migrations are read
+// straight from the manifests in `ottabase/config.premium.ts`, so installing one is a
+// single line in that file. See docs/PREMIUM_PACKAGES.md.
 // ============================================================
 
 import {
@@ -42,9 +46,11 @@ import {
 } from '@ottabase/ottablog';
 import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 import type { Migration } from '@ottabase/ottaorm';
+import { collectPremiumMigrations, collectPremiumTables } from '@ottabase/premium';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 import { getOttabaseConfig } from './config.loader';
+import { PREMIUM_PACKAGES } from './config.premium';
 
 /**
  * 1. REGISTRY
@@ -138,6 +144,11 @@ export function getEnabledPackageTables(env?: Record<string, unknown>) {
         }
     }
 
+    // Paid packages (from ottabase/config.premium.ts). Their tables are created as soon as
+    // the package is INSTALLED, not when it is licensed: activating a key must not require
+    // a migration run, and an empty table costs nothing.
+    Object.assign(tables, collectPremiumTables(PREMIUM_PACKAGES));
+
     return tables;
 }
 
@@ -169,6 +180,9 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
             migrations.push(...(pkgConfig.migrations as Migration[]));
         }
     }
+
+    // Paid packages (from ottabase/config.premium.ts)
+    migrations.push(...(collectPremiumMigrations(PREMIUM_PACKAGES) as Migration[]));
 
     return migrations;
 }

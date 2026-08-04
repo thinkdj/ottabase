@@ -569,6 +569,12 @@ importers:
       '@ottabase/ottaupload':
         specifier: workspace:*
         version: link:../../packages/ottaupload
+      '@ottabase/premium':
+        specifier: workspace:*
+        version: link:../../packages/premium
+      '@ottabase/premium-webhooks':
+        specifier: workspace:*
+        version: link:../../packages/premium-webhooks
       '@ottabase/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -1801,6 +1807,98 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/premium:
+    dependencies:
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@ottabase/config':
+        specifier: workspace:*
+        version: link:../config
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.16(react@19.2.4)
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      jsdom:
+        specifier: 'catalog:'
+        version: 27.4.0(@noble/hashes@1.8.0)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.4(react@19.2.4)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/premium-webhooks:
+    dependencies:
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../ottaorm
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/premium':
+        specifier: workspace:*
+        version: link:../premium
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@ottabase/config':
+        specifier: workspace:*
+        version: link:../config
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.16(react@19.2.4)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@cloudflare/workers-types@4.20251225.0)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/queue:
     dependencies:
@@ -9650,10 +9748,6 @@ packages:
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
-
-  lru-cache@11.2.5:
-    resolution: {integrity: sha512-vFrFJkWtJvJnD5hg+hJvVE8Lh/TcMzKnTgCWmtBipwI5yLX/iX+5UB2tfuyODF5E7k9xEzMdYgGqaSb1c0c5Yw==}
-    engines: {node: 20 || >=22}
 
   lru-cache@11.3.5:
     resolution: {integrity: sha512-NxVFwLAnrd9i7KUBxC4DrUhmgjzOs+1Qm50D3oF1/oL+r1NpZ4gA7xvG0/zJ8evR7zIKn4vLf7qTNduWFtCrRw==}
@@ -20582,8 +20676,6 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lru-cache@11.2.5: {}
-
   lru-cache@11.3.5: {}
 
   lru-cache@5.1.1:
@@ -20993,7 +21085,7 @@ snapshots:
 
   path-scurry@2.0.1:
     dependencies:
-      lru-cache: 11.2.5
+      lru-cache: 11.3.5
       minipass: 7.1.2
 
   path-to-regexp@6.3.0: {}

@@ -12,12 +12,15 @@
         "ottablog",
         "ottaeditor",
         "ottaorm",
+        "ottarouter",
         "ottaselect",
         "pnpm",
         "tailwind",
         "thinkdj",
         "tsup",
-        "typescript"
+        "typescript",
+        "unlicensed",
+        "whsec"
     ],
     "ignorePaths": ["**/node_modules/**", "**/dist/**", "**.svg", "**.lock", "**.log"]
 }

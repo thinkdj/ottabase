@@ -332,6 +332,20 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)     |
 | `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`              |
 
+### Paid (Premium) Packages
+
+Sell add-ons for your app, or install someone else's. One manifest carries everything a paid package contributes —
+tables, models, routes, nav, entitlements and lifecycle hooks — and installing one is a single line in
+`ottabase/config.premium.ts`. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home. An
+app with no paid packages is completely unaffected: nothing mounts and nothing is fetched.
+
+| Package                      | Purpose                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
+| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log |
+
+See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
+
 ### Brand, Layout & Content
 
 | Package                        | Purpose                                                              |

@@ -1,0 +1,89 @@
+{
+    "name": "@ottabase/premium",
+    "version": "0.0.1",
+    "description": "Paid-package framework for Ottabase apps — manifests, offline license verification, entitlements, lifecycle hooks, gated routes and drop-in admin UI",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./server": {
+            "types": "./src/server/index.ts",
+            "default": "./src/server/index.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
+        },
+        "./license-tools": {
+            "types": "./src/license-tools.ts",
+            "default": "./src/license-tools.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@ottabase/config": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@testing-library/react": "catalog:",
+        "@types/react": "catalog:",
+        "eslint": "catalog:",
+        "jsdom": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "keywords": [
+        "ottabase",
+        "premium",
+        "paid-packages",
+        "licensing",
+        "entitlements",
+        "saas",
+        "cloudflare"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/premium"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/premium#readme"
+}

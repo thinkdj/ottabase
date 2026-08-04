@@ -144,6 +144,27 @@ Use this as the default decision tree when shipping new work.
 6. **Docs + tests are required**
     - Every new package must create/update its own `README.MD` and include/update tests.
 
+### If adding a PAID (premium) package
+
+Paid add-ons use `@ottabase/premium` and deliberately bypass the free-package wiring above.
+
+1. **One registration point.** Add the manifest to `apps/*/ottabase/config.premium.ts` (`PREMIUM_PACKAGES`). Its tables,
+   migrations, models, routes, nav and gates are all derived from there. Do NOT add it to `config.migrations.ts`
+   PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`, or `db-utils.ts` — those are for free packages, and
+   duplicating a paid package into them creates two sources of truth for whether it exists.
+2. **Manifest, not integration code.**
+   `definePremiumPackage({ key, name, version, licensePublicKey, tables, models, routes, nav, features, freeFeatures, freeLimits, lifecycle })`.
+3. **Licensing is offline.** ECDSA P-256 tokens verified with Web Crypto; a license may come from
+   `PREMIUM_LICENSE_<KEY>`, the `PREMIUM_LICENSES` map, or the admin UI (in that precedence). `PREMIUM_PKG_<KEY>=false`
+   is the kill switch. A package with no `licensePublicKey` is free by construction.
+4. **Enforce on the server, hint in the browser.** `requirePremium*` guards answer 402; `<PremiumGate>` and
+   `usePremiumFeature` only decide what to render, and fail closed while loading.
+5. **Register a paid page's ROUTE on installed, never on licensed.** An unlicensed page renders its upsell; a route that
+   disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
+6. **Never drop a package's tables on uninstall.** Removing it from `PREMIUM_PACKAGES` removes routes and nav only.
+
+Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/premium-webhooks`.
+
 ### Quick examples
 
 ```typescript
@@ -483,6 +504,26 @@ import { DataTable, useDataTable, createColumns, actionsColumn, selectColumn } f
 import { useServerTable } from '@ottabase/ui-datatable'; // OttaORM server-side integration
 ```
 
+### @ottabase/premium
+
+Paid-package framework: manifests, offline license verification, entitlements, lifecycle hooks, gated route mounting and
+a drop-in admin surface. Inert until a package is registered — an app that sells nothing pays nothing.
+
+```typescript
+// Install (the whole job): apps/*/ottabase/config.premium.ts
+export const PREMIUM_PACKAGES = [createWebhooksPackage({ resolveCaller })];
+
+// Enforce (worker)
+import { requirePremiumFeature } from '@ottabase/premium/server';
+const denied = await requirePremiumFeature(premium, env, 'webhooks', 'deliveries.log');
+if (denied) return denied; // 402 PREMIUM_REQUIRED
+
+// Gate (browser) — a UX affordance; the server guard above is the boundary
+import { PremiumGate } from '@ottabase/premium/react';
+```
+
+See `docs/PREMIUM_PACKAGES.md`; `@ottabase/premium-webhooks` is the worked example.
+
 ### @ottabase/queue
 
 Laravel-style job queue for Cloudflare Queues.
@@ -670,6 +711,7 @@ pnpm install
 | Package registry  | `apps/*/ottabase/config.migrations.ts`              |
 | Model registry    | `apps/*/worker/lib/db-utils.ts` (initDbConnection)  |
 | Custom routes     | `apps/*/ottabase/config.routes.ts`                  |
+| Paid packages     | `apps/*/ottabase/config.premium.ts`                 |
 | App config        | `apps/*/ottabase/ottabase.config.ts`                |
 | Client hooks      | `apps/*/src/ottabase/hooks/` or `apps/*/src/hooks/` |
 | Migrations        | `apps/*/ottabase/migrations/`                       |

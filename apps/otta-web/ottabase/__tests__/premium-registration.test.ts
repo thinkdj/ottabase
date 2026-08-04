@@ -1,0 +1,156 @@
+// ============================================================
+// Paid-package wiring for otta-web.
+//
+// A premium package can be registered in `config.premium.ts` and STILL be invisible —
+// its tables missing from auto-init, its nav entry hidden, its routes unmounted — with no
+// error anywhere. The symptom is always the same: an empty screen that sends people to
+// debug the wrong layer. These assertions are cheap and they are what stands between
+// "I added the manifest" and "the feature exists".
+// ============================================================
+
+import { Router } from '@ottabase/ottarouter';
+import { createMemoryStateStore, createPremiumRegistry } from '@ottabase/premium';
+import { mountPremiumPackages } from '@ottabase/premium/server';
+import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/premium-webhooks';
+import { describe, expect, it } from 'vitest';
+import { getEnabledPackageTables } from '../config.migrations';
+import { PREMIUM_PACKAGES } from '../config.premium';
+import { getAllSchemas, getSchemaSummary } from '../db/schemas-helper';
+import { ADMIN_NAV_GROUPS, getEnabledAdminNav } from '../../src/ottabase/config/admin-nav';
+import { PREMIUM_PACKAGES_INSTALLED } from '../../src/ottabase/config/premium';
+
+const WEBHOOK_TABLE_KEYS = ['webhookEndpointsTable', 'webhookDeliveriesTable'];
+
+describe('the client mirror tracks the server manifests', () => {
+    // `src/ottabase/config/premium.ts` cannot import the manifests (they carry server
+    // wiring), so it duplicates the KEYS. This is the assertion that keeps the duplicate
+    // honest — without it, uninstalling a package leaves a nav entry pointing at a route
+    // whose API is gone.
+    it('lists exactly the installed package keys', () => {
+        expect([...PREMIUM_PACKAGES_INSTALLED].sort()).toEqual(PREMIUM_PACKAGES.map((pkg) => pkg.key).sort());
+    });
+});
+
+describe('premium tables reach auto-init', () => {
+    it('appear in getEnabledPackageTables() under keys the migrator will collect', () => {
+        const tables = getEnabledPackageTables();
+        for (const key of WEBHOOK_TABLE_KEYS) {
+            expect(Object.keys(tables)).toContain(key);
+            // `collectTableSchemas` picks up entries whose KEY ends in `Table`; a correctly
+            // shaped table exported under any other key is invisible to it.
+            expect(key.endsWith('Table')).toBe(true);
+        }
+    });
+
+    it('appear in getAllSchemas() and getSchemaSummary() — auto-init skips a table missing from either', () => {
+        const schemas = Object.keys(getAllSchemas());
+        const summary = getSchemaSummary().packages;
+        for (const key of WEBHOOK_TABLE_KEYS) {
+            expect(schemas).toContain(key);
+            expect(summary).toContain(key);
+        }
+    });
+
+    it('carry the tenancy columns every query filters on', () => {
+        const tables = getAllSchemas() as Record<string, Record<string, unknown>>;
+        for (const column of ['id', 'organizationId', 'appId']) {
+            expect(tables.webhookEndpointsTable[column], `endpoints.${column}`).toBeDefined();
+            expect(tables.webhookDeliveriesTable[column], `deliveries.${column}`).toBeDefined();
+        }
+    });
+
+    it('are contributed regardless of license — activating a key must not need a migration run', () => {
+        // No license anywhere in this process, yet the tables are still collected.
+        expect(Object.keys(getEnabledPackageTables())).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS));
+    });
+});
+
+describe('admin navigation', () => {
+    const caps = { isPlatformAdmin: true, isOrgAdmin: true };
+
+    it('shows the premium control plane even with nothing installed', () => {
+        const growth = getEnabledAdminNav(caps).find((group) => group.id === 'growth');
+        expect(growth?.items.map((item) => item.href)).toContain('/admin/growth/premium');
+    });
+
+    it('shows an installed paid package', () => {
+        const growth = getEnabledAdminNav(caps).find((group) => group.id === 'growth');
+        expect(growth?.items.map((item) => item.href)).toContain('/admin/growth/webhooks');
+    });
+
+    it('hides a paid package that is not installed', () => {
+        const uninstalled = ADMIN_NAV_GROUPS.flatMap((group) => group.items).find(
+            (item) => item.requiresPremiumPackage === 'not-installed-package',
+        );
+        expect(uninstalled).toBeUndefined();
+
+        const visible = getEnabledAdminNav(caps)
+            .flatMap((group) => group.items)
+            .filter((item) => item.requiresPremiumPackage)
+            .every((item) => PREMIUM_PACKAGES_INSTALLED.includes(item.requiresPremiumPackage!));
+        expect(visible).toBe(true);
+    });
+});
+
+describe('mounted routes', () => {
+    function buildApp(env: Record<string, unknown>) {
+        const registry = createPremiumRegistry<Record<string, unknown>>({
+            packages: PREMIUM_PACKAGES as never,
+            getStore: () => createMemoryStateStore(),
+            cacheTtlMs: 0,
+        });
+        const app = new Router<Record<string, unknown>>();
+        const mounted = mountPremiumPackages(app, registry);
+        return { app, mounted, env };
+    }
+
+    it('mounts every installed package that contributes routes', () => {
+        expect(buildApp({}).mounted).toContain(WEBHOOKS_BASE_PATH);
+    });
+
+    it('refuses an unauthenticated caller before it advertises anything about the plan', async () => {
+        const { app } = buildApp({});
+        // No session in this environment, so the package's own resolver declines.
+        const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/`), {});
+        expect(response?.status).toBe(401);
+    });
+
+    it('serves the free event catalog with no license installed', async () => {
+        const { app } = buildApp({});
+        const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), {});
+
+        // `gate: 'entitlements'` — the namespace stays reachable so the free tier works.
+        expect(response?.status).toBe(200);
+    });
+
+    it('accepts the demo license that ships with the example package', async () => {
+        const registry = createPremiumRegistry<Record<string, unknown>>({
+            packages: PREMIUM_PACKAGES as never,
+            getStore: () => createMemoryStateStore(),
+            cacheTtlMs: 0,
+        });
+        const status = await registry.status({ PREMIUM_LICENSE_WEBHOOKS: DEMO_PRO_LICENSE }, WEBHOOKS_PACKAGE_KEY);
+
+        // If this fails, the key printed in the README no longer unlocks anything, and every
+        // "try it in five minutes" walkthrough in the docs is broken.
+        expect(status?.state).toBe('active');
+        expect(status?.plan).toBe('pro');
+        expect(status?.limits).toMatchObject({ endpoints: 25 });
+    });
+
+    it('closes the whole namespace when the operator disables the package', async () => {
+        const registry = createPremiumRegistry<Record<string, unknown>>({
+            packages: PREMIUM_PACKAGES as never,
+            disabled: [WEBHOOKS_PACKAGE_KEY],
+            getStore: () => createMemoryStateStore(),
+            cacheTtlMs: 0,
+        });
+        const app = new Router<Record<string, unknown>>();
+        mountPremiumPackages(app, registry);
+
+        const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), {
+            PREMIUM_LICENSE_WEBHOOKS: DEMO_PRO_LICENSE,
+        });
+        expect(response?.status).toBe(403);
+    });
+});

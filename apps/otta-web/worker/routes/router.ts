@@ -15,12 +15,14 @@
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { buildBlogRouter } from '@ottabase/ottablog/router';
 import { Router, withHeaders, type Ctx } from '@ottabase/ottarouter';
+import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { premium } from '../lib/premium';
 import { handleUnhandledRequestError } from '../lib/http-error-boundary';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
@@ -505,6 +507,35 @@ aiRouter.delete('/credentials/:id', (c) => handleAiCredentialsDelete(ctxOf(c), c
 aiRouter.post('/complete', (c) => handleAiComplete(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
 aiRouter.post('/embed', (c) => handleAiEmbed(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
 apiRouter.mount('/api/ai', aiRouter, { when: (c) => packages(c).ottaai });
+
+// -------------------------------------------------------
+// Paid / premium packages (@ottabase/premium)
+// -------------------------------------------------------
+// Both calls are no-ops when `ottabase/config.premium.ts` registers nothing: no routes,
+// no middleware, no KV reads. An app that sells no add-ons pays nothing for this.
+//
+// Each package's namespace is mounted behind its own license gate, so an unlicensed
+// package answers 402 instead of serving. The control plane below is separate, and admin-
+// gated, because reading and changing license state is an operator action, not a feature.
+mountPremiumPackages(apiRouter, premium);
+
+apiRouter.mount(
+    '/api/premium',
+    createPremiumAdminRouter(premium, {
+        // Mutations (activate/remove a key, uninstall) are platform-admin only: a license
+        // is a commercial instrument for the whole deployment, not per-tenant settings.
+        requireAdmin: async (c) => {
+            const auth = await requireAdminAccess(ctxOf(c), { scope: 'system' });
+            return auth instanceof Response ? auth : null;
+        },
+        // Reads are open to any admin of either scope: the client needs entitlement state
+        // to render gates, and the payload is plan/limits — never a license key.
+        requireViewer: async (c) => {
+            const auth = await requireAdminAccess(ctxOf(c), { scope: 'either' });
+            return auth instanceof Response ? auth : null;
+        },
+    }),
+);
 
 // -------------------------------------------------------
 // Error policy — mirrors the worker's top-level mapping, plus

@@ -1,0 +1,85 @@
+{
+    "name": "@ottabase/premium-webhooks",
+    "version": "1.0.0",
+    "description": "Outbound webhooks for Ottabase apps — the worked example of a paid package built on @ottabase/premium. HMAC-signed deliveries, endpoint health, and a licensed delivery log",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/premium": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "drizzle-orm": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@ottabase/config": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "eslint": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "keywords": [
+        "ottabase",
+        "webhooks",
+        "premium",
+        "paid-packages",
+        "hmac",
+        "cloudflare"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/premium-webhooks"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/premium-webhooks#readme"
+}

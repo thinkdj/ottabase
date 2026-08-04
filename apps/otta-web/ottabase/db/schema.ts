@@ -67,6 +67,16 @@ export {
 };
 
 // ============================================================
+// PAID / PREMIUM PACKAGE TABLES (installed in config.premium.ts)
+// ============================================================
+// Re-exported statically for the same reason as the package tables above: drizzle-kit
+// reads this module's NAMED EXPORTS and never evaluates config, so a table reachable only
+// through `packageTables` below is invisible to `db:push`.
+//
+// Remove this block along with the package if you uninstall @ottabase/premium-webhooks.
+export { webhookDeliveriesTable, webhookEndpointsTable } from '@ottabase/premium-webhooks/schema';
+
+// ============================================================
 // DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
 // ============================================================
 import { getEnabledPackageTables } from '../config.migrations';
