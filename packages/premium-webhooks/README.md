@@ -84,8 +84,10 @@ export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
 export const PREMIUM_PACKAGES = [webhooksPackage];
 ```
 
-That is the whole integration — tables, models, routes at `/api/webhooks`, nav entry and gates all come from the
-manifest.
+The server manifest contributes tables, models, RLS policies, routes at `/api/webhooks` and entitlement gates.
+
+A rendered admin page still needs the explicit app-side client adapter described in `@ottabase/premium`; this keeps
+server authentication code out of the browser bundle.
 
 ## Sending events
 
@@ -97,16 +99,19 @@ await dispatchWebhookEvent({
     env,
     event: 'todo.created',
     payload: { id: todo.id, title: todo.title },
-    tenant: { organizationId, appId },
+    tenant: { organizationId, appId, userId }, // userId is required when organizationId is null
 });
 ```
 
-Safe to call unconditionally: an unlicensed or disabled package delivers nothing and returns `[]`, so host code never
-has to ask whether the add-on is installed.
+Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
+free tier, so host code never has to ask whether the add-on is installed.
 
 **Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
 path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
 consumer can own the retry policy.
+
+An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
+dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
 
 ## Receiving and verifying
 
@@ -160,6 +165,11 @@ works, and each paid path guards itself.
 - The signing secret is **not encrypted at rest**. It is a per-endpoint shared secret that must be readable to sign; a
   package needing envelope encryption should follow `@ottabase/ottaai`'s credential store instead.
 
+## Tenant isolation
+
+Organization endpoints are scoped by verified `appId` and `organizationId`. Personal endpoints are scoped by `appId`,
+`organizationId: null`, and `userId`; every query must retain all of those scope fields.
+
 ## Tailwind
 
 Add to the consuming app's `content` array, or the components render unstyled with no error:
@@ -171,5 +181,6 @@ Add to the consuming app's `content` array, or the components render unstyled wi
 ## Testing
 
 ```bash
-pnpm test --filter=@ottabase/premium-webhooks
+pnpm --filter @ottabase/premium-webhooks build
+pnpm --filter @ottabase/premium-webhooks test
 ```

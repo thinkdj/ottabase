@@ -32,6 +32,34 @@ function fail(state: PremiumState, reason: PremiumLicenseResult['reason']): Prem
     return { state, reason, claims: null, expiresIn: null };
 }
 
+/** Validate the signed payload before any entitlement code consumes its fields. */
+function hasValidClaims(claims: PremiumLicenseClaims): boolean {
+    if (
+        !claims.id ||
+        !claims.pkg ||
+        !claims.plan ||
+        !claims.licensee ||
+        !Number.isFinite(claims.iat) ||
+        (claims.nbf !== undefined && !Number.isFinite(claims.nbf)) ||
+        (claims.exp !== undefined && !Number.isFinite(claims.exp)) ||
+        (claims.appId !== undefined && typeof claims.appId !== 'string')
+    ) {
+        return false;
+    }
+    if (
+        claims.features !== undefined &&
+        (!Array.isArray(claims.features) || !claims.features.every((item) => typeof item === 'string'))
+    ) {
+        return false;
+    }
+    return (
+        claims.limits === undefined ||
+        (claims.limits !== null &&
+            typeof claims.limits === 'object' &&
+            Object.values(claims.limits).every((value) => typeof value === 'number' && Number.isFinite(value)))
+    );
+}
+
 /**
  * Verify a license token and produce the runtime verdict.
  *
@@ -67,13 +95,17 @@ export async function verifyLicense(
 
     const claims = parsed.claims;
 
+    if (!hasValidClaims(claims)) {
+        return fail('invalid', 'LICENSE_MALFORMED');
+    }
+
     if (claims.pkg !== options.packageKey) {
         return fail('invalid', 'LICENSE_PACKAGE_MISMATCH');
     }
 
     // An `appId` claim is an OPTIONAL binding. When present it is exact: a license
     // minted for 'acme-prod' must not quietly unlock 'acme-staging'.
-    if (claims.appId && options.appId && claims.appId !== options.appId) {
+    if (claims.appId && claims.appId !== options.appId) {
         return fail('invalid', 'LICENSE_APP_MISMATCH');
     }
 

@@ -38,6 +38,7 @@ export {
 export { DEFAULT_GRACE_DAYS, licenseExpiresAt, verifyLicense, type VerifyLicenseOptions } from './license/verify';
 
 export {
+    applyDisabledLifecycle,
     applyLifecycle,
     applyUninstall,
     type ApplyLifecycleInput,

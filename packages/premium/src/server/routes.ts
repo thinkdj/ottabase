@@ -19,7 +19,7 @@ import type { PremiumRegistry } from '../registry';
 export type PremiumRouteGuard<Env> = (c: Ctx<Env>) => Promise<Response | null> | Response | null;
 
 export interface PremiumAdminRouterOptions<Env> {
-    /** Gate for every mutation (activate, deactivate, uninstall, refresh). Required. */
+    /** Gate for every mutation (activate, deactivate, refresh). Required. */
     requireAdmin: PremiumRouteGuard<Env>;
     /**
      * Gate for the read-only status endpoints. Defaults to `requireAdmin`.
@@ -100,16 +100,6 @@ export function createPremiumAdminRouter<Env>(
         if (denied) return denied;
         const status = await registry.deactivate(c.env, c.params.key);
         return status ? jsonResponse({ data: status }) : errorResponse('Package not installed', 404);
-    });
-
-    router.post('/packages/:key/uninstall', async (c) => {
-        const denied = await options.requireAdmin(c);
-        if (denied) return denied;
-        const removed = await registry.uninstall(c.env, c.params.key);
-        if (!removed) return errorResponse('Package not installed', 404);
-        // Deliberately re-resolved: uninstall clears the install RECORD, and the package
-        // is still registered in config, so the honest answer is its fresh state.
-        return jsonResponse({ data: await registry.status(c.env, c.params.key) });
     });
 
     router.post('/refresh', async (c) => {

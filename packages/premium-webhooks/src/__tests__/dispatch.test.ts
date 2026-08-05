@@ -105,7 +105,7 @@ describe('dispatchWebhookEvent', () => {
         expect((fetchMock.mock.calls[0][1] as RequestInit).redirect).toBe('manual');
     });
 
-    it('delivers nothing when the package is unlicensed', async () => {
+    it('delivers the usable free tier when the package is unlicensed', async () => {
         seedEndpoint();
         const outcomes = await dispatchWebhookEvent({
             registry: makeRegistry(),
@@ -113,6 +113,36 @@ describe('dispatchWebhookEvent', () => {
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
+        });
+
+        expect(outcomes).toHaveLength(1);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('addresses personal endpoints by user id and never widens a null organization scope', async () => {
+        seedEndpoint({ id: 'ep_mine', organizationId: null, userId: 'user-1' });
+        seedEndpoint({ id: 'ep_theirs', organizationId: null, userId: 'user-2' });
+
+        await dispatchWebhookEvent({
+            registry: makeRegistry(),
+            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
+            event: 'todo.created',
+            payload: {},
+            tenant: { organizationId: null, appId: 'otta-web', userId: 'user-1' },
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe('https://example.com/hooks');
+    });
+
+    it('fails closed when a personal dispatch omits its user id', async () => {
+        seedEndpoint({ organizationId: null, userId: 'user-1' });
+        const outcomes = await dispatchWebhookEvent({
+            registry: makeRegistry(),
+            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
+            event: 'todo.created',
+            payload: {},
+            tenant: { organizationId: null, appId: 'otta-web' },
         });
 
         expect(outcomes).toEqual([]);

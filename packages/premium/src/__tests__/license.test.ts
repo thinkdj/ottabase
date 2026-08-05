@@ -104,6 +104,14 @@ describe('forgery resistance', () => {
         expect(result.reason).toBe('LICENSE_APP_MISMATCH');
     });
 
+    it('rejects an app-bound license when the verifier cannot establish an app id', async () => {
+        const token = await issueLicense({ ...base, appId: 'acme-prod' }, keys.privateKey);
+        const result = await verifyLicense(token, { packageKey: 'webhooks', publicKey: keys.publicKey });
+
+        expect(result.state).toBe('invalid');
+        expect(result.reason).toBe('LICENSE_APP_MISMATCH');
+    });
+
     it('accepts an unbound license in any app', async () => {
         const token = await issueLicense(base, keys.privateKey);
         const result = await verifyLicense(token, {
@@ -124,6 +132,17 @@ describe('forgery resistance', () => {
     ])('reports %s as malformed rather than throwing', async (_label, token) => {
         const result = await verifyLicense(token, { packageKey: 'webhooks', publicKey: keys.publicKey });
         expect(['invalid', 'unlicensed']).toContain(result.state);
+    });
+
+    it('rejects a signed token with malformed entitlement claims before a gate consumes them', async () => {
+        const token = await issueLicense(
+            { ...base, features: 'deliveries.log' as unknown as string[] },
+            keys.privateKey,
+        );
+        const result = await verifyLicense(token, { packageKey: 'webhooks', publicKey: keys.publicKey });
+
+        expect(result.state).toBe('invalid');
+        expect(result.reason).toBe('LICENSE_MALFORMED');
     });
 });
 

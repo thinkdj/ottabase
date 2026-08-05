@@ -104,7 +104,7 @@ export function usePremiumLimit(
 /**
  * License management, with invalidation kept INTERNAL.
  *
- * Activate, remove and uninstall must all bust the same namespace; missing one means an
+ * Activate, remove and refresh must all bust the same namespace; missing one means an
  * operator pastes a valid key and the page keeps telling them it is unlicensed.
  */
 export function usePremiumLicense() {
@@ -130,18 +130,11 @@ export function usePremiumLicense() {
         onSuccess: invalidate,
     });
 
-    const uninstall = useMutation<PremiumPackageStatus, Error, string>({
-        meta,
-        mutationFn: (key) =>
-            client.request<PremiumPackageStatus>(`/packages/${encodeURIComponent(key)}/uninstall`, { method: 'POST' }),
-        onSuccess: invalidate,
-    });
-
     const refresh = useMutation<PremiumPackageStatus[], Error, void>({
         meta,
         mutationFn: () => client.request<PremiumPackageStatus[]>('/refresh', { method: 'POST' }),
         onSuccess: invalidate,
     });
 
-    return { activate, remove, uninstall, refresh, invalidate };
+    return { activate, remove, refresh, invalidate };
 }

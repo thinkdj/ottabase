@@ -111,11 +111,19 @@ export interface DispatchWebhookInput<Env> {
 export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>): Promise<DeliveryOutcome[]> {
     const { registry, env, event, payload, tenant } = input;
 
-    if (!(await registry.isActive(env, WEBHOOKS_PACKAGE_KEY))) return [];
+    const resolution = await registry.resolve(env, WEBHOOKS_PACKAGE_KEY);
+    if (!resolution || resolution.license.state === 'disabled') return [];
 
-    const where: Record<string, unknown> = { enabled: true };
-    if (tenant.appId) where.appId = tenant.appId;
-    if (tenant.organizationId) where.organizationId = tenant.organizationId;
+    // A personal scope without a user is ambiguous. Fail closed rather than widening
+    // to every endpoint whose organization is null.
+    if (!tenant.appId || (tenant.organizationId === null && !tenant.userId)) return [];
+
+    const where: Record<string, unknown> = {
+        enabled: true,
+        appId: tenant.appId,
+        organizationId: tenant.organizationId,
+    };
+    if (tenant.organizationId === null) where.userId = tenant.userId;
 
     const endpoints = (await WebhookEndpoint.where(where)) as WebhookEndpoint[];
     const subscribed = endpoints.filter((endpoint) => endpoint.subscribesTo(event));
@@ -147,6 +155,7 @@ export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>
                 error: outcome.error,
                 durationMs: outcome.durationMs,
                 organizationId: tenant.organizationId,
+                userId: tenant.organizationId === null ? (tenant.userId ?? null) : null,
                 appId: tenant.appId,
             });
         }

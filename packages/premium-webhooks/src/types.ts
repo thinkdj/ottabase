@@ -8,6 +8,7 @@ import type { PremiumRegistry } from '@ottabase/premium';
 export interface WebhookTenant {
     organizationId: string | null;
     appId: string | null;
+    userId?: string | null;
 }
 
 /**

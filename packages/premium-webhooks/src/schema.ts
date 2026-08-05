@@ -71,7 +71,7 @@ export const webhookEndpointsTable = sqliteTable(
     },
     (table) => ({
         // The dispatch path's only query: "enabled endpoints for this tenant".
-        tenantIdx: index('premium_webhook_endpoints_tenant_idx').on(table.appId, table.organizationId),
+        tenantIdx: index('premium_webhook_endpoints_tenant_idx').on(table.appId, table.organizationId, table.userId),
     }),
 );
 
@@ -97,6 +97,7 @@ export const webhookDeliveriesTable = sqliteTable(
         durationMs: integer('duration_ms'),
 
         organizationId: text('organization_id'),
+        userId: text('user_id'),
         appId: text('app_id'),
 
         createdAt: integer('created_at')
@@ -105,6 +106,7 @@ export const webhookDeliveriesTable = sqliteTable(
     },
     (table) => ({
         endpointIdx: index('premium_webhook_deliveries_endpoint_idx').on(table.endpointId, table.createdAt),
+        tenantIdx: index('premium_webhook_deliveries_tenant_idx').on(table.appId, table.organizationId, table.userId),
     }),
 );
 

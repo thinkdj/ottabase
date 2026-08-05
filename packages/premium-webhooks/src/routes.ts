@@ -47,13 +47,20 @@ async function readJsonBody<T>(request: Request): Promise<T> {
  * client could set.
  */
 function tenantFilter(caller: WebhookCaller): Record<string, unknown> {
-    const filter: Record<string, unknown> = {};
-    if (caller.appId) filter.appId = caller.appId;
+    const filter: Record<string, unknown> = { appId: caller.appId };
     // A null organizationId is a real, distinct scope (personal endpoints), so it is
     // matched exactly rather than dropped from the filter — dropping it would widen the
     // query to every organization.
     filter.organizationId = caller.organizationId;
+    if (caller.organizationId === null) filter.userId = caller.userId;
     return filter;
+}
+
+function tenantScopeError(caller: WebhookCaller): Response | null {
+    if (!caller.appId || (caller.organizationId === null && !caller.userId)) {
+        return errorResponse('Forbidden', 403);
+    }
+    return null;
 }
 
 function normalizeEvents(input: unknown): string[] {
@@ -64,6 +71,30 @@ function normalizeEvents(input: unknown): string[] {
         .filter(Boolean)
         .slice(0, 50);
     return events.length > 0 ? [...new Set(events)] : ['*'];
+}
+
+// D1's regular model API does not expose a conditional insert/count primitive. This
+// serializes competing creates in one Worker isolate, which is the common burst case;
+// installations needing a globally strict distributed quota should inject that policy
+// through a Durable Object before calling this route.
+const endpointCreateLocks = new Map<string, Promise<void>>();
+
+async function withEndpointCreateLock<T>(caller: WebhookCaller, operation: () => Promise<T>): Promise<T> {
+    const key = `${caller.appId}:${caller.organizationId ?? 'personal'}:${caller.organizationId === null ? caller.userId : ''}`;
+    const previous = endpointCreateLocks.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    endpointCreateLocks.set(key, current);
+    await previous;
+
+    try {
+        return await operation();
+    } finally {
+        release();
+        if (endpointCreateLocks.get(key) === current) endpointCreateLocks.delete(key);
+    }
 }
 
 export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Router<Env> {
@@ -81,6 +112,8 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
     router.get('/', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
 
         const endpoints = (await WebhookEndpoint.where(tenantFilter(who))) as WebhookEndpoint[];
         return jsonResponse({ data: endpoints.map((endpoint) => endpoint.toView()) });
@@ -89,57 +122,63 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
     router.post('/', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
 
         // THE PAID GATE. `current` is counted server-side from the tenant's own rows —
         // trusting a client-supplied count would let the client raise its own ceiling.
-        const existing = (await WebhookEndpoint.where(tenantFilter(who))) as WebhookEndpoint[];
-        const overLimit = await requirePremiumLimit(
-            config.registry,
-            c.env,
-            WEBHOOKS_PACKAGE_KEY,
-            WEBHOOKS_LIMIT_ENDPOINTS,
-            existing.length,
-        );
-        if (overLimit) return overLimit;
+        return withEndpointCreateLock(who, async () => {
+            const existing = (await WebhookEndpoint.where(tenantFilter(who))) as WebhookEndpoint[];
+            const overLimit = await requirePremiumLimit(
+                config.registry,
+                c.env,
+                WEBHOOKS_PACKAGE_KEY,
+                WEBHOOKS_LIMIT_ENDPOINTS,
+                existing.length,
+            );
+            if (overLimit) return overLimit;
 
-        const body = await readJsonBody<WebhookEndpointInput>(c.req);
-        if (typeof body.url !== 'string' || !body.url.trim()) {
-            return errorResponse('A destination URL is required', 400, { code: 'URL_REQUIRED' });
-        }
-
-        let url: string;
-        try {
-            url = assertDeliverableUrl(body.url);
-        } catch (error) {
-            if (error instanceof WebhookUrlError) {
-                return errorResponse(error.message, 400, { code: 'INVALID_URL' });
+            const body = await readJsonBody<WebhookEndpointInput>(c.req);
+            if (typeof body.url !== 'string' || !body.url.trim()) {
+                return errorResponse('A destination URL is required', 400, { code: 'URL_REQUIRED' });
             }
-            throw error;
-        }
 
-        const secret = generateSigningSecret();
-        const endpoint = (await WebhookEndpoint.create({
-            url,
-            description: typeof body.description === 'string' ? body.description.slice(0, 200) : null,
-            events: normalizeEvents(body.events),
-            secret,
-            enabled: body.enabled ?? true,
-            // Tenancy is stamped from the resolved caller, never from the request body.
-            organizationId: who.organizationId,
-            userId: who.userId,
-            appId: who.appId,
-        })) as WebhookEndpoint;
+            let url: string;
+            try {
+                url = assertDeliverableUrl(body.url);
+            } catch (error) {
+                if (error instanceof WebhookUrlError) {
+                    return errorResponse(error.message, 400, { code: 'INVALID_URL' });
+                }
+                throw error;
+            }
 
-        // The ONLY response that ever carries the secret. A receiver cannot verify
-        // signatures without it, and storing it reversibly for later display would make
-        // every subsequent read a place it can leak.
-        return jsonResponse({ data: { ...endpoint.toView(), secret } }, 201);
+            const secret = generateSigningSecret();
+            const endpoint = (await WebhookEndpoint.create({
+                url,
+                description: typeof body.description === 'string' ? body.description.slice(0, 200) : null,
+                events: normalizeEvents(body.events),
+                secret,
+                enabled: body.enabled ?? true,
+                // Tenancy is stamped from the resolved caller, never from the request body.
+                organizationId: who.organizationId,
+                userId: who.userId,
+                appId: who.appId,
+            })) as WebhookEndpoint;
+
+            // The ONLY response that ever carries the secret. A receiver cannot verify
+            // signatures without it, and storing it reversibly for later display would make
+            // every subsequent read a place it can leak.
+            return jsonResponse({ data: { ...endpoint.toView(), secret } }, 201);
+        });
     });
 
     router.patch('/:id', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
 
         const endpoint = await findOwned(c.params.id, who);
@@ -170,6 +209,8 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
     router.delete('/:id', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
 
         const endpoint = await findOwned(c.params.id, who);
@@ -183,6 +224,8 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
     router.post('/:id/test', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
 
         const endpoint = await findOwned(c.params.id, who);
@@ -205,6 +248,8 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
     router.get('/deliveries', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
+        const scopeError = tenantScopeError(who);
+        if (scopeError) return scopeError;
 
         const denied = await requirePremiumFeature(
             config.registry,

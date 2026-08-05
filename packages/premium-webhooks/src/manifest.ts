@@ -19,6 +19,7 @@ import {
 import { DEMO_LICENSE_PUBLIC_KEY } from './demo-license';
 import { WebhookDelivery } from './ottaorm-models/WebhookDelivery';
 import { WebhookEndpoint } from './ottaorm-models/WebhookEndpoint';
+import { webhookPolicies } from './policy';
 import { createWebhooksRouter } from './routes';
 import { webhookDeliveriesTable, webhookEndpointsTable } from './schema';
 import type { WebhooksRouterConfig } from './types';
@@ -61,6 +62,7 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
 
         tables: { webhookEndpointsTable, webhookDeliveriesTable },
         models: [WebhookEndpoint, WebhookDelivery],
+        policies: webhookPolicies,
 
         routes: {
             basePath: WEBHOOKS_BASE_PATH,

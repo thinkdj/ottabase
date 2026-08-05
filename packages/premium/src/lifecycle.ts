@@ -69,6 +69,41 @@ export interface ApplyLifecycleResult {
 }
 
 /**
+ * Persist the disabled state without treating a kill switch as an installation.
+ *
+ * A disabled package must not run `onInstall`, but an already-serving package still
+ * needs its deactivation hook. This is separate from `applyLifecycle` so a package
+ * switched off before its first request remains entirely inert.
+ */
+export async function applyDisabledLifecycle<Env>(
+    input: ApplyLifecycleInput<Env>,
+): Promise<ApplyLifecycleResult | null> {
+    const { pkg, env, store } = input;
+    const logger = input.logger ?? defaultLogger;
+    const existing = await store.get(pkg.key);
+    if (!existing) return null;
+
+    const transitions: PremiumTransition[] = [];
+    if (isServingState(existing.lastState ?? 'unlicensed')) {
+        transitions.push('deactivate');
+        await runHook(logger, pkg.key, 'deactivate', () =>
+            pkg.lifecycle?.onDeactivate?.({
+                env,
+                key: pkg.key,
+                previousVersion: existing.version,
+                version: pkg.version,
+                claims: input.license.claims,
+                reason: 'PACKAGE_DISABLED',
+            }),
+        );
+    }
+
+    const record = { ...existing, lastState: 'disabled' as const, updatedAt: Date.now() };
+    await store.set(pkg.key, record);
+    return { record, transitions };
+}
+
+/**
  * Reconcile the stored install record with the manifest and the current license,
  * running whatever hooks that reconciliation implies.
  *

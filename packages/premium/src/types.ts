@@ -141,7 +141,11 @@ export interface PremiumLifecycleHooks<Env = unknown> {
     onActivate?: (ctx: PremiumLifecycleContext<Env>) => Promise<void> | void;
     /** A license stopped being valid (removed, expired past grace, or invalidated). */
     onDeactivate?: (ctx: PremiumLifecycleContext<Env> & { reason: PremiumReason }) => Promise<void> | void;
-    /** Operator removed the package through the admin API. Clean up package-owned state. */
+    /**
+     * Explicit offboarding hook for a controlled uninstall deployment. The framework
+     * cannot infer removal from a manifest that is no longer loaded, so this is never
+     * exposed as a runtime admin action.
+     */
     onUninstall?: (ctx: PremiumLifecycleContext<Env>) => Promise<void> | void;
 }
 

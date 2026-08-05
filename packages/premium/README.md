@@ -1,8 +1,8 @@
 # @ottabase/premium
 
-Paid-package (premium add-on) framework for Ottabase apps. One manifest declares everything a commercial add-on
+Paid-package (premium add-on) framework for Ottabase apps. A server manifest declares everything a commercial add-on
 contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and the host app wires it in with a single
-registration.
+registration, while rendered pages use the explicit client adapter described below.
 
 **An app with no premium packages is completely unaffected**: no routes, no KV reads, no nav entries, no tables. The
 framework is inert until something is sold.
@@ -63,18 +63,27 @@ export const reportsPackage = definePremiumPackage({
 });
 ```
 
-## 2. Register it (host app, one file)
+## 2. Register its server manifest
 
 ```typescript
 // apps/otta-web/ottabase/config.premium.ts
 import { reportsPackage } from '@acme/reports';
 
 export const PREMIUM_PACKAGES = [reportsPackage];
+
+// Server-side registration only. See the next section for rendered pages.
 ```
 
-Everything else — migrations, model registration, gated routes, admin UI — reads from that array.
+Server contributions — migrations, model registration, RLS policies and gated routes — read from that array.
 
-## 3. Mount the routes and the control plane (worker)
+## 3. Register client pages explicitly
+
+The server manifest is intentionally headless. For an add-on that renders an admin page, add its key and lazy page
+import to the app's `src/ottabase/config/premium.ts`, add its schema export to `ottabase/db/schema.ts` for drizzle-kit,
+and add its source to Tailwind's `content` list. The app's premium-registration test verifies that the server manifest
+and client adapter stay in sync.
+
+## 4. Mount the routes and the control plane (worker)
 
 ```typescript
 import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
@@ -94,7 +103,7 @@ apiRouter.mount(
 );
 ```
 
-## 4. Enforce on the server
+## 5. Enforce on the server
 
 ```typescript
 import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/server';
@@ -108,7 +117,7 @@ const overLimit = await requirePremiumLimit(premium, env, 'reports', 'reports', 
 if (overLimit) return overLimit;
 ```
 
-## 5. Gate the UI
+## 6. Gate the UI
 
 ```tsx
 import { PremiumGate, PremiumProvider, usePremiumFeature } from '@ottabase/premium/react';
@@ -134,11 +143,16 @@ const exportGate = usePremiumFeature('reports', 'reports.export');
 <Button disabled={!exportGate.allowed}>Export</Button>;
 ```
 
-Pass the app's API client to `request` — it attaches `X-Org-Id` and `X-App-Id`, which select the tenancy scope the
-server resolves against. The bare-`fetch` default silently resolves in the session's default org.
+Pass the app's API client to `request` — it is required and attaches `X-Org-Id` and `X-App-Id`, which select the tenancy
+scope the server resolves against. There is no bare-fetch fallback.
 
 **Tailwind:** add `'../../packages/premium/src/**/*.{js,ts,jsx,tsx}'` to the consuming app's `content` array, or the
 components render structurally correct and completely unstyled.
+
+## Client transport
+
+`PremiumProvider` requires the host application's scoped request client. It never uses a bare-fetch fallback, so package
+UI shares the app's authorization and tenant-selection path.
 
 ## Licenses
 
@@ -196,6 +210,12 @@ A signed token **cannot be revoked before it expires**. Revocation is what expir
 short-dated tokens and re-issue on renewal. A vendor needing instant revocation needs an online check — a different
 product decision, not a missing feature here.
 
+### License scope
+
+Licenses are deployment-scoped: one package key and one license state apply to the entire Ottabase deployment. They are
+not organisation subscriptions. Products that sell distinct organisation plans need a separate tenant-scoped billing and
+entitlement model; do not treat this deployment license as one.
+
 ## Entitlement semantics worth knowing
 
 - A **non-serving** license collapses to the free tier, it does not collapse to nothing. A customer whose card expires
@@ -214,13 +234,15 @@ throws is logged and swallowed, because a paid add-on's bookkeeping must never t
 must succeed in a migration instead. Hooks must also be idempotent — two isolates can resolve the same package
 concurrently, and the framework deliberately takes no distributed lock over a best-effort write.
 
-`uninstall` clears the install record and runs `onUninstall`. It **does not drop tables**: dropping a customer's data as
-a side effect of an admin click is not recoverable.
+`onUninstall` is an explicit offboarding hook for a controlled deployment change. It is not available through the
+runtime admin API: a package that remains in `PREMIUM_PACKAGES` would simply install again on its next request. Remove
+the manifest in a deployment and perform cleanup through an explicit migration; tables are never dropped implicitly.
 
 ## Testing
 
 ```bash
-pnpm test --filter=@ottabase/premium
+pnpm --filter @ottabase/premium build
+pnpm --filter @ottabase/premium test
 ```
 
 ## See also

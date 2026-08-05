@@ -28,6 +28,10 @@ import { PREMIUM_PACKAGES } from '../../ottabase/config.premium';
 export const premium: PremiumRegistry<CloudflareEnv> = createPremiumRegistry<CloudflareEnv>({
     packages: PREMIUM_PACKAGES,
     appId: (env) => getOttabaseConfig(env).appId,
+    cacheKey: (env) => {
+        const config = getOttabaseConfig(env);
+        return `${config.appId}:${config.storage.prefix}`;
+    },
     // KV holds install records and admin-activated license keys. A deployment without the
     // binding falls back to an in-memory store, so status reads and lifecycle hooks stay
     // defined instead of throwing on a missing namespace.

@@ -19,7 +19,13 @@ import {
 } from './collect';
 import { checkFeature, checkLimit, isServingState, resolveFeatures, resolveLimits } from './entitlements';
 import { licenseExpiresAt, verifyLicense } from './license/verify';
-import { applyLifecycle, applyUninstall, type PremiumLogger, type PremiumTransition } from './lifecycle';
+import {
+    applyDisabledLifecycle,
+    applyLifecycle,
+    applyUninstall,
+    type PremiumLogger,
+    type PremiumTransition,
+} from './lifecycle';
 import { createMemoryStateStore } from './state-store';
 import type {
     PremiumGateAnswer,
@@ -79,6 +85,11 @@ export interface PremiumRegistryOptions<Env> {
      * one window. Default 60s.
      */
     cacheTtlMs?: number;
+    /**
+     * Stable identity for the request environment that owns this resolution cache.
+     * Supply this when one registry can observe more than one app/configuration.
+     */
+    cacheKey?: (env: Env) => string;
     logger?: PremiumLogger;
 }
 
@@ -115,7 +126,10 @@ export interface PremiumRegistry<Env = unknown> {
     activate(env: Env, key: string, token: string): Promise<PremiumPackageStatus | null>;
     /** Remove a stored license. An env-supplied license is unaffected — and says so. */
     deactivate(env: Env, key: string): Promise<PremiumPackageStatus | null>;
-    /** Run `onUninstall` and forget the install record. Tables are deliberately left alone. */
+    /**
+     * Run the explicit offboarding hook before removing this package from deployment
+     * configuration. This is intentionally not exposed through the admin HTTP API.
+     */
     uninstall(env: Env, key: string): Promise<boolean>;
     /** Drop cached resolutions in this isolate. */
     invalidate(key?: string): void;
@@ -134,6 +148,8 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
     const disabled = new Set(options.disabled ?? []);
     const cacheTtlMs = options.cacheTtlMs ?? 60_000;
     const cache = new Map<string, CacheEntry>();
+    const environmentIds = new WeakMap<object, string>();
+    let nextEnvironmentId = 1;
 
     if (byKey.size !== packages.length) {
         const seen = new Set<string>();
@@ -145,6 +161,28 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
     // behaviour within the isolate instead of re-running `onInstall` on every request.
     const fallbackStore = createMemoryStateStore();
     const storeFor = (env: Env): PremiumStateStore => options.getStore?.(env) ?? fallbackStore;
+
+    function cacheKeyFor(env: Env, key: string): string {
+        let environmentKey = options.cacheKey?.(env);
+        if (!environmentKey && env && typeof env === 'object') {
+            environmentKey = environmentIds.get(env as object);
+            if (!environmentKey) {
+                environmentKey = `env-${nextEnvironmentId++}`;
+                environmentIds.set(env as object, environmentKey);
+            }
+        }
+        return `${environmentKey ?? 'default'}:${key}`;
+    }
+
+    function invalidatePackage(key?: string): void {
+        if (!key) {
+            cache.clear();
+            return;
+        }
+        for (const cacheKey of cache.keys()) {
+            if (cacheKey.endsWith(`:${key}`)) cache.delete(cacheKey);
+        }
+    }
 
     function isDisabled(env: Env, key: string): boolean {
         if (disabled.has(key)) return true;
@@ -187,13 +225,20 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
 
         if (isDisabled(env, pkg.key)) {
             const record = await store.get(pkg.key);
+            const license = {
+                state: 'disabled' as const,
+                reason: 'PACKAGE_DISABLED' as const,
+                claims: null,
+                expiresIn: null,
+            };
+            const lifecycle = await applyDisabledLifecycle({ pkg, env, license, store, logger: options.logger });
             return {
                 pkg: pkg as PremiumPackage<unknown>,
-                license: { state: 'disabled', reason: 'PACKAGE_DISABLED', claims: null, expiresIn: null },
+                license,
                 licenseSource: null,
-                installedVersion: record?.version ?? null,
-                installedAt: record?.installedAt ?? null,
-                transitions: [],
+                installedVersion: lifecycle?.record.version ?? record?.version ?? null,
+                installedAt: lifecycle?.record.installedAt ?? record?.installedAt ?? null,
+                transitions: lifecycle?.transitions ?? [],
             };
         }
 
@@ -227,14 +272,15 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
         const pkg = byKey.get(key);
         if (!pkg) return null;
 
-        const cached = cache.get(key);
+        const cacheKey = cacheKeyFor(env, key);
+        const cached = cache.get(cacheKey);
         const now = Date.now();
         if (cached && cached.expiresAtMs > now) {
             return cached.resolution;
         }
 
         const resolution = await resolveUncached(env, pkg);
-        cache.set(key, { resolution, expiresAtMs: now + cacheTtlMs });
+        cache.set(cacheKey, { resolution, expiresAtMs: now + cacheTtlMs });
         return resolution;
     }
 
@@ -337,7 +383,7 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
                 license: token.trim() || null,
                 lastState: existing?.lastState,
             });
-            cache.delete(key);
+            invalidatePackage(key);
             return statusOf(env, key);
         },
 
@@ -349,7 +395,7 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
             if (existing) {
                 await store.set(key, { ...existing, license: null, updatedAt: Date.now() });
             }
-            cache.delete(key);
+            invalidatePackage(key);
             return statusOf(env, key);
         },
 
@@ -374,8 +420,7 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
         },
 
         invalidate(key) {
-            if (key) cache.delete(key);
-            else cache.clear();
+            invalidatePackage(key);
         },
 
         // ── Contributions ─────────────────────────────────────────

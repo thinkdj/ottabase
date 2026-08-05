@@ -65,6 +65,18 @@ describe('premium tables reach auto-init', () => {
     });
 });
 
+describe('premium RLS contributions', () => {
+    it('ships a fail-closed policy for every tenant-owned webhook model', () => {
+        const policies = PREMIUM_PACKAGES.flatMap((pkg) => pkg.policies ?? []) as Array<{
+            model?: string;
+            policy?: unknown;
+        }>;
+        expect(policies.map((policy) => policy.model).sort()).toEqual(
+            expect.arrayContaining(['premium_webhook_deliveries', 'premium_webhook_endpoints']),
+        );
+    });
+});
+
 describe('admin navigation', () => {
     const caps = { isPlatformAdmin: true, isOrgAdmin: true };
 

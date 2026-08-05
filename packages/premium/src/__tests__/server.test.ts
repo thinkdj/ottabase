@@ -202,6 +202,12 @@ describe('control-plane API', () => {
         expect(body.data).toMatchObject({ state: 'active', plan: 'pro', licenseSource: 'store' });
     });
 
+    it('does not expose a runtime uninstall route for a package that remains registered', async () => {
+        const { app } = build();
+
+        expect(await app.handle(post('/api/premium/packages/webhooks/uninstall'), {})).toBeNull();
+    });
+
     it('answers 422 with the reason for a key that does not verify', async () => {
         const { app } = build();
         const response = await app.handle(

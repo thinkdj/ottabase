@@ -209,6 +209,35 @@ describe('tenancy', () => {
 
         expect(tables.endpoints[0]).toMatchObject({ organizationId: 'org-1', appId: 'otta-web' });
     });
+
+    it('isolates personal endpoints by user id when organizationId is null', async () => {
+        caller = { userId: 'user-1', organizationId: null, appId: 'otta-web', canManage: true };
+        tables.endpoints.push(
+            {
+                id: 'ep_mine',
+                url: 'https://example.com/mine',
+                events: ['*'],
+                enabled: true,
+                organizationId: null,
+                userId: 'user-1',
+                appId: 'otta-web',
+            },
+            {
+                id: 'ep_theirs',
+                url: 'https://example.com/theirs',
+                events: ['*'],
+                enabled: true,
+                organizationId: null,
+                userId: 'user-2',
+                appId: 'otta-web',
+            },
+        );
+
+        const { app } = build();
+        const listed = (await (await app.handle(req('/'), FREE))?.json()) as { data: Array<{ id: string }> };
+        expect(listed.data.map((row) => row.id)).toEqual(['ep_mine']);
+        expect((await app.handle(req('/ep_theirs', { method: 'DELETE' }), FREE))?.status).toBe(404);
+    });
 });
 
 describe('input validation', () => {

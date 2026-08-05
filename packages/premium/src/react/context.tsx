@@ -33,14 +33,13 @@ export interface PremiumClientConfig {
     /**
      * ADAPT THE APP'S API CLIENT HERE.
      *
-     * The app client is what attaches `X-Org-Id` and `X-App-Id`; the bare-`fetch` default
-     * below resolves in whatever scope the session happens to default to, which is the
-     * wrong answer for anyone who has switched workspace.
+     * The app client is what attaches `X-Org-Id` and `X-App-Id`. It is required so
+     * package UI cannot create an unscoped second request path.
      *
      * @example
      * request: (path, init) => api<{ data: unknown }>(path, init).then((r) => r?.data)
      */
-    request?: PremiumRequest;
+    request: PremiumRequest;
 }
 
 interface PremiumContextValue {
@@ -60,52 +59,23 @@ interface PremiumContextValue {
     mounted: boolean;
 }
 
-function createFetchRequest(basePath: string): PremiumRequest {
-    return async <T,>(path: string, init?: { method?: string; body?: unknown }): Promise<T> => {
-        const response = await fetch(`${basePath}${path}`, {
-            method: init?.method ?? 'GET',
-            headers: {
-                Accept: 'application/json',
-                ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-            },
-            ...(init?.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
-        });
-
-        const text = await response.text();
-        let payload: unknown = null;
-        if (text) {
-            try {
-                payload = JSON.parse(text);
-            } catch {
-                payload = null;
-            }
-        }
-
-        if (!response.ok) {
-            const body = payload as { error?: string; code?: string } | null;
-            throw new PremiumRequestError(body?.error ?? `Request failed (${response.status})`, {
-                code: body?.code,
-                status: response.status,
-            });
-        }
-
-        return (payload as { data: T })?.data as T;
-    };
-}
-
 const FALLBACK_BASE_PATH = '/api/premium';
+
+const missingRequest: PremiumRequest = async () => {
+    throw new PremiumRequestError('PremiumProvider requires the host application request client.');
+};
 
 const PremiumContext = createContext<PremiumContextValue>({
     basePath: FALLBACK_BASE_PATH,
-    request: createFetchRequest(FALLBACK_BASE_PATH),
-    requestAbsolute: createFetchRequest(''),
+    request: missingRequest,
+    requestAbsolute: missingRequest,
     mounted: false,
 });
 
 export function PremiumProvider({ children, basePath, request }: PremiumClientConfig & { children: ReactNode }) {
     const value = useMemo<PremiumContextValue>(() => {
         const resolvedBase = basePath ?? FALLBACK_BASE_PATH;
-        const absolute = (request ?? createFetchRequest('')) as PremiumRequest;
+        const absolute = request;
         const prefixed = <T,>(path: string, init?: { method?: string; body?: unknown }) =>
             absolute<T>(`${resolvedBase}${path}`, init);
         return {

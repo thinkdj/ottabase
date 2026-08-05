@@ -163,6 +163,19 @@ describe('operator switches', () => {
         expect(await registry.isActive(env, 'webhooks')).toBe(false);
         expect((await registry.status(env, 'webhooks'))?.reason).toBe('PACKAGE_DISABLED');
     });
+
+    it('deactivates an already-serving package without installing one that is disabled from boot', async () => {
+        const store = createMemoryStateStore();
+        const active = makeRegistry({ store }).registry;
+        await active.status({ [licenseEnvKey('webhooks')]: license }, 'webhooks');
+        hooks.onDeactivate.mockClear();
+
+        const disabled = makeRegistry({ store, disabled: ['webhooks'] }).registry;
+        await disabled.status({}, 'webhooks');
+
+        expect(hooks.onDeactivate).toHaveBeenCalledTimes(1);
+        expect(hooks.onDeactivate.mock.calls[0][0].reason).toBe('PACKAGE_DISABLED');
+    });
 });
 
 describe('app binding', () => {
@@ -292,13 +305,34 @@ describe('resolution caching', () => {
             cacheTtlMs: 60_000,
         });
 
-        await registry.status({}, 'webhooks');
+        const env = {};
+        await registry.status(env, 'webhooks');
         const afterFirst = get.mock.calls.length;
-        await registry.status({}, 'webhooks');
+        await registry.status(env, 'webhooks');
         expect(get.mock.calls.length).toBe(afterFirst);
 
         registry.invalidate();
-        await registry.status({}, 'webhooks');
+        await registry.status(env, 'webhooks');
         expect(get.mock.calls.length).toBeGreaterThan(afterFirst);
+    });
+
+    it('does not reuse a cached app-bound resolution for a different environment', async () => {
+        const bound = await issueLicense(
+            { pkg: 'webhooks', plan: 'pro', licensee: 'Acme', appId: 'app-one' },
+            keys.privateKey,
+        );
+        const registry = createPremiumRegistry({
+            packages: [makePackage()],
+            appId: (env) => (env as { appId: string }).appId,
+            getStore: () => createMemoryStateStore(),
+            cacheTtlMs: 60_000,
+        });
+
+        expect((await registry.status({ appId: 'app-one', PREMIUM_LICENSE_WEBHOOKS: bound }, 'webhooks'))?.state).toBe(
+            'active',
+        );
+        expect((await registry.status({ appId: 'app-two', PREMIUM_LICENSE_WEBHOOKS: bound }, 'webhooks'))?.state).toBe(
+            'invalid',
+        );
     });
 });

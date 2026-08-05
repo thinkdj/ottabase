@@ -27,9 +27,16 @@ curl -X POST http://localhost:3004/api/ottaorm/init   # creates the package's ta
 
 …and paste the license at **Admin → Growth → Premium packages** (or set `PREMIUM_LICENSE_<KEY>`).
 
-That is the entire integration. Tables, migrations, models, API routes, admin nav and every gate are read from the
+The server integration is centralized here: tables, migrations, models, RLS policies and API routes are read from the
 manifest. You do **not** touch `config.migrations.ts`, `config.routes.ts`, `db-utils.ts` or `ottabase.config.ts` — those
 are for free built-in and custom packages, and a paid package deliberately bypasses all four.
+
+### Client adapter
+
+The manifest remains server-only. For a package with rendered admin pages, explicitly register its key and lazy page
+loader in `src/ottabase/config/premium.ts`, add static table exports to `ottabase/db/schema.ts` for drizzle-kit, and add
+package sources to Tailwind's `content` list. The app's premium-registration test must assert that the server manifest
+and client adapter describe the same installed package keys and navigation paths.
 
 ### Uninstalling
 
@@ -73,6 +80,11 @@ tokens and re-issue on renewal.
 Env wins deliberately: the key in your infrastructure config must be the key actually in force.
 
 `PREMIUM_PKG_<KEY>=false` switches a package off entirely — the kill switch, independent of licensing.
+
+### Scope
+
+Premium licenses are deployment-wide, not per-organisation subscriptions. A SaaS that sells different organisation plans
+must use a separate tenant-scoped billing and entitlement system; a package license must not be used as its substitute.
 
 ### States
 
@@ -141,14 +153,13 @@ Rules that matter:
 
 `/api/premium/*` (platform-admin for writes, either-scope admin for reads):
 
-| Method   | Path                       | Purpose                  |
-| -------- | -------------------------- | ------------------------ |
-| `GET`    | `/packages`                | Every package + state    |
-| `GET`    | `/packages/:key`           | One package              |
-| `POST`   | `/packages/:key/license`   | Activate a pasted key    |
-| `DELETE` | `/packages/:key/license`   | Remove the stored key    |
-| `POST`   | `/packages/:key/uninstall` | Clear the install record |
-| `POST`   | `/refresh`                 | Drop cached resolutions  |
+| Method   | Path                     | Purpose                 |
+| -------- | ------------------------ | ----------------------- |
+| `GET`    | `/packages`              | Every package + state   |
+| `GET`    | `/packages/:key`         | One package             |
+| `POST`   | `/packages/:key/license` | Activate a pasted key   |
+| `DELETE` | `/packages/:key/license` | Remove the stored key   |
+| `POST`   | `/refresh`               | Drop cached resolutions |
 
 License keys are **never returned** by any of these.
 
@@ -181,6 +192,8 @@ tier, and a licensed delivery log.
   add-on's bookkeeping must never take the host app down. Anything that _must_ succeed belongs in a migration.
 - **Do not stamp tenancy from request input.** Take `organizationId`/`appId` from the resolved caller; that value is the
   only thing separating two customers' rows.
+- **Exact null scopes.** A personal scope is `organizationId: null` plus `userId`; never drop either field from a query.
+  Every premium model with tenant data should contribute a fail-closed RLS policy as defense in depth.
 
 ---
 

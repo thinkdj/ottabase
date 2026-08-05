@@ -3,26 +3,38 @@
     "version": "0.0.1",
     "description": "Paid-package framework for Ottabase apps — manifests, offline license verification, entitlements, lifecycle hooks, gated routes and drop-in admin UI",
     "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
     "exports": {
         ".": {
-            "types": "./src/index.ts",
-            "default": "./src/index.ts"
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
         },
         "./server": {
-            "types": "./src/server/index.ts",
-            "default": "./src/server/index.ts"
+            "types": "./dist/server/index.d.ts",
+            "import": "./dist/server/index.js",
+            "require": "./dist/server/index.cjs"
         },
         "./react": {
-            "types": "./src/react/index.ts",
-            "default": "./src/react/index.ts"
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.js",
+            "require": "./dist/react/index.cjs"
         },
         "./license-tools": {
-            "types": "./src/license-tools.ts",
-            "default": "./src/license-tools.ts"
+            "types": "./dist/license-tools.d.ts",
+            "import": "./dist/license-tools.js",
+            "require": "./dist/license-tools.cjs"
         }
     },
+    "files": [
+        "dist",
+        "README.md"
+    ],
     "scripts": {
-        "clean": "rm -rf .turbo node_modules",
+        "build": "tsup src/index.ts src/server/index.ts src/react/index.ts src/license-tools.ts --format cjs,esm --dts --clean",
+        "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
@@ -63,6 +75,8 @@
         "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
