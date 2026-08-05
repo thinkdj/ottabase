@@ -10,7 +10,7 @@
  */
 
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
-import { isPremiumPackageInstalled } from '@/ottabase/config/premium';
+import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES, type PremiumAdminPage } from '@/ottabase/config/premium';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
@@ -38,7 +38,6 @@ import {
     UserCog,
     UserPlus,
     Users,
-    Webhook,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -75,6 +74,18 @@ export interface AdminNavItem {
      * hiding it would leave the operator no route to the screen that fixes it.
      */
     requiresPremiumPackage?: string;
+}
+
+/** A paid package's registered admin page (`config/premium.ts`), as a nav item. */
+function premiumPageNavItem(page: PremiumAdminPage): AdminNavItem {
+    return {
+        title: page.title,
+        description: page.description,
+        href: page.path,
+        icon: page.icon,
+        scope: page.scope,
+        requiresPremiumPackage: page.pkg,
+    };
 }
 
 export interface AdminNavGroup {
@@ -277,14 +288,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
-            {
-                title: 'Webhooks',
-                description: 'Outbound event delivery with signed payloads, endpoint health, and a delivery log.',
-                href: '/admin/growth/webhooks',
-                icon: Webhook,
-                scope: 'org',
-                requiresPremiumPackage: 'webhooks',
-            },
+            // Paid packages' pages — one entry per registration in `config/premium.ts`.
+            ...PREMIUM_ADMIN_PAGES.map(premiumPageNavItem),
             {
                 // Always listed, even with nothing installed: it is the control plane for paid
                 // add-ons, and an operator handed a license key needs somewhere to put it.

@@ -90,6 +90,21 @@ describe('admin navigation', () => {
             .every((item) => PREMIUM_PACKAGES_INSTALLED.includes(item.requiresPremiumPackage!));
         expect(visible).toBe(true);
     });
+
+    // `src/ottabase/config/premium.ts` PREMIUM_ADMIN_PAGES is what actually registers a paid
+    // package's route (router.tsx) and sidebar entry (admin-nav.ts) — the manifest's own `nav`
+    // field only drives the drop-in `/admin/growth/premium` status page. Two hrefs for the same
+    // page, in two files on two sides of the client/server split; nothing else stops them
+    // drifting apart the day someone renames one.
+    it('the client page registration (PREMIUM_ADMIN_PAGES) matches every manifest nav href', () => {
+        const manifestHrefs = PREMIUM_PACKAGES.flatMap((pkg) => (pkg.nav ?? []).map((item) => item.href)).sort();
+        const clientHrefs = getEnabledAdminNav(caps)
+            .flatMap((group) => group.items)
+            .filter((item) => item.requiresPremiumPackage)
+            .map((item) => item.href)
+            .sort();
+        expect(clientHrefs).toEqual(manifestHrefs);
+    });
 });
 
 describe('mounted routes', () => {

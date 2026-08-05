@@ -14,6 +14,9 @@
  */
 
 import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/premium-webhooks';
+import type { LucideIcon } from 'lucide-react';
+import { Webhook } from 'lucide-react';
+import type { ComponentType } from 'react';
 
 export const PREMIUM_PACKAGES_INSTALLED: readonly string[] = [WEBHOOKS_PACKAGE_KEY];
 
@@ -21,3 +24,41 @@ export const PREMIUM_PACKAGES_INSTALLED: readonly string[] = [WEBHOOKS_PACKAGE_K
 export function isPremiumPackageInstalled(key: string): boolean {
     return PREMIUM_PACKAGES_INSTALLED.includes(key);
 }
+
+/**
+ * A paid package's admin page, registered once here.
+ *
+ * `router.tsx` derives its route (`makeAdminRoute(path, load, exportName, { scope })`) from
+ * this list, and `admin-nav.ts` derives the matching sidebar/card entry from it — so wiring a
+ * new paid package's UI touches THIS FILE ONLY, not router.tsx and admin-nav.ts by hand.
+ * (Server-side wiring — tables, migrations, worker routes — still goes through
+ * `ottabase/config.premium.ts`; this is the client-side counterpart, same split as
+ * `PREMIUM_PACKAGES_INSTALLED` above.)
+ */
+export interface PremiumAdminPage {
+    /** Manifest key from `ottabase/config.premium.ts`. Gates both route and nav visibility. */
+    pkg: string;
+    /** Route path, e.g. `/admin/growth/webhooks`. */
+    path: string;
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    /** `org` = own-tenant admins may see it; `platform` (default) = platform admins only. */
+    scope?: 'platform' | 'org';
+    /** Lazy import of the page module; the named export `exportName` is rendered. */
+    load: () => Promise<Record<string, ComponentType>>;
+    exportName: string;
+}
+
+export const PREMIUM_ADMIN_PAGES: PremiumAdminPage[] = [
+    {
+        pkg: WEBHOOKS_PACKAGE_KEY,
+        path: '/admin/growth/webhooks',
+        title: 'Webhooks',
+        description: 'Outbound event delivery with signed payloads, endpoint health, and a delivery log.',
+        icon: Webhook,
+        scope: 'org',
+        load: () => import('@/pages/admin/growth/WebhooksPage'),
+        exportName: 'WebhooksPage',
+    },
+];

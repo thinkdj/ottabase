@@ -5,7 +5,7 @@ import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
-import { isPremiumPackageInstalled } from '@/ottabase/config/premium';
+import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES } from '@/ottabase/config/premium';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { BrandScope } from '@ottabase/ui-shadcn';
@@ -608,17 +608,6 @@ const adminPremiumRoute = makeAdminRoute(
     'PremiumPackagesPage',
 );
 
-// A paid package's page is gated on being INSTALLED, never on being LICENSED. An unlicensed
-// page still renders — with its upsell — because a bookmarked link that 404s the day a
-// license lapses explains nothing, and the operator needs a route to the screen that fixes
-// it. The server refuses the underlying data either way.
-const adminWebhooksRoute = makeAdminRoute(
-    '/admin/growth/webhooks',
-    () => import('@/pages/admin/growth/WebhooksPage'),
-    'WebhooksPage',
-    { scope: 'org' },
-);
-
 // ─── /demo gallery ───────────────────────────────────────────────────────────
 
 const demoLayoutRoute = new Route({
@@ -764,8 +753,16 @@ const coreRoutes = [
     adminPremiumRoute,
 ];
 
-// Routes that depend on an installed PAID package (ottabase/config.premium.ts).
-const premiumRoutes = [{ route: adminWebhooksRoute, pkg: 'webhooks' }];
+// Routes that depend on an installed PAID package. A paid package's page is gated on being
+// INSTALLED, never on being LICENSED — an unlicensed page still renders, with its upsell,
+// because a bookmarked link that 404s the day a license lapses explains nothing and the
+// operator needs a route to the screen that fixes it. The server refuses the underlying data
+// either way. Derived from `PREMIUM_ADMIN_PAGES` (ottabase/config/premium.ts) so registering a
+// new paid package's page touches that file only, not this one.
+const premiumRoutes = PREMIUM_ADMIN_PAGES.map((page) => ({
+    route: makeAdminRoute(page.path, page.load, page.exportName, { scope: page.scope }),
+    pkg: page.pkg,
+}));
 
 // Routes that depend on optional packages.
 const packageRoutes = [
