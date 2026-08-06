@@ -6,18 +6,17 @@
 [![pnpm](https://img.shields.io/badge/pnpm-10.27.0-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![CI - Build & Test](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml/badge.svg)](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml)
 
-> ✨ **[Get Started in 5 Minutes →](./QUICKSTART.md)** - Clone, install, bootstrap via GUI, and ship. Full setup from
-> zero to running.
+> **[Get started in five minutes →](./QUICKSTART.md)** - Clone, configure, bootstrap, and ship.
 
-Modern full-stack monorepo with pnpm workspaces and Turborepo. Deploy to Cloudflare Workers with D1, KV, R2, Queues, and
-Durable Objects.
+A Cloudflare-native monorepo for SaaS apps and content sites, built with pnpm workspaces, Turborepo, and Cloudflare
+Workers.
 
 ## Why Ottabase?
 
-- Cloudflare-first by design: Workers, D1, KV, R2, Queues, and Durable Objects are first-class citizens.
-- Batteries included for SaaS work: auth, RBAC, OttaORM, forms, docs, realtime, queues, and blog/CMS live in one repo.
-- Fat-model architecture keeps domain logic close to data instead of scattering it across controllers and services.
-- Monorepo ergonomics let you ship integrated changes across apps and packages without version skew.
+- Cloudflare-first: Workers, D1, KV, R2, Queues, and Durable Objects are built in.
+- SaaS foundations: auth, RBAC, OttaORM, forms, uploads, realtime, queues, and a blog/CMS.
+- Fat models keep domain logic close to data instead of scattering it across controllers and services.
+- One monorepo for integrated app and package changes.
 
 <p align="center">
     <a href="https://demo.ottabase.com/" target="_blank" rel="noopener noreferrer">
@@ -35,19 +34,12 @@ Durable Objects.
 
 > **⚠️ You own the code.**
 >
-> Ottabase is a **monorepo you clone and modify**, not an npm package you install. Once you fork it, you accept full
-> responsibility for:
+> Ottabase is a **monorepo you clone and modify**, not an npm package. When you fork it, you own:
 >
-> - **Git history & upstream merges** - pulling upstream changes may cause merge conflicts across apps, packages,
->   schemas, and config files. There is no `npm update`; you rebase or merge manually.
-> - **Schema & data migrations** - upstream schema changes (new columns, renamed tables, config format changes) must be
->   reconciled with your own models and production data. Back up before migrating.
-> - **Infrastructure & costs** - you deploy to your own Cloudflare account. D1 storage, KV operations, R2 bandwidth,
->   Workers invocations, and Queues usage are billed to you.
-> - **Security & compliance** - you are responsible for patching dependencies, securing API keys, configuring RLS
->   correctly, and auditing access in your deployment.
-> - **Breaking changes** - upstream releases may introduce breaking changes to internal APIs, package interfaces, or
->   build tooling. Migration guides are provided when possible, but your customizations are your own to reconcile.
+> - **Upstream changes** - merge or rebase updates and resolve any conflicts yourself.
+> - **Schema and data migrations** - reconcile upstream changes with your production data; back up first.
+> - **Infrastructure, security, and costs** - deploy to and operate your own Cloudflare account.
+> - **Breaking changes** - adapt your customizations when an upstream API or tool changes.
 >
 > **Recommended**: Read [ARCHITECTURE.md](./ARCHITECTURE.md), [CONTRIBUTING.md](./.github/CONTRIBUTING.md), and
 > [SECURITY.md](./.github/SECURITY.md) before making structural changes.
