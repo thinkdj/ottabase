@@ -159,6 +159,10 @@
                 "name": "OBCF_REALTIME",
                 "class_name": "RealtimeActor", // DOs are scoped per-worker. So inherently isolated
             },
+            {
+                "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                "class_name": "WebhookEndpointQuota",
+            },
         ],
     },
 
@@ -168,6 +172,10 @@
         {
             "tag": "v1",
             "new_classes": ["RealtimeActor"],
+        },
+        {
+            "tag": "v2",
+            "new_sqlite_classes": ["WebhookEndpointQuota"],
         },
     ],
 
@@ -227,6 +235,10 @@
                     {
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
+                    },
+                    {
+                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                        "class_name": "WebhookEndpointQuota",
                     },
                 ],
             },
@@ -311,6 +323,10 @@
                     {
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
+                    },
+                    {
+                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                        "class_name": "WebhookEndpointQuota",
                     },
                 ],
             },

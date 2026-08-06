@@ -1,0 +1,18 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "baseUrl": ".",
+        "jsx": "react-jsx",
+        "paths": {
+            "@ottabase/premium": ["../premium/src/index.ts"],
+            "@ottabase/premium/server": ["../premium/src/server/index.ts"],
+            "@ottabase/premium/react": ["../premium/src/react/index.ts"],
+            "@ottabase/premium/license-tools": ["../premium/src/license-tools.ts"]
+        },
+        "skipLibCheck": true,
+        "lib": ["esnext", "dom", "dom.iterable"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

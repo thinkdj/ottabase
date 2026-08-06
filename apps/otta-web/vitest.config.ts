@@ -61,6 +61,19 @@ export default defineConfig({
             '@ottabase/medialibrary/react': path.resolve(__dirname, '../../packages/medialibrary/src/react.ts'),
             '@ottabase/ottablog/renderer': path.resolve(__dirname, '../../packages/ottablog/src/renderer.ts'),
             '@ottabase/ottamenu/render': path.resolve(__dirname, '../../packages/ottamenu/src/render/index.tsx'),
+            // Premium Packages (ottabase/config.premium.ts) — subpaths before the bare specifier.
+            '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),
+            '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
+            '@ottabase/premium': path.resolve(__dirname, '../../packages/premium/src/index.ts'),
+            '@ottabase/premium-webhooks/schema': path.resolve(
+                __dirname,
+                '../../packages/premium-webhooks/src/schema.ts',
+            ),
+            '@ottabase/premium-webhooks/react': path.resolve(
+                __dirname,
+                '../../packages/premium-webhooks/src/react/index.ts',
+            ),
+            '@ottabase/premium-webhooks': path.resolve(__dirname, '../../packages/premium-webhooks/src/index.ts'),
             '@ottabase/cf-realtime/server': path.resolve(__dirname, './src/test-mocks/cf-realtime-server.ts'),
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../../packages/ottarouter/src/index.ts'),

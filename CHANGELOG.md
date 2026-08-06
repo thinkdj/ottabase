@@ -154,6 +154,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Premium Packages framework — `@ottabase/premium`.** Sell add-ons for an Ottabase app, or install someone else's,
+  without either side writing integration code. One `definePremiumPackage()` manifest carries everything a paid package
+  contributes — Drizzle tables, migrations, OttaORM models, API routes, admin nav, entitlements and lifecycle hooks —
+  and installing one starts with the new `apps/*/ottabase/config.premium.ts`. Premium Packages deliberately bypass the
+  free-package wiring (`config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`,
+  `db-utils.ts`): runtime integration is derived from the manifest list. Drizzle's static schema export and any rendered
+  admin page remain explicit build-time adapters, verified by the premium-registration test.
+    - **Licensing is offline.** A license is a compact signed token (`obp1.<claims>.<sig>`, ECDSA P-256 via Web Crypto)
+      verified in microseconds with no network on the request path, so a vendor outage cannot take a customer's feature
+      down and customer traffic patterns never reach the vendor. The stated cost: an offline token **cannot be revoked
+      before it expires** — expiry is the revocation mechanism, and subscription vendors mint short-dated tokens.
+    - **License sources, in precedence order:** `PREMIUM_LICENSE_<KEY>` → the `PREMIUM_LICENSES` JSON map → a key pasted
+      in the admin UI (KV). Env wins deliberately, so the key in your infrastructure config is the key actually in
+      force. `PREMIUM_PKG_<KEY>=false` is the kill switch, independent of licensing. A package with no
+      `licensePublicKey` is free by construction.
+    - **Six states, and a free tier that survives them.** `active` / `grace` (expired inside `graceDays`, still serving)
+      / `expired` / `invalid` / `unlicensed` / `disabled`. A non-serving license collapses to the package's
+      `freeFeatures` and `freeLimits` rather than to nothing — a customer whose card expires keeps their data and their
+      basic path; only the paid surface closes.
+    - **Enforcement on the server, hints in the browser.** `requirePremium` / `requirePremiumFeature` /
+      `requirePremiumLimit` answer **402 PAYMENT_REQUIRED** with machine-readable `metadata` (package, reason, limit,
+      purchase URL); `mountPremiumPackages()` mounts each package's namespace behind its own gate. `<PremiumGate>`,
+      `usePremiumFeature` and `usePremiumLimit` only decide what to render and **fail closed** while loading, on error,
+      and outside the provider.
+    - **Two route-gating modes.** `gate: 'license'` (default) closes a whole namespace with one gate;
+      `gate: 'entitlements'` keeps it reachable so a free tier exists, at the cost of each paid route guarding itself.
+    - **Lifecycle:** `onInstall`, `onUpgrade` (manifest version change), `onActivate`, `onDeactivate`, `onUninstall` —
+      best-effort and idempotent by contract, because a paid add-on's bookkeeping must never take the host app down.
+      Uninstall clears the install record and **never drops tables**.
+    - **Operations:** `/api/premium/*` control plane (status, activate, remove, uninstall, re-check) with authorization
+      injected by the host, plus a drop-in `<PremiumPackagesManager />` admin surface at **Admin → Growth → Premium
+      packages**. License keys are never returned by any endpoint.
+    - **An app with no Premium Packages is unaffected**: no routes, no middleware, no KV reads, no nav entries, no
+      tables. Full guide in `docs/PREMIUM_PACKAGES.md`.
+
+- **`@ottabase/premium-webhooks` — the worked example.** A real paid add-on, not a stub: customer-registered HTTPS
+  endpoints, HMAC-SHA256 deliveries signed over `<timestamp>.<body>` (so a receiver's tolerance window actually rejects
+  replays), per-endpoint health, and a delivery log. Free tier is one endpoint with signed delivery and health; the demo
+  "pro" license raises the ceiling to 25 and unlocks retained delivery history — exercising a limit gate, a feature
+  gate, and a free tier that stays reachable when the license lapses. Destinations are validated on write (HTTPS only,
+  no credentials, literal private/loopback/link-local refused) and redirects are never followed; the documented
+  limitation is that a hostname _resolving_ to a private address cannot be caught without a resolver. Its demo keypair
+  is published in the repo on purpose so the whole activation flow can be tried in minutes — with a loud note that a
+  real vendor keeps the private key offline. Available at **Admin → Growth → Webhooks**.
+
 - brand-engine v2 — full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +
   radius/shadows/motion" to a complete design-system vocabulary so radical design systems port 1:1 as theme JSON:
   `palette` (verbatim CSS color values incl. `color-mix()` derivation ramps — one brand knob retints the app live), open

@@ -5,6 +5,7 @@ import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES } from '@/ottabase/config/premium';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { BrandScope } from '@ottabase/ui-shadcn';
@@ -599,6 +600,14 @@ const adminAiProvidersRoute = makeAdminRoute(
     { scope: 'org' },
 );
 
+// Premium Packages (@ottabase/premium). The control plane is core — an operator handed a
+// license key needs somewhere to put it even before anything is installed.
+const adminPremiumRoute = makeAdminRoute(
+    '/admin/growth/premium',
+    () => import('@/pages/admin/growth/PremiumPackagesPage'),
+    'PremiumPackagesPage',
+);
+
 // ─── /demo gallery ───────────────────────────────────────────────────────────
 
 const demoLayoutRoute = new Route({
@@ -741,7 +750,19 @@ const coreRoutes = [
     adminCronRoute,
     adminDevMailRoute,
     adminEmailRoute,
+    adminPremiumRoute,
 ];
+
+// Routes that depend on an installed Premium Package. A Premium Package's page is gated on being
+// INSTALLED, never on being LICENSED — an unlicensed page still renders, with its upsell,
+// because a bookmarked link that 404s the day a license lapses explains nothing and the
+// operator needs a route to the screen that fixes it. The server refuses the underlying data
+// either way. Derived from `PREMIUM_ADMIN_PAGES` (ottabase/config/premium.ts) so registering a
+// new Premium Package's page touches that file only, not this one.
+const premiumRoutes = PREMIUM_ADMIN_PAGES.map((page) => ({
+    route: makeAdminRoute(page.path, page.load, page.exportName, { scope: page.scope }),
+    pkg: page.pkg,
+}));
 
 // Routes that depend on optional packages.
 const packageRoutes = [
@@ -773,6 +794,7 @@ const packageRoutes = [
 const routeTree = rootRoute.addChildren([
     ...coreRoutes,
     ...packageRoutes.filter((r) => PACKAGES_ENABLED[r.pkg]).map((r) => r.route),
+    ...premiumRoutes.filter((r) => isPremiumPackageInstalled(r.pkg)).map((r) => r.route),
     ...(MEDIA_LIBRARY_ENABLED ? [userMediaLibraryRoute, adminMediaLibraryRoute] : []),
 ]);
 

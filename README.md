@@ -332,6 +332,21 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)     |
 | `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`              |
 
+### Premium Packages
+
+Sell add-ons for your app, or install someone else's. One server manifest carries everything a Premium Package
+contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and installing it starts with
+`ottabase/config.premium.ts`. Rendered pages and Drizzle's static schema export are explicit build-time adapters, kept
+in sync by the app's premium-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing
+phones home. An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
+
+| Package                      | Purpose                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
+| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log |
+
+See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
+
 ### Brand, Layout & Content
 
 | Package                        | Purpose                                                              |

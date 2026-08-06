@@ -16,6 +16,7 @@ import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
 import { checkKillSwitches } from './worker/lib/killswitch';
 import { handleApiRequest } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
+export { WebhookEndpointQuota } from './worker/durable-objects/WebhookEndpointQuota';
 
 export { RealtimeActor };
 

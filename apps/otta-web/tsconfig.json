@@ -50,6 +50,12 @@
             "@ottabase/medialibrary/react": ["../../packages/medialibrary/src/react.ts"],
             "@ottabase/ottablog/renderer": ["../../packages/ottablog/src/renderer.ts"],
             "@ottabase/ottamenu/render": ["../../packages/ottamenu/src/render/index.tsx"],
+            "@ottabase/premium": ["../../packages/premium/src/index.ts"],
+            "@ottabase/premium/server": ["../../packages/premium/src/server/index.ts"],
+            "@ottabase/premium/react": ["../../packages/premium/src/react/index.ts"],
+            "@ottabase/premium-webhooks": ["../../packages/premium-webhooks/src/index.ts"],
+            "@ottabase/premium-webhooks/schema": ["../../packages/premium-webhooks/src/schema.ts"],
+            "@ottabase/premium-webhooks/react": ["../../packages/premium-webhooks/src/react/index.ts"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["@cloudflare/workers-types"]

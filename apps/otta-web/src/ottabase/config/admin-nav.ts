@@ -10,6 +10,7 @@
  */
 
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES, type PremiumAdminPage } from '@/ottabase/config/premium';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
@@ -18,6 +19,7 @@ import {
     Clock,
     Database,
     FileText,
+    Gem,
     Image as ImageIcon,
     Inbox,
     Layers,
@@ -65,6 +67,25 @@ export interface AdminNavItem {
     requiresPackage?: keyof typeof PACKAGES_ENABLED;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
+    /**
+     * Visible only when this Premium Package is installed (see `ottabase/config.premium.ts`).
+     *
+     * Installed, not licensed: an unlicensed page still renders — with its upsell — because
+     * hiding it would leave the operator no route to the screen that fixes it.
+     */
+    requiresPremiumPackage?: string;
+}
+
+/** A Premium Package's registered admin page (`config/premium.ts`), as a nav item. */
+function premiumPageNavItem(page: PremiumAdminPage): AdminNavItem {
+    return {
+        title: page.title,
+        description: page.description,
+        href: page.path,
+        icon: page.icon,
+        scope: page.scope,
+        requiresPremiumPackage: page.pkg,
+    };
 }
 
 export interface AdminNavGroup {
@@ -267,6 +288,16 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
+            // Premium Packages' pages — one entry per registration in `config/premium.ts`.
+            ...PREMIUM_ADMIN_PAGES.map(premiumPageNavItem),
+            {
+                // Always listed, even with nothing installed: it is the control plane for paid
+                // add-ons, and an operator handed a license key needs somewhere to put it.
+                title: 'Premium packages',
+                description: 'License status for paid add-ons, and where to activate a key.',
+                href: '/admin/growth/premium',
+                icon: Gem,
+            },
         ],
     },
 ];
@@ -290,6 +321,7 @@ export function getEnabledAdminNav(caps: AdminNavCapabilities): AdminNavGroup[] 
         items: group.items.filter((item) => {
             if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
             if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+            if (item.requiresPremiumPackage && !isPremiumPackageInstalled(item.requiresPremiumPackage)) return false;
             const scope = item.scope ?? 'platform';
             if (scope === 'platform' && !caps.isPlatformAdmin) return false;
             if (scope === 'org' && !caps.isOrgAdmin) return false;

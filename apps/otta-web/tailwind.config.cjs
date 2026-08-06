@@ -25,6 +25,8 @@ module.exports = {
         '../../packages/ottablog/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/medialibrary/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottaai/src/**/*.{js,ts,jsx,tsx}',
+        // One narrow glob covers every Premium Package; adding one needs no Tailwind config edit.
+        '../../packages/premium*/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {
