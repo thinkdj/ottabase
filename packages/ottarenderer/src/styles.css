@@ -89,70 +89,124 @@
     color: hsl(var(--foreground));
 }
 
-.cdc-content-block.image-block {
-    box-sizing: border-box;
-}
-
-.cdc-content-block.image-block img {
-    max-width: 100%;
-    max-width: 800px;
-}
-
-/* Advanced Image Block Styles */
+.cdc-content-block.image-block,
 .cdc-content-block.advanced-image-block {
     box-sizing: border-box;
 }
 
+/*
+ * One measure for BOTH image families.
+ *
+ * `image-block` and `advanced-image-block` are the same component rendered through two renderer
+ * configs, and they had drifted to different caps — 800px here, 34rem there. Since the component
+ * appends its `advanced-image-block--*` modifiers whichever config supplied the base class, a
+ * stretched figure frequently carries `image-block`, so the 800px cap was what actually applied
+ * and it pinned the image at 800px inside a 1120px frame.
+ *
+ * A normal image sits INSIDE the text measure, narrower than the column, so "stretched" has
+ * somewhere to go; without that the two modes look identical in a 48rem article.
+ */
+.cdc-content-block.image-block img,
 .cdc-content-block.advanced-image-block img {
-    max-width: 100%;
-    max-width: 800px;
+    max-width: min(100%, 34rem);
 }
 
-.advanced-image-block--stretched {
-    width: min(100vw, 1400px);
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
+/*
+ * A stretched image breaks OUT of the reading column, symmetrically, and only by as much as the
+ * page is known to have spare.
+ *
+ * The arithmetic that makes it symmetric: `width` explicitly accounts for both margins, so
+ * `-B + (100% + 2B) + -B = 100%` balances. A box whose width does NOT account for them is
+ * over-constrained, and CSS resolves that by discarding one side — which is why an earlier version
+ * put the entire bleed on the right edge. The component must not add `w-full` for the same reason.
+ *
+ * The bleed is stepped by media query rather than computed from `vw`, because `100vw` includes the
+ * scrollbar and overflows by exactly its width.
+ *
+ * The thresholds are sized for the WORST case, a layout with a sidebar, since a viewport media
+ * query cannot see one. With a 14rem sidebar and 2rem of main padding, a 48rem column leaves
+ * `(viewport - 64rem) / 2` free per side. Each tier's bleed stays inside that, with headroom:
+ *
+ *   viewport   free/side   bleed past the column edge   headroom
+ *   1152px      64px        32px                         32px
+ *   1280px     128px        80px                         48px
+ *   1440px     208px       176px                         32px
+ *
+ * Every figure is measured, not estimated — see scratchpad/stretch-check.html, which loads this
+ * stylesheet itself rather than a copy of these rules. Below 1152px nothing is spare, and
+ * stretched means the full column.
+ */
+.advanced-image-block--stretched,
+.cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+    /* Base tier cancels the reading container's own 1rem inline padding, so even on a phone a
+       stretched image reaches the column's edge instead of sitting inside the text margin. This
+       one is safe at ANY width by construction: it spends the container's padding, nothing more. */
+    width: calc(100% + 2rem);
     max-width: none;
+    margin-block: 2.5rem;
+    margin-inline: -1rem;
     padding: 0;
-    margin: 2rem 0;
     box-shadow: var(--shadow-lg);
     border-radius: calc(var(--radius) + 4px);
     overflow: hidden;
 }
 
-.advanced-image-block--stretched img {
+@media (min-width: 1152px) {
+    .advanced-image-block--stretched,
+    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+        width: calc(100% + 6rem);
+        margin-inline: -3rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .advanced-image-block--stretched,
+    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+        width: calc(100% + 12rem);
+        margin-inline: -6rem;
+    }
+}
+
+@media (min-width: 1440px) {
+    .advanced-image-block--stretched,
+    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+        width: calc(100% + 24rem);
+        margin-inline: -12rem;
+    }
+}
+
+/*
+ * Addressed by the MODIFIER alone, and doubled for specificity.
+ *
+ * The base class cannot be relied on: the renderer config gives an image block
+ * `cdc-content-block image-block cdc-content-image`, while the component appends
+ * `advanced-image-block--stretched` itself — so a real stretched figure often carries the modifier
+ * WITHOUT `advanced-image-block`. Selectors written as `.advanced-image-block.advanced-image-block
+ * --stretched` silently matched nothing. Repeating the modifier class buys the specificity those
+ * compound selectors were there for, without assuming a base class that may be absent.
+ *
+ * `max-height: none` matters as much as the width: a capped height on a replaced element with an
+ * intrinsic ratio shrinks its width to match, which leaves the image narrow inside a correct frame.
+ */
+.advanced-image-block--stretched.advanced-image-block--stretched.advanced-image-block--stretched > img,
+.advanced-image-block--stretched.advanced-image-block--stretched.advanced-image-block--stretched > a > img {
     width: 100%;
     max-width: none;
+    max-height: none;
+    height: auto;
     object-fit: cover;
     border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
     display: block;
 }
 
 .advanced-image-block--stretched figcaption {
-    padding: 1rem 1.5rem;
-    max-width: 800px;
-    margin: 0 auto;
-    font-size: 0.875rem;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.8125rem;
     line-height: 1.625;
     color: hsl(var(--muted-foreground));
     background: hsl(var(--muted) / 0.4);
     border-top: 1px solid hsl(var(--border) / 0.6);
     border-radius: 0 0 calc(var(--radius) + 4px) calc(var(--radius) + 4px);
-}
-
-/* Override container constraints for stretched images */
-.cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-    width: min(100vw, 1400px);
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: none;
-    padding: 0;
-    overflow: visible;
-    margin: 2rem 0;
-    box-shadow: var(--shadow-lg);
-    border-radius: calc(var(--radius) + 4px);
 }
 
 /* Radius matches the rounded-xl the component always puts on the figure */
@@ -185,16 +239,16 @@
     color: hsl(var(--muted-foreground));
 }
 
-/* Responsive design for advanced image */
+/*
+ * Responsive trim for stretched images — TYPOGRAPHY ONLY.
+ *
+ * A second set of width overrides used to live here (`min(90vw, 1400px)`, `calc(100vw - 2rem)`,
+ * a fixed `1400px`). Being later in the file they beat the sizing rules above while leaving those
+ * rules' negative margins in place, so the box was over-constrained and the whole bleed landed on
+ * the right edge. Width and margin for this block are decided in ONE place, above; nothing down
+ * here may set either.
+ */
 @media (max-width: 768px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-        width: calc(100vw - 2rem);
-        margin: 1rem 0;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
-    }
-
     .advanced-image-block--stretched figcaption {
         padding: 0.75rem 1rem;
         font-size: 0.875rem;
@@ -206,38 +260,13 @@
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-        width: min(95vw, 1200px);
-    }
-
     .advanced-image-block--stretched figcaption {
         padding: 1rem 1.5rem;
     }
 }
 
-@media (min-width: 1025px) and (max-width: 1440px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-        width: min(90vw, 1400px);
-    }
-}
-
-@media (min-width: 1441px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-        width: 1400px;
-        /* Fixed max width on very large screens */
-    }
-}
-
-/* Ensure parent containers don't constrain stretched images */
-.advanced-image-block--stretched * {
-    max-width: none !important;
-}
-
-/* Handle common container constraints */
 .advanced-image-block--stretched {
+    /* The width above is `calc(100% + Nrem)`, which only lands correctly on a border box. */
     box-sizing: border-box;
 }
 

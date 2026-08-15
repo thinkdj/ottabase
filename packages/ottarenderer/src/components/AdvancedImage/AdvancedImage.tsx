@@ -73,8 +73,15 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         figureTailwindClasses.push('bg-muted/40', 'p-2');
     }
     if (stretched) {
-        // For stretched images, we need special handling
-        figureTailwindClasses.push('w-screen', 'relative', '-mx-4', 'md:-mx-8', 'lg:-mx-12', 'xl:-mx-16');
+        // Width and centring belong to the --stretched CSS rule alone. Anything set here fights it:
+        // `w-screen` meant 100vw (scrollbar included, so the page scrolled sideways), and even
+        // `w-full` over-constrains the box against that rule's margins, which pushes the whole
+        // image to one edge instead of centring it.
+        //
+        // `items-stretch` overrides the figure's default `items-center`: in a column flex container,
+        // centring the cross axis shrink-wraps the child, so the image sat narrow inside a
+        // correctly-sized frame.
+        figureTailwindClasses.push('relative', 'items-stretch');
     }
 
     // Handle featured image styling
@@ -122,8 +129,11 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
     const altFinal: string = altText || 'Image';
 
     // Image classes based on stretched state and aspect ratio
+    // No `max-h` on a stretched image: capping the height of a replaced element that has an
+    // intrinsic ratio and `h-auto` makes the browser shrink its WIDTH to match, so the image stops
+    // filling the frame it was just given.
     let imageClasses = stretched
-        ? `w-full h-auto max-h-[100vh] object-cover ${!linkUrl ? 'cursor-pointer' : ''}`
+        ? `w-full h-auto object-cover ${!linkUrl ? 'cursor-pointer' : ''}`
         : `w-full h-auto max-w-2xl mx-auto object-contain ${!linkUrl ? 'cursor-pointer' : ''}`;
 
     // Apply aspect ratio classes

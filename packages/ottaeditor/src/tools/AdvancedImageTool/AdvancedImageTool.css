@@ -257,12 +257,18 @@
     border-radius: var(--radius);
 }
 
+/*
+ * Sized and centred against the editor column, not the viewport, and by AUTO margins so the box is
+ * never over-constrained. `width: 100vw; left: 50%; translateX(-50%)` sized the image to the whole
+ * window and then centred it on an off-centre column — the editor lives in a two-thirds pane beside
+ * a sidebar, so the image left the pane entirely. Mirrors the renderer's --stretched rule so what an
+ * author sees while writing is what publishes.
+ */
 .advanced-image-container--stretched {
-    width: min(100vw, 1400px);
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 2rem 0;
+    width: 100%;
+    max-width: none;
+    margin-block: 2rem;
+    margin-inline: 0;
     box-shadow: var(--shadow-lg);
     border-radius: var(--radius);
     overflow: hidden;
@@ -395,9 +401,11 @@
         width: 100%;
     }
 
+    /* Full column on narrow screens — there is no room to be narrower than the text. */
     .advanced-image-container--stretched {
-        width: calc(100vw - 2rem);
-        margin: 1rem 0;
+        width: 100%;
+        margin-block: 1rem;
+        margin-inline: 0;
         border-radius: var(--radius);
     }
 }
