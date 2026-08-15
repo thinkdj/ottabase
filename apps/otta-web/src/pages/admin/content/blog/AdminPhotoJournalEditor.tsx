@@ -1,3 +1,4 @@
+import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { blogPostHooks, blogTagHooks } from '@/hooks/blogHooks';
@@ -10,9 +11,19 @@ import {
     PHOTO_JOURNAL_NOTE_MAX_LENGTH,
     POST_STATUSES,
     type PhotoJournalItem,
+    type PostCrosspost,
     type PostStatus,
 } from '@ottabase/ottablog';
 import { PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
+import {
+    AdvancedImageTool,
+    MediaGalleryTool,
+    MediaLibraryTool,
+    useOttaEditor,
+    type BlockToolConstructable,
+    type OutputData,
+    type ToolSettings,
+} from '@ottabase/ottaeditor';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { ConfirmDialog } from '@ottabase/ui-components';
@@ -66,6 +77,8 @@ export interface PhotoJournalEditorPost {
     slug: string;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;
+    content: OutputData | null;
+    crossposts: PostCrosspost[] | null;
     status: PostStatus;
     allowComments: boolean;
     isFeatured: boolean;
@@ -79,11 +92,41 @@ interface PhotoJournalPayload {
     title: string | null;
     note: string | null;
     photos: PhotoJournalItem[];
+    content: OutputData | null;
+    crossposts: PostCrosspost[];
     status: PostStatus;
     allowComments: boolean;
     isFeatured: boolean;
     publishAt: number | null;
 }
+
+/**
+ * The album is the opener and the SEO photo list; this editor is the story under it. It gets the
+ * same tools as the article editor, so a journal alternates prose with its own galleries instead
+ * of needing a second block system.
+ */
+const JOURNAL_BODY_EDITOR_CONFIG = {
+    defaultPlugins: 'all' as const,
+    placeholder: 'Tell the story: what happened between these frames...',
+    minHeight: 200,
+    additionalPlugins: [
+        {
+            name: 'image',
+            tool: AdvancedImageTool as unknown as BlockToolConstructable,
+            config: { provider: 'r2', uploadEndpoint: '/api/upload' } as ToolSettings,
+        },
+        {
+            name: 'mediaLibrary',
+            tool: MediaLibraryTool as unknown as BlockToolConstructable,
+            config: {} as ToolSettings,
+        },
+        {
+            name: 'mediaGallery',
+            tool: MediaGalleryTool as unknown as BlockToolConstructable,
+            config: {} as ToolSettings,
+        },
+    ],
+};
 
 interface PhotoTag {
     id: string;
@@ -134,6 +177,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
     const [title, setTitle] = useState(initialData?.title ?? '');
     const [note, setNote] = useState(initialData?.photoNote ?? '');
     const [photos, setPhotos] = useState<PhotoJournalItem[]>(initialData?.photoAlbum ?? []);
+    const [crossposts, setCrossposts] = useState<PostCrosspost[]>(initialData?.crossposts ?? []);
     const [status, setStatus] = useState<PostStatus>(initialData?.status ?? 'draft');
     const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
     const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured ?? false);
@@ -183,22 +227,43 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
         if (initialData && tagLinksData !== undefined) setSelectedTagIds(tagLinks.map((link) => link.tagId));
     }, [initialData, tagLinks, tagLinksData]);
 
+    const bodyEditor = useOttaEditor({ ...JOURNAL_BODY_EDITOR_CONFIG, data: initialData?.content ?? undefined });
+
     const isSaving = createPhotoJournal.isPending || updatePhotoJournal.isPending;
     const isDirty = useMemo(() => {
         if (!initialData) {
-            return Boolean(title.trim() || note.trim() || photos.length || selectedTagIds.length);
+            return (
+                Boolean(title.trim() || note.trim() || photos.length || selectedTagIds.length) ||
+                crosspostsKey(crossposts) !== '[]' ||
+                bodyEditor.hasUnsavedChanges
+            );
         }
         return (
+            bodyEditor.hasUnsavedChanges ||
             title !== initialData.title ||
             note !== (initialData.photoNote ?? '') ||
             JSON.stringify(photos) !== JSON.stringify(initialData.photoAlbum ?? []) ||
+            crosspostsKey(crossposts) !== crosspostsKey(initialData.crossposts) ||
             status !== initialData.status ||
             allowComments !== initialData.allowComments ||
             isFeatured !== initialData.isFeatured ||
             publishAt !== initialPublishAt(initialData.publishAt) ||
             JSON.stringify([...selectedTagIds].sort()) !== JSON.stringify(tagLinks.map((link) => link.tagId).sort())
         );
-    }, [allowComments, initialData, isFeatured, note, photos, publishAt, selectedTagIds, status, tagLinks, title]);
+    }, [
+        allowComments,
+        bodyEditor.hasUnsavedChanges,
+        crossposts,
+        initialData,
+        isFeatured,
+        note,
+        photos,
+        publishAt,
+        selectedTagIds,
+        status,
+        tagLinks,
+        title,
+    ]);
     const { blocker, allowNavigateRef } = useEditorLeaveGuard(isDirty);
 
     const setPhoto = (id: string, changes: Partial<PhotoJournalItem>) => {
@@ -262,10 +327,14 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
             return;
         }
 
+        // An empty editor saves as null so a journal without a story keeps a clean album-only page.
+        const body = await bodyEditor.save();
         const payload: PhotoJournalPayload = {
             title: title.trim() || null,
             note: note.trim() || null,
             photos,
+            content: body?.blocks?.length ? body : null,
+            crossposts: cleanCrossposts(crossposts),
             status: resolvedStatus,
             allowComments,
             isFeatured,
@@ -594,6 +663,24 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                         </CardContent>
                     </Card>
 
+                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <CardHeader>
+                            <CardTitle className="text-[0.9375rem] font-semibold">Journal story</CardTitle>
+                            <CardDescription>
+                                Optional. Write the story that runs under the album, adding image and gallery blocks
+                                wherever the words need one.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div
+                                ref={bodyEditor.editorRef}
+                                className="prose prose-slate dark:prose-invert min-h-[240px] max-w-none rounded-lg border bg-background p-4"
+                            />
+                        </CardContent>
+                    </Card>
+
+                    <CrosspostsField value={crossposts} onChange={setCrossposts} noun="journal" />
+
                     {photos.length > 0 && (
                         <section aria-labelledby="photo-preview-title">
                             <h2
@@ -611,6 +698,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                                     slug: initialData?.slug ?? 'preview',
                                     photoNote: note.trim() || null,
                                     photoAlbum: photos,
+                                    crossposts: cleanCrossposts(crossposts),
                                     contentType: 'photo',
                                     status,
                                     authorId: initialData?.authorId ?? user?.id ?? null,

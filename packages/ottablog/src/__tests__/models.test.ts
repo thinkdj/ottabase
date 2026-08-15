@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink, PostVersion } from '../ottaorm-models';
+import { POST_CONTENT_MAX_BYTES, PostContentValidationError } from '../types';
 
 describe('ottablog models', () => {
     describe('Post model', () => {
@@ -90,6 +91,34 @@ describe('ottablog models', () => {
             expect(writable.update).toContain('blurbText');
         });
 
+        it('defers the heavy body columns but never what the timeline renders', () => {
+            // photoAlbum/blurbText/excerpt drive the /blog timeline, so deferring them would empty
+            // the collages and thought cards. content/footnotes/privateNotes are read by nothing there.
+            expect(Post.deferred).toEqual(['content', 'footnotes', 'privateNotes']);
+            for (const field of ['photoAlbum', 'blurbText', 'excerpt', 'heroImage', 'title', 'slug']) {
+                expect(Post.deferred).not.toContain(field);
+            }
+        });
+
+        it('keeps privateNotes readable on a fully loaded record while hiding the password hash', () => {
+            // The admin editor loads a post through single-record CRUD, which never defers, and
+            // needs privateNotes to populate its notes editor. Privacy on public routes is the
+            // serializer's strip, NOT `hidden` — hiding it here would blank the editor field.
+            const post = new Post({
+                entity: 'posts',
+                data: {
+                    id: 'post-1',
+                    title: 'Draft',
+                    privateNotes: { blocks: [{ type: 'paragraph', data: { text: 'internal' } }] },
+                    passwordHash: 'hashed-secret',
+                },
+            });
+
+            const json = post.toJson();
+            expect(json.privateNotes).toEqual({ blocks: [{ type: 'paragraph', data: { text: 'internal' } }] });
+            expect('passwordHash' in json).toBe(false);
+        });
+
         it('creates blurbs with model-owned derived fields and locked article features', async () => {
             const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
             await Post.createBlurb('Watched xyz today.\nIt stayed with me.', {
@@ -122,6 +151,35 @@ describe('ottablog models', () => {
             );
             expect((create.mock.calls[0][0] as { slug: string }).slug).toMatch(/^blurb-[a-z0-9]+-[a-f0-9-]+$/);
             create.mockRestore();
+        });
+
+        it('stores crossposts on create and leaves them alone when updateBlurb omits them', async () => {
+            const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            await Post.createBlurb('Cross-posted this one.', {
+                crossposts: [{ url: 'https://www.instagram.com/p/abc', origin: true }, 'https://x.com/me/status/1'],
+            });
+            expect((create.mock.calls[0][0] as { crossposts: unknown }).crossposts).toEqual([
+                { url: 'https://www.instagram.com/p/abc', origin: true },
+                { url: 'https://x.com/me/status/1' },
+            ]);
+            create.mockRestore();
+
+            const stored: Record<string, unknown> = { crossposts: [{ url: 'https://x.com/me/status/1' }] };
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isBlurb: () => true,
+            });
+
+            // Status-only PATCH: an omitted list means unchanged, never "drop my links".
+            await post.updateBlurb('Cross-posted this one.', { status: 'published' });
+            expect(stored.crossposts).toEqual([{ url: 'https://x.com/me/status/1' }]);
+
+            await post.updateBlurb('Cross-posted this one.', { crossposts: [] });
+            expect(stored.crossposts).toBeNull();
         });
 
         it('creates photo journals with an ordered album and lead-photo compatibility metadata', async () => {
@@ -220,6 +278,91 @@ describe('ottablog models', () => {
             await post.updatePhotoJournal(photos, { note: null });
 
             expect(stored.photoNote).toBeNull();
+        });
+
+        it('stores an optional journal body and counts its words toward reading time', async () => {
+            const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const content = {
+                blocks: [
+                    { type: 'paragraph', data: { text: 'The rain emptied the streets just before blue hour.' } },
+                    { type: 'mediaGallery', data: { items: [{ url: 'https://images.test/lane.jpg' }] } },
+                ],
+            };
+
+            await Post.createPhotoJournal(photos, { note: 'A quiet blue hour.', content });
+
+            const written = create.mock.calls[0][0] as { content: unknown; wordCount: number };
+            expect(written.content).toEqual(content);
+            // Album words (note + caption) plus the body's own words.
+            expect(written.wordCount).toBeGreaterThan(9);
+            create.mockRestore();
+        });
+
+        it('keeps a stored journal body when updatePhotoJournal omits content and clears it on explicit null', async () => {
+            const body = { blocks: [{ type: 'paragraph', data: { text: 'Still here.' } }] };
+            const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', content: body };
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isPhotoJournal: () => true,
+            });
+
+            await post.updatePhotoJournal(photos, { status: 'published' });
+            expect(stored.content).toEqual(body);
+
+            await post.updatePhotoJournal(photos, { content: null });
+            expect(stored.content).toBeNull();
+        });
+
+        it('stores crossposts on a photo journal with the same PATCH semantics as a blurb', async () => {
+            const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            await Post.createPhotoJournal(photos, { crossposts: ['https://www.instagram.com/p/abc'] });
+            expect((create.mock.calls[0][0] as { crossposts: unknown }).crossposts).toEqual([
+                { url: 'https://www.instagram.com/p/abc' },
+            ]);
+            create.mockRestore();
+
+            const stored: Record<string, unknown> = {
+                title: 'Kyoto, in the rain',
+                crossposts: [{ url: 'https://www.instagram.com/p/abc' }],
+            };
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isPhotoJournal: () => true,
+            });
+
+            await post.updatePhotoJournal(photos, { status: 'published' });
+            expect(stored.crossposts).toEqual([{ url: 'https://www.instagram.com/p/abc' }]);
+
+            await post.updatePhotoJournal(photos, { crossposts: null });
+            expect(stored.crossposts).toBeNull();
+        });
+
+        it('rejects a journal body that is not editor content', async () => {
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            await expect(Post.createPhotoJournal(photos, { content: { blocks: 'nope' } as never })).rejects.toThrow(
+                PostContentValidationError,
+            );
+        });
+
+        it('rejects a journal body past the size ceiling', async () => {
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const oversized = {
+                blocks: [{ type: 'paragraph', data: { text: 'x'.repeat(POST_CONTENT_MAX_BYTES + 1) } }],
+            };
+            await expect(Post.createPhotoJournal(photos, { content: oversized })).rejects.toThrow(
+                PostContentValidationError,
+            );
         });
     });
 

@@ -7,6 +7,7 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Fat Models** - All blog logic in one place with query helpers
 - **Multiple Content Types** - Support for articles, photo journals, news, docs, announcements, and custom types
 - **Blurbs / Thoughts** - First-class short-form text interleaved with articles in chronological timelines
+- **Crossposts** - Link the same post on Instagram/X/Facebook, marking one as the original if it started there
 - **Photo Journals** - Ordered, photo-first travel logs with field notes, per-frame context, and immersive viewing
 - **Rich Content** - EditorJS integration via OttaEditor for flexible content
 - **SEO Ready** - Built-in SEO metadata, hero images, canonical URLs
@@ -41,7 +42,7 @@ dependency — install it only if you render). Importing the pure root loads zer
 | Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
 | `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
-| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                                                      | Yes                   |
+| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
 | `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
 | `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
 
@@ -193,8 +194,11 @@ derive app/user/organization scope from the verified server context, enforce `po
 separate `posts:publish` capability, and invoke the fat-model methods above. The Studio content list provides a quick
 composer plus a dedicated blurb editor for status, scheduling, comments, and tags.
 
-The feature adds the nullable `posts.blurb_text` column. Run the normal OttaORM auto-init endpoint after upgrading; no
-destructive or data-rewrite migration is required.
+The feature adds the nullable `posts.blurb_text` and `posts.crossposts` columns. Run the normal OttaORM auto-init
+endpoint after upgrading; no destructive or data-rewrite migration is required.
+
+Blurbs, like every other content type, can link their copies on Instagram/X/Facebook — see
+[Crossposts](#crossposts-the-same-post-elsewhere).
 
 ### Photo Journals
 
@@ -254,6 +258,8 @@ endpoint after upgrading; existing rows need no rewrite.
 - `slug` - URL-friendly identifier (unique per appId)
 - `excerpt` - Short summary
 - `blurbText` - Plain-text short-form body when `contentType` is `blurb`
+- `crossposts` - Ordered `PostCrosspost[]`: the same post on other platforms, one optionally flagged `origin`. Applies
+  to every content type — see [Crossposts](#crossposts-the-same-post-elsewhere)
 - `photoNote` - Optional short field note when `contentType` is `photo`
 - `photoAlbum` - Ordered `PhotoJournalItem[]` when `contentType` is `photo`
 - `content` - EditorJS JSON content
@@ -487,6 +493,40 @@ const slug = await resolveUniqueSlug(PostTag, 'hello-world', {
 });
 // → 'hello-world' or 'hello-world-1', 'hello-world-2', etc.
 ```
+
+## Crossposts (the same post elsewhere)
+
+Any post — article, blurb, photo journal, changelog — can also exist on Instagram, X, or Facebook. `crossposts` is one
+ordered list rather than a "source URL", because the two directions people publish in are the same relationship seen
+from opposite ends:
+
+| You did this                                    | Store                                     | The post renders               |
+| ----------------------------------------------- | ----------------------------------------- | ------------------------------ |
+| Wrote it here, pushed copies out (POSSE)        | entries with no flag                      | `also on x.com · facebook.com` |
+| Wrote it on Instagram, this is the copy (PESOS) | `{ url, origin: true }` on that one entry | `originally on instagram.com`  |
+
+```typescript
+await Post.createBlurb('Cross-posted this one.', {
+    crossposts: [
+        { url: 'https://www.instagram.com/p/abc', origin: true }, // it started there
+        'https://x.com/me/status/1', // bare strings are shorthand for { url }
+    ],
+});
+```
+
+At most one entry may carry `origin`. Up to `MAX_CROSSPOSTS` (10) entries, absolute HTTP(S) only, duplicates and blank
+rows dropped, validated by `validateCrossposts` (`CrosspostValidationError` → 400). Labels come from the hostname
+(`crosspostLabel`), so no platform list needs maintaining.
+
+**Write paths.** Blurbs and photo journals send `crossposts` to their own routes (`/api/blog/blurbs`,
+`/api/blog/photo-journals`); everything else goes through generic CRUD at `/api/ottaorm/posts`, which re-applies the
+same validator. On PATCH, an absent list means unchanged; `[]` or `null` clears it.
+
+**Rendering.** `<Crossposts>` joins an existing byline (blurb cards) and `<CrosspostsRow>` stands alone (articles, photo
+journals) — both from `@ottabase/ottablog/renderer`, and both render nothing when a post has no links. The article and
+journal rows sit OUTSIDE the theme's `renderMetadata`, so a theme written before or after this feature credits an
+external original either way. Links carry the IndieWeb microformats `u-url` (origin) and `u-syndication` (copies), and
+degrade to plain text in the timeline variant, where the card itself is already a link.
 
 ## Content Types
 
@@ -735,8 +775,15 @@ POST  /api/blog/blurbs
 PATCH /api/blog/blurbs/{postId}
 Content-Type: application/json
 
-{ "text": "A quick thought", "status": "published", "allowComments": true }
+{
+  "text": "A quick thought",
+  "crossposts": [{ "url": "https://www.instagram.com/p/abc", "origin": true }, "https://x.com/me/status/1"],
+  "status": "published",
+  "allowComments": true
+}
 ```
+
+On `PATCH`, an absent `crossposts` means unchanged; `[]` or `null` clears the list.
 
 Writes are authenticated and RLS-enforced. Published/scheduled status additionally requires `posts:publish`. The
 application adapter must return the same canonical, membership-validated `SecurityContext` used by its OttaORM CRUD

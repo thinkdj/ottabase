@@ -18,12 +18,15 @@ import {
     generateSlug,
     POST_STATUSES,
     PhotoJournalValidationError,
+    validateCrossposts,
     validateBlurbText,
     validatePhotoJournalItems,
+    validatePostContent,
     validatePhotoJournalNote,
     type ContentType,
     type EditorJSData,
     type PhotoJournalItem,
+    type PostCrosspost,
     type PostStatus,
 } from '../types';
 import { postsTable } from './Post.schema';
@@ -34,6 +37,11 @@ import { postTagLinksTable } from './PostTagLink';
 export { postsTable, type NewPost, type NewPostType, type PostType } from './Post.schema';
 
 export interface BlurbWriteOptions {
+    /**
+     * The same post elsewhere. `undefined` leaves it unchanged on update; `null`/`[]` clears it.
+     * A bare string is shorthand for `{ url }`, and the two forms may be mixed in one list.
+     */
+    crossposts?: Array<PostCrosspost | string> | null;
     status?: PostStatus;
     allowComments?: boolean;
     publishAt?: number | null;
@@ -48,6 +56,12 @@ export interface PhotoJournalWriteOptions extends BlurbWriteOptions {
     title?: string | null;
     note?: string | null;
     isFeatured?: boolean;
+    /**
+     * Optional rich body rendered under the album. The album stays the opener and the SEO
+     * photo list; this is where a journal alternates narrative with its own galleries, using
+     * the image and media-gallery blocks the editor already ships.
+     */
+    content?: EditorJSData | null;
 }
 
 function photoJournalWordCount(note: string | null, items: PhotoJournalItem[]): number {
@@ -103,6 +117,22 @@ export class Post extends BaseModel {
         postedAt: 'date' as const,
     };
 
+    /**
+     * The big JSON columns, skipped by list/feed/sitemap reads.
+     *
+     * A page of posts renders from `excerpt`, `blurbText`, and `photoAlbum`; it never touches a
+     * body. Carrying 15 full bodies out of D1 to drop them at serialization is the single largest
+     * avoidable cost on `/blog`. Detail reads (`find`/`first`) are unaffected, so the body is
+     * always there when a post page asks for it.
+     *
+     * `photoAlbum` is deliberately NOT here: the timeline collage genuinely renders it.
+     *
+     * `privateNotes` is here for the read cost ONLY — it is not what keeps notes private. That is
+     * the strip in ottablog's public serializers, which runs on detail reads too. Deleting that
+     * strip on the strength of this line would leak notes on every post page.
+     */
+    static deferred = ['content', 'footnotes', 'privateNotes'];
+
     protected static defaults = {
         status: 'draft',
         contentType: 'blog',
@@ -119,6 +149,7 @@ export class Post extends BaseModel {
             'slug',
             'excerpt',
             'blurbText',
+            'crossposts',
             'photoNote',
             'photoAlbum',
             'content',
@@ -153,6 +184,7 @@ export class Post extends BaseModel {
             'slug',
             'excerpt',
             'blurbText',
+            'crossposts',
             'photoNote',
             'photoAlbum',
             'content',
@@ -273,6 +305,20 @@ export class Post extends BaseModel {
             formConfig: {
                 visible: true,
                 fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        crossposts: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Also posted at',
+                description: 'The same post on Instagram, X, Facebook — flag one as the original if it started there',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: false,
@@ -953,6 +999,7 @@ export class Post extends BaseModel {
             slug: `blurb-${now.toString(36)}-${crypto.randomUUID().slice(0, 8)}`,
             excerpt: createBlurbExcerpt(text),
             blurbText: text,
+            crossposts: validateCrossposts(options.crossposts),
             photoNote: null,
             photoAlbum: null,
             content: null,
@@ -993,14 +1040,17 @@ export class Post extends BaseModel {
 
         const slugBase = generateSlug(title) || 'photo-journal';
         const publishedAt = status === 'published' ? (options.publishedAt ?? now) : (options.publishedAt ?? null);
+        const content = validatePostContent(options.content);
+        const body = content ? calculateReadingTime(content) : null;
         return (await this.create({
             title,
             slug: `${slugBase}-${now.toString(36)}-${crypto.randomUUID().slice(0, 6)}`,
             excerpt: createPhotoJournalExcerpt(note, items),
             blurbText: null,
+            crossposts: validateCrossposts(options.crossposts),
             photoNote: note,
             photoAlbum: items,
-            content: null,
+            content,
             contentType: 'photo',
             categoryId: null,
             seriesId: null,
@@ -1008,8 +1058,8 @@ export class Post extends BaseModel {
             heroImage: photoJournalHero(items[0], title),
             footnotes: null,
             status,
-            readingTimeMinutes: 1,
-            wordCount: photoJournalWordCount(note, items),
+            readingTimeMinutes: body?.minutes ?? 1,
+            wordCount: photoJournalWordCount(note, items) + (body?.words ?? 0),
             isFeatured: options.isFeatured ?? false,
             allowComments: options.allowComments ?? true,
             isProtected: false,
@@ -1053,6 +1103,8 @@ export class Post extends BaseModel {
         const text = validateBlurbText(textValue);
         const words = text.split(/\s+/).filter(Boolean).length;
         this.set('blurbText', text);
+        // PATCH semantics: absent means unchanged, explicit null/[] clears it.
+        if (options.crossposts !== undefined) this.set('crossposts', validateCrossposts(options.crossposts));
         this.set('photoNote', null);
         this.set('photoAlbum', null);
         this.set('title', createBlurbTitle(text));
@@ -1105,20 +1157,35 @@ export class Post extends BaseModel {
         const note = validatePhotoJournalNote(noteInput);
         const titleInput = options.title === undefined ? this.get('title') : options.title;
         const title = createPhotoJournalTitle(titleInput, items[0]);
+        // Absent means unchanged, same as the note above; an explicit null clears the body. Unlike
+        // the note, "unchanged" here LEAVES THE ATTRIBUTE ALONE rather than reading and rewriting
+        // it: `content` is deferred (see Post.deferred), so a record loaded by a collection read
+        // does not carry it, and reading-to-rewrite would blank the body on any such instance.
+        // Not setting it keeps the column out of the UPDATE entirely, which is what unchanged means.
+        const contentProvided = options.content !== undefined;
+        const content = contentProvided ? validatePostContent(options.content) : null;
+        const body = contentProvided && content ? calculateReadingTime(content) : null;
         this.set('title', title);
         this.set('excerpt', createPhotoJournalExcerpt(note, items));
         this.set('blurbText', null);
+        // Same PATCH semantics as everywhere else: absent means unchanged, null/[] clears.
+        if (options.crossposts !== undefined) this.set('crossposts', validateCrossposts(options.crossposts));
         this.set('photoNote', note);
         this.set('photoAlbum', items);
-        this.set('content', null);
+        if (contentProvided) this.set('content', content);
         this.set('contentType', 'photo');
         this.set('categoryId', null);
         this.set('seriesId', null);
         this.set('seriesOrder', null);
         this.set('heroImage', photoJournalHero(items[0], title));
         this.set('footnotes', null);
-        this.set('readingTimeMinutes', 1);
-        this.set('wordCount', photoJournalWordCount(note, items));
+        // Only recomputed when the body is part of this write. A status-only PATCH cannot know the
+        // body's word contribution without loading a deferred column, and slightly stale estimates
+        // beat both a wrong count and a read that fails on a collection-loaded record.
+        if (contentProvided) {
+            this.set('readingTimeMinutes', body?.minutes ?? 1);
+            this.set('wordCount', photoJournalWordCount(note, items) + (body?.words ?? 0));
+        }
         this.set('isProtected', false);
         this.set('passwordHash', null);
         this.set('passwordHint', null);

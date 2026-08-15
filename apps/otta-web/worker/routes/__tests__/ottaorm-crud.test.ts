@@ -297,6 +297,76 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
         expect(call.body.photoAlbum).toEqual([expect.objectContaining({ url: 'https://images.test/1.jpg' })]);
     });
 
+    it('validates crossposts on the generic route, which is the only way an article writes them', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { contentType: 'blog', crossposts: [{ url: 'javascript:alert(1)' }] },
+        });
+
+        const rejected = await handleOttaormCrud(createContext());
+        expect(rejected.status).toBe(400);
+        expect(((await rejected.json()) as any).code).toBe('VALIDATION_ERROR');
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { contentType: 'blog', crossposts: ['  https://www.instagram.com/p/abc  ', { url: '' }] },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
+
+        const accepted = await handleOttaormCrud(createContext());
+        expect(accepted.status).toBe(200);
+        // Trimmed, normalized to objects, blank row dropped — same shape the blog routes store.
+        expect((executeSecureCrudRequest as any).mock.calls[0][0].body.crossposts).toEqual([
+            { url: 'https://www.instagram.com/p/abc' },
+        ]);
+    });
+
+    it('applies the post body ceiling to every content type, not just photo journals', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { POST_CONTENT_MAX_BYTES } = await import('@ottabase/ottablog');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            // A plain article: the body column is shared, so the cap cannot be journal-only.
+            body: {
+                contentType: 'blog',
+                content: { blocks: [{ type: 'paragraph', data: { text: 'x'.repeat(POST_CONTENT_MAX_BYTES + 1) } }] },
+            },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(400);
+        expect(body.code).toBe('VALIDATION_ERROR');
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
+    it('rejects a post body that is not editor content', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { content: { blocks: 'not-an-array' } },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(400);
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
     it('rejects an unsafe photograph URL', async () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
 

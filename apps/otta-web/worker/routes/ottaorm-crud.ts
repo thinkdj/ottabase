@@ -2,12 +2,13 @@ import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
-    BlurbValidationError,
-    PhotoJournalValidationError,
+    ContentValidationError,
     Post,
     validateBlurbText,
+    validateCrossposts,
     validatePhotoJournalItems,
     validatePhotoJournalNote,
+    validatePostContent,
 } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
@@ -383,12 +384,15 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // PUT is included deliberately — secure CRUD treats PUT as a full update like PATCH, so a
     // POST/PATCH-only gate would leave PUT as a silent bypass.
     //
-    // The same block also re-applies the blurb/photo-journal shape validators. Those columns are
-    // model-validated on their own routes (/api/blog/blurbs, /api/blog/photo-journals) — text
-    // length caps, the 60-photo album cap, sanitized photo URLs — but they are also in
+    // The same block also re-applies the post content validators. Those columns are model-validated
+    // on their own routes (/api/blog/blurbs, /api/blog/photo-journals) — text length caps, the
+    // 60-photo album cap, sanitized photo URLs, the body size ceiling — but they are also in
     // Post.writable (the model's own create needs them there), so generic CRUD can write them.
     // Without this, every cap is skippable by addressing /api/ottaorm/posts instead. Reusing the
     // model's exported validators keeps the model the single source of truth for shape.
+    //
+    // `content` is validated for EVERY content type, not just journals: it is one column shared by
+    // articles, changelogs, and docs, and this is the only route any of them take into it.
     if (
         crudRequest.model === 'posts' &&
         crudRequest.body &&
@@ -411,8 +415,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             if (body.blurbText != null) body.blurbText = validateBlurbText(body.blurbText);
             if (body.photoNote !== undefined) body.photoNote = validatePhotoJournalNote(body.photoNote);
             if (body.photoAlbum != null) body.photoAlbum = validatePhotoJournalItems(body.photoAlbum);
+            if (body.content != null) body.content = validatePostContent(body.content);
+            if (body.crossposts !== undefined) body.crossposts = validateCrossposts(body.crossposts);
         } catch (error) {
-            if (error instanceof BlurbValidationError || error instanceof PhotoJournalValidationError) {
+            if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             throw error;

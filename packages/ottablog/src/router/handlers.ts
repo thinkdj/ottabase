@@ -21,7 +21,7 @@ import {
 } from '../ottaorm-models';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
-import { BlurbValidationError, PhotoJournalValidationError } from '../types';
+import { ContentValidationError, type EditorJSData, type PostCrosspost } from '../types';
 import type { BlogEditorialWriteResult, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
 
 async function readJson<T>(request: Request): Promise<T> {
@@ -601,6 +601,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
     type BlurbBody = {
         text?: unknown;
+        /** The same post elsewhere. Validated by the model (ContentValidationError → 400). */
+        crossposts?: unknown;
         status?: unknown;
         allowComments?: unknown;
         publishAt?: unknown;
@@ -705,6 +707,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             globalRLS.validateWrite(Post.entity, securityContext, writeData, 'create');
             const post = await Post.createBlurb(body.text as string, {
                 ...options,
+                crossposts: body.crossposts as PostCrosspost[] | null | undefined,
                 status: requestedStatus,
                 organizationId: writeData.organizationId as string | null,
                 appId: writeData.appId as string,
@@ -713,7 +716,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             });
             return jsonResponse(post.toJson(), 201);
         } catch (error) {
-            if (error instanceof BlurbValidationError) {
+            if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             if (error instanceof RLSError) {
@@ -762,10 +765,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             // PATCH: an ABSENT field means "unchanged". A status-only body (publish/schedule a
             // draft) must not read as "blurb text is required" — fall back to the stored text.
             const text = body.text === undefined ? (post.get('blurbText') as string) : body.text;
-            const updated = await post.updateBlurb(text as string, options);
+            const updated = await post.updateBlurb(text as string, {
+                ...options,
+                crossposts: body.crossposts as PostCrosspost[] | null | undefined,
+            });
             return jsonResponse(updated.toJson());
         } catch (error) {
-            if (error instanceof BlurbValidationError) {
+            if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             if (error instanceof RLSError) {
@@ -780,6 +786,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         note?: unknown;
         photos?: unknown;
         isFeatured?: unknown;
+        content?: unknown;
     };
 
     async function handleBlogPhotoJournalCreate(context: Ctx): Promise<Response> {
@@ -828,6 +835,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 ...options,
                 title: body.title as string | null | undefined,
                 note: body.note as string | null | undefined,
+                content: body.content as EditorJSData | null | undefined,
+                crossposts: body.crossposts as PostCrosspost[] | null | undefined,
                 isFeatured: body.isFeatured as boolean | undefined,
                 status: requestedStatus,
                 organizationId: writeData.organizationId as string | null,
@@ -837,7 +846,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             });
             return jsonResponse(post.toJson(), 201);
         } catch (error) {
-            if (error instanceof PhotoJournalValidationError) {
+            if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             if (error instanceof RLSError) return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
@@ -890,11 +899,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 ...options,
                 title: body.title as string | null | undefined,
                 note: body.note as string | null | undefined,
+                content: body.content as EditorJSData | null | undefined,
+                crossposts: body.crossposts as PostCrosspost[] | null | undefined,
                 isFeatured: body.isFeatured as boolean | undefined,
             });
             return jsonResponse(updated.toJson());
         } catch (error) {
-            if (error instanceof PhotoJournalValidationError) {
+            if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             if (error instanceof RLSError) return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
