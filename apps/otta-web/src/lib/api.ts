@@ -88,6 +88,13 @@ export function reportApiError(error: unknown): void {
         return;
     }
 
+    // 501 NOT_CONFIGURED = a feature left dormant on this deployment (no secret configured).
+    // The copy is for the OPERATOR, and the surface that asked already hides itself, so a
+    // toast only tells an end user about a feature they cannot see or act on.
+    if (error.status === 501 && (error.code || '').toUpperCase() === 'NOT_CONFIGURED') {
+        return;
+    }
+
     if (error.status === 503) {
         const code = (error.code || '').toUpperCase();
 
@@ -249,4 +256,11 @@ export const api = createApiClient({
 
 // Re-export types for convenience
 export { ApiError, getErrorMessage, getErrorMessages, isApiError } from '@ottabase/api';
-export type { ApiClientConfig, ApiErrorResponse, ApiFunction, ApiRequestOptions, HttpMethod } from '@ottabase/api';
+export type {
+    ApiClientConfig,
+    ApiErrorResponse,
+    ApiFunction,
+    ApiRequestOptions,
+    ApiResponseType,
+    HttpMethod,
+} from '@ottabase/api';

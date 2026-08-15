@@ -112,6 +112,9 @@ export class ApiError extends Error {
 /** HTTP methods supported by the shorthand syntax */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+/** Explicit response decoding for binary and text endpoints. */
+export type ApiResponseType = 'json' | 'blob' | 'arrayBuffer' | 'text';
+
 // ============================================================
 // API Client Configuration
 // ============================================================
@@ -145,6 +148,9 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
 
     /** Custom headers for this request */
     headers?: Record<string, string>;
+
+    /** Override the automatic response decoder for non-JSON endpoints. */
+    responseType?: ApiResponseType;
 }
 
 /** API function signature with overloads for shorthand method syntax */
@@ -300,6 +306,7 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             body,
             timeout = defaultTimeout,
             headers: requestHeaders = {},
+            responseType,
             ...fetchOptions
         } = options;
 
@@ -394,6 +401,16 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
                     );
 
                     throw apiError;
+                }
+
+                if (responseType === 'blob') {
+                    return (await responseForRead.blob()) as T;
+                }
+                if (responseType === 'arrayBuffer') {
+                    return (await responseForRead.arrayBuffer()) as T;
+                }
+                if (responseType === 'text') {
+                    return (await responseForRead.text()) as T;
                 }
 
                 // Handle empty responses

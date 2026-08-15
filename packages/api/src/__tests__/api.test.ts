@@ -81,6 +81,27 @@ describe('API Client', () => {
             expect(callArgs[1].body).toBe(JSON.stringify(body));
         });
 
+        it('should decode an explicitly requested Blob response', async () => {
+            const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+            const mockFetch = vi.fn(() =>
+                Promise.resolve(new Response(pdf, { headers: { 'content-type': 'application/pdf' } })),
+            );
+            global.fetch = mockFetch;
+
+            const api = createApiClient();
+            const result = await api<Blob>('/pdf', {
+                method: 'POST',
+                body: { html: '<main>Hi</main>' },
+                headers: { Accept: 'application/pdf' },
+                responseType: 'blob',
+            });
+
+            expect(result).toBeInstanceOf(Blob);
+            expect(await result.text()).toBe('%PDF-1.7');
+            const headers = getFetchCall(mockFetch)[1].headers as Record<string, string>;
+            expect(headers.Accept).toBe('application/pdf');
+        });
+
         it('should inject auth token when provided', async () => {
             const mockFetch = vi.fn(() => Promise.resolve(createMockResponse()));
             global.fetch = mockFetch;

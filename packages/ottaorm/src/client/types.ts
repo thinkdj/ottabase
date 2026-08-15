@@ -15,6 +15,7 @@ export interface ApiClientRequestOptions extends Omit<RequestInit, 'body' | 'hea
     headers?: Record<string, string>;
     skipAuth?: boolean;
     timeout?: number;
+    responseType?: 'json' | 'blob' | 'arrayBuffer' | 'text';
 }
 
 export type ApiClientHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

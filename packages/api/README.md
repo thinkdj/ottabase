@@ -40,6 +40,17 @@ error event. Mutation repeat protection belongs on the server behind an explicit
 The client is intentionally presentation-free: it normalizes and throws `ApiError`, while a query cache or interaction
 boundary decides whether to show a toast, inline message, redirect, or remain silent.
 
+For binary or text endpoints, select the decoder explicitly so the same authenticated transport can serve downloads:
+
+```typescript
+const pdf = await api<Blob>('/api/cf-pdf', {
+    method: 'POST',
+    body: { html },
+    headers: { Accept: 'application/pdf' },
+    responseType: 'blob',
+});
+```
+
 ## Error Handling
 
 ```typescript
