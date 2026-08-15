@@ -158,7 +158,10 @@ export function BlogListPage() {
     const { featuredPosts, timelinePosts } = partitionBlogTimeline(posts);
 
     return (
-        <div className="space-y-8">
+        // One measure for the whole page, matching the detail view: the default theme's container
+        // is `max-w-3xl mx-auto`, so a reader moving between list and post keeps the same column.
+        // Rhythm is two steps only — space-y-12 between page sections, space-y-6 between items.
+        <div className="mx-auto w-full max-w-3xl space-y-12">
             {/* SEO Meta Tags */}
             <SEOHead
                 title="Blog - Stories, Thoughts, and Photo Journals"
@@ -171,7 +174,7 @@ export function BlogListPage() {
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div className="space-y-1.5">
                     <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
-                    <p className="max-w-3xl text-lg text-muted-foreground">
+                    <p className="text-lg text-muted-foreground">
                         Photo journals, short thoughts, articles, tutorials, and updates from our team.
                     </p>
                 </div>
@@ -240,30 +243,30 @@ export function BlogListPage() {
                 </div>
             </div>
 
-            {/* Loading */}
+            {/* Loading: same stack and rhythm as the timeline it becomes, so nothing jumps. */}
             {isLoading && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+                <div className="space-y-6" aria-busy="true">
                     <span className="sr-only">Loading posts...</span>
-                    {Array.from({ length: 6 }, (_, index) => (
-                        <div key={index} className="h-56 animate-pulse rounded-xl bg-muted/40" />
+                    {Array.from({ length: 4 }, (_, index) => (
+                        <div key={index} className="h-40 animate-pulse rounded-2xl bg-muted/40" />
                     ))}
                 </div>
             )}
 
             {/* No posts */}
             {!isLoading && posts.length === 0 && (
-                <div className="rounded-xl bg-muted/40 py-12 text-center">
+                <div className="rounded-2xl bg-muted/40 py-12 text-center">
                     <p className="text-sm text-muted-foreground">No posts found.</p>
                 </div>
             )}
 
             {/* Featured Posts */}
             {featuredPosts.length > 0 && (
-                <section className="space-y-4">
+                <section className="space-y-5">
                     <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Featured
                     </h2>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-6 md:grid-cols-2">
                         {featuredPosts.map((post) => (
                             <FeaturedPostCard key={post.id} post={post} />
                         ))}
@@ -273,11 +276,13 @@ export function BlogListPage() {
 
             {/* Chronological timeline: blurbs stay interleaved with full posts. */}
             {timelinePosts.length > 0 && (
-                <section className="space-y-4">
+                <section className="space-y-5">
                     <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Latest
                     </h2>
-                    <div className="mx-auto max-w-3xl space-y-3">
+                    {/* Mixed shapes sit here — a bordered thought, an image collage, an article card.
+                        They need more air between them than a uniform list would. */}
+                    <div className="space-y-6">
                         {/* A protected post ships no body (the API blanks it), so it falls back to
                             PostCard, which renders the lock affordance instead of an empty frame. */}
                         {timelinePosts.map((post) =>
@@ -312,7 +317,7 @@ export function BlogListPage() {
 
             {/* Pagination Controls */}
             {!isLoading && posts.length > 0 && (
-                <div className="flex items-center justify-center gap-4 pt-8">
+                <div className="flex items-center justify-center gap-4">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -348,9 +353,9 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
     return (
         <Link
             to={`/blog/${post.slug}`}
-            className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-            <Card className="h-full overflow-hidden rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
+            <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
                 {heroUrl !== '#' && (
                     <div className="relative h-48 overflow-hidden">
                         <img
@@ -371,7 +376,7 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
                             {contentTypeLabel(post.contentType)}
                         </span>
                     )}
-                    <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold tracking-tight line-clamp-2">
+                    <h3 className="mb-2 flex items-center gap-2 font-serif text-xl font-semibold leading-snug tracking-[-0.02em] line-clamp-2">
                         {post.title}
                         {post.isProtected && (
                             <Lock className="h-4 w-4 text-muted-foreground shrink-0" aria-label="Password protected" />
@@ -446,17 +451,24 @@ function PostCard({ post }: { post: BlogPost }) {
     return (
         <Link
             to={`/blog/${post.slug}`}
-            className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-            <Card className="h-full overflow-hidden rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
+            <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
                 {heroUrl !== '#' && (
-                    <div className="relative h-40 overflow-hidden">
+                    // Print-edge frame, matching the photo journal's tiles and the article hero:
+                    // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
+                    // a pale photo still has an edge, and the same slow lift on hover.
+                    <div className="relative aspect-[16/9] overflow-hidden bg-muted/40">
                         <img
                             src={heroUrl}
                             alt={post.heroImage?.alt || post.title}
                             loading="lazy"
                             decoding="async"
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+                        />
+                        <span
+                            className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
+                            aria-hidden="true"
                         />
                     </div>
                 )}
@@ -466,7 +478,9 @@ function PostCard({ post }: { post: BlogPost }) {
                             {contentTypeLabel(post.contentType)}
                         </span>
                     )}
-                    <h3 className="mb-2 flex items-center gap-2 text-[0.9375rem] font-semibold line-clamp-2">
+                    {/* Serif, like the article masthead it opens — a list of articles should look
+                        like a contents page, not a row of app tiles. */}
+                    <h3 className="mb-2 flex items-center gap-2 font-serif text-lg font-semibold leading-snug tracking-[-0.015em] line-clamp-2">
                         {post.title}
                         {post.isProtected && (
                             <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Password protected" />
