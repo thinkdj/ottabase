@@ -171,6 +171,100 @@ describe('createBlogHandlers', () => {
         } as any);
     });
 
+    /**
+     * The public shape is a contract the timeline renders against, and one a deferred column must
+     * not quietly change. These assert what a reader receives, independent of how the row was read.
+     */
+    describe('public post payloads', () => {
+        const fullPostJson = {
+            id: 'p1',
+            title: 'Kyoto, in the rain',
+            slug: 'kyoto-in-the-rain',
+            excerpt: 'A quiet blue hour.',
+            blurbText: null,
+            photoNote: 'A quiet blue hour.',
+            photoAlbum: [{ id: 'ph1', url: 'https://images.test/1.jpg' }],
+            contentType: 'photo',
+            status: 'published',
+            heroImage: { url: 'https://images.test/1.jpg' },
+            isProtected: false,
+            authorId: 'u1',
+            publishedAt: 1,
+            privateNotes: { blocks: [{ type: 'paragraph', data: { text: 'do not ship this' } }] },
+        };
+        const record = (json: Record<string, unknown> = fullPostJson) => ({
+            get: (field: string) => json[field],
+            toJson: () => ({ ...json }),
+        });
+
+        it('keeps every field the timeline renders and drops privateNotes from the list', async () => {
+            vi.mocked(Post.paginate).mockResolvedValue({
+                data: [record()],
+                page: 1,
+                perPage: 15,
+                total: 1,
+                totalPages: 1,
+            } as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts'));
+            const body = (await response.json()) as { data: Record<string, unknown>[] };
+            const post = body.data[0];
+
+            // What /blog reads: excerpt for cards, blurbText for thoughts, photoAlbum for collages.
+            expect(post).toMatchObject({
+                id: 'p1',
+                title: 'Kyoto, in the rain',
+                slug: 'kyoto-in-the-rain',
+                excerpt: 'A quiet blue hour.',
+                photoNote: 'A quiet blue hour.',
+                contentType: 'photo',
+                heroImage: { url: 'https://images.test/1.jpg' },
+            });
+            expect(post.photoAlbum).toEqual([{ id: 'ph1', url: 'https://images.test/1.jpg' }]);
+            expect('privateNotes' in post).toBe(false);
+        });
+
+        it('drops privateNotes from a single public post too', async () => {
+            vi.mocked(Post.first).mockResolvedValue(record() as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor('/posts/by-slug/kyoto-in-the-rain'),
+                'kyoto-in-the-rain',
+            );
+            const post = (await response.json()) as Record<string, unknown>;
+
+            expect(post.slug).toBe('kyoto-in-the-rain');
+            expect('privateNotes' in post).toBe(false);
+        });
+
+        it('exposes only id, name, and image for an author — never the account email', async () => {
+            const { User } = await import('@ottabase/ottaorm');
+            const author = {
+                get: (field: string) =>
+                    ({ id: 'u1', name: 'Deepak', image: 'https://images.test/a.jpg' })[field as string],
+            };
+            const whereIn = vi.spyOn(User, 'whereIn').mockResolvedValue([author] as any);
+            vi.mocked(Post.paginate).mockResolvedValue({
+                data: [record()],
+                page: 1,
+                perPage: 15,
+                total: 1,
+                totalPages: 1,
+            } as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts'));
+            const body = (await response.json()) as { data: { author: Record<string, unknown> }[] };
+
+            // The email never leaves D1: the allowlist is applied in the SELECT, not after it.
+            expect(whereIn).toHaveBeenCalledWith('id', ['u1'], { select: ['id', 'name', 'image'] });
+            expect(Object.keys(body.data[0].author).sort()).toEqual(['id', 'image', 'name']);
+            whereIn.mockRestore();
+        });
+    });
+
     it('publish-scheduled rejects with 401 before touching the database when cron auth fails', async () => {
         const connect = vi.fn(() => null);
         const handlers = createBlogHandlers<Env>({ ...baseConfig, connect, checkCronAuth: () => false });
@@ -271,6 +365,36 @@ describe('createBlogHandlers', () => {
             'A quick thought',
             expect.objectContaining({ status: 'published' }),
         );
+        validateWrite.mockRestore();
+    });
+
+    it('passes crossposts to the model on create and reports a bad link as a 400', async () => {
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'u1', organizationId: 'org-1' } },
+            securityContext: { userId: 'u1', organizationId: 'org-1', appId: 'test-app' },
+        }));
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+        const crossposts = [{ url: 'https://www.instagram.com/p/abc', origin: true }, 'https://x.com/me/status/1'];
+
+        vi.mocked(Post.createBlurb).mockResolvedValueOnce({ toJson: () => ({ id: 'b3' }) } as any);
+        const ok = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', { method: 'POST', body: JSON.stringify({ text: 'Cross-posted', crossposts }) }),
+        );
+
+        expect(ok.status).toBe(201);
+        expect(Post.createBlurb).toHaveBeenCalledWith('Cross-posted', expect.objectContaining({ crossposts }));
+
+        // The model owns the URL rules, so a bad link surfaces the same way empty text does.
+        vi.mocked(Post.createBlurb).mockRejectedValueOnce(new BlurbValidationError('not a full http(s) link'));
+        const bad = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', {
+                method: 'POST',
+                body: JSON.stringify({ text: 'Cross-posted', crossposts: ['javascript:alert(1)'] }),
+            }),
+        );
+
+        expect(bad.status).toBe(400);
         validateWrite.mockRestore();
     });
 

@@ -16,6 +16,7 @@ import { formatDate as defaultFormatDate } from '../types';
 import './BlogRenderer.css';
 import type { BlurbRendererProps, BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
 import { BlurbText, BlurbTextLinksAllowed } from './BlurbText';
+import { CrosspostsRow } from './Crossposts';
 import { PhotoJournalRenderer } from './PhotoJournalRenderer';
 
 // The prop/data interfaces are declared in the pure `./blog-renderer-types` module so that
@@ -292,9 +293,6 @@ function ArticleBlogRenderer({
             {/* Theme renderer: Header */}
             {renderers.renderHeader(filteredPost, props)}
 
-            {/* Theme renderer: Hero Image */}
-            {renderers.renderHero(filteredPost, props)}
-
             {/* Theme renderer: Series */}
             {renderers.renderSeries(filteredPost, props)}
 
@@ -303,6 +301,16 @@ function ArticleBlogRenderer({
 
             {/* Theme renderer: Metadata */}
             {renderers.renderMetadata(filteredPost, props)}
+
+            {/* Hero sits BELOW the masthead, the way a photo journal and any printed feature open:
+                the headline says what this is, the image illustrates it. Leading with the image
+                pushes the title under the fold on a phone and reads like a stock template. */}
+            {renderers.renderHero(filteredPost, props)}
+
+            {/* Crossposts sit outside the theme's metadata renderer on purpose: every theme,
+                including ones written after this feature, should credit an external original
+                rather than each having to remember to. Renders nothing when there are none. */}
+            {showMetadata && <CrosspostsRow post={filteredPost} className="mt-2" />}
 
             {/* Theme renderer: Excerpt */}
             {renderers.renderExcerpt(filteredPost, props)}

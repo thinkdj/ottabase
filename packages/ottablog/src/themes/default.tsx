@@ -9,7 +9,7 @@ import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
-import { formatDate as defaultFormatDate } from '../types';
+import { contentTypeLabel, formatDate as defaultFormatDate } from '../types';
 import type { Theme } from './types';
 
 /**
@@ -26,10 +26,10 @@ export const defaultTheme: Theme = {
         classes: {
             container: 'blog-post max-w-3xl mx-auto px-4 py-8',
             header: 'mb-8',
-            hero: 'mb-8 rounded-xl overflow-hidden shadow-lg',
-            title: 'text-3xl md:text-4xl font-bold tracking-tight mb-4 text-foreground',
+            hero: 'mb-10',
+            title: 'font-serif text-4xl sm:text-5xl font-semibold tracking-[-0.03em] leading-[1.1] text-foreground',
             metadata:
-                'flex flex-wrap items-center gap-x-4 gap-y-2 mb-8 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
+                'flex flex-wrap items-center justify-center gap-x-3 gap-y-2 mt-5 mb-10 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
             excerpt: 'text-lg text-muted-foreground mb-8 leading-relaxed',
             content: 'prose prose-slate dark:prose-invert max-w-none mb-12',
             footnotes: 'mt-12 rounded-xl bg-muted/40 p-5',
@@ -47,31 +47,54 @@ export const defaultTheme: Theme = {
         renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="editorial" />,
         renderHero: (post, props) => {
             if (!props.showHeroImage || !post.heroImage?.url) return null;
+            // Same print-edge treatment as the photo journal's frames: a barely-there radius that
+            // reads as a photographic print rather than a UI card, and a hairline over the image so
+            // a light photo still has an edge. The caption is set like a journal's, not a browser's.
             return (
-                <figure
-                    className={`${props.className || ''} ${defaultTheme.config?.classes?.hero || ''} ${post.heroImage.maxHeight ? 'overflow-hidden' : ''}`}
-                    style={post.heroImage.maxHeight ? { maxHeight: `${post.heroImage.maxHeight}px` } : undefined}
-                >
-                    <img
-                        src={sanitizeUrl(post.heroImage.url)}
-                        alt={post.heroImage.alt || post.title}
-                        className="w-full h-auto object-cover"
-                        loading="eager"
-                    />
+                <figure className={`${props.className || ''} ${defaultTheme.config?.classes?.hero || ''}`}>
+                    <div
+                        className={`relative overflow-hidden rounded-[0.2rem] bg-muted/40 ${post.heroImage.maxHeight ? '' : 'aspect-[16/9]'}`}
+                        style={post.heroImage.maxHeight ? { maxHeight: `${post.heroImage.maxHeight}px` } : undefined}
+                    >
+                        <img
+                            src={sanitizeUrl(post.heroImage.url)}
+                            alt={post.heroImage.alt || post.title}
+                            className="h-full w-full object-cover"
+                            loading="eager"
+                            decoding="async"
+                        />
+                        <span
+                            className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
+                            aria-hidden="true"
+                        />
+                    </div>
                     {post.heroImage.caption && (
-                        <figcaption className="mt-3 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <figcaption className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
                             {post.heroImage.caption}
                         </figcaption>
                     )}
                 </figure>
             );
         },
+        /**
+         * Article masthead, built like the photo journal's: a structural eyebrow, a serif display
+         * title, and a centred block that hands off to left-aligned body copy. The eyebrow carries
+         * real information — what this is and how long it takes — rather than decorating the page.
+         */
         renderTitle: (post, props) => {
             if (!props.showTitle) return null;
+            const kind = contentTypeLabel(post.contentType ?? 'blog');
+            const minutes = post.readingTimeMinutes;
             return (
-                <h1 className={`${props.className || ''} ${defaultTheme.config?.classes?.title || ''}`}>
-                    {post.title}
-                </h1>
+                <div className="mx-auto max-w-2xl text-center">
+                    <p className="mb-4 text-[0.625rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                        {kind}
+                        {minutes ? ` · ${minutes} min read` : ''}
+                    </p>
+                    <h1 className={`${props.className || ''} ${defaultTheme.config?.classes?.title || ''}`}>
+                        {post.title}
+                    </h1>
+                </div>
             );
         },
         renderMetadata: (post, props) => {
@@ -111,7 +134,8 @@ export const defaultTheme: Theme = {
                             {formatDate(post.publishedAt)}
                         </time>
                     )}
-                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
+                    {/* Reading time lives in the masthead eyebrow now — repeating it here read as
+                        two different facts rather than one. */}
                     {post.isFeatured && (
                         <span className="rounded-full bg-background px-2.5 py-0.5 text-muted-foreground ring-1 ring-border">
                             Featured
