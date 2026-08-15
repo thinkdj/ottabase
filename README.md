@@ -124,7 +124,7 @@ ottabase/
 │   ├── brand-engine/     # Design tokens, preset expansion, CSS injection
 │   ├── brand-engine-react/ # BrandProvider, LayoutResolver, useBrand()
 │   ├── ottalayout/       # Layout types, presets, path resolver, React slots
-│   ├── ottablog/         # Blog/CMS (Post, Category, Tag, Series, Studio)
+│   ├── ottablog/         # Blog/CMS (articles, blurbs, photo journals, taxonomy, series, Studio)
 │   ├── email/            # Email sending (Resend, SES, MailChannels, SMTP)
 │   ├── cron/             # Cron handlers (static + DB scheduler)
 │   ├── logger/           # Structured logging (multi-transport)
@@ -314,6 +314,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts    |
 | `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                     |
 | `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache     |
+| `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads  |
 | `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)        |
 | `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link |
 | `@ottabase/rbac`       | Role-based access control with per-org KV caching                        |

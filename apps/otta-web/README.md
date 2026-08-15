@@ -11,12 +11,14 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **OttaORM** - Fat models with automated migrations
 - **Owner Safety Guardrail** - Admin member APIs prevent demoting, deactivating, or removing the last active
   organization owner
-- **Ottablog CMS** - Feature-rich content package with rich content blocks and CMS features
+- **Ottablog CMS** - Rich articles, short thoughts/blurbs, and photo-first travel journals in one chronological timeline
 - **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
 - **Mantine + shadcn/ui** - Flexible UI component libraries
 - **Jotai** - Global state management
+- **Three.js landing hero** - A theme-aware, drag-spinnable WebGL network scene that respects reduced-motion
+  preferences; the rest of the home page remains rendered from its Editor.js blocks
 
 Worker runtime note: database/model/RLS setup is cached once per Cloudflare isolate and reused across later requests, so
 the worker avoids rebuilding OttaORM state on every request. Static asset requests skip that setup entirely.
@@ -33,7 +35,7 @@ pnpm install
 # Start Vite dev server (fast)
 pnpm dev
 
-# OR start with Cloudflare Workers (full features)
+# OR start with the local Cloudflare Workers runtime
 pnpm dev:worker
 
 # Initialize database (creates all tables automatically)
@@ -337,7 +339,7 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 | Command           | Description                                             |
 | ----------------- | ------------------------------------------------------- |
 | `pnpm dev`        | Vite dev server (fast local DX)                         |
-| `pnpm dev:worker` | Wrangler dev with Cloudflare bindings                   |
+| `pnpm dev:worker` | Wrangler dev with local Cloudflare binding simulations  |
 | `pnpm build`      | Build for production                                    |
 | `pnpm preview`    | Build + run on `workerd` via Wrangler (Cloudflare-like) |
 | `pnpm deploy`     | Build + deploy Worker + assets to Cloudflare            |
@@ -460,7 +462,8 @@ const todos = await Todo.all();
 ### Local Development
 
 ```bash
-# No Cloudflare account needed!
+# No Cloudflare account needed. Remote bindings (Workers AI and rate limiting)
+# are disabled locally; use a deployed environment to exercise those services.
 # Local D1/KV/R2 stored in .wrangler/state/v3/
 pnpm dev:worker
 ```

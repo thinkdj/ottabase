@@ -51,7 +51,7 @@
         "dev:kill": "node packages/scripts/bin/kill-ports.cjs",
         "dev:ui": "turbo dev --filter=@ottabase/otta-web --filter=@ottabase/ui-*",
         "dev:pkg": "turbo dev --filter=@ottabase/*",
-        "dev:full": "pnpm i & pnpm build:pkg & pnpm test & pnpm dev",
+        "dev:full": "pnpm i && pnpm build:pkg && pnpm test && pnpm dev",
         "build": "turbo build --filter=./packages/*... --filter=@ottabase/otta-web...",
         "build:app": "turbo build --filter=@ottabase/otta-web...",
         "build:pkg": "turbo build --filter=./packages/*...",

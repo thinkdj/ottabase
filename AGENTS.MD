@@ -47,7 +47,11 @@ Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Wor
   (lint-enforced — see "Enforced by Lint").
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
-  invisible to CI.
+  invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
+  `comments`, `shortlinks`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
+  Adding one there emits a `dist/` nothing imports — and for any package with module-level singletons that dist becomes
+  a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its source is still compiled (and
+  therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
@@ -508,8 +512,8 @@ import { useServerTable } from '@ottabase/ui-datatable'; // OttaORM server-side 
 
 ### @ottabase/premium
 
-Premium Packages framework: manifests, offline license verification, entitlements, lifecycle hooks, gated route mounting and
-a drop-in admin surface. Inert until a package is registered — an app that sells nothing pays nothing.
+Premium Packages framework: manifests, offline license verification, entitlements, lifecycle hooks, gated route mounting
+and a drop-in admin surface. Inert until a package is registered — an app that sells nothing pays nothing.
 
 ```typescript
 // Install (the whole job): apps/*/ottabase/config.premium.ts
