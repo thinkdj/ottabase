@@ -16,6 +16,9 @@ interface OrbitalNode {
     tilt: number;
 }
 
+/** Both negations share one class so the pair keeps reading as a matched set. */
+const HERO_SUBLINE = 'font-normal text-black dark:text-white text-3xl sm:text-4xl lg:text-5xl';
+
 const FALLBACK_PRIMARY = '221 83% 53%';
 const FALLBACK_RING = '262 83% 58%';
 const FALLBACK_FOREGROUND = '222 47% 11%';
@@ -334,13 +337,14 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                         className="leading-relaxed max-w-xl font-bold bg-gradient-to-r from-primary via-primary to-foreground bg-clip-text text-transparent tracking-[-0.065em] text-foreground text-5xl sm:text-6xl lg:text-7xl"
                     >
                         Ship your thing.
-                        <span className="block font-normal text-black dark:text-white text-3xl sm:text-4xl lg:text-5xl">
-                            Not the thing before the thing.
+                        <span className={`block ${HERO_SUBLINE}`}>
+                            Not the thing before the thing.{' '}
+                            <span className={`inline ${HERO_SUBLINE}`}>Or the thing after it.</span>
                         </span>
                     </h1>
                     <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                        A Cloudflare-native foundation for production SaaS, apps, and content sites — with tenancy,
-                        auth, RLS, theming, media, and 50+ packages already wired together.
+                        Tenancy, auth, RLS, theming, media, and 50+ packages, wired together on a Cloudflare-native
+                        foundation. You bring the part only you can build.
                     </p>
                     <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                         <Button asChild size="lg" className="group gap-2 rounded-full px-6 shadow-lg shadow-primary/20">
@@ -372,8 +376,8 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                     <HeroStat icon={<ShieldCheck className="h-4 w-4" />} label="Tenant-safe" detail="RLS in the ORM" />
                     <HeroStat
                         icon={<Boxes className="h-4 w-4" />}
-                        label="Build faster"
-                        detail="50+ connected packages"
+                        label="Already wired"
+                        detail="50+ packages, one install"
                     />
                 </ul>
             </div>

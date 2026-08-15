@@ -20,10 +20,18 @@ describe('HomePage (block content smoke)', () => {
         const text = container.textContent ?? '';
 
         // Dedicated Three.js hero remains useful even when WebGL is unavailable.
-        expect(screen.getByRole('heading', { level: 1, name: /ship the product/i })).toBeTruthy();
+        expect(
+            screen.getByRole('heading', {
+                level: 1,
+                name: /ship your thing\..*not the thing before the thing\..*or the thing after it\./i,
+            }),
+        ).toBeTruthy();
         expect(text).toContain('Cloudflare-native foundation');
+        // The eyebrow is the only consumer of the appName prop.
+        expect(text).toContain('Ottabase / EDGE-NATIVE FOUNDATION');
         expect(screen.getByText('Global by default')).toBeTruthy();
         expect(screen.getByText('Tenant-safe')).toBeTruthy();
+        expect(screen.getByText('Already wired')).toBeTruthy();
         expect(screen.getByRole('link', { name: /start building/i })).toBeTruthy();
         expect(screen.getByRole('link', { name: /explore live demos/i })).toBeTruthy();
 
