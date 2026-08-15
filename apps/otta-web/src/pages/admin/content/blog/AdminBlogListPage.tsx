@@ -103,15 +103,11 @@ function getPublicUrl(slug: string, contentType: ContentType): string {
 }
 
 /** Content type tabs - all singular for consistency */
+// Derived, never hand-listed: the package owns the taxonomy, so a new content type
+// gets a tab for free and a tab can never disagree with the badge or the New menu.
 const CONTENT_TYPE_TABS: Array<{ value: ContentType | 'all'; label: string }> = [
     { value: 'all', label: 'All' },
-    { value: 'blog', label: 'Blog Post' },
-    { value: 'blurb', label: 'Blurb' },
-    { value: 'photo', label: 'Photo Journal' },
-    { value: 'changelog', label: 'Changelog' },
-    { value: 'docs', label: 'Doc' },
-    { value: 'news', label: 'News' },
-    { value: 'announcement', label: 'Announcement' },
+    ...Object.entries(CONTENT_TYPES).map(([value, { label }]) => ({ value: value as ContentType, label })),
 ];
 
 export function AdminBlogListPage() {
@@ -421,7 +417,7 @@ export function AdminBlogListPage() {
             <section className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-[0.9375rem] font-semibold">
-                        {CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label || 'Content'}
+                        {contentTypeFilter === 'all' ? 'Content' : contentTypeLabel(contentTypeFilter)}
                     </h2>
                     <span className="inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                         {totalCount} item{totalCount !== 1 ? 's' : ''}
@@ -452,9 +448,9 @@ export function AdminBlogListPage() {
                                     }
                                 >
                                     <Plus className="mr-2 h-4 w-4" />
-                                    {contentTypeFilter !== 'all'
-                                        ? `Create ${CONTENT_TYPE_TABS.find((t) => t.value === contentTypeFilter)?.label ?? 'Post'}`
-                                        : 'Create Post'}
+                                    {contentTypeFilter === 'all'
+                                        ? 'Create Post'
+                                        : `Create ${contentTypeLabel(contentTypeFilter)}`}
                                 </Link>
                             </Button>
                         )}

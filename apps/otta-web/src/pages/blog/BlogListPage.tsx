@@ -17,11 +17,35 @@ import {
 } from '@ottabase/ottablog';
 import { BlurbRenderer, PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, Input, NativeSelect, NativeSelectOption } from '@ottabase/ui-shadcn';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    Input,
+    NativeSelect,
+    NativeSelectOption,
+} from '@ottabase/ui-shadcn';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link } from '@tanstack/react-router';
-import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Clock, Lock, Plus, Search, Tag, User } from 'lucide-react';
+import {
+    ArrowRight,
+    Calendar,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Lock,
+    Plus,
+    Search,
+    Tag,
+    User,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { partitionBlogTimeline } from './blogTimeline';
 
@@ -144,7 +168,7 @@ export function BlogListPage() {
             />
 
             {/* Header */}
-            <div className="space-y-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div className="space-y-1.5">
                     <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
                     <p className="max-w-3xl text-lg text-muted-foreground">
@@ -152,26 +176,24 @@ export function BlogListPage() {
                     </p>
                 </div>
                 {canWrite && (
-                    <div className="flex flex-wrap gap-2">
-                        <Button asChild>
-                            <Link to="/studio/new" search={{ contentType: 'blurb' }}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="shrink-0">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Share a thought
-                            </Link>
-                        </Button>
-                        <Button variant="outline" asChild>
-                            <Link to="/studio/new" search={{ contentType: 'photo' }}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                New photo journal
-                            </Link>
-                        </Button>
-                        <Button variant="ghost" asChild>
-                            <Link to="/studio/new">
-                                <Plus className="mr-2 h-4 w-4" />
-                                New article
-                            </Link>
-                        </Button>
-                    </div>
+                                Write
+                                <ChevronDown className="ml-1 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
+                                <DropdownMenuItem key={value} asChild>
+                                    <Link to="/studio/new" search={{ contentType: value }}>
+                                        {label}
+                                    </Link>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )}
             </div>
 
@@ -266,7 +288,8 @@ export function BlogListPage() {
                                     key={post.id}
                                     to={`/blog/${post.slug}`}
                                     aria-label={`Open thought from ${post.author?.name || 'author'}`}
-                                    className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
+                                    className="group block rounded-l-sm rounded-r-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
                                 </Link>
