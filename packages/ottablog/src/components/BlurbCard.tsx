@@ -2,6 +2,7 @@ import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { formatDate as defaultFormatDate } from '../types';
 import type { BlogPostData, BlurbRendererProps } from './blog-renderer-types';
 import { BlurbText } from './BlurbText';
+import { Crossposts } from './Crossposts';
 
 export interface BlurbCardProps {
     post: BlogPostData;
@@ -20,12 +21,16 @@ export interface BlurbCardProps {
  * Both tones lead with the words and put the byline under them: a blurb has no title, so
  * metadata above the text would be standing in for one. The date comes first in the byline
  * because a dated entry with no title is a journal entry, and the date is its identity.
+ *
+ * Crossposts land at the end of that byline, split by direction: "originally on x.com" is a
+ * credit and belongs next to the author, "also on …" is a set of pointers outward.
  */
 export function BlurbCard({ post, props, tone = 'editorial' }: BlurbCardProps) {
     const formatDate = props.formatDate || defaultFormatDate;
     const detail = props.variant === 'detail';
     const editorial = tone === 'editorial';
-    const hasByline = Boolean(post.publishedAt || post.author?.name);
+
+    const hasByline = Boolean(post.publishedAt || post.author?.name || post.crossposts?.length);
 
     const shell = editorial
         ? `rounded-l-sm rounded-r-2xl border border-l-2 border-border/60 border-l-primary/40 bg-card transition-colors duration-normal hover:border-l-primary ${
@@ -61,6 +66,7 @@ export function BlurbCard({ post, props, tone = 'editorial' }: BlurbCardProps) {
                             {post.author.name}
                         </span>
                     )}
+                    <Crossposts post={post} />
                 </div>
             )}
         </div>

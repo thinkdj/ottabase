@@ -3,7 +3,7 @@
  *
  * Central type definitions for blog-related entities to avoid duplication across pages.
  */
-import type { ContentType, PhotoJournalItem, PostStatus } from '@ottabase/ottablog';
+import type { ContentType, PhotoJournalItem, PostCrosspost, PostStatus } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 
 /**
@@ -24,6 +24,8 @@ export interface BlogPost {
     slug: string;
     excerpt: string | null;
     blurbText: string | null;
+    /** The same post on Instagram, X, Facebook — one entry may be flagged as the original. */
+    crossposts: PostCrosspost[] | null;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;
     content: OutputData | null;
@@ -83,6 +85,8 @@ export interface BlogPostListItem {
     slug: string;
     excerpt: string | null;
     blurbText: string | null;
+    /** The same post on Instagram, X, Facebook — one entry may be flagged as the original. */
+    crossposts: PostCrosspost[] | null;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;
     contentType: ContentType;

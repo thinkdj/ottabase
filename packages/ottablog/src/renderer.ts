@@ -24,6 +24,8 @@
 export { BlurbRenderer, BlurbText, BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
 export { BlurbCard } from './components/BlurbCard';
 export type { BlurbCardProps } from './components/BlurbCard';
+export { Crossposts, CrosspostsRow } from './components/Crossposts';
+export type { CrosspostsProps } from './components/Crossposts';
 export { PhotoJournalGallery } from './components/PhotoJournalGallery';
 export type { PhotoJournalGalleryProps } from './components/PhotoJournalGallery';
 export { PhotoJournalRenderer } from './components/PhotoJournalRenderer';

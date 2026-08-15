@@ -7,12 +7,15 @@ import {
     createBlurbTitle,
     createPhotoJournalExcerpt,
     createPhotoJournalTitle,
+    crosspostLabel,
     extractExcerpt,
     formatDate,
     formatShortDate,
     generateSlug,
     normalizeBlurbText,
+    MAX_CROSSPOSTS,
     PHOTO_JOURNAL_MAX_ITEMS,
+    validateCrossposts,
     validatePhotoJournalItems,
     validatePhotoJournalNote,
     validateBlurbText,
@@ -47,6 +50,50 @@ describe('ottablog helpers', () => {
             expect(() => validateBlurbText('   ')).toThrow('required');
             expect(() => validateBlurbText('x'.repeat(BLURB_MAX_LENGTH + 1))).toThrow('characters or fewer');
             expect(validateBlurbText('hello')).toBe('hello');
+        });
+    });
+
+    describe('crossposts', () => {
+        it('accepts bare strings, keeps order, and labels by host', () => {
+            const items = validateCrossposts(['https://www.instagram.com/p/abc', { url: 'https://x.com/me/status/1' }]);
+            expect(items).toEqual([{ url: 'https://www.instagram.com/p/abc' }, { url: 'https://x.com/me/status/1' }]);
+            expect(crosspostLabel(items![0].url)).toBe('instagram.com');
+            expect(crosspostLabel(items![1].url)).toBe('x.com');
+        });
+
+        it('drops blank rows and duplicates, and treats an empty result as no links', () => {
+            expect(validateCrossposts([{ url: '  ' }, { url: 'https://x.com/a' }, { url: 'https://x.com/a' }])).toEqual(
+                [{ url: 'https://x.com/a' }],
+            );
+            expect(validateCrossposts([{ url: '' }])).toBeNull();
+            expect(validateCrossposts([])).toBeNull();
+            expect(validateCrossposts(null)).toBeNull();
+        });
+
+        it('keeps at most one origin, so the post can never claim two first homes', () => {
+            expect(validateCrossposts([{ url: 'https://x.com/a', origin: true }, { url: 'https://fb.com/b' }])).toEqual(
+                [{ url: 'https://x.com/a', origin: true }, { url: 'https://fb.com/b' }],
+            );
+            expect(() =>
+                validateCrossposts([
+                    { url: 'https://x.com/a', origin: true },
+                    { url: 'https://fb.com/b', origin: true },
+                ]),
+            ).toThrow('Only one link');
+        });
+
+        it('rejects anything that is not an absolute http(s) link', () => {
+            expect(() => validateCrossposts([{ url: 'javascript:alert(1)' }])).toThrow('not a full http(s) link');
+            expect(() => validateCrossposts([{ url: 'instagram.com/p/abc' }])).toThrow('not a full http(s) link');
+            expect(() => validateCrossposts([{ url: '/blog/local' }])).toThrow('not a full http(s) link');
+            expect(() => validateCrossposts('https://x.com/a')).toThrow('must be a list');
+            expect(() =>
+                validateCrossposts(Array.from({ length: MAX_CROSSPOSTS + 1 }, (_, i) => `https://x.com/${i}`)),
+            ).toThrow(`Up to ${MAX_CROSSPOSTS}`);
+        });
+
+        it('returns an empty label rather than throwing for an unparseable URL', () => {
+            expect(crosspostLabel('not a url')).toBe('');
         });
     });
 

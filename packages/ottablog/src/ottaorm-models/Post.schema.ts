@@ -3,7 +3,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { PhotoJournalItem } from '../types';
+import type { PhotoJournalItem, PostCrosspost } from '../types';
 
 export const postsTable = sqliteTable(
     'posts',
@@ -23,6 +23,11 @@ export const postsTable = sqliteTable(
 
         // First-class short-form text for blurbs/thoughts. Plain text by design.
         blurbText: text('blurb_text'),
+
+        // The same content living elsewhere: an Instagram post, a tweet, a Facebook post.
+        // One entry may be flagged `origin` (it appeared THERE first and this is the copy);
+        // with none flagged, this post is the original and the rest are syndicated copies.
+        crossposts: text('crossposts', { mode: 'json' }).$type<PostCrosspost[]>(),
 
         // Photo-first journal content: a short field note plus an ordered media collection.
         photoNote: text('photo_note'),

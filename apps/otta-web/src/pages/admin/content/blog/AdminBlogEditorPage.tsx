@@ -4,6 +4,7 @@
  * Full-featured blog post editor with OttaEditor integration,
  * hero image upload, SEO settings, and all post fields.
  */
+import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
@@ -23,6 +24,7 @@ import {
     type ContentType,
     type HeroImage,
     type PhotoJournalItem,
+    type PostCrosspost,
     type PostStatus,
     type SeoMeta,
 } from '@ottabase/ottablog';
@@ -109,6 +111,7 @@ interface BlogPost {
     slug: string;
     excerpt: string | null;
     blurbText: string | null;
+    crossposts: PostCrosspost[] | null;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;
     content: OutputData | null;
@@ -321,6 +324,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         initialData?.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '',
     );
 
+    // The same post on Instagram/X/Facebook, one optionally flagged as where it started.
+    const [crossposts, setCrossposts] = useState<PostCrosspost[]>(initialData?.crossposts ?? []);
+
     // Hero image state
     const [heroImage, setHeroImage] = useState<HeroImage | null>(initialData?.heroImage || null);
     const [isUploadingHero, setIsUploadingHero] = useState(false);
@@ -525,6 +531,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setIsProtected(initialData.isProtected ?? false);
         setPasswordHint(initialData.passwordHint ?? '');
         setPublishAt(initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '');
+        setCrossposts(initialData.crossposts ?? []);
         setHeroImage(initialData.heroImage ?? null);
         setSeoTitle(initialData.seoMeta?.title ?? '');
         setSeoDescription(initialData.seoMeta?.description ?? '');
@@ -573,6 +580,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             (seriesOrder ?? '') === (initialData.seriesOrder ?? '') &&
             (maxVersionsToKeep ?? '') === (initialData.maxVersionsToKeep ?? '') &&
             JSON.stringify(heroImage) === JSON.stringify(initialData.heroImage) &&
+            crosspostsKey(crossposts) === crosspostsKey(initialData.crossposts) &&
             JSON.stringify({
                 title: seoTitle,
                 description: seoDescription,
@@ -605,6 +613,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         seriesId,
         seriesOrder,
         maxVersionsToKeep,
+        crossposts,
         heroImage,
         seoTitle,
         seoDescription,
@@ -1038,6 +1047,8 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 content: content || undefined,
                 contentType,
                 status: resolvedStatus,
+                // Empty clears the column; the server rejects anything that is not a real URL.
+                crossposts: cleanCrossposts(crossposts),
                 heroImage,
                 seoMeta,
                 meta: meta && Object.keys(meta).length > 0 ? meta : null,
@@ -1532,6 +1543,8 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             />
                         </CardContent>
                     </Card>
+
+                    <CrosspostsField value={crossposts} onChange={setCrossposts} noun="post" />
                 </div>
 
                 {/* Right Column - Settings */}

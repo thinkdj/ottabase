@@ -122,8 +122,22 @@ export interface ReadingTime {
 /** Maximum length of a blurb. Blurbs are intentionally short-form. */
 export const BLURB_MAX_LENGTH = 1000;
 
+/**
+ * Base for every expected author-input failure on post content.
+ *
+ * Callers catch THIS rather than listing subclasses: the write boundaries (the blog routes and
+ * generic CRUD) turn any of them into a 400, so a new validator must not require every catch
+ * site to be found and edited before its error stops being a 500.
+ */
+export class ContentValidationError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ContentValidationError';
+    }
+}
+
 /** Expected author-input failure that may safely be returned as a 4xx response. */
-export class BlurbValidationError extends Error {
+export class BlurbValidationError extends ContentValidationError {
     constructor(message: string) {
         super(message);
         this.name = 'BlurbValidationError';
@@ -149,6 +163,96 @@ export function validateBlurbText(value: unknown): string {
     return text;
 }
 
+/**
+ * The same content living somewhere else.
+ *
+ * Modelled as one list rather than a "source URL", because the two directions people actually
+ * publish in are the same relationship seen from opposite ends: you either wrote it here and
+ * pushed copies to Instagram/X/Facebook (`origin` unset — this post is the original), or you
+ * wrote it there and this is the copy (`origin: true` on that one entry). A single URL field
+ * could only ever express one of those, and never the common case of three copies at once.
+ */
+export interface PostCrosspost {
+    /** Absolute http(s) permalink to the copy. */
+    url: string;
+    /** Set on the entry this post was copied FROM. At most one per post; usually none. */
+    origin?: boolean;
+}
+
+/** Enough for the platforms anyone actually syndicates to, low enough to bound the payload. */
+export const MAX_CROSSPOSTS = 10;
+export const CROSSPOST_URL_MAX_LENGTH = 2048;
+
+/** Expected author-input failure on the crosspost list of any content type. */
+export class CrosspostValidationError extends ContentValidationError {
+    constructor(message: string) {
+        super(message);
+        this.name = 'CrosspostValidationError';
+    }
+}
+
+/**
+ * Validate one crosspost permalink. Absolute HTTP(S) only — unlike a photo URL this always points
+ * off-site and is rendered with `target="_blank"`, so an app-relative value is a bug, not a
+ * shorthand. Returns null for blank, which the caller drops.
+ */
+function crosspostUrl(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string') throw new CrosspostValidationError('Each link must be a URL');
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.length > CROSSPOST_URL_MAX_LENGTH) {
+        throw new CrosspostValidationError(`Links must be ${CROSSPOST_URL_MAX_LENGTH} characters or fewer`);
+    }
+
+    const sanitized = sanitizeUrl(trimmed);
+    if (sanitized === '#' || !/^https?:\/\/[^/]/i.test(sanitized)) {
+        throw new CrosspostValidationError(`"${trimmed}" is not a full http(s) link`);
+    }
+    return sanitized;
+}
+
+/**
+ * Validate the crosspost list. Accepts bare strings as a shorthand for `{ url }` so an API caller
+ * can send `["https://…"]`. Blank rows are dropped rather than rejected — the editor always has a
+ * trailing empty one — and duplicates collapse to the first occurrence.
+ */
+export function validateCrossposts(value: unknown): PostCrosspost[] | null {
+    if (value === undefined || value === null) return null;
+    if (!Array.isArray(value)) throw new CrosspostValidationError('Links must be a list');
+    if (value.length > MAX_CROSSPOSTS) {
+        throw new CrosspostValidationError(`Up to ${MAX_CROSSPOSTS} links per post`);
+    }
+
+    const seen = new Set<string>();
+    const items: PostCrosspost[] = [];
+    for (const raw of value) {
+        const entry = typeof raw === 'string' ? { url: raw } : raw;
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+            throw new CrosspostValidationError('Each link must be a URL');
+        }
+        const url = crosspostUrl((entry as Record<string, unknown>).url);
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
+        items.push((entry as Record<string, unknown>).origin ? { url, origin: true } : { url });
+    }
+
+    if (items.filter((item) => item.origin).length > 1) {
+        throw new CrosspostValidationError('Only one link can be the original');
+    }
+    return items.length > 0 ? items : null;
+}
+
+/** Host shown for a crosspost, e.g. `instagram.com`. Empty when the URL is unusable. */
+export function crosspostLabel(url: string): string {
+    try {
+        return new URL(url).hostname.replace(/^www\./i, '');
+    } catch {
+        return '';
+    }
+}
+
 /** Internal title used by feeds, admin search, and document metadata. */
 export function createBlurbTitle(value: string, maxLength = 120): string {
     const firstLine = normalizeBlurbText(value).split('\n')[0].replace(/\s+/g, ' ').trim();
@@ -166,11 +270,54 @@ export const PHOTO_JOURNAL_MAX_ITEMS = 60;
 export const PHOTO_JOURNAL_NOTE_MAX_LENGTH = 2000;
 
 /** Expected author-input failure that may safely be exposed as a 4xx response. */
-export class PhotoJournalValidationError extends Error {
+export class PhotoJournalValidationError extends ContentValidationError {
     constructor(message: string) {
         super(message);
         this.name = 'PhotoJournalValidationError';
     }
+}
+
+/**
+ * Serialized ceiling for a post body. D1 caps a whole row, and the body shares that row with the
+ * album, the note, and every other column, so the body gets a fraction rather than the lot.
+ * Generous for prose: images live in the body as URLs, never as inline data.
+ */
+export const POST_CONTENT_MAX_BYTES = 512 * 1024;
+
+/** Expected author-input failure on a post body. */
+export class PostContentValidationError extends ContentValidationError {
+    constructor(message: string) {
+        super(message);
+        this.name = 'PostContentValidationError';
+    }
+}
+
+/**
+ * Shape- and size-check a post body at the write boundary.
+ *
+ * Only the envelope is checked: the blocks themselves are the editor's contract and are
+ * sanitized at render. This exists so a malformed or unbounded body fails with a 400 instead of
+ * reaching the renderer as an unrenderable object, or the database as a row it cannot store.
+ *
+ * Deliberately NOT photo-journal-specific. `content` is one column shared by every content type,
+ * written by both the model's own routes and generic CRUD, so a guard that only covered journals
+ * would leave the same column unguarded on every other path into it.
+ */
+export function validatePostContent(value: unknown): EditorJSData | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'object' || Array.isArray(value) || !Array.isArray((value as EditorJSData).blocks)) {
+        throw new PostContentValidationError('Post content must be editor content with a blocks array');
+    }
+
+    // Bytes, not characters: what the database stores is UTF-8, and a body of emoji or CJK is
+    // twice the bytes of its length.
+    const bytes = new TextEncoder().encode(JSON.stringify(value)).length;
+    if (bytes > POST_CONTENT_MAX_BYTES) {
+        throw new PostContentValidationError(
+            `Post content must be ${Math.floor(POST_CONTENT_MAX_BYTES / 1024)}KB or smaller`,
+        );
+    }
+    return value as EditorJSData;
 }
 
 function optionalPhotoText(value: unknown, label: string, maxLength: number): string | null {

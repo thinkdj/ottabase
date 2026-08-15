@@ -8,7 +8,15 @@
  */
 
 import type React from 'react';
-import type { ContentType, EditorJSData, HeroImage, PhotoJournalItem, PostAuthor, SeoMeta } from '../types';
+import type {
+    ContentType,
+    EditorJSData,
+    HeroImage,
+    PhotoJournalItem,
+    PostAuthor,
+    PostCrosspost,
+    SeoMeta,
+} from '../types';
 
 export interface BlogPostData {
     id: string;
@@ -17,6 +25,8 @@ export interface BlogPostData {
     excerpt?: string | null;
     /** First-class plain-text body for short-form thoughts. */
     blurbText?: string | null;
+    /** The same post elsewhere — Instagram, X, Facebook. See `PostCrosspost`. */
+    crossposts?: PostCrosspost[] | null;
     /** Optional short introduction for a photo-first post. */
     photoNote?: string | null;
     /** Ordered photographs for a photo journal. */

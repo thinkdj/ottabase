@@ -1,7 +1,14 @@
+import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { useSession } from '@/lib/auth';
-import { BLURB_MAX_LENGTH, createBlurbTitle, POST_STATUSES, type PostStatus } from '@ottabase/ottablog';
+import {
+    BLURB_MAX_LENGTH,
+    createBlurbTitle,
+    POST_STATUSES,
+    type PostCrosspost,
+    type PostStatus,
+} from '@ottabase/ottablog';
 import { BlurbRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
@@ -37,6 +44,7 @@ export interface BlurbEditorPost {
     title: string;
     slug: string;
     blurbText: string | null;
+    crossposts: PostCrosspost[] | null;
     excerpt: string | null;
     status: PostStatus;
     allowComments: boolean;
@@ -49,6 +57,7 @@ export interface BlurbEditorPost {
 
 interface BlurbPayload {
     text: string;
+    crossposts: PostCrosspost[];
     status: PostStatus;
     allowComments: boolean;
     publishAt: number | null;
@@ -73,6 +82,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
     const { user } = useSession();
     const isEditMode = Boolean(initialData);
     const [text, setText] = useState(initialData?.blurbText ?? initialData?.excerpt ?? '');
+    const [crossposts, setCrossposts] = useState<PostCrosspost[]>(initialData?.crossposts ?? []);
     const [status, setStatus] = useState<PostStatus>(initialData?.status ?? 'draft');
     const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
     const [publishAt, setPublishAt] = useState(
@@ -127,16 +137,18 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
     }, [initialData, tagLinks, tagLinksData]);
     const isSaving = createBlurb.isPending || updateBlurb.isPending;
 
+    const crosspostsJson = crosspostsKey(crossposts);
     const isDirty = useMemo(() => {
-        if (!initialData) return text.trim().length > 0 || selectedTagIds.length > 0;
+        if (!initialData) return text.trim().length > 0 || crosspostsJson !== '[]' || selectedTagIds.length > 0;
         return (
             text !== (initialData.blurbText ?? initialData.excerpt ?? '') ||
+            crosspostsJson !== crosspostsKey(initialData.crossposts) ||
             status !== initialData.status ||
             allowComments !== initialData.allowComments ||
             publishAt !== (initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '') ||
             JSON.stringify([...selectedTagIds].sort()) !== JSON.stringify(tagLinks.map((link) => link.tagId).sort())
         );
-    }, [allowComments, initialData, publishAt, selectedTagIds, status, tagLinks, text]);
+    }, [allowComments, crosspostsJson, initialData, publishAt, selectedTagIds, status, tagLinks, text]);
     const { blocker, allowNavigateRef } = useEditorLeaveGuard(isDirty);
 
     const handleSave = async (publishNow: boolean) => {
@@ -159,6 +171,8 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
 
         const payload: BlurbPayload = {
             text: normalized,
+            // An empty list clears the links; the server rejects anything that is not a real URL.
+            crossposts: cleanCrossposts(crossposts),
             status: resolvedStatus,
             allowComments,
             publishAt: resolvedStatus === 'scheduled' ? publishAtValue : null,
@@ -268,6 +282,8 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                         </CardContent>
                     </Card>
 
+                    <CrosspostsField value={crossposts} onChange={setCrossposts} noun="thought" />
+
                     {previewText && (
                         <section aria-labelledby="blurb-preview-title">
                             <h2
@@ -284,6 +300,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                                     title: createBlurbTitle(previewText),
                                     slug: initialData?.slug ?? 'preview',
                                     blurbText: previewText,
+                                    crossposts: cleanCrossposts(crossposts),
                                     excerpt: previewText,
                                     contentType: 'blurb',
                                     status,
