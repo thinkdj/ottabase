@@ -43,6 +43,80 @@ describe('BlogRenderer', () => {
         });
     });
 
+    describe('Blurb crossposts', () => {
+        const crosspostPost = () =>
+            createMockPost({
+                contentType: 'blurb',
+                blurbText: 'Also went out on the socials.',
+                content: null,
+                crossposts: [
+                    { url: 'https://www.instagram.com/p/abc', origin: true },
+                    { url: 'https://x.com/me/status/1' },
+                    { url: 'https://facebook.com/me/posts/2' },
+                ],
+            });
+
+        it('splits the byline into where it came from and where copies went', async () => {
+            const { container } = render(<BlurbRenderer post={crosspostPost()} variant="detail" />);
+
+            await waitFor(() => expect(container.textContent).toContain('originally on'));
+            expect(container.textContent).toContain('instagram.com');
+            expect(container.textContent).toContain('also on');
+            // Microformats: the origin is this post's u-url, the copies are u-syndication.
+            expect(container.querySelector('a.u-url')?.getAttribute('href')).toBe('https://www.instagram.com/p/abc');
+            expect(container.querySelectorAll('a.u-syndication')).toHaveLength(2);
+        });
+
+        it('degrades to plain text in the timeline, where the card is already a link', async () => {
+            const { container } = render(<BlurbRenderer post={crosspostPost()} variant="timeline" />);
+
+            await waitFor(() => expect(container.textContent).toContain('instagram.com'));
+            expect(container.querySelector('a')).toBeNull();
+        });
+
+        it('shows the same row on an article and a photo journal, not just a blurb', async () => {
+            const links = [{ url: 'https://x.com/me/status/1' }];
+
+            const article = render(
+                <BlogRenderer post={createMockPost({ crossposts: links })} disableHooks />,
+            ).container;
+            await waitFor(() => expect(article.querySelector('.blog-crossposts')).not.toBeNull());
+            expect(article.querySelector('a.u-syndication')?.getAttribute('href')).toBe('https://x.com/me/status/1');
+
+            const journal = render(
+                <BlogRenderer
+                    post={createMockPost({
+                        contentType: 'photo',
+                        content: null,
+                        photoAlbum: [{ id: 'p1', url: 'https://images.test/1.jpg' }],
+                        crossposts: links,
+                    })}
+                    disableHooks
+                />,
+            ).container;
+            await waitFor(() => expect(journal.querySelector('.blog-crossposts')).not.toBeNull());
+            expect(journal.querySelector('a.u-syndication')?.getAttribute('href')).toBe('https://x.com/me/status/1');
+        });
+
+        it('renders no crosspost row at all when a post has none', () => {
+            const { container } = render(<BlogRenderer post={createMockPost()} disableHooks />);
+            expect(container.querySelector('.blog-crossposts')).toBeNull();
+        });
+
+        it('drops a crosspost whose URL cannot be rendered as a safe link', async () => {
+            const post = createMockPost({
+                contentType: 'blurb',
+                blurbText: 'One good link, one bad.',
+                content: null,
+                crossposts: [{ url: 'javascript:alert(1)' }, { url: 'https://x.com/me/status/1' }],
+            });
+            const { container } = render(<BlurbRenderer post={post} variant="detail" />);
+
+            await waitFor(() => expect(container.textContent).toContain('x.com'));
+            expect(container.querySelectorAll('a.u-syndication')).toHaveLength(1);
+        });
+    });
+
     describe('Safe rendering', () => {
         it('renders a blurb as short-form text instead of an article body', async () => {
             const blurb = createMockPost({
@@ -101,6 +175,59 @@ describe('BlogRenderer', () => {
             expect(container.textContent).toContain('Photo journal · 1 frame');
             expect(container.textContent).toContain('A quiet blue hour.');
             expect(container.querySelector('img')?.getAttribute('alt')).toBe('Lanterns reflected in a wet lane');
+        });
+
+        it('varies journal frames by photograph while never stretching one into blank space', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: [
+                    { id: 'p0', url: 'https://images.test/0.jpg', width: 1800, height: 1200 }, // 3:2 wide
+                    { id: 'p1', url: 'https://images.test/1.jpg', width: 900, height: 1600 }, // portrait
+                    { id: 'p2', url: 'https://images.test/2.jpg', width: 1000, height: 1000 }, // square
+                    { id: 'p3', url: 'https://images.test/3.jpg' }, // no dimensions
+                    { id: 'p4', url: 'https://images.test/4.jpg', width: 1600, height: 1200 }, // 4:3
+                ],
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={journal} disableHooks />);
+
+            const figures = Array.from(container.querySelectorAll('figure'));
+            const frameOf = (figure: Element) => figure.querySelector('button')?.className ?? '';
+
+            // Each photograph keeps its own shape — this variation is the layout, not a side effect.
+            expect(frameOf(figures[0])).toContain('aspect-[3/2]');
+            expect(frameOf(figures[1])).toContain('aspect-[3/4]');
+            expect(frameOf(figures[2])).toContain('aspect-square');
+            expect(frameOf(figures[4])).toContain('aspect-[4/3]');
+            // Unknown dimensions still vary rather than collapsing to one ratio.
+            expect(frameOf(figures[3])).toMatch(/aspect-\[3\/4\]|aspect-\[4\/3\]/);
+            // Four distinct ratios across five photographs: the grid is never uniform brickwork.
+            expect(new Set(figures.map((figure) => frameOf(figure).split(' ')[0])).size).toBeGreaterThanOrEqual(3);
+
+            // The grid must not stretch a short tile: that padding was the empty frame.
+            const grid = container.querySelector('.blog-photo-journal--detail .grid');
+            expect(grid?.className).toContain('items-start');
+        });
+
+        it('pairs journal column spans so a row fills exactly twelve', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: Array.from({ length: 6 }, (_, index) => ({
+                    id: `p${index}`,
+                    url: `https://images.test/${index}.jpg`,
+                })),
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={journal} disableHooks />);
+
+            const spans = Array.from(container.querySelectorAll('figure')).map(
+                (figure) => Number(figure.className.match(/md:col-span-(\d+)/)?.[1]) || 0,
+            );
+            // Pairs that sum to 12 keep the two photographs in a row close in height, which is what
+            // keeps the ragged edge pleasant instead of gaping.
+            expect(spans[0] + spans[1]).toBe(12);
+            expect(spans[2] + spans[3]).toBe(12);
+            expect(spans[4] + spans[5]).toBe(12);
         });
 
         it('uses a compact photo collage in listing cards', () => {
@@ -190,10 +317,54 @@ describe('BlogRenderer', () => {
 
             await waitFor(
                 () => {
+                    // The cap belongs to the image FRAME, not the <figure>: the figure also wraps
+                    // the caption, so capping it there would squeeze the caption out of view.
+                    const frame = container.querySelector('figure > div');
+                    expect(frame).toBeTruthy();
+                    expect((frame as HTMLElement).style.maxHeight).toBe('400px');
+                    // An author-set height replaces the default ratio rather than fighting it.
+                    expect(frame?.className).not.toContain('aspect-[16/9]');
+                },
+                { timeout: 3000 },
+            );
+        });
+
+        it('reserves hero space with a fixed ratio when the author sets no height', async () => {
+            const post = createMockPost({
+                heroImage: { url: 'https://example.com/image.jpg', alt: 'Test image' },
+            });
+            const { container } = render(<BlogRenderer post={post} showHeroImage />);
+
+            await waitFor(
+                () => {
+                    // No ratio means the article reflows as the hero loads.
+                    const frame = container.querySelector('figure > div');
+                    expect(frame?.className).toContain('aspect-[16/9]');
+                },
+                { timeout: 3000 },
+            );
+        });
+
+        it('opens with the masthead and places the hero after it', async () => {
+            const post = createMockPost({
+                title: 'A considered headline',
+                readingTimeMinutes: 6,
+                heroImage: { url: 'https://example.com/image.jpg', alt: 'Test image' },
+            });
+            const { container } = render(<BlogRenderer post={post} showHeroImage showTitle showMetadata />);
+
+            await waitFor(
+                () => {
+                    const heading = container.querySelector('h1');
                     const figure = container.querySelector('figure');
+                    expect(heading).toBeTruthy();
                     expect(figure).toBeTruthy();
-                    // maxHeight is applied as inline style on the figure
-                    expect(figure?.style.maxHeight).toBe('400px');
+                    expect(heading!.textContent).toBe('A considered headline');
+                    // A feature opens with its headline; the image illustrates it.
+                    const position = heading!.compareDocumentPosition(figure!);
+                    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+                    // The eyebrow carries what this is and how long it takes.
+                    expect(container.textContent).toContain('6 min read');
                 },
                 { timeout: 3000 },
             );

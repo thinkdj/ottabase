@@ -11,22 +11,36 @@ export interface PhotoJournalGalleryProps {
     tone?: 'editorial' | 'minimal';
 }
 
+/**
+ * Column widths, in pairs that fill the 12-column row exactly.
+ *
+ * Each photograph keeps its OWN height (see `photoAspect`) — that variation is the point, and a
+ * grid of identical rectangles reads like brickwork rather than a contact sheet. What the pairs
+ * fix is the empty frame: a row used to be as tall as its tallest member while every other tile
+ * kept its own height, and the difference showed as blank space inside the short one. Pairing
+ * 8+4, 5+7, 6+6 keeps the two photographs in a row close in height, and `items-start` on the grid
+ * stops the shorter one from stretching into a void.
+ */
 const EDITORIAL_SPANS = [
     'col-span-2 md:col-span-8',
     'col-span-1 md:col-span-4',
-    'col-span-1 md:col-span-4',
-    'col-span-2 md:col-span-7',
     'col-span-1 md:col-span-5',
-    'col-span-1 md:col-span-5',
-    'col-span-2 md:col-span-7',
+    'col-span-1 md:col-span-7',
+    'col-span-1 md:col-span-6',
+    'col-span-1 md:col-span-6',
 ];
 
+/**
+ * The photograph's own shape decides the frame, leaning portrait when nothing else says otherwise:
+ * a journal reads better with vertical frames punctuating the wide ones, and an album whose files
+ * carry no dimensions still varies rather than settling into a single ratio.
+ */
 function photoAspect(item: PhotoJournalItem, index: number): string {
-    if (index === 0) return 'aspect-[4/3]';
-    if (!item.width || !item.height) return index % 3 === 1 ? 'aspect-[3/4]' : 'aspect-[4/3]';
+    if (!item.width || !item.height) return index % 3 === 0 ? 'aspect-[4/3]' : 'aspect-[3/4]';
     const ratio = item.width / item.height;
-    if (ratio < 0.82) return 'aspect-[3/4]';
-    if (ratio > 1.3) return 'aspect-[4/3]';
+    if (ratio < 0.95) return 'aspect-[3/4]';
+    if (ratio > 1.45) return 'aspect-[3/2]';
+    if (ratio > 1.15) return 'aspect-[4/3]';
     return 'aspect-square';
 }
 
@@ -110,7 +124,9 @@ function PhotoTile({
         tone === 'editorial' ? 'rounded-[0.2rem]' : 'rounded-none'
     }`;
     return (
-        <figure className={interactive ? EDITORIAL_SPANS[index % EDITORIAL_SPANS.length] : 'h-full min-h-0'}>
+        <figure
+            className={interactive ? EDITORIAL_SPANS[index % EDITORIAL_SPANS.length] : 'flex h-full min-h-0 flex-col'}
+        >
             {interactive ? (
                 <button
                     type="button"
@@ -124,7 +140,7 @@ function PhotoTile({
                 <div className={frameClass}>{image}</div>
             )}
             {interactive && (item.caption || item.location || item.takenAt) && (
-                <figcaption className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs leading-relaxed text-muted-foreground">
+                <figcaption className="mt-2 flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs leading-relaxed text-muted-foreground">
                     <span>{item.caption || item.alt || `Photograph ${index + 1}`}</span>
                     <span className="flex gap-2 text-[0.625rem] font-medium uppercase tracking-[0.14em]">
                         {item.location && <span>{item.location}</span>}
@@ -213,8 +229,13 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
                 )}
             </header>
 
+            {/*
+             * `items-start` is the whole fix: grid items stretch to the row by default, so a short
+             * photograph was handed a tall frame and padded the difference with blank space. Let each
+             * tile end where its photograph does and the rows go pleasantly ragged instead.
+             */}
             <div
-                className={`grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-12 md:gap-x-3 md:gap-y-10 ${tone === 'minimal' ? 'md:gap-x-1' : ''}`}
+                className={`grid grid-cols-2 items-start gap-x-2 gap-y-5 md:grid-cols-12 md:gap-x-3 md:gap-y-8 ${tone === 'minimal' ? 'md:gap-x-1' : ''}`}
             >
                 {photos.map((item, index) => (
                     <PhotoTile key={item.id} item={item} index={index} postId={post.id} interactive tone={tone} />
