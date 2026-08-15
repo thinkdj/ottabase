@@ -6,7 +6,7 @@
 
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { BlurbText } from '../components/BlurbText';
+import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
@@ -45,27 +45,7 @@ export const minimalTheme: Theme = {
         },
     },
     renderers: {
-        renderBlurb: (post, props) => {
-            const formatDate = props.formatDate || defaultFormatDate;
-            const detail = props.variant === 'detail';
-            return (
-                <div className={`${detail ? 'py-10' : 'border-b border-border/60 py-6'} last:border-b-0`}>
-                    <div className="mb-4 flex flex-wrap items-center gap-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        <span>Thought</span>
-                        {post.author?.name && <span className="normal-case tracking-normal">{post.author.name}</span>}
-                        {post.publishedAt && (
-                            <time dateTime={new Date(post.publishedAt).toISOString()}>
-                                {formatDate(post.publishedAt)}
-                            </time>
-                        )}
-                    </div>
-                    <BlurbText
-                        text={post.blurbText ?? post.excerpt ?? ''}
-                        className={`${detail ? 'text-2xl sm:text-3xl font-light' : 'text-lg font-light'} leading-relaxed text-foreground`}
-                    />
-                </div>
-            );
-        },
+        renderBlurb: (post, props) => <BlurbCard post={post} props={props} tone="minimal" />,
         renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="minimal" />,
         renderHero: (post, props) => {
             if (!props.showHeroImage || !post.heroImage?.url) return null;

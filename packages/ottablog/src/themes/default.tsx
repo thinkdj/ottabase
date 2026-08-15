@@ -6,7 +6,7 @@
 
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { BlurbText } from '../components/BlurbText';
+import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
@@ -43,40 +43,7 @@ export const defaultTheme: Theme = {
         },
     },
     renderers: {
-        renderBlurb: (post, props) => {
-            const formatDate = props.formatDate || defaultFormatDate;
-            const detail = props.variant === 'detail';
-            return (
-                <div
-                    className={`rounded-2xl bg-muted/40 ${detail ? 'px-6 py-8 sm:px-8 sm:py-10' : 'px-5 py-5'} transition-colors duration-normal`}
-                >
-                    <div className="mb-4 flex flex-wrap items-center gap-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        <span className="rounded-full bg-background px-2.5 py-0.5 ring-1 ring-border">Thought</span>
-                        {post.author?.name && (
-                            <span className="flex items-center gap-2 normal-case tracking-normal text-foreground">
-                                {post.author.image && (
-                                    <img
-                                        src={sanitizeUrl(post.author.image)}
-                                        alt=""
-                                        className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
-                                    />
-                                )}
-                                {post.author.name}
-                            </span>
-                        )}
-                        {post.publishedAt && (
-                            <time dateTime={new Date(post.publishedAt).toISOString()}>
-                                {formatDate(post.publishedAt)}
-                            </time>
-                        )}
-                    </div>
-                    <BlurbText
-                        text={post.blurbText ?? post.excerpt ?? ''}
-                        className={`${detail ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'} leading-relaxed text-foreground`}
-                    />
-                </div>
-            );
-        },
+        renderBlurb: (post, props) => <BlurbCard post={post} props={props} tone="editorial" />,
         renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="editorial" />,
         renderHero: (post, props) => {
             if (!props.showHeroImage || !post.heroImage?.url) return null;

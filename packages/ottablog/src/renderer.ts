@@ -22,6 +22,8 @@
 
 // Rendered components
 export { BlurbRenderer, BlurbText, BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
+export { BlurbCard } from './components/BlurbCard';
+export type { BlurbCardProps } from './components/BlurbCard';
 export { PhotoJournalGallery } from './components/PhotoJournalGallery';
 export type { PhotoJournalGalleryProps } from './components/PhotoJournalGallery';
 export { PhotoJournalRenderer } from './components/PhotoJournalRenderer';
