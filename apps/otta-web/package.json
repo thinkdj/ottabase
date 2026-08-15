@@ -81,6 +81,7 @@
         "react-dom": "catalog:",
         "react-hook-form": "catalog:",
         "sonner": "catalog:",
+        "three": "catalog:",
         "zod": "catalog:"
     },
     "devDependencies": {
@@ -91,6 +92,7 @@
         "@types/nodemailer": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
+        "@types/three": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "autoprefixer": "catalog:",
         "baseline-browser-mapping": "^2.9.14",

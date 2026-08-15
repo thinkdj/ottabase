@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 
 vi.mock('@/ottabase/config', () => ({ APP_META: { appName: 'Ottabase' } }));
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({ to, ...props }: { to: string } & ComponentProps<'a'>) => <a href={to} {...props} />,
+}));
 
 import { HomePage } from '../HomePage';
 
@@ -15,12 +19,16 @@ describe('HomePage (block content smoke)', () => {
         const { container } = render(<HomePage />);
         const text = container.textContent ?? '';
 
-        // header + hero
-        expect(screen.getByRole('heading', { level: 1, name: 'Ottabase' })).toBeTruthy();
-        expect(text).toContain('Production-grade');
+        // Dedicated Three.js hero remains useful even when WebGL is unavailable.
+        expect(screen.getByRole('heading', { level: 1, name: /ship the product/i })).toBeTruthy();
+        expect(text).toContain('Cloudflare-native foundation');
+        expect(screen.getByText('Global by default')).toBeTruthy();
+        expect(screen.getByText('Tenant-safe')).toBeTruthy();
+        expect(screen.getByRole('link', { name: /start building/i })).toBeTruthy();
+        expect(screen.getByRole('link', { name: /explore live demos/i })).toBeTruthy();
 
-        // quote
-        expect(text).toContain('No boilerplate. No assembly of infrastructure. Just ship the product.');
+        // The Editor.js content starts after the hero and remains renderer-driven.
+        expect(screen.getByText('Edge-native')).toBeTruthy();
 
         // checklists (split across a two-column layout)
         expect(text).toContain('fat models, RLS, hooks');
@@ -50,6 +58,5 @@ describe('HomePage (block content smoke)', () => {
 
         // CTAs
         expect(screen.getAllByText('Explore demos').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Get started').length).toBeGreaterThan(0);
     });
 });

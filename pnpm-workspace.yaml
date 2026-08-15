@@ -31,6 +31,7 @@ catalog:
     "@types/nodemailer": ^7.0.0
     "@types/react": ^19.2.7
     "@types/react-dom": ^19.2.3
+    "@types/three": ^0.185.0
     "@typescript-eslint/eslint-plugin": ^8.54.0
     "@typescript-eslint/parser": ^8.54.0
     "@vitejs/plugin-react": ^4.7.0
@@ -74,6 +75,7 @@ catalog:
     tailwind-merge: ^2.6.0
     tailwindcss: ^3.4.19
     tailwindcss-animate: ^1.0.7
+    three: ^0.185.1
     ts-node: ^10.9.2
     tsup: ^8.5.1
     tsx: ^4.19.2

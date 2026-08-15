@@ -3,6 +3,9 @@ import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { useMemo } from 'react';
+import { OttabaseHero } from './OttabaseHero';
+
+const HOME_HERO_BLOCK_IDS = new Set(['home-title', 'thesis-quote', 'home-lead', 'home-hero-ctas']);
 
 /** EditorJS blocks for the home page. */
 function createHomeLandingEditorData(appName: string) {
@@ -397,7 +400,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                     ],
                 },
             },
-        ],
+        ].filter(({ id }) => !HOME_HERO_BLOCK_IDS.has(id)),
     };
 }
 
@@ -405,23 +408,18 @@ export function HomePage() {
     const editorData = useMemo(() => createHomeLandingEditorData('Ottabase'), []);
 
     return (
-        <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 md:px-10 md:py-12 lg:px-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Logo: Using JSX, and not advancedImage (which ignores width/height) */}
-            <div className="mb-12 flex justify-center">
-                <img
-                    src="https://ottabase.com/favicon.svg"
-                    alt={APP_META.appName}
-                    width={128}
-                    height={128}
-                    className="rounded-full border border-border bg-background p-2"
-                />
+        <>
+            <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 md:px-10 md:pt-10 lg:px-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <OttabaseHero appName={APP_META.appName} />
             </div>
 
-            <div className="prose dark:prose-invert max-w-none text-left">
-                <MediaLightboxProvider variant="immersive">
-                    <Blocks data={editorData} config={defaultEJSRConfigs} renderers={customRenderers} />
-                </MediaLightboxProvider>
+            <div className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 md:px-10 md:py-16 lg:px-12">
+                <div className="prose dark:prose-invert max-w-none text-left">
+                    <MediaLightboxProvider variant="immersive">
+                        <Blocks data={editorData} config={defaultEJSRConfigs} renderers={customRenderers} />
+                    </MediaLightboxProvider>
+                </div>
             </div>
-        </div>
+        </>
     );
 }
