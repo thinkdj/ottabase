@@ -460,6 +460,56 @@ await todo.delete();
 await Todo.destroy('todo-id');
 ```
 
+### Deferred Columns
+
+Lists, feeds, and sitemaps rarely read a model's largest columns, but they pay for them on every row. Name those columns
+in `deferred` and collection reads leave them out of the `SELECT`.
+
+```typescript
+export class Post extends BaseModel {
+    static entity = 'posts';
+    static table = postsTable;
+    static deferred = ['content', 'footnotes']; // big JSON bodies no list renders
+}
+
+// Collection reads skip them — where, whereIn, all, search, searchPaginate, paginate
+const page = await Post.paginate(1, 15); // SELECT without content/footnotes
+
+// Single-record reads never defer, so a detail view always has the full row
+const post = await Post.find('post-id'); // content present
+
+// Opt back in for the rare collection read that needs them
+const withBodies = await Post.where({ status: 'published' }, { withDeferred: true });
+
+// Or project explicitly — an explicit select wins, and the primary key is always included
+const titles = await Post.where({}, { select: ['title', 'slug'] });
+```
+
+Reading a column that a collection read left behind **throws**:
+
+```typescript
+const [post] = await Post.where({});
+post.get('title'); // fine
+post.get('content'); // Error: Field "content" was not loaded: a collection read deferred it...
+```
+
+That is deliberate. Returning `undefined` would make `if (!post.get('content')) return;` a silent no-op, and
+`post.set('content', post.get('content') ?? null)` a silent way to blank the column. `toJson()` and `save()` walk
+attributes directly, so a deferred column is simply absent from both — saving a collection-loaded record leaves the
+column untouched rather than nulling it.
+
+Two rules worth internalizing:
+
+- **`deferred` is a denylist**, so a new column appears in lists by default and only expensive ones opt out. The reverse
+  silently drops new columns until somebody notices.
+- **`deferred` is not a privacy control.** It applies to collection reads only, so a single-record read still loads and
+  serializes the column. Use `hidden` for fields that must never reach a caller, and check what a model's own routes
+  strip before assuming a field is private.
+
+Before deferring a column, check whether any UI reads it from a _list_ response. `PostVersion`, for example,
+deliberately does not defer `content`: the editor's version restore and compare features read the body straight out of
+the version list.
+
 ### Soft Deletes
 
 Enable soft deletes on a model by setting `softDeletes = true`. The table must have a `deletedAt` integer column.

@@ -261,6 +261,27 @@ export class Todo extends BaseModel {
 }
 ```
 
+### Deferred Columns
+
+A model's biggest columns should not ride along on every list read. Name them in `static deferred`
+and `where`/`whereIn`/`all`/`search`/`searchPaginate`/`paginate` drop them from the SELECT, while
+`find`/`first` still load everything.
+
+```typescript
+export class Post extends BaseModel {
+    static deferred = ['content', 'footnotes', 'privateNotes'];
+}
+```
+
+- **Reading a deferred column off a collection-loaded record throws.** That is the point: silence
+  turns `if (!post.get('content'))` into a no-op and read-then-write into data loss. Use
+  `find`/`first`, or `{ withDeferred: true }`, when a collection read genuinely needs the field.
+- **Check the UI before deferring.** If any screen reads the column out of a *list* response it
+  cannot be deferred — `PostVersion.content` stays loaded because version restore/compare read it
+  from the version list.
+- **Not a privacy control.** Single-record reads still load and serialize it. Privacy is `hidden`,
+  or a strip in the route's own serializer.
+
 ### Row-Level Security (RLS)
 
 - **RLS Engine Enforcement**: RLS acts at the `ottaorm` level to automatically enforce context-based rules.

@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getConnection } from '../context';
 import { ValidationError } from '../validation';
@@ -21,6 +21,11 @@ import {
 export interface IModelConstructorParams {
     entity: string;
     data: { [key: string]: any };
+    /**
+     * Columns the query did not SELECT (see `BaseModel.deferred`). Reading one throws rather than
+     * returning undefined, so a collection-loaded record can never be mistaken for a complete one.
+     */
+    omitted?: string[];
 }
 
 // Re-export types
@@ -91,6 +96,7 @@ export class BaseModel extends AbstractBaseModel {
     constructor(params: IModelConstructorParams) {
         super();
         this.fill(params.data);
+        if (params.omitted?.length) this.omitted = [...params.omitted];
     }
 
     // ============================================================
@@ -210,6 +216,65 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
+     * Columns a COLLECTION read skips.
+     *
+     * Lists, feeds, and sitemaps rarely touch a model's largest columns, but they pay for them on
+     * every row: the bytes leave the database, get parsed in the worker, and are serialized into a
+     * response that discards them. Naming those columns here removes them from the SELECT that
+     * `where`/`whereIn`/`all`/`paginate` build. Single-record reads (`find`, `first`) never defer,
+     * so the field is always there when a detail view asks for it.
+     *
+     * A DENYLIST on purpose: a new column shows up in lists by default, and only the expensive
+     * ones opt out. The reverse would silently drop new columns until someone noticed.
+     *
+     * NOT a privacy control. Deferral applies to collection reads only, so a single-record read
+     * still loads and serializes the column. Anything that must never reach a caller belongs in
+     * `hidden`, or in the strip performed by that route's own serializer.
+     *
+     * @example
+     * static deferred = ['content', 'footnotes'];
+     */
+    static deferred: string[] = [];
+
+    /**
+     * Plan a collection read: which columns to SELECT, and which the resulting instances will
+     * therefore be missing.
+     *
+     * An explicit `select` wins over `deferred` — a caller asking for three columns has already
+     * said what it wants. The primary key is forced into either projection: without it the
+     * resulting instances cannot `save()`, `refresh()`, or `destroy()`, which fails far from here.
+     *
+     * `omitted` is handed to each instance so reading one of those fields throws instead of
+     * returning undefined. Silence is the dangerous outcome: `if (!content) return;` becomes a
+     * no-op, and `this.get(x) ?? null` written back through `set` turns a lazy read into DATA LOSS.
+     */
+    protected static buildCollectionRead(
+        select?: string[],
+        withDeferred?: boolean,
+    ): { projection: Record<string, any> | null; omitted: string[] } {
+        const table = this.getTable();
+        const columns = getTableColumns(table as any);
+        const projection: Record<string, any> = {};
+
+        if (select?.length) {
+            for (const name of [...select, this.primaryKey]) {
+                const column = (table as any)[name];
+                if (column) projection[name] = column;
+            }
+            if (Object.keys(projection).length === 0) return { projection: null, omitted: [] };
+            return { projection, omitted: Object.keys(columns).filter((name) => !(name in projection)) };
+        }
+
+        const deferred = Array.isArray(this.deferred) ? this.deferred : [];
+        if (withDeferred || deferred.length === 0) return { projection: null, omitted: [] };
+
+        for (const [name, column] of Object.entries(columns)) {
+            if (name === this.primaryKey || !deferred.includes(name)) projection[name] = column;
+        }
+        return { projection, omitted: Object.keys(columns).filter((name) => !(name in projection)) };
+    }
+
+    /**
      * Build the soft-delete exclusion condition if applicable.
      * Pure function — no shared mutable state.
      *
@@ -302,6 +367,10 @@ export class BaseModel extends AbstractBaseModel {
             orderDirection?: 'asc' | 'desc';
             limit?: number;
             offset?: number;
+            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            select?: string[];
+            /** Load the model's `deferred` columns too. For the rare collection read that needs them. */
+            withDeferred?: boolean;
         },
         driver?: DbDriver,
         includeTrashed?: boolean,
@@ -309,7 +378,8 @@ export class BaseModel extends AbstractBaseModel {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
-        let query = db.select().from(table);
+        const { projection, omitted } = this.buildCollectionRead(options?.select, options?.withDeferred);
+        let query = (projection ? db.select(projection) : db.select()).from(table);
 
         // Apply where conditions + soft delete filter
         const conditions = this.buildWhereConditions(where);
@@ -337,7 +407,7 @@ export class BaseModel extends AbstractBaseModel {
 
         const results = await query;
 
-        return results.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>);
+        return results.map((row: any) => new this({ entity: this.entity, data: row, omitted }) as InstanceType<T>);
     }
 
     /**
@@ -354,6 +424,8 @@ export class BaseModel extends AbstractBaseModel {
             offset?: number;
             /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
             select?: string[];
+            /** Load the model's `deferred` columns too. For the rare collection read that needs them. */
+            withDeferred?: boolean;
         },
         driver?: DbDriver,
         includeTrashed?: boolean,
@@ -370,17 +442,11 @@ export class BaseModel extends AbstractBaseModel {
         const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
         if (softDeleteCond) whereConditions.push(softDeleteCond);
 
-        // Optional projection: batch enrichment reads (author names for RSS/lists)
-        // shouldn't transfer full rows (e.g. posts.content JSON) for a few fields.
-        const projection: Record<string, any> = {};
-        for (const selected of options?.select ?? []) {
-            const column = (table as any)[selected];
-            if (column) projection[selected] = column;
-        }
+        // Explicit projection for batch enrichment reads (author names for RSS/lists), falling
+        // back to the model's `deferred` set so a plain whereIn is as lean as a plain where.
+        const { projection, omitted } = this.buildCollectionRead(options?.select, options?.withDeferred);
 
-        let query: any = (Object.keys(projection).length > 0 ? db.select(projection) : db.select())
-            .from(table)
-            .where(and(...whereConditions));
+        let query: any = (projection ? db.select(projection) : db.select()).from(table).where(and(...whereConditions));
 
         // Apply ordering
         if (options?.orderBy) {
@@ -400,7 +466,7 @@ export class BaseModel extends AbstractBaseModel {
 
         const results = await query;
 
-        return results.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>);
+        return results.map((row: any) => new this({ entity: this.entity, data: row, omitted }) as InstanceType<T>);
     }
 
     /**
@@ -767,6 +833,10 @@ export class BaseModel extends AbstractBaseModel {
             orderDirection?: 'asc' | 'desc';
             limit?: number;
             offset?: number;
+            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            select?: string[];
+            /** Load the model's `deferred` columns too. For the rare collection read that needs them. */
+            withDeferred?: boolean;
         },
         driver?: DbDriver,
         includeTrashed?: boolean,
@@ -782,7 +852,8 @@ export class BaseModel extends AbstractBaseModel {
         const conditions = this.buildWhereConditions(where || {});
         const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
         if (softDeleteCond) conditions.push(softDeleteCond);
-        let query = db.select().from(table);
+        const { projection, omitted } = this.buildCollectionRead(options?.select, options?.withDeferred);
+        let query = (projection ? db.select(projection) : db.select()).from(table);
 
         if (conditions.length > 0) {
             query = query.where(and(...conditions, searchCondition));
@@ -805,7 +876,7 @@ export class BaseModel extends AbstractBaseModel {
         }
 
         const results = await query;
-        return results.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>);
+        return results.map((row: any) => new this({ entity: this.entity, data: row, omitted }) as InstanceType<T>);
     }
 
     /**
@@ -818,7 +889,14 @@ export class BaseModel extends AbstractBaseModel {
         page: number = 1,
         perPage: number = 15,
         where?: Record<string, any>,
-        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc' },
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            select?: string[];
+            /** Load the model's `deferred` columns too. For the rare paged read that needs them. */
+            withDeferred?: boolean;
+        },
         driver?: DbDriver,
         includeTrashed?: boolean,
     ): Promise<PaginationResult<InstanceType<T>>> {
@@ -836,7 +914,8 @@ export class BaseModel extends AbstractBaseModel {
             combinedCondition = searchCondition ? and(...whereConditions, searchCondition) : and(...whereConditions);
         }
 
-        let dataQuery = db.select().from(table);
+        const { projection, omitted } = this.buildCollectionRead(options?.select, options?.withDeferred);
+        let dataQuery = (projection ? db.select(projection) : db.select()).from(table);
         if (combinedCondition) {
             dataQuery = dataQuery.where(combinedCondition);
         }
@@ -858,7 +937,7 @@ export class BaseModel extends AbstractBaseModel {
         const totalPages = Math.max(1, Math.ceil(total / perPage));
 
         return {
-            data: data.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>),
+            data: data.map((row: any) => new this({ entity: this.entity, data: row, omitted }) as InstanceType<T>),
             total,
             page,
             perPage,
@@ -876,7 +955,14 @@ export class BaseModel extends AbstractBaseModel {
         page: number = 1,
         perPage: number = 15,
         where?: Record<string, any>,
-        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc' },
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            select?: string[];
+            /** Load the model's `deferred` columns too. For the rare paged read that needs them. */
+            withDeferred?: boolean;
+        },
         driver?: DbDriver,
         includeTrashed?: boolean,
     ): Promise<PaginationResult<InstanceType<T>>> {

@@ -383,6 +383,15 @@ export abstract class AbstractBaseModel {
      */
     protected hidden: string[] = [];
 
+    /**
+     * Columns this record was loaded WITHOUT, because a collection read deferred them.
+     *
+     * Distinct from `hidden`: hidden fields are loaded and withheld from JSON, omitted ones were
+     * never read. `toJson()` and `save()` walk `attributes` directly, so an omitted column is
+     * simply absent from both — a save leaves it untouched rather than nulling it.
+     */
+    protected omitted: string[] = [];
+
     // ============================================================
     // INSTANCE METHODS - Data Manipulation
     // ============================================================
@@ -405,6 +414,12 @@ export abstract class AbstractBaseModel {
      * @returns Attribute value
      */
     get(key: string): any {
+        if (this.omitted.length > 0 && this.omitted.includes(key)) {
+            throw new Error(
+                `Field "${key}" was not loaded: a collection read deferred it on ${this.constructor.name}. ` +
+                    `Re-read the record with find()/first(), or pass { withDeferred: true } to this query.`,
+            );
+        }
         return this.attributes[key];
     }
 
@@ -416,6 +431,8 @@ export abstract class AbstractBaseModel {
      */
     set(key: string, value: any): void {
         this.attributes[key] = this.castAttributeValue(key, value);
+        // Written means known: a caller that supplies the value has resolved the omission itself.
+        if (this.omitted.length > 0) this.omitted = this.omitted.filter((field) => field !== key);
     }
 
     /**
