@@ -251,6 +251,30 @@ describe('"Currently in use" reports the resolver, not the list', () => {
     });
 });
 
+describe('a dormant deployment', () => {
+    it('renders nothing when the routes answer 501 NOT_CONFIGURED', async () => {
+        // The app's enable flag is build-time and cannot see the server's keyring, so this
+        // component IS mounted on a deployment with no AI secret. Showing a "Connect a
+        // provider" card whose every request 501s is the bug this closes.
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const request = vi.fn(async () => {
+            throw Object.assign(new Error('AI is not configured on this deployment.'), {
+                status: 501,
+                code: 'NOT_CONFIGURED',
+            });
+        });
+
+        const { container } = render(
+            <Wrapper client={client} request={request as never}>
+                <AiProviderSettings />
+            </Wrapper>,
+        );
+
+        await waitFor(() => expect(container.firstChild).toBeNull());
+        expect(screen.queryByRole('button', { name: /Connect a provider/ })).toBeNull();
+    });
+});
+
 describe('useAiGate fails closed', () => {
     function GateProbe({ taskKey }: { taskKey: string }) {
         const gate = useAiGate(taskKey);

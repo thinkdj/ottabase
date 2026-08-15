@@ -94,6 +94,16 @@ export function AiProviderSettings({
 
     const custody = useMemo(() => buildCustodyDisclosure({ proxyName }), [proxyName]);
 
+    // A DORMANT DEPLOYMENT still mounts this component: the consuming app gates on a
+    // BUILD-TIME client flag, which cannot see whether the server has a keyring. The routes
+    // answer 501 NOT_CONFIGURED, and a card whose only button leads to a guaranteed failure
+    // is worse than no card. Rendering nothing is also what the toggle's docs promise —
+    // "dormant until the secret is set" — so this is the last hop of that contract.
+    const dormant = [providersQuery.error, statusQuery.error, credentials.error].some(
+        (error) => (error as { status?: number } | null)?.status === 501,
+    );
+    if (dormant) return null;
+
     // AND-ed with SERVER TRUTH: under a user-first strategy the management filter keys on
     // userId, so an org-scoped row would vanish from this very list the moment it is
     // saved. The server refuses the write too — this only hides an option that cannot work.
