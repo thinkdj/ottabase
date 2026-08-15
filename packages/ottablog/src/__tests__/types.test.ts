@@ -1,7 +1,99 @@
 import { describe, expect, it } from 'vitest';
-import { calculateReadingTime, extractExcerpt, generateSlug, formatDate, formatShortDate } from '../types';
+import {
+    BLURB_MAX_LENGTH,
+    calculateReadingTime,
+    contentTypeLabel,
+    createBlurbExcerpt,
+    createBlurbTitle,
+    createPhotoJournalExcerpt,
+    createPhotoJournalTitle,
+    extractExcerpt,
+    formatDate,
+    formatShortDate,
+    generateSlug,
+    normalizeBlurbText,
+    PHOTO_JOURNAL_MAX_ITEMS,
+    validatePhotoJournalItems,
+    validatePhotoJournalNote,
+    validateBlurbText,
+} from '../types';
 
 describe('ottablog helpers', () => {
+    describe('contentTypeLabel', () => {
+        it('labels the known content types', () => {
+            expect(contentTypeLabel('blurb')).toBe('Blurb');
+            expect(contentTypeLabel('photo')).toBe('Photo Journal');
+        });
+
+        it('falls back to the raw value for a type this build does not know', () => {
+            // content_type is a free-text column reachable through generic CRUD, so an unknown
+            // value must degrade to a label rather than crash the list that renders it.
+            expect(contentTypeLabel('recipe')).toBe('recipe');
+            expect(contentTypeLabel('')).toBe('');
+        });
+    });
+
+    describe('blurb helpers', () => {
+        it('normalizes line endings while preserving intentional line breaks', () => {
+            expect(normalizeBlurbText('  first\r\nsecond  ')).toBe('first\nsecond');
+        });
+
+        it('derives internal titles and plain-text excerpts', () => {
+            expect(createBlurbTitle('A quick thought\nwith another line')).toBe('A quick thought');
+            expect(createBlurbExcerpt('A quick\nthought')).toBe('A quick thought');
+        });
+
+        it('rejects empty and over-limit blurbs', () => {
+            expect(() => validateBlurbText('   ')).toThrow('required');
+            expect(() => validateBlurbText('x'.repeat(BLURB_MAX_LENGTH + 1))).toThrow('characters or fewer');
+            expect(validateBlurbText('hello')).toBe('hello');
+        });
+    });
+
+    describe('photo journal helpers', () => {
+        const photo = {
+            id: 'p1',
+            url: 'https://images.test/kyoto.jpg',
+            caption: 'After the last train',
+        };
+
+        it('normalizes ordered photographs and preserves media metadata', () => {
+            expect(
+                validatePhotoJournalItems([
+                    { ...photo, mediaId: 'm1', width: 1800, height: 1200, takenAt: 1_700_000_000_000 },
+                ]),
+            ).toEqual([
+                expect.objectContaining({
+                    id: 'p1',
+                    mediaId: 'm1',
+                    url: photo.url,
+                    width: 1800,
+                    height: 1200,
+                    takenAt: 1_700_000_000_000,
+                }),
+            ]);
+        });
+
+        it('derives a graceful title and excerpt when prose is sparse', () => {
+            expect(createPhotoJournalTitle('', photo, Date.UTC(2026, 0, 2))).toBe('After the last train');
+            expect(createPhotoJournalExcerpt(null, [photo])).toBe('After the last train');
+            expect(validatePhotoJournalNote('  Rain and blue hour.  ')).toBe('Rain and blue hour.');
+        });
+
+        it('rejects empty, oversized, and unsafe albums', () => {
+            expect(() => validatePhotoJournalItems([])).toThrow('at least one');
+            expect(() =>
+                validatePhotoJournalItems(
+                    Array.from({ length: PHOTO_JOURNAL_MAX_ITEMS + 1 }, (_, index) => ({
+                        id: `p${index}`,
+                        url: `https://images.test/${index}.jpg`,
+                    })),
+                ),
+            ).toThrow('up to');
+            expect(() => validatePhotoJournalItems([{ id: 'p1', url: 'javascript:alert(1)' }])).toThrow('HTTP(S)');
+        });
+    });
+
     describe('generateSlug', () => {
         it('creates a lowercase, hyphenated slug', () => {
             expect(generateSlug(' Hello, World! ')).toBe('hello-world');

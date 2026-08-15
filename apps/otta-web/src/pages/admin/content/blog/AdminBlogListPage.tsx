@@ -6,8 +6,17 @@
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import type { PaginatedResponse } from '@/lib/api-types';
-import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
-import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import {
+    BLURB_MAX_LENGTH,
+    CONTENT_TYPES,
+    contentTypeLabel,
+    formatShortDate,
+    POST_STATUSES,
+    type ContentType,
+    type PhotoJournalItem,
+    type PostStatus,
+} from '@ottabase/ottablog';
+import { createModelHooks, useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
@@ -31,6 +40,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import {
@@ -45,6 +55,7 @@ import {
     Loader2,
     Plus,
     Search,
+    Send,
     Star,
     Trash2,
 } from 'lucide-react';
@@ -60,6 +71,9 @@ interface BlogPost {
     title: string;
     slug: string;
     excerpt: string | null;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
     contentType: ContentType;
     status: PostStatus;
     authorId: string | null;
@@ -92,6 +106,8 @@ function getPublicUrl(slug: string, contentType: ContentType): string {
 const CONTENT_TYPE_TABS: Array<{ value: ContentType | 'all'; label: string }> = [
     { value: 'all', label: 'All' },
     { value: 'blog', label: 'Blog Post' },
+    { value: 'blurb', label: 'Blurb' },
+    { value: 'photo', label: 'Photo Journal' },
     { value: 'changelog', label: 'Changelog' },
     { value: 'docs', label: 'Doc' },
     { value: 'news', label: 'News' },
@@ -105,6 +121,7 @@ export function AdminBlogListPage() {
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
     const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | 'all'>('all');
     const [currentPage, setCurrentPage] = useState(1);
+    const [blurbText, setBlurbText] = useState('');
     const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
@@ -121,16 +138,11 @@ export function AdminBlogListPage() {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    // Build where clause for server-side filtering
-    const whereClause: Record<string, unknown> = {};
-    if (statusFilter !== 'all') {
-        whereClause.status = statusFilter;
-    }
-    if (contentTypeFilter !== 'all') {
-        whereClause.contentType = contentTypeFilter;
-    }
-
     const queryParams = useMemo(() => {
+        const whereClause: Record<string, unknown> = {};
+        if (statusFilter !== 'all') whereClause.status = statusFilter;
+        if (contentTypeFilter !== 'all') whereClause.contentType = contentTypeFilter;
+
         const params = new URLSearchParams();
         params.set('page', String(currentPage));
         params.set('perPage', String(POSTS_PER_PAGE));
@@ -173,6 +185,27 @@ export function AdminBlogListPage() {
 
     const updatePost = blogPostHooks.useUpdate();
     const deletePost = blogPostHooks.useDelete();
+    const createBlurb = useApiMutation<BlogPost, { text: string; status: 'draft' | 'published' }>({
+        endpoint: '/api/blog/blurbs',
+        method: 'POST',
+        invalidateEntities: ['posts'],
+    });
+
+    const handleCreateBlurb = async (status: 'draft' | 'published') => {
+        const text = blurbText.trim();
+        if (!text) return;
+        try {
+            await createBlurb.mutateAsync({ text, status });
+            setBlurbText('');
+            setCurrentPage(1);
+        } catch (error) {
+            setAlertDialog({
+                open: true,
+                title: 'Could not save blurb',
+                message: error instanceof Error ? error.message : 'Please try again.',
+            });
+        }
+    };
 
     useEffect(() => {
         if (!pagination) return;
@@ -233,7 +266,7 @@ export function AdminBlogListPage() {
     const getContentTypeBadge = (contentType: ContentType) => {
         return (
             <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                {CONTENT_TYPES[contentType].label}
+                {contentTypeLabel(contentType)}
             </span>
         );
     };
@@ -247,7 +280,8 @@ export function AdminBlogListPage() {
                 <div className="space-y-1.5">
                     <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Manage blog posts, changelogs, documentation, news, and announcements.
+                        Publish articles, quick thoughts, photo journals, changelogs, documentation, news, and
+                        announcements.
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -290,6 +324,54 @@ export function AdminBlogListPage() {
                 ))}
             </div>
 
+            {(contentTypeFilter === 'all' || contentTypeFilter === 'blurb') && (
+                <section className="rounded-xl bg-muted/40 p-4 sm:p-5" aria-labelledby="quick-blurb-title">
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                        <div>
+                            <h2 id="quick-blurb-title" className="text-[0.9375rem] font-semibold">
+                                Share a thought
+                            </h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Short-form text that appears directly in the blog timeline.
+                            </p>
+                        </div>
+                        <span
+                            className={`text-xs tabular-nums ${blurbText.length > BLURB_MAX_LENGTH ? 'text-destructive' : 'text-muted-foreground'}`}
+                        >
+                            {blurbText.length}/{BLURB_MAX_LENGTH}
+                        </span>
+                    </div>
+                    <Textarea
+                        value={blurbText}
+                        onChange={(event) => setBlurbText(event.target.value)}
+                        placeholder="Watched xyz movie today. It left me thinking about..."
+                        rows={4}
+                        maxLength={BLURB_MAX_LENGTH + 1}
+                        className="resize-y bg-background text-base leading-relaxed"
+                    />
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => void handleCreateBlurb('draft')}
+                            disabled={!blurbText.trim() || blurbText.length > BLURB_MAX_LENGTH || createBlurb.isPending}
+                        >
+                            Save draft
+                        </Button>
+                        <Button
+                            onClick={() => void handleCreateBlurb('published')}
+                            disabled={!blurbText.trim() || blurbText.length > BLURB_MAX_LENGTH || createBlurb.isPending}
+                        >
+                            {createBlurb.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Send className="mr-2 h-4 w-4" />
+                            )}
+                            Publish
+                        </Button>
+                    </div>
+                </section>
+            )}
+
             {/* Filters */}
             <div className="rounded-xl bg-muted/40 p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -297,7 +379,7 @@ export function AdminBlogListPage() {
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search by title, slug, or excerpt..."
+                            placeholder="Search articles, thoughts, and photo journals..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             className="h-9 pl-9"
@@ -383,7 +465,7 @@ export function AdminBlogListPage() {
                             <TableHeader className="bg-muted/40">
                                 <TableRow className="border-border/60 hover:bg-transparent">
                                     <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Title
+                                        Content
                                     </TableHead>
                                     <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                                         Status
@@ -410,36 +492,54 @@ export function AdminBlogListPage() {
                                     >
                                         <TableCell className="max-w-[360px]">
                                             <div className="flex items-start gap-3">
-                                                <button
-                                                    type="button"
-                                                    title={post.isFeatured ? 'Remove highlight' : 'Highlight this post'}
-                                                    className="mt-1 shrink-0 text-muted-foreground transition-colors duration-normal hover:text-warning"
-                                                    onClick={() => handleToggleFeatured(post.id, post.isFeatured)}
-                                                    disabled={updatePost.isPending}
-                                                >
-                                                    {post.isFeatured ? (
-                                                        <Star className="h-4 w-4 fill-warning text-warning" />
-                                                    ) : (
-                                                        <Star className="h-4 w-4" />
-                                                    )}
-                                                </button>
+                                                {post.contentType !== 'blurb' && (
+                                                    <button
+                                                        type="button"
+                                                        title={
+                                                            post.isFeatured ? 'Remove highlight' : 'Highlight this post'
+                                                        }
+                                                        className="mt-1 shrink-0 text-muted-foreground transition-colors duration-normal hover:text-warning"
+                                                        onClick={() => handleToggleFeatured(post.id, post.isFeatured)}
+                                                        disabled={updatePost.isPending}
+                                                    >
+                                                        {post.isFeatured ? (
+                                                            <Star className="h-4 w-4 fill-warning text-warning" />
+                                                        ) : (
+                                                            <Star className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                )}
                                                 <div className="min-w-0">
                                                     <Link
                                                         to={surface.editPath(post.id)}
                                                         className="font-medium hover:underline line-clamp-1"
                                                     >
-                                                        {post.title}
+                                                        {post.contentType === 'blurb'
+                                                            ? post.blurbText || post.excerpt || post.title
+                                                            : post.title}
                                                     </Link>
-                                                    {post.excerpt && (
+                                                    {post.contentType === 'photo' ? (
+                                                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                                                            {post.photoAlbum?.length ?? 0}{' '}
+                                                            {(post.photoAlbum?.length ?? 0) === 1
+                                                                ? 'photograph'
+                                                                : 'photographs'}
+                                                            {post.photoNote ? ` · ${post.photoNote}` : ''}
+                                                        </p>
+                                                    ) : post.contentType !== 'blurb' && post.excerpt ? (
                                                         <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                                                             {post.excerpt}
                                                         </p>
-                                                    )}
+                                                    ) : null}
                                                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                                                         <Clock className="h-3 w-3" />
-                                                        {post.readingTimeMinutes
-                                                            ? `${post.readingTimeMinutes} min read`
-                                                            : '—'}
+                                                        {post.contentType === 'blurb'
+                                                            ? 'Short thought'
+                                                            : post.contentType === 'photo'
+                                                              ? 'Photo-first story'
+                                                              : post.readingTimeMinutes
+                                                                ? `${post.readingTimeMinutes} min read`
+                                                                : '—'}
                                                     </div>
                                                 </div>
                                             </div>

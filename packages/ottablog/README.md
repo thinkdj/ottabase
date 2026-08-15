@@ -5,7 +5,9 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 ## Features
 
 - **Fat Models** - All blog logic in one place with query helpers
-- **Multiple Content Types** - Support for posts, news, docs, announcements, and custom types
+- **Multiple Content Types** - Support for articles, photo journals, news, docs, announcements, and custom types
+- **Blurbs / Thoughts** - First-class short-form text interleaved with articles in chronological timelines
+- **Photo Journals** - Ordered, photo-first travel logs with field notes, per-frame context, and immersive viewing
 - **Rich Content** - EditorJS integration via OttaEditor for flexible content
 - **SEO Ready** - Built-in SEO metadata, hero images, canonical URLs
 - **Hierarchical Categories** - Support for category trees with multi-type filtering
@@ -28,7 +30,7 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 
 # Only needed if you render posts (i.e. import from @ottabase/ottablog/renderer)
-pnpm add @ottabase/ottarenderer
+pnpm add @ottabase/ottarenderer @ottabase/medialibrary
 ```
 
 ## Module Entry Points
@@ -39,7 +41,7 @@ dependency — install it only if you render). Importing the pure root loads zer
 | Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
 | `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
-| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                                                                                                                                   | Yes                   |
+| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                                                      | Yes                   |
 | `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
 | `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
 
@@ -125,7 +127,7 @@ const post = await Post.create({
     content: {
         /* EditorJS JSON */
     },
-    contentType: 'blog', // blog, changelog, docs, news, announcement
+    contentType: 'blog', // blog, blurb, photo, changelog, docs, news, announcement
     status: 'published', // draft, published, archived, scheduled
     categoryId: 'cat-123',
     seriesId: 'series-123',
@@ -168,20 +170,102 @@ post.generateSlug(); // Auto-generate from title
 post.generateExcerpt(); // Auto-generate from content
 ```
 
+### Blurbs / Thoughts
+
+Blurbs are intentionally small: 1–1,000 characters of plain text, with line breaks and safe HTTP(S) links. They use the
+same `posts` table, publishing states, author/tenant scope, tags, comments, RSS, sitemap, permalink, and archive
+infrastructure as articles, but do not expose article-only hero, series, rich-body, password, or featured behavior. The
+model owns the generated title, slug, excerpt, and reading stats:
+
+```typescript
+const thought = await Post.createBlurb('Watched xyz today. It stayed with me.', {
+    status: 'published',
+    appId: 'app-123',
+    organizationId: 'org-123',
+    userId: 'user-123',
+});
+
+await thought.updateBlurb('Watched it again. The ending lands differently now.');
+```
+
+Applications should use `POST /api/blog/blurbs` and `PATCH /api/blog/blurbs/{postId}` for editorial writes. Those routes
+derive app/user/organization scope from the verified server context, enforce `posts:create` / `posts:update` and the
+separate `posts:publish` capability, and invoke the fat-model methods above. The Studio content list provides a quick
+composer plus a dedicated blurb editor for status, scheduling, comments, and tags.
+
+The feature adds the nullable `posts.blurb_text` column. Run the normal OttaORM auto-init endpoint after upgrading; no
+destructive or data-rewrite migration is required.
+
+### Photo Journals
+
+Photo journals use `contentType: 'photo'` for photo-first stories: travel logs, walks, events, visual essays, or a
+single memorable frame. They live in the same publish chronology as articles and blurbs and retain the same tags,
+comments, scheduling, highlighting, sitemap, permalink, tenant scope, and RLS behavior.
+
+```typescript
+const journal = await Post.createPhotoJournal(
+    [
+        {
+            id: 'frame-1',
+            mediaId: 'media-123',
+            url: 'https://images.example.com/kyoto-rain.jpg',
+            previewUrl: 'https://images.example.com/kyoto-rain-preview.jpg',
+            alt: 'Lanterns reflected in a wet Kyoto lane',
+            caption: 'After the last train',
+            location: 'Kyoto, Japan',
+            takenAt: Date.parse('2026-05-12'),
+            width: 1800,
+            height: 1200,
+        },
+    ],
+    {
+        title: 'Kyoto, in the rain', // optional; lead-photo text/date supplies a graceful fallback
+        note: 'The rain emptied the streets just before blue hour.',
+        status: 'published',
+        appId: 'app-123',
+        organizationId: 'org-123',
+        userId: 'user-123',
+    },
+);
+```
+
+The ordered `photoAlbum` supports 1–60 photographs. Each frame may carry stable media identity, responsive media URLs,
+alt text, a caption, location, capture date, dimensions, and MIME type. The model derives `heroImage` from the first
+frame for existing featured cards, Open Graph previews, and RSS enclosure support. It also owns the permalink, excerpt,
+reading stats, publication dates, and article-only field resets.
+
+Applications should use `POST /api/blog/photo-journals` and `PATCH /api/blog/photo-journals/{postId}`. The endpoints
+derive ownership from the verified server context, enforce create/update and separate publish capabilities, validate the
+album at the model boundary, and keep RLS active. The built-in admin editor reuses the media library for
+multi-select/upload, treats the first frame as the cover, supports reordering and per-frame metadata, and previews the
+timeline collage before publishing.
+
+The renderer shows a compact three-frame collage in mixed timelines and an asymmetric editorial contact sheet on the
+permalink. Detail images register with the immersive media lightbox. Custom themes can provide `renderPhotoJournal`;
+plugins can filter the ordered album with `post.photoJournal.filter`.
+
+This feature adds nullable `posts.photo_note` and JSON `posts.photo_album` columns. Run the normal OttaORM auto-init
+endpoint after upgrading; existing rows need no rewrite.
+
 **Fields:**
 
 - `id` - Unique identifier
 - `title` - Post title
 - `slug` - URL-friendly identifier (unique per appId)
 - `excerpt` - Short summary
+- `blurbText` - Plain-text short-form body when `contentType` is `blurb`
+- `photoNote` - Optional short field note when `contentType` is `photo`
+- `photoAlbum` - Ordered `PhotoJournalItem[]` when `contentType` is `photo`
 - `content` - EditorJS JSON content
-- `contentType` - Type of content (blog, changelog, docs, news, announcement)
+- `contentType` - Type of content (blog, blurb, photo, changelog, docs, news, announcement). This is a plain text
+  column, not an enum, so rows can carry a value a given build does not know about — render it with
+  `contentTypeLabel(value)`, which falls back to the raw string, rather than indexing `CONTENT_TYPES` directly.
 - `status` - Publication status (draft, published, archived, scheduled)
 - `categoryId` - Legacy single-category reference (prefer junction via PostCategoryLink)
 - `seriesId` - Series reference
 - `seriesOrder` - Position in series
 - `heroImage` - Featured image JSON (`url`, `alt`, `caption`, `maxHeight`, `width`, `height`, `focalPoint`, `cfImageId`,
-  `mediaId`)
+  `mediaId`, `mimeType`)
 - `seoMeta` - SEO metadata JSON
 - `meta` - Free-form custom key/value metadata JSON (not used by the engine; available to themes/plugins/custom
   renderers)
@@ -436,11 +520,13 @@ const customCats = await PostCategory.where({
 
 **Available Types:**
 
-- `post` - Standard blog posts (default)
+- `blog` - Standard blog articles (default)
+- `blurb` - Short thoughts rendered directly in the chronological timeline
+- `photo` - Photo-first journals rendered as timeline collages and immersive editorial contact sheets
+- `changelog` - Product updates and release notes
 - `news` - News articles
 - `docs` - Documentation
-- `changelog` - Change logs
-- `announcement` - Announcements
+- `announcement` - Notices and announcements
 - Custom types supported
 
 ## Relationships
@@ -613,9 +699,11 @@ content; unrelated database, schema, and RLS failures still propagate instead of
 `@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge: `extractBlogSlugFromPath` detects a
 blog detail document navigation, `buildPostSeoTags` produces the escaped description/canonical/OpenGraph/Twitter/JSON-LD
 head block, and `replaceDocumentTitle` swaps the SPA's static `<title>` using a replacer function (author-authored
-`$`-sequences are never expanded). The `otta-web` worker wires these into its HTML pipeline right after brand injection
-(`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the article instead of the SPA shell. Injected
-documents are served `Cache-Control: no-store` with asset validators stripped, matching the brand-injection policy.
+`$`-sequences are never expanded). Blurbs emit `SocialMediaPosting` JSON-LD, photo journals emit `CollectionPage` with
+ordered `ImageObject` entries, and full articles emit `Article`. The `otta-web` worker wires these into its HTML
+pipeline right after brand injection (`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the content
+instead of the SPA shell. Injected documents are served `Cache-Control: no-store` with asset validators stripped,
+matching the brand-injection policy.
 
 ## Public API Endpoints
 
@@ -639,6 +727,40 @@ GET /api/blog/posts/by-slug/{slug}
 
 Returns a single post with tags, categories (via junction), and series title. View tracking is opt-in (call
 `trackView()` explicitly to avoid D1 write costs per page view).
+
+### Create or Update a Blurb
+
+```http
+POST  /api/blog/blurbs
+PATCH /api/blog/blurbs/{postId}
+Content-Type: application/json
+
+{ "text": "A quick thought", "status": "published", "allowComments": true }
+```
+
+Writes are authenticated and RLS-enforced. Published/scheduled status additionally requires `posts:publish`. The
+application adapter must return the same canonical, membership-validated `SecurityContext` used by its OttaORM CRUD
+boundary; an RBAC request context (including its internal `system` sentinel) is authorization input, not row scope.
+
+### Create or Update a Photo Journal
+
+```http
+POST  /api/blog/photo-journals
+PATCH /api/blog/photo-journals/{postId}
+Content-Type: application/json
+
+{
+  "title": "Kyoto, in the rain",
+  "note": "A quiet blue hour.",
+  "photos": [{ "id": "p1", "mediaId": "m1", "url": "https://...", "alt": "Wet lantern-lit lane" }],
+  "status": "published",
+  "allowComments": true,
+  "isFeatured": true
+}
+```
+
+Writes use that same canonical security boundary. The first photograph becomes the derived hero/cover; changing album
+order updates that compatibility metadata without changing the permalink.
 
 ### Related Posts
 
@@ -682,8 +804,9 @@ Returns series metadata (id, title, slug, description, status). Supports query p
 GET /api/blog/rss?title=My+Blog&description=Latest+posts&contentType=blog&limit=25
 ```
 
-Returns an RSS 2.0 XML feed of published posts. Supports `title`, `description`, `contentType`, `appId`, and `limit`
-query parameters.
+Returns an RSS 2.0 XML feed of published articles, blurbs, and photo journals in publish chronology. Blurb text or the
+photo field note becomes the item description; a photo journal includes a `Photo Journal` category and lead-image
+enclosure. Supports `title`, `description`, `contentType`, `appId`, and `limit` query parameters.
 
 ### Sitemap
 
@@ -749,14 +872,14 @@ All models declare `static writable` to control which fields can be set via Otta
 
 The app includes admin pages for managing blog content:
 
-| Page       | Route                                         | Description                                                                    |
-| ---------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| Posts      | `/admin/blog`                                 | List, filter, and manage posts                                                 |
-| Editor     | `/admin/blog/new`, `/admin/blog/$postId/edit` | Create/edit posts with OttaEditor, tags + categories (OttaSelect multi-select) |
-| Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                              |
-| Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                    |
-| Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                              |
-| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                    |
+| Page       | Route                                         | Description                                                                        |
+| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Content    | `/admin/blog`                                 | List/filter mixed content, quick-publish blurbs, and start photo journals          |
+| Editor     | `/admin/blog/new`, `/admin/blog/$postId/edit` | Rich article, focused blurb, or media-library-backed photo editor selected by type |
+| Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                                  |
+| Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                        |
+| Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                                  |
+| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                        |
 
 All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
 
@@ -831,6 +954,7 @@ Create your own theme with complete control:
 
 ```typescript
 import { registerTheme, setActiveTheme, type Theme } from '@ottabase/ottablog';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 
 const myTheme: Theme = {
   metadata: {
@@ -841,6 +965,16 @@ const myTheme: Theme = {
   renderers: {
     renderTitle: (post) => <h1 className="custom-title">{post.title}</h1>,
     renderContent: (post) => <div className="custom-content">{/* render content */}</div>,
+    renderBlurb: (post, props) => (
+      <div className={props.variant === 'detail' ? 'thought-detail' : 'thought-timeline'}>
+        {post.blurbText}
+      </div>
+    ),
+    renderPhotoJournal: (post, props) => (
+      <div className={props.variant === 'detail' ? 'journal-contact-sheet' : 'journal-collage'}>
+        {post.photoAlbum?.map((photo) => <img key={photo.id} src={sanitizeUrl(photo.url)} alt={photo.alt ?? ''} />)}
+      </div>
+    ),
     // renderCard controls post cards on archive/listing pages
     renderCard: (post, props) => (
       <article className="my-card">

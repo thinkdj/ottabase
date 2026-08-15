@@ -3,7 +3,7 @@
  *
  * Central type definitions for blog-related entities to avoid duplication across pages.
  */
-import type { ContentType, PostStatus } from '@ottabase/ottablog';
+import type { ContentType, PhotoJournalItem, PostStatus } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 
 /**
@@ -23,6 +23,9 @@ export interface BlogPost {
     title: string;
     slug: string;
     excerpt: string | null;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
     content: OutputData | null;
     contentType: ContentType;
     status: PostStatus;
@@ -79,6 +82,9 @@ export interface BlogPostListItem {
     title: string;
     slug: string;
     excerpt: string | null;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
     contentType: ContentType;
     status: PostStatus;
     heroImage: { url: string; alt?: string; mediaId?: string } | null;

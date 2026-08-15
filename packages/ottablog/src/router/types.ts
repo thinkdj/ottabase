@@ -9,6 +9,7 @@
  */
 
 import type { ContentType, EditorJSData } from '../types';
+import type { SecurityContext } from '@ottabase/ottaorm';
 
 /** The minimal request context every blog handler receives. */
 export interface BlogRequestContext<Env = unknown> {
@@ -29,6 +30,19 @@ export interface BlogAdminResult {
             organizationId?: string | null;
         } | null;
     } | null;
+    /** Server-derived RLS context. Required by first-class editorial writes. */
+    securityContext?: SecurityContext;
+}
+
+/**
+ * Guard result for editorial WRITES (blurbs, photo journals).
+ *
+ * `securityContext` is REQUIRED here, unlike on BlogAdminResult: these handlers hand it straight to
+ * the RLS engine as the row scope, so "the host forgot to supply one" must be a compile error in
+ * the host's config, not a runtime 401 that reads like the user's session was bad.
+ */
+export interface BlogEditorialWriteResult extends BlogAdminResult {
+    securityContext: SecurityContext;
 }
 
 /** A static, trusted post used to populate an empty demo deployment. */
@@ -111,11 +125,17 @@ export interface BlogRouterConfig<Env = unknown> {
     previewTokenSecret?: (env: Env) => string | null;
 
     /**
-     * Guard for the preview-token mint endpoint — an EDITORIAL gate (someone
-     * allowed to edit posts), typically looser than {@link requireAdmin}.
-     * Falls back to `requireAdmin` when not provided.
+     * Update-grade EDITORIAL gate (someone allowed to edit posts), typically looser than
+     * {@link requireAdmin}. Guards the preview-token mint and the blurb/photo-journal updates.
+     *
+     * The preview mint falls back to `requireAdmin` when this is absent; the editorial WRITE routes
+     * do not — they need a `securityContext` for row scope, and `requireAdmin` has none to give.
+     * An app that omits this simply does not serve /blurbs or /photo-journals.
      */
-    requireContentEditor?: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
+    requireContentEditor?: (ctx: BlogRequestContext<Env>) => Promise<BlogEditorialWriteResult | Response>;
+
+    /** Create-grade editorial guard for quick blurb publishing. Falls back to requireContentEditor. */
+    requireContentCreator?: (ctx: BlogRequestContext<Env>) => Promise<BlogEditorialWriteResult | Response>;
 
     /**
      * OBJECT-level authorization for the preview-token mint: may this caller
@@ -150,6 +170,10 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogStudioPluginEnable(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioPluginConfig(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPostsList(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogBlurbCreate(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogBlurbUpdate(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
+    handleBlogPhotoJournalCreate(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogPhotoJournalUpdate(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogPostBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogPostUnlock(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogTagBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;

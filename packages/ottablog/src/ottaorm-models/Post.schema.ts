@@ -3,6 +3,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { PhotoJournalItem } from '../types';
 
 export const postsTable = sqliteTable(
     'posts',
@@ -20,6 +21,13 @@ export const postsTable = sqliteTable(
         // Short excerpt/summary (auto-generated or manual)
         excerpt: text('excerpt'),
 
+        // First-class short-form text for blurbs/thoughts. Plain text by design.
+        blurbText: text('blurb_text'),
+
+        // Photo-first journal content: a short field note plus an ordered media collection.
+        photoNote: text('photo_note'),
+        photoAlbum: text('photo_album', { mode: 'json' }).$type<PhotoJournalItem[]>(),
+
         // Main content as EditorJS JSON
         content: text('content', { mode: 'json' }).$type<{
             time?: number;
@@ -31,7 +39,7 @@ export const postsTable = sqliteTable(
             version?: string;
         }>(),
 
-        // Content type: blog, changelog, docs, news, announcement
+        // Content type: blog, blurb, photo, changelog, docs, news, announcement
         contentType: text('content_type').notNull().default('blog'),
 
         // Publication status: draft, published, archived, scheduled

@@ -5,6 +5,8 @@
  * hero image upload, SEO settings, and all post fields.
  */
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
+import { AdminBlurbEditor } from './AdminBlurbEditor';
+import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
 import { useBlogSurface } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
@@ -20,6 +22,7 @@ import {
     POST_STATUSES,
     type ContentType,
     type HeroImage,
+    type PhotoJournalItem,
     type PostStatus,
     type SeoMeta,
 } from '@ottabase/ottablog';
@@ -105,6 +108,9 @@ interface BlogPost {
     title: string;
     slug: string;
     excerpt: string | null;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
     content: OutputData | null;
     contentType: ContentType;
     status: PostStatus;
@@ -266,6 +272,15 @@ export function AdminBlogEditorPage() {
     }
 
     // Render the form only when data is ready
+    if ((existingPost?.contentType ?? defaultContentType) === 'blurb') {
+        return <AdminBlurbEditor initialData={existingPost?.contentType === 'blurb' ? existingPost : undefined} />;
+    }
+    if ((existingPost?.contentType ?? defaultContentType) === 'photo') {
+        return (
+            <AdminPhotoJournalEditor initialData={existingPost?.contentType === 'photo' ? existingPost : undefined} />
+        );
+    }
+
     return (
         <BlogEditorForm
             postId={postId}
@@ -1675,11 +1690,13 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     onChange={(e) => setContentType(e.target.value as ContentType)}
                                     wrapperClassName="w-full"
                                 >
-                                    {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
-                                        <NativeSelectOption key={value} value={value}>
-                                            {label}
-                                        </NativeSelectOption>
-                                    ))}
+                                    {Object.entries(CONTENT_TYPES)
+                                        .filter(([value]) => value !== 'blurb' && value !== 'photo')
+                                        .map(([value, { label }]) => (
+                                            <NativeSelectOption key={value} value={value}>
+                                                {label}
+                                            </NativeSelectOption>
+                                        ))}
                                 </NativeSelect>
                             </div>
 

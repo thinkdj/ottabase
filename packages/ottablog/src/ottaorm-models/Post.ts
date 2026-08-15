@@ -8,12 +8,22 @@ import type { DbDriver } from '@ottabase/db/drizzle';
 import { BaseModel, ModelFields, type IModelConstructorParams, type PackageType } from '@ottabase/ottaorm';
 import {
     calculateReadingTime,
+    BlurbValidationError,
     CONTENT_TYPES,
+    createBlurbExcerpt,
+    createBlurbTitle,
+    createPhotoJournalExcerpt,
+    createPhotoJournalTitle,
     extractExcerpt,
     generateSlug,
     POST_STATUSES,
+    PhotoJournalValidationError,
+    validateBlurbText,
+    validatePhotoJournalItems,
+    validatePhotoJournalNote,
     type ContentType,
     type EditorJSData,
+    type PhotoJournalItem,
     type PostStatus,
 } from '../types';
 import { postsTable } from './Post.schema';
@@ -22,6 +32,43 @@ import { PostTag } from './PostTag';
 import { postTagLinksTable } from './PostTagLink';
 
 export { postsTable, type NewPost, type NewPostType, type PostType } from './Post.schema';
+
+export interface BlurbWriteOptions {
+    status?: PostStatus;
+    allowComments?: boolean;
+    publishAt?: number | null;
+    publishedAt?: number | null;
+    appId?: string | null;
+    organizationId?: string | null;
+    userId?: string | null;
+    authorId?: string | null;
+}
+
+export interface PhotoJournalWriteOptions extends BlurbWriteOptions {
+    title?: string | null;
+    note?: string | null;
+    isFeatured?: boolean;
+}
+
+function photoJournalWordCount(note: string | null, items: PhotoJournalItem[]): number {
+    return [note, ...items.map((item) => item.caption), ...items.map((item) => item.location)]
+        .filter((value): value is string => Boolean(value))
+        .join(' ')
+        .split(/\s+/)
+        .filter(Boolean).length;
+}
+
+function photoJournalHero(item: PhotoJournalItem, title: string) {
+    return {
+        url: item.url,
+        alt: item.alt || item.caption || title,
+        caption: item.caption || undefined,
+        mediaId: item.mediaId || undefined,
+        width: item.width || undefined,
+        height: item.height || undefined,
+        mimeType: item.mimeType || undefined,
+    };
+}
 
 /**
  * Post Model - Fat Model Pattern
@@ -35,6 +82,7 @@ export class Post extends BaseModel {
 
     static casts = {
         content: 'json' as const,
+        photoAlbum: 'json' as const,
         heroImage: 'json' as const,
         seoMeta: 'json' as const,
         meta: 'json' as const,
@@ -70,6 +118,9 @@ export class Post extends BaseModel {
             'title',
             'slug',
             'excerpt',
+            'blurbText',
+            'photoNote',
+            'photoAlbum',
             'content',
             'contentType',
             'status',
@@ -101,6 +152,9 @@ export class Post extends BaseModel {
             'title',
             'slug',
             'excerpt',
+            'blurbText',
+            'photoNote',
+            'photoAlbum',
             'content',
             'contentType',
             'status',
@@ -202,6 +256,54 @@ export class Post extends BaseModel {
             formConfig: {
                 visible: true,
                 fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        blurbText: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Blurb',
+                description: 'Short-form thought shown directly in the blog timeline',
+                placeholder: 'Share a quick thought...',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        photoNote: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Field note',
+                description: 'Optional short context for a photo-first journal',
+                placeholder: 'A few words about this place, day, or moment...',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        photoAlbum: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Photographs',
+                description: 'Ordered photographs and their journal metadata',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: false,
@@ -680,7 +782,7 @@ export class Post extends BaseModel {
         options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
         driver?: DbDriver,
     ): Promise<InstanceType<T>[]> {
-        return super.search(query, fields, where, options, driver);
+        return super.search(query, fields, where, options, driver) as Promise<InstanceType<T>[]>;
     }
 
     /**
@@ -831,6 +933,98 @@ export class Post extends BaseModel {
         return this.create({ title, slug, ...data });
     }
 
+    /**
+     * Create a first-class short-form post. Identity and derived search/feed
+     * fields are owned by the model so every caller gets the same invariants.
+     */
+    static async createBlurb(textValue: string, options: BlurbWriteOptions = {}): Promise<Post> {
+        const text = validateBlurbText(textValue);
+        const now = Date.now();
+        const status = options.status ?? 'draft';
+        if (status === 'scheduled' && !options.publishAt) {
+            throw new BlurbValidationError('Scheduled blurbs must include a publish date');
+        }
+
+        const words = text.split(/\s+/).filter(Boolean).length;
+        const publishedAt = status === 'published' ? (options.publishedAt ?? now) : (options.publishedAt ?? null);
+
+        return (await this.create({
+            title: createBlurbTitle(text),
+            slug: `blurb-${now.toString(36)}-${crypto.randomUUID().slice(0, 8)}`,
+            excerpt: createBlurbExcerpt(text),
+            blurbText: text,
+            photoNote: null,
+            photoAlbum: null,
+            content: null,
+            contentType: 'blurb',
+            categoryId: null,
+            seriesId: null,
+            seriesOrder: null,
+            heroImage: null,
+            footnotes: null,
+            status,
+            readingTimeMinutes: 1,
+            wordCount: words,
+            isFeatured: false,
+            allowComments: options.allowComments ?? true,
+            isProtected: false,
+            passwordHash: null,
+            passwordHint: null,
+            publishAt: status === 'scheduled' ? options.publishAt : null,
+            publishedAt,
+            postedAt: status === 'published' ? now : null,
+            appId: options.appId ?? null,
+            organizationId: options.organizationId ?? null,
+            userId: options.userId ?? null,
+            authorId: options.authorId ?? options.userId ?? null,
+        })) as Post;
+    }
+
+    /** Create a photo-first post while deriving all compatibility metadata from its lead photograph. */
+    static async createPhotoJournal(albumValue: unknown, options: PhotoJournalWriteOptions = {}): Promise<Post> {
+        const items = validatePhotoJournalItems(albumValue);
+        const note = validatePhotoJournalNote(options.note);
+        const now = Date.now();
+        const title = createPhotoJournalTitle(options.title, items[0], now);
+        const status = options.status ?? 'draft';
+        if (status === 'scheduled' && !options.publishAt) {
+            throw new PhotoJournalValidationError('Scheduled photo journals must include a publish date');
+        }
+
+        const slugBase = generateSlug(title) || 'photo-journal';
+        const publishedAt = status === 'published' ? (options.publishedAt ?? now) : (options.publishedAt ?? null);
+        return (await this.create({
+            title,
+            slug: `${slugBase}-${now.toString(36)}-${crypto.randomUUID().slice(0, 6)}`,
+            excerpt: createPhotoJournalExcerpt(note, items),
+            blurbText: null,
+            photoNote: note,
+            photoAlbum: items,
+            content: null,
+            contentType: 'photo',
+            categoryId: null,
+            seriesId: null,
+            seriesOrder: null,
+            heroImage: photoJournalHero(items[0], title),
+            footnotes: null,
+            status,
+            readingTimeMinutes: 1,
+            wordCount: photoJournalWordCount(note, items),
+            isFeatured: options.isFeatured ?? false,
+            allowComments: options.allowComments ?? true,
+            isProtected: false,
+            passwordHash: null,
+            passwordHint: null,
+            publishAt: status === 'scheduled' ? options.publishAt : null,
+            publishedAt,
+            postedAt: status === 'published' ? now : null,
+            appId: options.appId ?? null,
+            organizationId: options.organizationId ?? null,
+            userId: options.userId ?? null,
+            authorId: options.authorId ?? options.userId ?? null,
+        })) as Post;
+    }
+
     // ==================== Instance Methods ====================
 
     /**
@@ -841,6 +1035,109 @@ export class Post extends BaseModel {
         this.set('status', 'published');
         this.set('publishedAt', this.get('publishedAt') || now);
         this.set('postedAt', now);
+        return this.save();
+    }
+
+    /** Whether this post uses the short-form blurb contract. */
+    isBlurb(): boolean {
+        return this.get('contentType') === 'blurb';
+    }
+
+    /**
+     * Update a blurb and all fields derived from its text. Article-only fields
+     * remain unavailable through this method by design.
+     */
+    async updateBlurb(textValue: string, options: BlurbWriteOptions = {}) {
+        if (!this.isBlurb()) throw new BlurbValidationError('Post is not a blurb');
+
+        const text = validateBlurbText(textValue);
+        const words = text.split(/\s+/).filter(Boolean).length;
+        this.set('blurbText', text);
+        this.set('photoNote', null);
+        this.set('photoAlbum', null);
+        this.set('title', createBlurbTitle(text));
+        this.set('excerpt', createBlurbExcerpt(text));
+        this.set('readingTimeMinutes', 1);
+        this.set('wordCount', words);
+        this.set('content', null);
+        this.set('contentType', 'blurb');
+        this.set('categoryId', null);
+        this.set('seriesId', null);
+        this.set('seriesOrder', null);
+        this.set('heroImage', null);
+        this.set('footnotes', null);
+        this.set('isFeatured', false);
+        this.set('isProtected', false);
+        this.set('passwordHash', null);
+        this.set('passwordHint', null);
+
+        if (typeof options.allowComments === 'boolean') this.set('allowComments', options.allowComments);
+        if (options.status) {
+            if (options.status === 'scheduled' && !options.publishAt) {
+                throw new BlurbValidationError('Scheduled blurbs must include a publish date');
+            }
+            this.set('status', options.status);
+            this.set('publishAt', options.status === 'scheduled' ? options.publishAt : null);
+            if (options.status === 'published') {
+                const now = Date.now();
+                this.set('publishedAt', this.get('publishedAt') || options.publishedAt || now);
+                this.set('postedAt', now);
+            }
+        }
+
+        return this.save();
+    }
+
+    isPhotoJournal(): boolean {
+        return this.get('contentType') === 'photo';
+    }
+
+    /** Update a photo journal while keeping its permalink stable and lead-photo metadata in sync. */
+    async updatePhotoJournal(albumValue: unknown, options: PhotoJournalWriteOptions = {}) {
+        if (!this.isPhotoJournal()) throw new PhotoJournalValidationError('Post is not a photo journal');
+
+        const items = validatePhotoJournalItems(albumValue);
+        // An ABSENT field means "unchanged" on a partial update — fall back to the stored value,
+        // exactly as the title does below. Passing `options.note` straight through would validate
+        // `undefined` to null and erase the field note (and the excerpt derived from it) on any
+        // PATCH that omits it. An explicit `null` still clears it.
+        const noteInput = options.note === undefined ? this.get('photoNote') : options.note;
+        const note = validatePhotoJournalNote(noteInput);
+        const titleInput = options.title === undefined ? this.get('title') : options.title;
+        const title = createPhotoJournalTitle(titleInput, items[0]);
+        this.set('title', title);
+        this.set('excerpt', createPhotoJournalExcerpt(note, items));
+        this.set('blurbText', null);
+        this.set('photoNote', note);
+        this.set('photoAlbum', items);
+        this.set('content', null);
+        this.set('contentType', 'photo');
+        this.set('categoryId', null);
+        this.set('seriesId', null);
+        this.set('seriesOrder', null);
+        this.set('heroImage', photoJournalHero(items[0], title));
+        this.set('footnotes', null);
+        this.set('readingTimeMinutes', 1);
+        this.set('wordCount', photoJournalWordCount(note, items));
+        this.set('isProtected', false);
+        this.set('passwordHash', null);
+        this.set('passwordHint', null);
+
+        if (typeof options.allowComments === 'boolean') this.set('allowComments', options.allowComments);
+        if (typeof options.isFeatured === 'boolean') this.set('isFeatured', options.isFeatured);
+        if (options.status) {
+            if (options.status === 'scheduled' && !options.publishAt) {
+                throw new PhotoJournalValidationError('Scheduled photo journals must include a publish date');
+            }
+            this.set('status', options.status);
+            this.set('publishAt', options.status === 'scheduled' ? options.publishAt : null);
+            if (options.status === 'published') {
+                const now = Date.now();
+                this.set('publishedAt', this.get('publishedAt') || options.publishedAt || now);
+                this.set('postedAt', now);
+            }
+        }
+
         return this.save();
     }
 

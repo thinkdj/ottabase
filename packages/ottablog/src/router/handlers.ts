@@ -7,6 +7,8 @@
  */
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { globalRLS, RLSError, type SecurityContext } from '@ottabase/ottaorm';
 import {
     OttablogPlugin,
     OttablogTheme,
@@ -19,7 +21,8 @@ import {
 } from '../ottaorm-models';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
-import type { BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
+import { BlurbValidationError, PhotoJournalValidationError } from '../types';
+import type { BlogEditorialWriteResult, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
 
 async function readJson<T>(request: Request): Promise<T> {
     try {
@@ -88,6 +91,19 @@ async function chunkedFetch<M>(
         results.push(...(await fetch(chunk)));
     }
     return results;
+}
+
+/**
+ * Blank every column that carries the post BODY, for a password-protected post whose reader has
+ * not unlocked it. One list, both public projections: the lock screen is worthless if the payload
+ * behind it still ships the text. Titles/excerpts stay — they are the teaser the lock screen shows.
+ */
+function stripProtectedBody(post: Record<string, unknown>): void {
+    post.content = null;
+    post.footnotes = null;
+    post.blurbText = null;
+    post.photoNote = null;
+    post.photoAlbum = null;
 }
 
 /**
@@ -190,10 +206,7 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
         const j = record.toJson() as Record<string, unknown>;
         const { privateNotes, ...rest } = j;
 
-        if (rest.isProtected) {
-            rest.content = null;
-            rest.footnotes = null;
-        }
+        if (rest.isProtected) stripProtectedBody(rest);
 
         const postId = rest.id as string;
         rest.author = rest.authorId ? (authorById.get(rest.authorId as string) ?? null) : null;
@@ -229,12 +242,7 @@ async function publicPostJson(
     const { privateNotes, ...rest } = j;
 
     // Strip content from protected posts
-    if (rest.isProtected && !options?.includeContent) {
-        const { content, footnotes, ...restNoContent } = rest;
-        Object.assign(rest, restNoContent);
-        rest.content = null;
-        rest.footnotes = null;
-    }
+    if (rest.isProtected && !options?.includeContent) stripProtectedBody(rest);
 
     // Enrich with author info from User relationship
     if (options?.enrichAuthor && rest.authorId) {
@@ -591,6 +599,309 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return jsonResponse({ success: true });
     }
 
+    type BlurbBody = {
+        text?: unknown;
+        status?: unknown;
+        allowComments?: unknown;
+        publishAt?: unknown;
+    };
+
+    function readEditorialOptions(body: BlurbBody):
+        | {
+              status?: 'draft' | 'published' | 'archived' | 'scheduled';
+              allowComments?: boolean;
+              publishAt?: number | null;
+          }
+        | Response {
+        const allowedStatuses = new Set(['draft', 'published', 'archived', 'scheduled']);
+        if (body.status !== undefined && (typeof body.status !== 'string' || !allowedStatuses.has(body.status))) {
+            return errorResponse('Invalid publication status', 400, { code: 'VALIDATION_ERROR' });
+        }
+        if (body.allowComments !== undefined && typeof body.allowComments !== 'boolean') {
+            return errorResponse('allowComments must be a boolean', 400, { code: 'VALIDATION_ERROR' });
+        }
+
+        if (
+            body.publishAt !== undefined &&
+            body.publishAt !== null &&
+            (typeof body.publishAt !== 'number' || !Number.isFinite(body.publishAt))
+        ) {
+            return errorResponse('publishAt must be a timestamp', 400, { code: 'VALIDATION_ERROR' });
+        }
+
+        return {
+            status: body.status as 'draft' | 'published' | 'archived' | 'scheduled' | undefined,
+            allowComments: body.allowComments as boolean | undefined,
+            publishAt: body.publishAt as number | null | undefined,
+        };
+    }
+
+    /**
+     * The editorial write guard, or a 501 when the host app never configured one. Deliberately NOT
+     * falling back to `requireAdmin`: its result carries no `securityContext`, so every write would
+     * fail later with a misleading 401. An unconfigured route is a deployment fact, not an auth
+     * failure, and it should read that way in the logs.
+     */
+    const editorialGuard = (kind: 'create' | 'update') =>
+        kind === 'create' ? (config.requireContentCreator ?? config.requireContentEditor) : config.requireContentEditor;
+
+    // Same shape as the `connect` binding error: a host-configuration gap, reported as one.
+    const editorialGuardMissing = () =>
+        errorResponse('Editorial content guard not configured', 500, { code: 'CONFIG_ERROR' });
+
+    function editorialWriteContext(auth: BlogEditorialWriteResult, context: Ctx): SecurityContext | Response {
+        const securityContext = auth.securityContext;
+        const userId = securityContext.userId ?? auth.session?.user?.id ?? undefined;
+        if (!userId) {
+            return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
+        }
+        return {
+            ...securityContext,
+            userId,
+            appId: securityContext.appId ?? config.defaultAppId(context.env),
+        };
+    }
+
+    async function handleBlogBlurbCreate(context: Ctx): Promise<Response> {
+        const guard = editorialGuard('create');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+        if (securityContext.organizationId == null && !securityContext.platformAdmin) {
+            return errorResponse('An active organization is required to create blurbs', 403, { code: 'FORBIDDEN' });
+        }
+
+        const body = await readJson<BlurbBody>(context.request);
+        const options = readEditorialOptions(body);
+        if (options instanceof Response) return options;
+        // Draft, matching photo journals and Post.createBlurb — a body of just `{text}` must not
+        // publish itself to the public timeline and RSS. Both editors always send an explicit status.
+        const requestedStatus = options.status ?? 'draft';
+        if (
+            (requestedStatus === 'published' || requestedStatus === 'scheduled') &&
+            !securityContext.platformAdmin &&
+            !hasGrantedPermission(securityContext.permissions, 'posts:publish')
+        ) {
+            return errorResponse('Publishing blurbs requires the posts:publish permission', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+
+        const writeData: Record<string, unknown> = {
+            contentType: 'blurb',
+            organizationId: securityContext.organizationId ?? null,
+            appId: securityContext.appId,
+            userId: securityContext.userId,
+            authorId: securityContext.userId,
+        };
+
+        try {
+            globalRLS.validateWrite(Post.entity, securityContext, writeData, 'create');
+            const post = await Post.createBlurb(body.text as string, {
+                ...options,
+                status: requestedStatus,
+                organizationId: writeData.organizationId as string | null,
+                appId: writeData.appId as string,
+                userId: writeData.userId as string,
+                authorId: writeData.authorId as string,
+            });
+            return jsonResponse(post.toJson(), 201);
+        } catch (error) {
+            if (error instanceof BlurbValidationError) {
+                return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (error instanceof RLSError) {
+                return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+            }
+            throw error;
+        }
+    }
+
+    async function handleBlogBlurbUpdate(context: Ctx, postId: string): Promise<Response> {
+        const guard = editorialGuard('update');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+
+        let filter: Record<string, unknown>;
+        try {
+            filter = globalRLS.getReadFilter(Post.entity, securityContext);
+        } catch {
+            return errorResponse('Blurb not found', 404, { code: 'NOT_FOUND' });
+        }
+        const post = await Post.first({ id: postId, contentType: 'blurb', ...filter });
+        if (!post) return errorResponse('Blurb not found', 404, { code: 'NOT_FOUND' });
+
+        const body = await readJson<BlurbBody>(context.request);
+        const options = readEditorialOptions(body);
+        if (options instanceof Response) return options;
+        if (
+            (options.status === 'published' || options.status === 'scheduled') &&
+            !securityContext.platformAdmin &&
+            !hasGrantedPermission(securityContext.permissions, 'posts:publish')
+        ) {
+            return errorResponse('Publishing blurbs requires the posts:publish permission', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+
+        try {
+            globalRLS.validateWrite(Post.entity, securityContext, post.toJson(), 'update');
+            // PATCH: an ABSENT field means "unchanged". A status-only body (publish/schedule a
+            // draft) must not read as "blurb text is required" — fall back to the stored text.
+            const text = body.text === undefined ? (post.get('blurbText') as string) : body.text;
+            const updated = await post.updateBlurb(text as string, options);
+            return jsonResponse(updated.toJson());
+        } catch (error) {
+            if (error instanceof BlurbValidationError) {
+                return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (error instanceof RLSError) {
+                return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+            }
+            throw error;
+        }
+    }
+
+    type PhotoJournalBody = BlurbBody & {
+        title?: unknown;
+        note?: unknown;
+        photos?: unknown;
+        isFeatured?: unknown;
+    };
+
+    async function handleBlogPhotoJournalCreate(context: Ctx): Promise<Response> {
+        const guard = editorialGuard('create');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+        if (securityContext.organizationId == null && !securityContext.platformAdmin) {
+            return errorResponse('An active organization is required to create photo journals', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+
+        const body = await readJson<PhotoJournalBody>(context.request);
+        const options = readEditorialOptions(body);
+        if (options instanceof Response) return options;
+        if (body.isFeatured !== undefined && typeof body.isFeatured !== 'boolean') {
+            return errorResponse('isFeatured must be a boolean', 400, { code: 'VALIDATION_ERROR' });
+        }
+        const requestedStatus = options.status ?? 'draft';
+        if (
+            (requestedStatus === 'published' || requestedStatus === 'scheduled') &&
+            !securityContext.platformAdmin &&
+            !hasGrantedPermission(securityContext.permissions, 'posts:publish')
+        ) {
+            return errorResponse('Publishing photo journals requires the posts:publish permission', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+
+        const writeData: Record<string, unknown> = {
+            contentType: 'photo',
+            organizationId: securityContext.organizationId ?? null,
+            appId: securityContext.appId,
+            userId: securityContext.userId,
+            authorId: securityContext.userId,
+        };
+        try {
+            globalRLS.validateWrite(Post.entity, securityContext, writeData, 'create');
+            const post = await Post.createPhotoJournal(body.photos, {
+                ...options,
+                title: body.title as string | null | undefined,
+                note: body.note as string | null | undefined,
+                isFeatured: body.isFeatured as boolean | undefined,
+                status: requestedStatus,
+                organizationId: writeData.organizationId as string | null,
+                appId: writeData.appId as string,
+                userId: writeData.userId as string,
+                authorId: writeData.authorId as string,
+            });
+            return jsonResponse(post.toJson(), 201);
+        } catch (error) {
+            if (error instanceof PhotoJournalValidationError) {
+                return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (error instanceof RLSError) return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+            throw error;
+        }
+    }
+
+    async function handleBlogPhotoJournalUpdate(context: Ctx, postId: string): Promise<Response> {
+        const guard = editorialGuard('update');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+
+        let filter: Record<string, unknown>;
+        try {
+            filter = globalRLS.getReadFilter(Post.entity, securityContext);
+        } catch {
+            return errorResponse('Photo journal not found', 404, { code: 'NOT_FOUND' });
+        }
+        const post = await Post.first({ id: postId, contentType: 'photo', ...filter });
+        if (!post) return errorResponse('Photo journal not found', 404, { code: 'NOT_FOUND' });
+
+        const body = await readJson<PhotoJournalBody>(context.request);
+        const options = readEditorialOptions(body);
+        if (options instanceof Response) return options;
+        if (body.isFeatured !== undefined && typeof body.isFeatured !== 'boolean') {
+            return errorResponse('isFeatured must be a boolean', 400, { code: 'VALIDATION_ERROR' });
+        }
+        if (
+            (options.status === 'published' || options.status === 'scheduled') &&
+            !securityContext.platformAdmin &&
+            !hasGrantedPermission(securityContext.permissions, 'posts:publish')
+        ) {
+            return errorResponse('Publishing photo journals requires the posts:publish permission', 403, {
+                code: 'FORBIDDEN',
+            });
+        }
+
+        try {
+            globalRLS.validateWrite(Post.entity, securityContext, post.toJson(), 'update');
+            // Same PATCH rule the model applies to `note`/`title`: an ABSENT album means
+            // "unchanged", so publishing or scheduling an existing journal needs no photo payload.
+            const photos = body.photos === undefined ? post.get('photoAlbum') : body.photos;
+            const updated = await post.updatePhotoJournal(photos, {
+                ...options,
+                title: body.title as string | null | undefined,
+                note: body.note as string | null | undefined,
+                isFeatured: body.isFeatured as boolean | undefined,
+            });
+            return jsonResponse(updated.toJson());
+        } catch (error) {
+            if (error instanceof PhotoJournalValidationError) {
+                return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (error instanceof RLSError) return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+            throw error;
+        }
+    }
+
     async function handleBlogPostsList(context: Ctx): Promise<Response> {
         const { env, url } = context;
         const connectError = config.connect(env);
@@ -660,7 +971,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         const searchTerm = search?.trim() || null;
-        const searchFields = ['title', 'slug', 'excerpt'];
+        const searchFields = ['title', 'slug', 'excerpt', 'blurbText', 'photoNote'];
 
         let result;
         if (junctionIds !== null && junctionIds.length <= D1_FILTERED_ID_CHUNK) {
@@ -990,18 +1301,32 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&apos;');
+        const absoluteMediaUrl = (value: string | null | undefined): string | null => {
+            if (!value) return null;
+            try {
+                const resolved = new URL(value, siteUrl);
+                return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : null;
+            } catch {
+                return null;
+            }
+        };
 
         const items = posts
             .map((post) => {
+                const isBlurb = post.get('contentType') === 'blurb';
+                const isPhotoJournal = post.get('contentType') === 'photo';
                 const title = escapeXml((post.get('title') as string) || '');
                 const slug = post.get('slug') as string;
-                const excerpt = escapeXml((post.get('excerpt') as string) || '');
+                const excerpt = escapeXml(
+                    (isBlurb ? (post.get('blurbText') as string) : (post.get('excerpt') as string)) || '',
+                );
                 // Get author name from User relationship (via authorId)
                 const authorId = post.get('authorId') as string | null;
                 const authorName = authorId ? escapeXml(authorMap.get(authorId) || '') : '';
                 const publishedAt = post.get('publishedAt') as number | null;
                 const pubDate = publishedAt ? new Date(publishedAt).toUTCString() : '';
-                const heroImage = post.get('heroImage') as { url?: string } | null;
+                const heroImage = post.get('heroImage') as { url?: string; mimeType?: string } | null;
+                const enclosureUrl = absoluteMediaUrl(heroImage?.url);
 
                 return `    <item>
       <title>${title}</title>
@@ -1009,8 +1334,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
       <guid isPermaLink="true">${escapeXml(siteUrl)}/blog/${escapeXml(slug)}</guid>
       <description>${excerpt}</description>
       ${authorName ? `<dc:creator>${authorName}</dc:creator>` : ''}
+      ${isBlurb ? '<category>Blurb</category>' : ''}${isPhotoJournal ? '<category>Photo Journal</category>' : ''}
       ${pubDate ? `<pubDate>${pubDate}</pubDate>` : ''}
-      ${heroImage?.url ? `<enclosure url="${escapeXml(heroImage.url)}" type="image/jpeg" />` : ''}
+      ${enclosureUrl ? `<enclosure url="${escapeXml(enclosureUrl)}" type="${escapeXml(heroImage?.mimeType || 'image/jpeg')}" />` : ''}
     </item>`;
             })
             .join('\n');
@@ -1078,11 +1404,12 @@ ${items}
                 const slug = post.get('slug') as string;
                 const updatedAt = post.get('updatedAt') as number;
                 const lastmod = updatedAt ? new Date(updatedAt).toISOString().split('T')[0] : '';
+                const isBlurb = post.get('contentType') === 'blurb';
                 return `  <url>
     <loc>${escapeXml(siteUrl)}/blog/${escapeXml(slug)}</loc>
     ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>${isBlurb ? 'daily' : 'weekly'}</changefreq>
+    <priority>${isBlurb ? '0.5' : '0.7'}</priority>
   </url>`;
             })
             .join('\n');
@@ -1313,6 +1640,10 @@ ${urls}
         handleBlogStudioPluginEnable,
         handleBlogStudioPluginConfig,
         handleBlogPostsList,
+        handleBlogBlurbCreate,
+        handleBlogBlurbUpdate,
+        handleBlogPhotoJournalCreate,
+        handleBlogPhotoJournalUpdate,
         handleBlogPostBySlug,
         handleBlogPostUnlock,
         handleBlogTagBySlug,

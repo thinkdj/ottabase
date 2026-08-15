@@ -90,6 +90,10 @@ import {
     handleVerifyEmailResend,
 } from './auth';
 import {
+    handleBlogBlurbCreate,
+    handleBlogBlurbUpdate,
+    handleBlogPhotoJournalCreate,
+    handleBlogPhotoJournalUpdate,
     handleBlogCategoryBySlug,
     handleBlogDemoSeed,
     handleBlogPostBySlug,
@@ -440,6 +444,10 @@ apiRouter.mount(
             handleBlogStudioPluginEnable,
             handleBlogStudioPluginConfig,
             handleBlogPostsList,
+            handleBlogBlurbCreate,
+            handleBlogBlurbUpdate,
+            handleBlogPhotoJournalCreate,
+            handleBlogPhotoJournalUpdate,
             handleBlogPostBySlug,
             handleBlogPostUnlock,
             handleBlogTagBySlug,

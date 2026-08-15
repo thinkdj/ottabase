@@ -8,15 +8,21 @@
  */
 
 import type React from 'react';
-import type { EditorJSData, HeroImage, PostAuthor, SeoMeta } from '../types';
+import type { ContentType, EditorJSData, HeroImage, PhotoJournalItem, PostAuthor, SeoMeta } from '../types';
 
 export interface BlogPostData {
     id: string;
     title: string;
     slug: string;
     excerpt?: string | null;
+    /** First-class plain-text body for short-form thoughts. */
+    blurbText?: string | null;
+    /** Optional short introduction for a photo-first post. */
+    photoNote?: string | null;
+    /** Ordered photographs for a photo journal. */
+    photoAlbum?: PhotoJournalItem[] | null;
     content?: EditorJSData | null;
-    contentType?: string;
+    contentType?: ContentType;
     status?: string;
     heroImage?: HeroImage | null;
     seoMeta?: SeoMeta | null;
@@ -81,7 +87,7 @@ export interface BlogExcerptCardProps {
     showExcerpt?: boolean;
     showMetadata?: boolean;
     className?: string;
-    formatDate?: (date: Date | string) => string;
+    formatDate?: (date: Date | string | number) => string;
     onClick?: () => void;
     href?: string;
     LinkComponent?: React.ComponentType<{
@@ -91,4 +97,14 @@ export interface BlogExcerptCardProps {
     }>;
     /** Theme ID override (defaults to active theme) */
     themeId?: string;
+}
+
+export interface BlurbRendererProps extends BlogRendererProps {
+    /** Detail renders a permalink; timeline renders the compact interleaved form. */
+    variant?: 'detail' | 'timeline';
+}
+
+export interface PhotoJournalRendererProps extends BlogRendererProps {
+    /** Detail renders the full contact sheet; timeline renders a compact cover collage. */
+    variant?: 'detail' | 'timeline';
 }

@@ -3,7 +3,12 @@
  */
 
 import type { ReactNode } from 'react';
-import type { BlogPostData, BlogRendererProps } from '../components/BlogRenderer';
+import type {
+    BlogPostData,
+    BlogRendererProps,
+    BlurbRendererProps,
+    PhotoJournalRendererProps,
+} from '../components/blog-renderer-types';
 
 /**
  * Theme metadata
@@ -51,6 +56,10 @@ export interface ThemeRenderers {
     renderFooter?: (post: BlogPostData, props: BlogRendererProps) => ReactNode;
     /** Render post card (for listings) */
     renderCard?: (post: BlogPostData, props: BlogRendererProps) => ReactNode;
+    /** Render a short-form blurb in detail or timeline form. */
+    renderBlurb?: (post: BlogPostData, props: BlurbRendererProps) => ReactNode;
+    /** Render a photo-first journal in detail or timeline form. */
+    renderPhotoJournal?: (post: BlogPostData, props: PhotoJournalRendererProps) => ReactNode;
 }
 
 /**
@@ -70,6 +79,8 @@ export interface ThemeConfig {
         series?: string;
         footer?: string;
         card?: string;
+        blurb?: string;
+        photoJournal?: string;
         /** Container class for archive/listing pages */
         archiveContainer?: string;
         /** Title class for archive page headers */

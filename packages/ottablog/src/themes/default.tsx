@@ -5,6 +5,9 @@
  */
 
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { BlurbText } from '../components/BlurbText';
+import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
 import type { Theme } from './types';
@@ -33,11 +36,48 @@ export const defaultTheme: Theme = {
             series: 'rounded-xl bg-muted/40 px-4 py-3 mb-8',
             footer: 'mt-12 pt-8 border-t border-border/60',
             card: 'blog-card',
+            blurb: 'max-w-3xl mx-auto',
+            photoJournal: 'mx-auto max-w-6xl',
             archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
             archiveTitle: 'text-3xl font-bold tracking-tight',
         },
     },
     renderers: {
+        renderBlurb: (post, props) => {
+            const formatDate = props.formatDate || defaultFormatDate;
+            const detail = props.variant === 'detail';
+            return (
+                <div
+                    className={`rounded-2xl bg-muted/40 ${detail ? 'px-6 py-8 sm:px-8 sm:py-10' : 'px-5 py-5'} transition-colors duration-normal`}
+                >
+                    <div className="mb-4 flex flex-wrap items-center gap-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <span className="rounded-full bg-background px-2.5 py-0.5 ring-1 ring-border">Thought</span>
+                        {post.author?.name && (
+                            <span className="flex items-center gap-2 normal-case tracking-normal text-foreground">
+                                {post.author.image && (
+                                    <img
+                                        src={sanitizeUrl(post.author.image)}
+                                        alt=""
+                                        className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
+                                    />
+                                )}
+                                {post.author.name}
+                            </span>
+                        )}
+                        {post.publishedAt && (
+                            <time dateTime={new Date(post.publishedAt).toISOString()}>
+                                {formatDate(post.publishedAt)}
+                            </time>
+                        )}
+                    </div>
+                    <BlurbText
+                        text={post.blurbText ?? post.excerpt ?? ''}
+                        className={`${detail ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'} leading-relaxed text-foreground`}
+                    />
+                </div>
+            );
+        },
+        renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="editorial" />,
         renderHero: (post, props) => {
             if (!props.showHeroImage || !post.heroImage?.url) return null;
             return (
@@ -46,7 +86,7 @@ export const defaultTheme: Theme = {
                     style={post.heroImage.maxHeight ? { maxHeight: `${post.heroImage.maxHeight}px` } : undefined}
                 >
                     <img
-                        src={post.heroImage.url}
+                        src={sanitizeUrl(post.heroImage.url)}
                         alt={post.heroImage.alt || post.title}
                         className="w-full h-auto object-cover"
                         loading="eager"
@@ -76,7 +116,7 @@ export const defaultTheme: Theme = {
                         <div className="flex items-center gap-2">
                             {post.author?.image && (
                                 <img
-                                    src={post.author.image}
+                                    src={sanitizeUrl(post.author.image)}
                                     alt={post.author.name}
                                     className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
                                 />
@@ -151,6 +191,12 @@ export const defaultTheme: Theme = {
             );
         },
         renderCard: (post, props) => {
+            if (post.contentType === 'blurb') {
+                return defaultTheme.renderers.renderBlurb?.(post, { ...props, variant: 'timeline' });
+            }
+            if (post.contentType === 'photo') {
+                return defaultTheme.renderers.renderPhotoJournal?.(post, { ...props, variant: 'timeline' });
+            }
             const formatDate = props.formatDate || defaultFormatDate;
             return (
                 <article
@@ -164,7 +210,7 @@ export const defaultTheme: Theme = {
                         )}
                         {props.showHeroImage && post.heroImage?.url && (
                             <img
-                                src={post.heroImage.url}
+                                src={sanitizeUrl(post.heroImage.url)}
                                 alt={post.heroImage.alt || post.title}
                                 className="w-24 h-24 object-cover rounded-lg shrink-0 hidden sm:block"
                             />

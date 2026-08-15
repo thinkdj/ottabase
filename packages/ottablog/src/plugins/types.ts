@@ -42,7 +42,7 @@ export interface PluginLifecycle {
 export interface PluginHooks {
     /** Hook name -> callback mappings */
     [hook: HookName]: Array<{
-        callback: (...args: unknown[]) => unknown | Promise<unknown>;
+        callback: (...args: never[]) => unknown | Promise<unknown>;
         priority?: number;
         id?: string;
     }>;

@@ -1,12 +1,13 @@
 {
     "name": "@ottabase/ottablog",
     "version": "0.0.1",
-    "description": "Blog and content management system for Ottabase apps - supports blog posts, changelogs, and documentation",
+    "description": "Blog and content management system for Ottabase apps - articles, blurbs, photo journals, changelogs, and documentation",
     "type": "module",
     "sideEffects": [
         "**/*.css",
         "**/BlogRenderer.tsx"
     ],
+    "_exports_note": "SOURCE-EXPORTED ON PURPOSE — and therefore deliberately has NO build script. This package holds module-level singletons (hookRegistry, pluginRegistry, themeRegistry, StudioManager). The app pins @ottabase/ottablog and /renderer to src via tsconfig paths, so a second, prebuilt dist copy would split those registries: initOttablog would register a theme/plugin in one copy while the renderer read the other. CI still covers this package via lint/type-check/test plus the app build that compiles its source. See ottaai for the same shape.",
     "exports": {
         ".": {
             "types": "./src/index.ts",
@@ -26,17 +27,24 @@
         }
     },
     "scripts": {
-        "clean": "rm -rf .turbo node_modules",
+        "clean": "rimraf dist .turbo",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"
     },
     "peerDependencies": {
+        "@ottabase/db": "workspace:*",
         "drizzle-orm": "catalog:",
         "react": "catalog:",
+        "@ottabase/medialibrary": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*"
     },
     "peerDependenciesMeta": {
+        "@ottabase/medialibrary": {
+            "optional": true
+        },
         "@ottabase/ottarenderer": {
             "optional": true
         }
@@ -47,17 +55,29 @@
         "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
+        "@ottabase/db": "workspace:*",
+        "@ottabase/medialibrary": "workspace:*",
+        "@testing-library/jest-dom": "catalog:",
+        "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "drizzle-orm": "catalog:",
+        "eslint": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "typescript": "catalog:"
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     },
     "keywords": [
         "blog",
         "cms",
         "content",
+        "microblog",
+        "blurbs",
+        "photo-journal",
+        "photoblog",
         "changelog",
         "documentation",
         "ottabase",

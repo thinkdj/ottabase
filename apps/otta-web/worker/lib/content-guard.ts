@@ -9,8 +9,9 @@
 import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import type { SecurityContext } from '@ottabase/ottaorm';
 import type { CloudflareEnv } from '../../cloudflare-env';
-import { getAuthOptions } from './auth-utils';
+import { getAuthOptions, getSecurityContext } from './auth-utils';
 import { initDbConnection } from './db-utils';
 
 export interface ContentGuardContext {
@@ -21,6 +22,7 @@ export interface ContentGuardContext {
 
 export interface ContentAccessResult {
     session: { user?: { id?: string | null; organizationId?: string | null } | null } | null;
+    securityContext: SecurityContext;
 }
 
 /**
@@ -55,7 +57,16 @@ export async function requireContentPermission(
         return errorResponse(`Missing required permission: ${permission}`, 403, { code: 'FORBIDDEN' });
     }
 
-    return { session: reqCtx.session ?? null };
+    const session = reqCtx.session ?? null;
+
+    // Authorization and row scope are deliberately separate concerns. getRequestContext
+    // evaluates the caller's current RBAC grants; getSecurityContext is the canonical,
+    // membership-validated OttaORM context used by /api/ottaorm. In particular it preserves
+    // the scope-aware platformAdmin flag and maps an explicit Platform selection to the
+    // platform-owned organizationId=null partition instead of the RBAC-only "system" sentinel.
+    const securityContext = await getSecurityContext(request, session, env);
+
+    return { session, securityContext };
 }
 
 /**
@@ -89,8 +100,18 @@ export async function requireStudioAdminForScope(
         return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
     }
 
+    // Same split as requireContentPermission: getRequestContext answers "may they?", but the
+    // returned securityContext is what callers hand to the ottaorm RLS engine, so it MUST be the
+    // canonical membership-validated one. A RequestContext has no userId/platformAdmin, and its
+    // undefined memberOrganizationIds reads as "membership unknown" — which makes the engine SKIP
+    // the cross-tenant check rather than fail closed.
+    const toAccessResult = async (): Promise<ContentAccessResult> => {
+        const session = reqCtx.session ?? null;
+        return { session, securityContext: await getSecurityContext(request, session, env) };
+    };
+
     if (isPlatformAdmin(reqCtx)) {
-        return { session: reqCtx.session ?? null };
+        return toAccessResult();
     }
 
     // The platform blog's studio is platform-only.
@@ -106,7 +127,7 @@ export async function requireStudioAdminForScope(
         });
     }
 
-    return { session: reqCtx.session ?? null };
+    return toAccessResult();
 }
 
 /**

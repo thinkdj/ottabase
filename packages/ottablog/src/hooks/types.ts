@@ -10,28 +10,40 @@
 export type HookPriority = number;
 
 /**
- * Hook callback function type
+ * WHY `...args: never[]` AND NOT `unknown[]` — do not "fix" this.
+ *
+ * Every hook passes different trailing arguments (`post.title.filter` gets the post,
+ * `post.photoJournal.filter` gets the post, actions get whatever fired them), so the registry
+ * cannot name them. `never[]` is the encoding that lets a plugin DECLARE the ones it knows:
+ *
+ *     addFilter(HOOKS['post.blurb.filter'], (value: string, post: BlogPostData) => value.trim());
+ *
+ * That assignment compiles under `never[]` (never is assignable to `BlogPostData`) and FAILS under
+ * `unknown[]` ("Type 'unknown' is not assignable to type 'BlogPostData'"). Widening these to
+ * `unknown[]` would break every typed theme and plugin in the ecosystem. The trade-off is that an
+ * un-annotated trailing parameter infers as `never`, so plugin authors annotate — which is the
+ * documented way to use these.
  */
-export type HookCallback<T = unknown> = (...args: T[]) => T | Promise<T>;
+export type HookCallback<T = unknown> = (value: T, ...args: never[]) => T | Promise<T>;
 
 /**
- * Hook filter callback - transforms data
+ * Hook filter callback - transforms data. See HookCallback for why the rest args are `never[]`.
  */
-export type FilterCallback<T = unknown> = (value: T, ...args: unknown[]) => T | Promise<T>;
+export type FilterCallback<T = unknown> = (value: T, ...args: never[]) => T | Promise<T>;
 
 /**
- * Hook action callback - performs side effects
+ * Hook action callback - performs side effects. See HookCallback for the `never[]` rationale.
  */
-export type ActionCallback = (...args: unknown[]) => void | Promise<void>;
+export type ActionCallback = (...args: never[]) => void | Promise<void>;
 
 /**
  * Registered hook entry
  */
-export interface HookEntry<T = unknown> {
+export interface HookEntry {
     /** Unique identifier for this hook registration */
     id: string;
     /** Callback function */
-    callback: HookCallback<T>;
+    callback: (...args: never[]) => unknown | Promise<unknown>;
     /** Priority (lower = earlier execution) */
     priority: HookPriority;
     /** Optional context/data */
@@ -70,6 +82,8 @@ export const HOOKS = {
     'post.content.filter': 'post.content.filter',
     'post.excerpt.filter': 'post.excerpt.filter',
     'post.title.filter': 'post.title.filter',
+    'post.blurb.filter': 'post.blurb.filter',
+    'post.photoJournal.filter': 'post.photoJournal.filter',
 
     // Render hooks
     'post.render.before': 'post.render.before',

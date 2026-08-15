@@ -4,6 +4,7 @@
  * Catches errors in BlogRenderer and theme renderers to prevent the entire app from crashing.
  * Displays a fallback UI when errors occur.
  */
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface BlogRendererErrorBoundaryProps {
@@ -48,7 +49,7 @@ export class BlogRendererErrorBoundary extends Component<
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-        console.error('BlogRenderer error:', error, errorInfo);
+        console.error('BlogRenderer error:', redactErrorForLog(error), errorInfo);
         this.props.onError?.(error, errorInfo);
     }
 

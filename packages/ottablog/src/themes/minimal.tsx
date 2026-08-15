@@ -5,6 +5,9 @@
  */
 
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { BlurbText } from '../components/BlurbText';
+import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
 import type { Theme } from './types';
@@ -35,17 +38,41 @@ export const minimalTheme: Theme = {
             series: 'border-b border-border/60 pb-6 mb-10',
             footer: 'mt-16 pt-10 border-t border-border/60',
             card: 'blog-card-minimal',
+            blurb: 'max-w-3xl mx-auto',
+            photoJournal: 'mx-auto max-w-6xl',
             archiveContainer: 'max-w-3xl mx-auto px-6 py-12 space-y-10',
             archiveTitle: 'text-3xl font-light tracking-tight',
         },
     },
     renderers: {
+        renderBlurb: (post, props) => {
+            const formatDate = props.formatDate || defaultFormatDate;
+            const detail = props.variant === 'detail';
+            return (
+                <div className={`${detail ? 'py-10' : 'border-b border-border/60 py-6'} last:border-b-0`}>
+                    <div className="mb-4 flex flex-wrap items-center gap-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <span>Thought</span>
+                        {post.author?.name && <span className="normal-case tracking-normal">{post.author.name}</span>}
+                        {post.publishedAt && (
+                            <time dateTime={new Date(post.publishedAt).toISOString()}>
+                                {formatDate(post.publishedAt)}
+                            </time>
+                        )}
+                    </div>
+                    <BlurbText
+                        text={post.blurbText ?? post.excerpt ?? ''}
+                        className={`${detail ? 'text-2xl sm:text-3xl font-light' : 'text-lg font-light'} leading-relaxed text-foreground`}
+                    />
+                </div>
+            );
+        },
+        renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="minimal" />,
         renderHero: (post, props) => {
             if (!props.showHeroImage || !post.heroImage?.url) return null;
             return (
                 <figure className={`${props.className || ''} ${minimalTheme.config?.classes?.hero || ''}`}>
                     <img
-                        src={post.heroImage.url}
+                        src={sanitizeUrl(post.heroImage.url)}
                         alt={post.heroImage.alt || post.title}
                         className="w-full h-auto object-cover"
                         loading="eager"
@@ -75,7 +102,7 @@ export const minimalTheme: Theme = {
                         <div className="flex items-center gap-2">
                             {post.author?.image && (
                                 <img
-                                    src={post.author.image}
+                                    src={sanitizeUrl(post.author.image)}
                                     alt={post.author.name}
                                     className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
                                 />
@@ -141,6 +168,12 @@ export const minimalTheme: Theme = {
             );
         },
         renderCard: (post, props) => {
+            if (post.contentType === 'blurb') {
+                return minimalTheme.renderers.renderBlurb?.(post, { ...props, variant: 'timeline' });
+            }
+            if (post.contentType === 'photo') {
+                return minimalTheme.renderers.renderPhotoJournal?.(post, { ...props, variant: 'timeline' });
+            }
             const formatDate = props.formatDate || defaultFormatDate;
             return (
                 <article
@@ -154,7 +187,7 @@ export const minimalTheme: Theme = {
                         )}
                         {props.showHeroImage && post.heroImage?.url && (
                             <img
-                                src={post.heroImage.url}
+                                src={sanitizeUrl(post.heroImage.url)}
                                 alt={post.heroImage.alt || post.title}
                                 className="w-20 h-20 object-cover rounded-lg shrink-0 hidden sm:block"
                             />

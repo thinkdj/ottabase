@@ -7,17 +7,83 @@
  */
 import '@ottabase/ottarenderer/styles';
 import React, { useEffect, useMemo, useState } from 'react';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { applyFilters, doAction, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
 import './BlogRenderer.css';
-import type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
+import type { BlurbRendererProps, BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
+import { BlurbText, BlurbTextLinksAllowed } from './BlurbText';
+import { PhotoJournalRenderer } from './PhotoJournalRenderer';
 
 // The prop/data interfaces are declared in the pure `./blog-renderer-types` module so that
 // pure sites can reference them without importing this rendered file. Re-export them here so
 // relative importers (tests, theme/plugin type modules) keep resolving them from this path.
-export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
+export type { BlurbRendererProps, BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
+export { BlurbText } from './BlurbText';
+
+/** Render a blurb through the active theme and the blurb-specific filter hook. */
+export function BlurbRenderer({
+    post,
+    variant = 'detail',
+    themeId,
+    disableHooks = false,
+    ...rest
+}: BlurbRendererProps) {
+    const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
+    const [filteredText, setFilteredText] = useState(post.blurbText ?? post.excerpt ?? '');
+
+    const props: BlurbRendererProps = { post, variant, themeId, disableHooks, ...rest };
+
+    useEffect(() => {
+        let active = true;
+        if (disableHooks) {
+            setFilteredText(post.blurbText ?? post.excerpt ?? '');
+            return () => {
+                active = false;
+            };
+        }
+        void Promise.resolve(applyFilters(HOOKS['post.blurb.filter'], post.blurbText ?? post.excerpt ?? '', post)).then(
+            (value: string) => {
+                if (active) setFilteredText(String(value ?? ''));
+            },
+        );
+        return () => {
+            active = false;
+        };
+    }, [post, disableHooks]);
+
+    const filteredPost = { ...post, blurbText: filteredText };
+    const renderer = theme.renderers.renderBlurb ?? defaultTheme.renderers.renderBlurb;
+    let rendered: React.ReactNode = null;
+    try {
+        rendered = renderer?.(filteredPost, props);
+    } catch (error) {
+        console.error('Error in theme renderBlurb:', redactErrorForLog(error));
+        rendered = (
+            <BlurbText text={filteredText} className={variant === 'detail' ? 'text-xl leading-relaxed' : 'text-base'} />
+        );
+    }
+
+    return (
+        // Timeline cards get wrapped in a link by the caller, so auto-linked URLs in the text would
+        // nest anchors — see BlurbTextLinksAllowed.
+        <BlurbTextLinksAllowed.Provider value={variant !== 'timeline'}>
+            <article
+                className={`blog-blurb blog-blurb--${variant} ${theme.config?.classes?.blurb ?? ''} ${rest.className ?? ''}`.trim()}
+            >
+                {variant === 'detail' ? (
+                    <h1 className="sr-only">{post.title}</h1>
+                ) : (
+                    <h2 className="sr-only">{post.title}</h2>
+                )}
+                {rendered}
+            </article>
+        </BlurbTextLinksAllowed.Provider>
+    );
+}
 
 /**
  * BlogRenderer - Renders a complete blog post with all metadata
@@ -33,7 +99,13 @@ export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './bl
  * />
  * ```
  */
-export function BlogRenderer({
+export function BlogRenderer(props: BlogRendererProps) {
+    if (props.post.contentType === 'blurb') return <BlurbRenderer {...props} variant="detail" />;
+    if (props.post.contentType === 'photo') return <PhotoJournalRenderer {...props} variant="detail" />;
+    return <ArticleBlogRenderer {...props} />;
+}
+
+function ArticleBlogRenderer({
     post,
     showHeroImage = true,
     showTitle = true,
@@ -123,11 +195,7 @@ export function BlogRenderer({
             setFilteredContent(post.content || null);
             setIsFilteringComplete(true);
         }
-    }, [post.id, post.title, post.excerpt, post.content, disableHooks, props]);
-
-    const hasContent = filteredContent?.blocks && filteredContent.blocks.length > 0;
-    const hasFootnotes = post.footnotes?.blocks && post.footnotes.blocks.length > 0;
-    const hasSeriesInfo = post.seriesId && post.seriesTitle;
+    }, [post, disableHooks, props]);
 
     // Use theme renderers if available, otherwise fall back to default (memoized)
     // Wrap each renderer in error handling to prevent theme bugs from crashing the entire render
@@ -142,7 +210,7 @@ export function BlogRenderer({
                     const fn = renderer || fallback;
                     return fn(...args);
                 } catch (error) {
-                    console.error(`Error in theme renderer "${name}":`, error);
+                    console.error(`Error in theme renderer "${name}":`, redactErrorForLog(error));
                     return null; // Fail gracefully - render nothing instead of crashing
                 }
             };
@@ -158,7 +226,7 @@ export function BlogRenderer({
                 try {
                     return renderer(...args);
                 } catch (error) {
-                    console.error(`Error in theme renderer "${name}":`, error);
+                    console.error(`Error in theme renderer "${name}":`, redactErrorForLog(error));
                     return null;
                 }
             };
@@ -166,31 +234,31 @@ export function BlogRenderer({
 
         return {
             renderHeader: safeOptionalRenderer(theme.renderers.renderHeader, 'renderHeader'),
-            renderHero: safeRenderer(theme.renderers.renderHero, defaultTheme.renderers.renderHero, 'renderHero'),
-            renderTitle: safeRenderer(theme.renderers.renderTitle, defaultTheme.renderers.renderTitle, 'renderTitle'),
+            renderHero: safeRenderer(theme.renderers.renderHero, defaultTheme.renderers.renderHero!, 'renderHero'),
+            renderTitle: safeRenderer(theme.renderers.renderTitle, defaultTheme.renderers.renderTitle!, 'renderTitle'),
             renderMetadata: safeRenderer(
                 theme.renderers.renderMetadata,
-                defaultTheme.renderers.renderMetadata,
+                defaultTheme.renderers.renderMetadata!,
                 'renderMetadata',
             ),
             renderExcerpt: safeRenderer(
                 theme.renderers.renderExcerpt,
-                defaultTheme.renderers.renderExcerpt,
+                defaultTheme.renderers.renderExcerpt!,
                 'renderExcerpt',
             ),
             renderContent: safeRenderer(
                 theme.renderers.renderContent,
-                defaultTheme.renderers.renderContent,
+                defaultTheme.renderers.renderContent!,
                 'renderContent',
             ),
             renderFootnotes: safeRenderer(
                 theme.renderers.renderFootnotes,
-                defaultTheme.renderers.renderFootnotes,
+                defaultTheme.renderers.renderFootnotes!,
                 'renderFootnotes',
             ),
             renderSeries: safeRenderer(
                 theme.renderers.renderSeries,
-                defaultTheme.renderers.renderSeries,
+                defaultTheme.renderers.renderSeries!,
                 'renderSeries',
             ),
             renderFooter: safeOptionalRenderer(theme.renderers.renderFooter, 'renderFooter'),
@@ -272,6 +340,64 @@ export function BlogExcerptCard({
     // Check for a theme-provided card renderer
     const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
 
+    if (post.contentType === 'blurb') {
+        const blurb = (
+            <BlurbRenderer
+                post={post}
+                variant="timeline"
+                showHeroImage={false}
+                showExcerpt
+                showMetadata={showMetadata}
+                className={className}
+                formatDate={formatDate}
+                themeId={themeId}
+            />
+        );
+        if (LinkComponent) {
+            return (
+                <LinkComponent href={href || `/blog/${post.slug}`} className="block rounded-xl outline-none">
+                    {blurb}
+                </LinkComponent>
+            );
+        }
+        return onClick ? (
+            <div role="link" tabIndex={0} onClick={onClick} className="cursor-pointer">
+                {blurb}
+            </div>
+        ) : (
+            blurb
+        );
+    }
+
+    if (post.contentType === 'photo') {
+        const journal = (
+            <PhotoJournalRenderer
+                post={post}
+                variant="timeline"
+                showHeroImage
+                showExcerpt={showExcerpt}
+                showMetadata={showMetadata}
+                className={className}
+                formatDate={formatDate}
+                themeId={themeId}
+            />
+        );
+        if (LinkComponent) {
+            return (
+                <LinkComponent href={href || `/blog/${post.slug}`} className="block rounded-2xl outline-none">
+                    {journal}
+                </LinkComponent>
+            );
+        }
+        return onClick ? (
+            <div role="link" tabIndex={0} onClick={onClick} className="cursor-pointer">
+                {journal}
+            </div>
+        ) : (
+            journal
+        );
+    }
+
     if (theme.renderers.renderCard) {
         try {
             const cardProps: BlogRendererProps = {
@@ -285,7 +411,7 @@ export function BlogExcerptCard({
             const rendered = theme.renderers.renderCard(post, cardProps);
             if (rendered !== null && rendered !== undefined) return <>{rendered}</>;
         } catch (error) {
-            console.error('Error in theme renderCard:', error);
+            console.error('Error in theme renderCard:', redactErrorForLog(error));
             // Fall through to default card rendering
         }
     }
@@ -308,7 +434,7 @@ export function BlogExcerptCard({
             {showHeroImage && post.heroImage?.url && (
                 <div className="blog-card__image-wrapper">
                     <img
-                        src={post.heroImage.url}
+                        src={sanitizeUrl(post.heroImage.url)}
                         alt={post.heroImage.alt || post.title}
                         className="blog-card__image"
                         loading="lazy"

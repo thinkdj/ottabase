@@ -47,9 +47,6 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         // Changelog posts are hidden from /blog/* (they live at /changelog).
         if (post.get('contentType') === 'changelog') return response;
 
-        const title = (post.get('title') as string) || '';
-        if (!title) return response;
-
         // Author name for JSON-LD — best effort, never fails the injection.
         let authorName: string | null = null;
         try {
@@ -59,6 +56,12 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
             authorName = null;
         }
 
+        const contentType = post.get('contentType') as string;
+        const isBlurb = contentType === 'blurb';
+        const isPhotoJournal = contentType === 'photo';
+        const title = isBlurb ? `Thought${authorName ? ` by ${authorName}` : ''}` : (post.get('title') as string) || '';
+        if (!title) return response;
+
         const heroImage = post.get('heroImage') as { url?: string } | null;
         const canonicalUrl = `${url.protocol}//${url.host}/blog/${encodeURIComponent(
             (post.get('slug') as string) || slug,
@@ -66,13 +69,22 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
 
         const seoTags = buildPostSeoTags({
             title,
-            excerpt: (post.get('excerpt') as string) || null,
+            excerpt:
+                (isBlurb
+                    ? (post.get('blurbText') as string)
+                    : isPhotoJournal
+                      ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
+                      : (post.get('excerpt') as string)) || null,
             canonicalUrl,
             imageUrl: heroImage?.url ?? null,
             publishedAt: post.get('publishedAt') as number | string | null,
             updatedAt: post.get('updatedAt') as number | string | null,
             authorName,
             siteName: config.appName || null,
+            contentType,
+            photoAlbum: isPhotoJournal
+                ? (post.get('photoAlbum') as NonNullable<Parameters<typeof buildPostSeoTags>[0]['photoAlbum']>)
+                : null,
         });
 
         // Clone before consuming: on any later throw the untouched original

@@ -4,6 +4,7 @@
  * Renders SEO meta tags in the document head for better search engine optimization.
  * Supports Open Graph and Twitter Card metadata.
  */
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { useEffect } from 'react';
 
 export interface SEOHeadProps {
@@ -64,10 +65,12 @@ export function SEOHead({
     author,
     tags,
 }: SEOHeadProps) {
+    const safeCanonicalUrl = canonicalUrl ? sanitizeUrl(canonicalUrl) : null;
+    const safeOgImage = ogImage ? sanitizeUrl(ogImage) : null;
+
     useEffect(() => {
         // Store original values to restore on unmount
         const originalTitle = document.title;
-        const existingMetas = Array.from(document.querySelectorAll('meta[data-seo-managed]'));
 
         // Update document title
         if (title) {
@@ -132,8 +135,8 @@ export function SEOHead({
         }
 
         // Canonical URL
-        if (canonicalUrl) {
-            setLinkTag({ rel: 'canonical' }, canonicalUrl);
+        if (safeCanonicalUrl && safeCanonicalUrl !== '#') {
+            setLinkTag({ rel: 'canonical' }, safeCanonicalUrl);
         }
 
         // Open Graph meta tags
@@ -149,12 +152,12 @@ export function SEOHead({
             setMetaTag({ property: 'og:type' }, ogType);
         }
 
-        if (ogImage) {
-            setMetaTag({ property: 'og:image' }, ogImage);
+        if (safeOgImage && safeOgImage !== '#') {
+            setMetaTag({ property: 'og:image' }, safeOgImage);
         }
 
-        if (canonicalUrl) {
-            setMetaTag({ property: 'og:url' }, canonicalUrl);
+        if (safeCanonicalUrl && safeCanonicalUrl !== '#') {
+            setMetaTag({ property: 'og:url' }, safeCanonicalUrl);
         }
 
         // Twitter Card meta tags
@@ -170,8 +173,8 @@ export function SEOHead({
             setMetaTag({ name: 'twitter:description' }, description);
         }
 
-        if (ogImage) {
-            setMetaTag({ name: 'twitter:image' }, ogImage);
+        if (safeOgImage && safeOgImage !== '#') {
+            setMetaTag({ name: 'twitter:image' }, safeOgImage);
         }
 
         // Article-specific meta tags
@@ -209,8 +212,8 @@ export function SEOHead({
         title,
         description,
         keywords,
-        canonicalUrl,
-        ogImage,
+        safeCanonicalUrl,
+        safeOgImage,
         ogType,
         twitterCard,
         noIndex,

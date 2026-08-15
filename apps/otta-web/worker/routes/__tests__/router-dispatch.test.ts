@@ -95,6 +95,10 @@ vi.mock('../auth', () => ({
 }));
 
 vi.mock('../blog', () => ({
+    handleBlogBlurbCreate: handlerMock('handleBlogBlurbCreate'),
+    handleBlogBlurbUpdate: handlerMock('handleBlogBlurbUpdate'),
+    handleBlogPhotoJournalCreate: handlerMock('handleBlogPhotoJournalCreate'),
+    handleBlogPhotoJournalUpdate: handlerMock('handleBlogPhotoJournalUpdate'),
     handleBlogCategoryBySlug: handlerMock('handleBlogCategoryBySlug'),
     handleBlogDemoSeed: handlerMock('handleBlogDemoSeed'),
     handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
@@ -261,6 +265,10 @@ import {
     handleVerifyEmailResend,
 } from '../auth';
 import {
+    handleBlogBlurbCreate,
+    handleBlogBlurbUpdate,
+    handleBlogPhotoJournalCreate,
+    handleBlogPhotoJournalUpdate,
     handleBlogCategoryBySlug,
     handleBlogDemoSeed,
     handleBlogPostBySlug,
@@ -380,6 +388,10 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleUserProfile,
     handleVerifyEmail,
     handleVerifyEmailResend,
+    handleBlogBlurbCreate,
+    handleBlogBlurbUpdate,
+    handleBlogPhotoJournalCreate,
+    handleBlogPhotoJournalUpdate,
     handleBlogCategoryBySlug,
     handleBlogDemoSeed,
     handleBlogPostBySlug,
@@ -619,6 +631,33 @@ describe('router dispatch parity', () => {
     });
 
     describe('blog (gate on)', () => {
+        it('POST /api/blog/blurbs dispatches to blurb creation', async () => {
+            const { response } = await dispatch('POST', '/api/blog/blurbs');
+            expect(handleBlogBlurbCreate).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(await response!.text()).toBe('handleBlogBlurbCreate');
+        });
+
+        it('PATCH /api/blog/blurbs/b1 dispatches to blurb update with "b1"', async () => {
+            const { response } = await dispatch('PATCH', '/api/blog/blurbs/b1');
+            expect(handleBlogBlurbUpdate).toHaveBeenCalledWith(expect.objectContaining({ method: 'PATCH' }), 'b1');
+            expect(await response!.text()).toBe('handleBlogBlurbUpdate');
+        });
+
+        it('POST /api/blog/photo-journals dispatches to photo journal creation', async () => {
+            const { response } = await dispatch('POST', '/api/blog/photo-journals');
+            expect(handleBlogPhotoJournalCreate).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(await response!.text()).toBe('handleBlogPhotoJournalCreate');
+        });
+
+        it('PATCH /api/blog/photo-journals/p1 dispatches to photo journal update with "p1"', async () => {
+            const { response } = await dispatch('PATCH', '/api/blog/photo-journals/p1');
+            expect(handleBlogPhotoJournalUpdate).toHaveBeenCalledWith(
+                expect.objectContaining({ method: 'PATCH' }),
+                'p1',
+            );
+            expect(await response!.text()).toBe('handleBlogPhotoJournalUpdate');
+        });
+
         it('GET /api/blog/posts/by-slug/hello%20world decodes the slug', async () => {
             const { response } = await dispatch('GET', '/api/blog/posts/by-slug/hello%20world');
             expect(handleBlogPostBySlug).toHaveBeenCalledWith(

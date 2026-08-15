@@ -16,7 +16,9 @@ DB (ottablog_themes, ottablog_plugins)
 
 - **DB** = source of truth (which theme is active, which plugins enabled, plugin `config`).
 - **Registries** = in-memory; must be synced from DB at init (client) or per request (server).
-- **BlogRenderer** reads theme from registry and runs hooks (plugins register filters); no direct DB access in render.
+- **BlogRenderer** reads theme from registry and runs hooks (plugins register filters); `contentType: 'blurb'`
+  dispatches to `renderBlurb`, while `contentType: 'photo'` dispatches to `renderPhotoJournal`. No direct DB access in
+  render.
 
 ---
 
@@ -67,6 +69,7 @@ Filters transform data; actions run side effects. `BlogRenderer` runs e.g.:
 - `applyFilters('post.title.filter', post.title, post)`
 - `applyFilters('post.excerpt.filter', post.excerpt, post)`
 - `applyFilters('post.content.filter', post.content, post)`
+- `applyFilters('post.photoJournal.filter', post.photoAlbum, post)`
 
 Plugins register on these via `hooks` in their definition; only **active** plugins’ callbacks run.
 
@@ -157,6 +160,11 @@ for (const p of state.plugins.filter((x) => x.enabled)) {
 ## Admin UI
 
 - **Blog Studio** page: list themes (Activate) and plugins (Enable/Enabled + Configure for Content Injector).
+- **Content Studio**: the content list includes a quick blurb composer; opening a blurb uses the focused short-form
+- **Content Studio**: the content list includes a quick blurb composer; opening a blurb uses the focused short-form
+  editor rather than mounting OttaEditor. Photo journals use a dedicated photo-first editor backed by the existing media
+  library, with multi-select/upload, cover ordering, captions, alt text, place/date metadata, tags, scheduling,
+  highlighting, and a live collage preview. Neither focused editor mounts OttaEditor.
 - State is loaded with **React Query** (`GET /api/blog/studio/state`) so multiple consumers share one request and Strict
   Mode does not double-fetch.
 - Enable/disable only on the row; no “enabled” in config modal.

@@ -92,6 +92,59 @@ describe('injectBlogPostSeo', () => {
         expect(mockResolveBlogOrganizationId).not.toHaveBeenCalled();
     });
 
+    it('uses the blurb text and SocialMediaPosting metadata for thoughts', async () => {
+        mockPostFirst.mockResolvedValue(
+            fakePost({
+                title: 'Internal generated title',
+                slug: 'blurb-1',
+                excerpt: 'Short fallback',
+                blurbText: 'Watched xyz today. It stayed with me.',
+                contentType: 'blurb',
+                publishedAt: 1700000000000,
+            }),
+        );
+
+        const response = await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/blurb-1'), env);
+        const html = await response.text();
+
+        expect(html).toContain('<title>Thought by Ada</title>');
+        expect(html).toContain('content="Watched xyz today. It stayed with me."');
+        expect(html).toContain('"@type":"SocialMediaPosting"');
+        expect(html).not.toContain('<title>Internal generated title</title>');
+    });
+
+    it('uses the field note and ordered CollectionPage metadata for photo journals', async () => {
+        mockPostFirst.mockResolvedValue(
+            fakePost({
+                title: 'Kyoto, in the rain',
+                slug: 'kyoto-rain',
+                excerpt: 'Fallback excerpt',
+                photoNote: 'A quiet blue hour.',
+                photoAlbum: [
+                    {
+                        id: 'p1',
+                        url: '/media/kyoto.jpg',
+                        alt: 'Lanterns reflected in a wet lane',
+                        caption: 'After the last train',
+                        location: 'Kyoto, Japan',
+                    },
+                ],
+                contentType: 'photo',
+                publishedAt: 1700000000000,
+                heroImage: { url: 'https://img.test/kyoto.jpg' },
+            }),
+        );
+
+        const response = await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/kyoto-rain'), env);
+        const html = await response.text();
+
+        expect(html).toContain('<title>Kyoto, in the rain</title>');
+        expect(html).toContain('content="A quiet blue hour."');
+        expect(html).toContain('"@type":"CollectionPage"');
+        expect(html).toContain('"hasPart":[{"@type":"ImageObject"');
+        expect(html).toContain('"contentUrl":"https://demo.test/media/kyoto.jpg"');
+    });
+
     it('strips asset validators and forbids caching on injected documents', async () => {
         const response = await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/hello-world'), env);
 

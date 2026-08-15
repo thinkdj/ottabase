@@ -22,7 +22,13 @@ vi.mock('../../lib/auth-utils', () => ({
     invalidateMembershipCache: vi.fn(),
 }));
 
-vi.mock('@ottabase/ottablog', () => ({
+// Post is stubbed, but the blurb/photo VALIDATORS are the real ones: this route re-applies them so
+// generic CRUD cannot skip the caps the dedicated blog routes enforce. Pulled from the pure types
+// module (no ottaorm import) so the mocked ottaorm above does not break the model class it exports.
+vi.mock('@ottabase/ottablog', async () => ({
+    ...(await vi.importActual<typeof import('../../../../../packages/ottablog/src/types')>(
+        '../../../../../packages/ottablog/src/types',
+    )),
     Post: { find: vi.fn(), first: vi.fn() },
 }));
 
@@ -240,6 +246,71 @@ describe('handleOttaormCrud (posts null-org authoring guard)', () => {
 
         expect(response.status).toBe(200);
         expect(call.body.organizationId).toBe('org-1');
+    });
+});
+
+describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('applies the album cap to a generic CRUD write, not just the dedicated blog route', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: {
+                photoAlbum: Array.from({ length: 61 }, (_, index) => ({
+                    id: `p${index}`,
+                    url: `https://images.test/${index}.jpg`,
+                })),
+            },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(400);
+        expect(body.code).toBe('VALIDATION_ERROR');
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
+    it('normalizes an accepted album and leaves posts without these columns untouched', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            // A javascript: URL must not survive into the stored album.
+            body: { blurbText: '  A thought  ', photoAlbum: [{ id: 'p1', url: 'https://images.test/1.jpg' }] },
+        });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
+
+        const response = await handleOttaormCrud(createContext());
+        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
+
+        expect(response.status).toBe(200);
+        expect(call.body.blurbText).toBe('A thought');
+        expect(call.body.photoAlbum).toEqual([expect.objectContaining({ url: 'https://images.test/1.jpg' })]);
+    });
+
+    it('rejects an unsafe photograph URL', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { photoAlbum: [{ id: 'p1', url: 'javascript:alert(1)' }] },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(400);
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
     });
 });
 

@@ -12,7 +12,13 @@ import { useSession } from '@/lib/auth';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import type { PostAuthor } from '@/types/blog';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
-import { formatDate, formatShortDate, type BlogPostData } from '@ottabase/ottablog';
+import {
+    formatDate,
+    formatShortDate,
+    type BlogPostData,
+    type ContentType,
+    type PhotoJournalItem,
+} from '@ottabase/ottablog';
 import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
@@ -26,8 +32,11 @@ interface BlogPost {
     title: string;
     slug: string;
     excerpt: string | null;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
     content: OutputData | null;
-    contentType: string;
+    contentType: ContentType;
     status: string;
     heroImage: { url: string; alt?: string; caption?: string } | null;
     seoMeta: {
@@ -403,6 +412,9 @@ export function BlogDetailPage() {
         title: displayPost.title,
         slug: displayPost.slug,
         excerpt: displayPost.excerpt,
+        blurbText: displayPost.blurbText,
+        photoNote: displayPost.photoNote,
+        photoAlbum: displayPost.photoAlbum,
         content: displayPost.content,
         contentType: displayPost.contentType,
         status: displayPost.status,
@@ -425,8 +437,19 @@ export function BlogDetailPage() {
     };
 
     // Generate SEO meta tags
-    const seoTitle = displayPost.seoMeta?.title || displayPost.title;
-    const seoDescription = displayPost.seoMeta?.description || displayPost.excerpt || undefined;
+    const isBlurb = displayPost.contentType === 'blurb';
+    const isPhotoJournal = displayPost.contentType === 'photo';
+    const seoTitle =
+        displayPost.seoMeta?.title ||
+        (isBlurb ? `Thought${displayPost.author?.name ? ` by ${displayPost.author.name}` : ''}` : displayPost.title);
+    const seoDescription =
+        displayPost.seoMeta?.description ||
+        (isBlurb
+            ? displayPost.blurbText
+            : isPhotoJournal
+              ? displayPost.photoNote || displayPost.excerpt
+              : displayPost.excerpt) ||
+        undefined;
     const seoKeywords = displayPost.seoMeta?.keywords;
     const canonicalUrl =
         displayPost.seoMeta?.canonicalUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
@@ -442,7 +465,7 @@ export function BlogDetailPage() {
                 canonicalUrl={canonicalUrl}
                 ogImage={ogImage}
                 ogType="article"
-                twitterCard="summary_large_image"
+                twitterCard={isBlurb ? 'summary' : 'summary_large_image'}
                 noIndex={displayPost.seoMeta?.noIndex}
                 noFollow={displayPost.seoMeta?.noFollow}
                 publishedTime={displayPost.publishedAt || undefined}
@@ -458,8 +481,11 @@ export function BlogDetailPage() {
                     </Link>
                 </Button>
                 {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
+                    // /studio is the editorial surface gated on posts:update — the author of this
+                    // post holds it. /admin/content/blog additionally requires org:admin, which an
+                    // author does not have, so it would send them to a privilege fallback instead.
                     <Button variant="outline" size="sm" asChild>
-                        <Link to="/admin/content/blog/$postId/edit" params={{ postId: displayPost.id }}>
+                        <Link to="/studio/$postId/edit" params={{ postId: displayPost.id }}>
                             <Pencil className="mr-1.5 h-4 w-4" />
                             Edit
                         </Link>
@@ -515,7 +541,7 @@ export function BlogDetailPage() {
                             showFootnotes
                             showSeries
                             formatDate={formatDate}
-                            renderSeriesNav={(post) => {
+                            renderSeriesNav={(_post) => {
                                 if (!series || seriesPosts.length <= 1) return null;
                                 return (
                                     <div className="mt-4 pt-4 border-t border-border/60">

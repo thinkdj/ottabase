@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink, PostVersion } from '../ottaorm-models';
 
 describe('ottablog models', () => {
@@ -33,6 +33,9 @@ describe('ottablog models', () => {
             expect(fields).toHaveProperty('title');
             expect(fields).toHaveProperty('slug');
             expect(fields).toHaveProperty('content');
+            expect(fields).toHaveProperty('blurbText');
+            expect(fields).toHaveProperty('photoNote');
+            expect(fields).toHaveProperty('photoAlbum');
             expect(fields).toHaveProperty('status');
             expect(fields).toHaveProperty('categoryId');
             expect(fields).toHaveProperty('isProtected');
@@ -76,6 +79,147 @@ describe('ottablog models', () => {
             const writable = (Post as any).writable as { create: string[]; update: string[] };
             expect(writable.create).toContain('meta');
             expect(writable.update).toContain('meta');
+        });
+
+        it('configures first-class blurb text as searchable and writable', () => {
+            const fields = Post.getFields();
+            expect(fields.blurbText.type).toBe('string');
+            expect(fields.blurbText.searchable).toBe(true);
+            const writable = (Post as any).writable as { create: string[]; update: string[] };
+            expect(writable.create).toContain('blurbText');
+            expect(writable.update).toContain('blurbText');
+        });
+
+        it('creates blurbs with model-owned derived fields and locked article features', async () => {
+            const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            await Post.createBlurb('Watched xyz today.\nIt stayed with me.', {
+                status: 'published',
+                appId: 'app-1',
+                organizationId: 'org-1',
+                userId: 'user-1',
+            });
+
+            expect(create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Watched xyz today.',
+                    excerpt: 'Watched xyz today. It stayed with me.',
+                    blurbText: 'Watched xyz today.\nIt stayed with me.',
+                    content: null,
+                    contentType: 'blurb',
+                    categoryId: null,
+                    seriesId: null,
+                    heroImage: null,
+                    footnotes: null,
+                    status: 'published',
+                    readingTimeMinutes: 1,
+                    isFeatured: false,
+                    isProtected: false,
+                    appId: 'app-1',
+                    organizationId: 'org-1',
+                    userId: 'user-1',
+                    authorId: 'user-1',
+                }),
+            );
+            expect((create.mock.calls[0][0] as { slug: string }).slug).toMatch(/^blurb-[a-z0-9]+-[a-f0-9-]+$/);
+            create.mockRestore();
+        });
+
+        it('creates photo journals with an ordered album and lead-photo compatibility metadata', async () => {
+            const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            const photos = [
+                {
+                    id: 'photo-1',
+                    mediaId: 'media-1',
+                    url: 'https://images.test/kyoto.jpg',
+                    alt: 'Lanterns reflected in a wet lane',
+                    caption: 'After the last train',
+                    location: 'Kyoto, Japan',
+                    width: 1800,
+                    height: 1200,
+                },
+            ];
+
+            await Post.createPhotoJournal(photos, {
+                title: 'Kyoto, in the rain',
+                note: 'A quiet blue hour.',
+                isFeatured: true,
+                status: 'published',
+                appId: 'app-1',
+                organizationId: 'org-1',
+                userId: 'user-1',
+            });
+
+            expect(create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Kyoto, in the rain',
+                    excerpt: 'A quiet blue hour.',
+                    blurbText: null,
+                    photoNote: 'A quiet blue hour.',
+                    photoAlbum: [
+                        expect.objectContaining({
+                            id: 'photo-1',
+                            mediaId: 'media-1',
+                            url: 'https://images.test/kyoto.jpg',
+                            caption: 'After the last train',
+                        }),
+                    ],
+                    content: null,
+                    contentType: 'photo',
+                    heroImage: expect.objectContaining({
+                        url: 'https://images.test/kyoto.jpg',
+                        mediaId: 'media-1',
+                        alt: 'Lanterns reflected in a wet lane',
+                    }),
+                    status: 'published',
+                    isFeatured: true,
+                    isProtected: false,
+                    appId: 'app-1',
+                    organizationId: 'org-1',
+                    userId: 'user-1',
+                    authorId: 'user-1',
+                }),
+            );
+            expect((create.mock.calls[0][0] as { slug: string }).slug).toMatch(
+                /^kyoto-in-the-rain-[a-z0-9]+-[a-f0-9-]+$/,
+            );
+            create.mockRestore();
+        });
+
+        it('keeps the stored field note when updatePhotoJournal omits it', async () => {
+            const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', photoNote: 'A quiet blue hour.' };
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isPhotoJournal: () => true,
+            });
+
+            await post.updatePhotoJournal(photos, { status: 'published' });
+
+            // An omitted note means "unchanged", never "clear it" — and the excerpt stays derived
+            // from the surviving note rather than falling back to the lead caption.
+            expect(stored.photoNote).toBe('A quiet blue hour.');
+            expect(stored.excerpt).toBe('A quiet blue hour.');
+        });
+
+        it('clears the field note when updatePhotoJournal passes an explicit null', async () => {
+            const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', photoNote: 'A quiet blue hour.' };
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isPhotoJournal: () => true,
+            });
+
+            await post.updatePhotoJournal(photos, { note: null });
+
+            expect(stored.photoNote).toBeNull();
         });
     });
 
@@ -299,20 +443,20 @@ describe('ottablog models', () => {
         it('PostCategory should support type field', () => {
             const fields = PostCategory.getFields();
             expect(fields.type).toBeDefined();
-            expect(fields.type.uiConfig.description).toContain('post, news, docs');
+            expect(fields.type.uiConfig?.description).toContain('post, news, docs');
         });
 
         it('PostTag should support type field', () => {
             const fields = PostTag.getFields();
             expect(fields.type).toBeDefined();
-            expect(fields.type.uiConfig.description).toContain('post, news, docs');
+            expect(fields.type.uiConfig?.description).toContain('post, news, docs');
         });
 
         it("Both should have type as default 'post'", () => {
             const catFields = PostCategory.getFields();
             const tagFields = PostTag.getFields();
-            expect(catFields.type.uiConfig.defaultValue).toBe('post');
-            expect(tagFields.type.uiConfig.defaultValue).toBe('post');
+            expect(catFields.type.uiConfig?.defaultValue).toBe('post');
+            expect(tagFields.type.uiConfig?.defaultValue).toBe('post');
         });
     });
 

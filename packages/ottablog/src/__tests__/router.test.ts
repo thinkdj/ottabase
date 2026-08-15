@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { globalRLS } from '@ottabase/ottaorm';
 import { buildBlogRouter, createBlogHandlers } from '../router';
 import type { BlogHandlers } from '../router';
+import { BlurbValidationError } from '../types';
 
 // Model layer is mocked so handler tests can assert on query shapes without a DB.
 // Router-table tests below use stub handlers and never touch these mocks.
 vi.mock('../ottaorm-models', () => ({
     Post: {
+        entity: 'posts',
         first: vi.fn(async () => null),
         where: vi.fn(async () => []),
         paginate: vi.fn(async () => ({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 })),
@@ -15,6 +18,8 @@ vi.mock('../ottaorm-models', () => ({
         publishScheduled: vi.fn(async () => []),
         findBySlug: vi.fn(async () => null),
         create: vi.fn(),
+        createBlurb: vi.fn(),
+        createPhotoJournal: vi.fn(),
     },
     PostCategory: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
     PostCategoryLink: { where: vi.fn(async () => []) },
@@ -46,6 +51,10 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogStudioPluginEnable: named('plugin-enable'),
         handleBlogStudioPluginConfig: named('plugin-config'),
         handleBlogPostsList: named('posts-list'),
+        handleBlogBlurbCreate: named('blurb-create'),
+        handleBlogBlurbUpdate: named('blurb-update'),
+        handleBlogPhotoJournalCreate: named('photo-journal-create'),
+        handleBlogPhotoJournalUpdate: named('photo-journal-update'),
         handleBlogPostBySlug: named('post-by-slug'),
         handleBlogPostUnlock: named('post-unlock'),
         handleBlogTagBySlug: named('tag-by-slug'),
@@ -92,6 +101,10 @@ describe('buildBlogRouter', () => {
             ['GET', '/rss', 'rss'],
             ['GET', '/sitemap.xml', 'sitemap'],
             ['GET', '/posts', 'posts-list'],
+            ['POST', '/blurbs', 'blurb-create'],
+            ['PATCH', '/blurbs/p1', 'blurb-update'],
+            ['POST', '/photo-journals', 'photo-journal-create'],
+            ['PATCH', '/photo-journals/p1', 'photo-journal-update'],
             ['GET', '/posts/p1/related', 'related'],
             ['GET', '/tags/by-slug/t', 'tag-by-slug'],
             ['GET', '/categories/by-slug/c', 'category-by-slug'],
@@ -190,6 +203,378 @@ describe('createBlogHandlers', () => {
         expect(response).toBe(dbError);
     });
 
+    it('creates blurbs through the create-grade guard and fat model', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:create', 'posts:publish'],
+        };
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'u1', organizationId: 'org-1' } },
+            securityContext,
+        }));
+        const created = { toJson: () => ({ id: 'b1', contentType: 'blurb', blurbText: 'A quick thought' }) };
+        vi.mocked(Post.createBlurb).mockResolvedValueOnce(created as any);
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+
+        const response = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ text: 'A quick thought' }),
+            }),
+        );
+
+        expect(response.status).toBe(201);
+        expect(requireContentCreator).toHaveBeenCalled();
+        expect(validateWrite).toHaveBeenCalledWith(
+            'posts',
+            securityContext,
+            expect.objectContaining({ organizationId: 'org-1', userId: 'u1', appId: 'test-app' }),
+            'create',
+        );
+        // A body with no status must NOT self-publish to the public timeline and RSS.
+        expect(Post.createBlurb).toHaveBeenCalledWith(
+            'A quick thought',
+            expect.objectContaining({ status: 'draft', organizationId: 'org-1', userId: 'u1' }),
+        );
+        validateWrite.mockRestore();
+    });
+
+    it('publishes a blurb only when the request asks for it', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:create', 'posts:publish'],
+        };
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'u1', organizationId: 'org-1' } },
+            securityContext,
+        }));
+        vi.mocked(Post.createBlurb).mockResolvedValueOnce({ toJson: () => ({ id: 'b2' }) } as any);
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+
+        const response = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ text: 'A quick thought', status: 'published' }),
+            }),
+        );
+
+        expect(response.status).toBe(201);
+        expect(Post.createBlurb).toHaveBeenCalledWith(
+            'A quick thought',
+            expect.objectContaining({ status: 'published' }),
+        );
+        validateWrite.mockRestore();
+    });
+
+    it('returns validation errors for empty blurbs without invoking the model', async () => {
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'u1', organizationId: 'org-1' } },
+            securityContext: { userId: 'u1', organizationId: 'org-1', appId: 'test-app' },
+        }));
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        vi.mocked(Post.createBlurb).mockRejectedValueOnce(new BlurbValidationError('Blurb text is required'));
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+
+        const response = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', { method: 'POST', body: JSON.stringify({ text: ' ', status: 'draft' }) }),
+        );
+
+        expect(response.status).toBe(400);
+        validateWrite.mockRestore();
+    });
+
+    it('creates photo journals through the fat model with server-derived ownership', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:create', 'posts:publish'],
+        };
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'u1', organizationId: 'org-1' } },
+            securityContext,
+        }));
+        const photos = [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }];
+        const created = { toJson: () => ({ id: 'p1', contentType: 'photo', photoAlbum: photos }) };
+        vi.mocked(Post.createPhotoJournal).mockResolvedValueOnce(created as any);
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+
+        const response = await handlers.handleBlogPhotoJournalCreate(
+            ctxFor('/photo-journals', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    title: 'Kyoto, in the rain',
+                    note: 'A wet blue hour.',
+                    photos,
+                    status: 'draft',
+                }),
+            }),
+        );
+
+        expect(response.status).toBe(201);
+        expect(Post.createPhotoJournal).toHaveBeenCalledWith(
+            photos,
+            expect.objectContaining({
+                title: 'Kyoto, in the rain',
+                note: 'A wet blue hour.',
+                status: 'draft',
+                organizationId: 'org-1',
+                userId: 'u1',
+                appId: 'test-app',
+            }),
+        );
+        expect(validateWrite).toHaveBeenCalledWith(
+            'posts',
+            securityContext,
+            expect.objectContaining({ contentType: 'photo', organizationId: 'org-1' }),
+            'create',
+        );
+        validateWrite.mockRestore();
+    });
+
+    it('creates platform-owned blurbs and photo journals from a canonical platform context', async () => {
+        const securityContext = {
+            userId: 'owner-1',
+            organizationId: null,
+            appId: 'test-app',
+            permissions: ['*:*'],
+            platformAdmin: true,
+            memberOrganizationIds: [],
+        };
+        const requireContentCreator = vi.fn(async () => ({
+            session: { user: { id: 'owner-1', organizationId: null, platformAdmin: true } },
+            securityContext,
+        }));
+        const photos = [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }];
+        vi.mocked(Post.createBlurb).mockResolvedValueOnce({
+            toJson: () => ({ id: 'b-platform', contentType: 'blurb' }),
+        } as any);
+        vi.mocked(Post.createPhotoJournal).mockResolvedValueOnce({
+            toJson: () => ({ id: 'p-platform', contentType: 'photo' }),
+        } as any);
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentCreator });
+
+        const blurbResponse = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ text: 'A platform thought' }),
+            }),
+        );
+        const photoResponse = await handlers.handleBlogPhotoJournalCreate(
+            ctxFor('/photo-journals', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ photos, status: 'draft' }),
+            }),
+        );
+
+        expect(blurbResponse.status).toBe(201);
+        expect(photoResponse.status).toBe(201);
+        expect(Post.createBlurb).toHaveBeenCalledWith(
+            'A platform thought',
+            expect.objectContaining({ organizationId: null, userId: 'owner-1', appId: 'test-app' }),
+        );
+        expect(Post.createPhotoJournal).toHaveBeenCalledWith(
+            photos,
+            expect.objectContaining({ organizationId: null, userId: 'owner-1', appId: 'test-app' }),
+        );
+        expect(validateWrite).toHaveBeenCalledTimes(2);
+        expect(validateWrite).toHaveBeenCalledWith(
+            'posts',
+            securityContext,
+            expect.objectContaining({ contentType: 'blurb', organizationId: null }),
+            'create',
+        );
+        expect(validateWrite).toHaveBeenCalledWith(
+            'posts',
+            securityContext,
+            expect.objectContaining({ contentType: 'photo', organizationId: null }),
+            'create',
+        );
+        validateWrite.mockRestore();
+    });
+
+    it('rejects a photo-journal write without an organization or platform authority', async () => {
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentCreator: async () => ({
+                session: { user: { id: 'u1', organizationId: null } },
+                securityContext: {
+                    userId: 'u1',
+                    organizationId: null,
+                    appId: 'test-app',
+                    permissions: ['posts:create'],
+                    platformAdmin: false,
+                    memberOrganizationIds: [],
+                },
+            }),
+        });
+
+        const response = await handlers.handleBlogPhotoJournalCreate(
+            ctxFor('/photo-journals', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    photos: [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }],
+                    status: 'draft',
+                }),
+            }),
+        );
+
+        expect(response.status).toBe(403);
+        expect(Post.createPhotoJournal).not.toHaveBeenCalled();
+        expect(validateWrite).not.toHaveBeenCalled();
+        validateWrite.mockRestore();
+    });
+
+    it('keeps publishing separate from create permission', async () => {
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentCreator: async () => ({
+                session: { user: { id: 'u1', organizationId: 'org-1' } },
+                securityContext: {
+                    userId: 'u1',
+                    organizationId: 'org-1',
+                    appId: 'test-app',
+                    permissions: ['posts:create'],
+                },
+            }),
+        });
+
+        const response = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', { method: 'POST', body: JSON.stringify({ text: 'Cannot publish this' }) }),
+        );
+
+        expect(response.status).toBe(403);
+        expect(Post.createBlurb).not.toHaveBeenCalled();
+    });
+
+    it('updates only a blurb visible through the caller RLS filter', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:update', 'posts:publish'],
+        };
+        const updated = { id: 'b1', contentType: 'blurb', blurbText: 'Revised thought' };
+        const record = {
+            toJson: () => ({ id: 'b1', organizationId: 'org-1', userId: 'u1', contentType: 'blurb' }),
+            updateBlurb: vi.fn(async () => ({ toJson: () => updated })),
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(record as any);
+        const getReadFilter = vi
+            .spyOn(globalRLS, 'getReadFilter')
+            .mockReturnValue({ organizationId: 'org-1', userId: 'u1' });
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: async () => ({
+                session: { user: { id: 'u1', organizationId: 'org-1' } },
+                securityContext,
+            }),
+        });
+
+        const response = await handlers.handleBlogBlurbUpdate(
+            ctxFor('/blurbs/b1', {
+                method: 'PATCH',
+                body: JSON.stringify({ text: 'Revised thought', status: 'published' }),
+            }),
+            'b1',
+        );
+
+        expect(response.status).toBe(200);
+        expect(Post.first).toHaveBeenCalledWith({
+            id: 'b1',
+            contentType: 'blurb',
+            organizationId: 'org-1',
+            userId: 'u1',
+        });
+        expect(validateWrite).toHaveBeenCalledWith('posts', securityContext, record.toJson(), 'update');
+        expect(record.updateBlurb).toHaveBeenCalledWith(
+            'Revised thought',
+            expect.objectContaining({ status: 'published' }),
+        );
+        expect(await response.json()).toEqual(updated);
+        getReadFilter.mockRestore();
+        validateWrite.mockRestore();
+    });
+
+    it('reports an unconfigured editorial guard as a host config error, never as a 401', async () => {
+        // baseConfig wires requireAdmin only — which carries no securityContext. Falling back to it
+        // would fail later with "Authentication required", blaming the user for a deployment gap.
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogBlurbCreate(
+            ctxFor('/blurbs', { method: 'POST', body: JSON.stringify({ text: 'hi' }) }),
+        );
+
+        expect(response.status).toBe(500);
+        expect((await response.json()).code).toBe('CONFIG_ERROR');
+        expect(baseConfig.requireAdmin).not.toHaveBeenCalled();
+        expect(Post.createBlurb).not.toHaveBeenCalled();
+    });
+
+    it('treats an omitted body field as unchanged on a status-only PATCH', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:update', 'posts:publish'],
+        };
+        const stored: Record<string, unknown> = {
+            id: 'b1',
+            contentType: 'blurb',
+            blurbText: 'Stored thought',
+            photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+        };
+        const record = {
+            get: (field: string) => stored[field],
+            toJson: () => stored,
+            updateBlurb: vi.fn(async () => ({ toJson: () => stored })),
+            updatePhotoJournal: vi.fn(async () => ({ toJson: () => stored })),
+        };
+        vi.mocked(Post.first).mockResolvedValue(record as any);
+        const getReadFilter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+        const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        const auth = async () => ({ session: { user: { id: 'u1', organizationId: 'org-1' } }, securityContext });
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, requireContentEditor: auth });
+
+        const blurbResponse = await handlers.handleBlogBlurbUpdate(
+            ctxFor('/blurbs/b1', { method: 'PATCH', body: JSON.stringify({ status: 'published' }) }),
+            'b1',
+        );
+        const photoResponse = await handlers.handleBlogPhotoJournalUpdate(
+            ctxFor('/photo-journals/b1', { method: 'PATCH', body: JSON.stringify({ status: 'published' }) }),
+            'b1',
+        );
+
+        expect(blurbResponse.status).toBe(200);
+        expect(photoResponse.status).toBe(200);
+        expect(record.updateBlurb).toHaveBeenCalledWith(
+            'Stored thought',
+            expect.objectContaining({ status: 'published' }),
+        );
+        expect(record.updatePhotoJournal).toHaveBeenCalledWith(
+            stored.photoAlbum,
+            expect.objectContaining({ status: 'published' }),
+        );
+        getReadFilter.mockRestore();
+        validateWrite.mockRestore();
+    });
+
     it('projects public author data without exposing the account email', async () => {
         const authorFields = {
             id: 'author-1',
@@ -233,6 +618,68 @@ describe('createBlogHandlers', () => {
         });
         expect(body.author).not.toHaveProperty('email');
         expect(body).not.toHaveProperty('privateNotes');
+    });
+
+    it('withholds every body column of a locked protected post, not just the article content', async () => {
+        const postFields = {
+            id: 'post-2',
+            slug: 'locked',
+            title: 'Locked',
+            excerpt: 'Teaser stays public',
+            status: 'published',
+            contentType: 'photo',
+            isProtected: true,
+            content: { blocks: [{ type: 'paragraph' }] },
+            footnotes: { blocks: [] },
+            blurbText: 'secret thought',
+            photoNote: 'secret note',
+            photoAlbum: [{ id: 'p1', url: 'https://images.test/secret.jpg' }],
+        };
+        const record = {
+            get: (field: string) => postFields[field as keyof typeof postFields] ?? null,
+            toJson: () => ({ ...postFields }),
+            author: vi.fn(async () => null),
+            tags: vi.fn(async () => []),
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(record as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/locked'), 'locked');
+        const body = (await response.json()) as Record<string, unknown>;
+
+        expect(body.content).toBeNull();
+        expect(body.footnotes).toBeNull();
+        expect(body.blurbText).toBeNull();
+        expect(body.photoNote).toBeNull();
+        expect(body.photoAlbum).toBeNull();
+        // The lock screen still needs something to show.
+        expect(body.title).toBe('Locked');
+        expect(body.excerpt).toBe('Teaser stays public');
+    });
+
+    it('publishes photo journals to RSS with a lead-image enclosure and category', async () => {
+        const fields = {
+            id: 'photo-1',
+            title: 'Kyoto, in the rain',
+            slug: 'kyoto-rain',
+            excerpt: 'A quiet blue hour.',
+            contentType: 'photo',
+            authorId: null,
+            publishedAt: 1_700_000_000_000,
+            heroImage: { url: 'https://images.test/kyoto.png', mimeType: 'image/png' },
+        };
+        vi.mocked(Post.where).mockResolvedValueOnce([
+            { get: (field: string) => fields[field as keyof typeof fields] ?? null },
+        ] as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogRssFeed(ctxFor('/rss'));
+        const xml = await response.text();
+
+        expect(response.headers.get('Content-Type')).toContain('application/rss+xml');
+        expect(xml).toContain('<category>Photo Journal</category>');
+        expect(xml).toContain('<description>A quiet blue hour.</description>');
+        expect(xml).toContain('<enclosure url="https://images.test/kyoto.png" type="image/png" />');
     });
 
     describe('platform mode (default)', () => {

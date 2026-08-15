@@ -85,9 +85,45 @@ describe('buildPostSeoTags', () => {
         expect(tags).not.toContain('og:image');
     });
 
+    it('resolves application-relative media URLs against the canonical origin', () => {
+        const tags = buildPostSeoTags({ ...base, imageUrl: '/media/hero.jpg' });
+        expect(tags).toContain('<meta property="og:image" content="https://x.test/media/hero.jpg"');
+        expect(tags).toContain('"image":["https://x.test/media/hero.jpg"]');
+    });
+
     it('omits date meta for invalid timestamps', () => {
         const tags = buildPostSeoTags({ ...base, publishedAt: 'not-a-date' });
         expect(tags).not.toContain('article:published_time');
+    });
+
+    it('uses SocialMediaPosting structured data for blurbs', () => {
+        const tags = buildPostSeoTags({ ...base, contentType: 'blurb' });
+        expect(tags).toContain('"@type":"SocialMediaPosting"');
+        expect(tags).not.toContain('"@type":"Article"');
+    });
+
+    it('describes photo journals as an ordered image collection', () => {
+        const tags = buildPostSeoTags({
+            ...base,
+            contentType: 'photo',
+            photoAlbum: [
+                {
+                    url: '/media/kyoto-rain.jpg',
+                    alt: 'Lanterns reflected in a wet Kyoto lane',
+                    caption: 'After the last train',
+                    location: 'Kyoto, Japan',
+                    takenAt: '2026-05-12T18:00:00.000Z',
+                    width: 1800,
+                    height: 1200,
+                },
+            ],
+        });
+
+        expect(tags).toContain('"@type":"CollectionPage"');
+        expect(tags).toContain('"hasPart":[{"@type":"ImageObject"');
+        expect(tags).toContain('"contentUrl":"https://x.test/media/kyoto-rain.jpg"');
+        expect(tags).toContain('"contentLocation":{"@type":"Place","name":"Kyoto, Japan"}');
+        expect(tags).toContain('"representativeOfPage":true');
     });
 });
 

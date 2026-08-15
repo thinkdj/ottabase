@@ -4,7 +4,8 @@
  * Ottablog hook system implementation
  */
 
-import type { HookCallback, HookEntry, HookName, HookPriority, HookRegistry } from './types';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import type { ActionCallback, FilterCallback, HookEntry, HookName, HookPriority, HookRegistry } from './types';
 
 /**
  * Default hook priority
@@ -31,14 +32,14 @@ class HookRegistryImpl implements HookRegistry {
      */
     addFilter<T = unknown>(
         hook: HookName,
-        callback: HookCallback<T>,
+        callback: FilterCallback<T>,
         priority: HookPriority = DEFAULT_PRIORITY,
         id?: string,
     ): string {
         const hookId = id || this.generateId();
-        const entry: HookEntry<T> = {
+        const entry: HookEntry = {
             id: hookId,
-            callback,
+            callback: callback as unknown as HookEntry['callback'],
             priority,
         };
 
@@ -57,11 +58,16 @@ class HookRegistryImpl implements HookRegistry {
     /**
      * Register an action hook
      */
-    addAction(hook: HookName, callback: HookCallback, priority: HookPriority = DEFAULT_PRIORITY, id?: string): string {
+    addAction(
+        hook: HookName,
+        callback: ActionCallback,
+        priority: HookPriority = DEFAULT_PRIORITY,
+        id?: string,
+    ): string {
         const hookId = id || this.generateId();
         const entry: HookEntry = {
             id: hookId,
-            callback,
+            callback: callback as unknown as HookEntry['callback'],
             priority,
         };
 
@@ -118,10 +124,11 @@ class HookRegistryImpl implements HookRegistry {
         let result = value;
         for (const entry of hooks) {
             try {
-                const callbackResult = await entry.callback(result, ...args);
+                const callback = entry.callback as unknown as (value: T, ...args: unknown[]) => T | Promise<T>;
+                const callbackResult = await callback(result, ...args);
                 result = callbackResult as T;
             } catch (error) {
-                console.error(`Error in filter hook "${hook}" (${entry.id}):`, error);
+                console.error(`Error in filter hook "${hook}" (${entry.id}):`, redactErrorForLog(error));
                 // Continue with previous value on error
             }
         }
@@ -140,9 +147,10 @@ class HookRegistryImpl implements HookRegistry {
 
         for (const entry of hooks) {
             try {
-                await entry.callback(...args);
+                const callback = entry.callback as unknown as (...callbackArgs: unknown[]) => void | Promise<void>;
+                await callback(...args);
             } catch (error) {
-                console.error(`Error in action hook "${hook}" (${entry.id}):`, error);
+                console.error(`Error in action hook "${hook}" (${entry.id}):`, redactErrorForLog(error));
                 // Continue execution on error
             }
         }
@@ -187,12 +195,12 @@ export const hookRegistry: HookRegistry = new HookRegistryImpl();
  */
 export const addFilter = <T = unknown>(
     hook: HookName,
-    callback: HookCallback<T>,
+    callback: FilterCallback<T>,
     priority?: HookPriority,
     id?: string,
 ) => hookRegistry.addFilter(hook, callback, priority, id);
 
-export const addAction = (hook: HookName, callback: HookCallback, priority?: HookPriority, id?: string) =>
+export const addAction = (hook: HookName, callback: ActionCallback, priority?: HookPriority, id?: string) =>
     hookRegistry.addAction(hook, callback, priority, id);
 
 export const removeHook = (hook: HookName, id: string) => hookRegistry.removeHook(hook, id);

@@ -116,6 +116,7 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     // Editorial gate for preview-token minting: any caller who may edit posts
     // (author/editor/org admin/platform owner), not only platform admins.
     requireContentEditor: (ctx) => requireContentPermission(ctx, 'posts:update'),
+    requireContentCreator: (ctx) => requireContentPermission(ctx, 'posts:create'),
     // Object-level check for minting previews of posts the caller does not own:
     // manage-grade grants evaluated in the POST's org (never a request hint).
     canManagePost: (ctx, post) => canManagePostInOrg(ctx, post),
@@ -137,6 +138,10 @@ export const {
     handleBlogStudioPluginEnable,
     handleBlogStudioPluginConfig,
     handleBlogPostsList,
+    handleBlogBlurbCreate,
+    handleBlogBlurbUpdate,
+    handleBlogPhotoJournalCreate,
+    handleBlogPhotoJournalUpdate,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogTagBySlug,

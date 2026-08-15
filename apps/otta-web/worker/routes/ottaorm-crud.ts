@@ -1,7 +1,14 @@
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { Post } from '@ottabase/ottablog';
+import {
+    BlurbValidationError,
+    PhotoJournalValidationError,
+    Post,
+    validateBlurbText,
+    validatePhotoJournalItems,
+    validatePhotoJournalNote,
+} from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
@@ -375,20 +382,40 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // admin passes via *:*). Authors without it can create and edit drafts but not ship them.
     // PUT is included deliberately — secure CRUD treats PUT as a full update like PATCH, so a
     // POST/PATCH-only gate would leave PUT as a silent bypass.
+    //
+    // The same block also re-applies the blurb/photo-journal shape validators. Those columns are
+    // model-validated on their own routes (/api/blog/blurbs, /api/blog/photo-journals) — text
+    // length caps, the 60-photo album cap, sanitized photo URLs — but they are also in
+    // Post.writable (the model's own create needs them there), so generic CRUD can write them.
+    // Without this, every cap is skippable by addressing /api/ottaorm/posts instead. Reusing the
+    // model's exported validators keeps the model the single source of truth for shape.
     if (
         crudRequest.model === 'posts' &&
         crudRequest.body &&
         (crudRequest.method === 'POST' || crudRequest.method === 'PATCH' || crudRequest.method === 'PUT')
     ) {
-        const requestedStatus = (crudRequest.body as Record<string, unknown>).status;
+        const body = crudRequest.body as Record<string, unknown>;
+
         if (
-            (requestedStatus === 'published' || requestedStatus === 'scheduled') &&
+            (body.status === 'published' || body.status === 'scheduled') &&
             !securityContext.platformAdmin &&
             !hasGrantedPermission(securityContext.permissions as string[] | undefined, 'posts:publish')
         ) {
             return errorResponse('Publishing posts requires the posts:publish permission', 403, {
                 code: 'FORBIDDEN',
             });
+        }
+
+        try {
+            // `undefined` means "not in this write" and stays untouched; an explicit null clears.
+            if (body.blurbText != null) body.blurbText = validateBlurbText(body.blurbText);
+            if (body.photoNote !== undefined) body.photoNote = validatePhotoJournalNote(body.photoNote);
+            if (body.photoAlbum != null) body.photoAlbum = validatePhotoJournalItems(body.photoAlbum);
+        } catch (error) {
+            if (error instanceof BlurbValidationError || error instanceof PhotoJournalValidationError) {
+                return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
+            }
+            throw error;
         }
     }
 

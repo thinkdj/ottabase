@@ -8,7 +8,7 @@ export type { Category, NewCategory, NewPostCategoryType, PostCategoryType } fro
 
 // Post exports
 export { Post, postsTable } from './Post';
-export type { NewPost, NewPostType, PostType } from './Post';
+export type { BlurbWriteOptions, NewPost, NewPostType, PhotoJournalWriteOptions, PostType } from './Post';
 
 // PostTag exports (blog-specific tag entity)
 export { PostTag, postTagsTable } from './PostTag';

@@ -8,12 +8,22 @@ import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
-import { CONTENT_TYPES, formatDate, type ContentType } from '@ottabase/ottablog';
+import {
+    CONTENT_TYPES,
+    contentTypeLabel,
+    formatDate,
+    type ContentType,
+    type PhotoJournalItem,
+} from '@ottabase/ottablog';
+import { BlurbRenderer, PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Badge, Button, Card, CardContent, Input, NativeSelect, NativeSelectOption } from '@ottabase/ui-shadcn';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Clock, Lock, Plus, Search, Tag, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { partitionBlogTimeline } from './blogTimeline';
 
 interface BlogPostTag {
     id: string;
@@ -26,7 +36,10 @@ interface BlogPost {
     title: string;
     slug: string;
     excerpt: string | null;
-    contentType: string;
+    blurbText: string | null;
+    photoNote: string | null;
+    photoAlbum: PhotoJournalItem[] | null;
+    contentType: ContentType;
     status: string;
     heroImage: { url: string; alt?: string } | null;
     // Author from User relationship
@@ -63,13 +76,17 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 const POSTS_PER_PAGE = 12;
 
 export function BlogListPage() {
-    const { isAuthenticated } = useSession();
+    const { user } = useSession();
+    // Editorial CTAs are for people who can actually write: /studio is gated on posts:update, and
+    // every write is re-checked server-side. "Signed in" is not a content permission — showing the
+    // buttons to every visitor with an account just walks them into a privilege fallback.
+    const canWrite = hasGrantedPermission(user?.permissions, 'posts:update');
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [contentType, setContentType] = useState<ContentType | ''>('');
     const [seriesFilter, setSeriesFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Debounce search input (300ms)
     useEffect(() => {
@@ -77,7 +94,9 @@ export function BlogListPage() {
             setDebouncedSearch(search);
             setCurrentPage(1);
         }, 300);
-        return () => clearTimeout(debounceRef.current);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
     }, [search]);
 
     // Build query params for the public blog API
@@ -111,16 +130,15 @@ export function BlogListPage() {
         setCurrentPage(1);
     };
 
-    // Separate featured posts
-    const featuredPosts = posts.filter((p) => p.isFeatured);
-    const regularPosts = posts.filter((p) => !p.isFeatured);
+    // Blurbs remain chronological; highlight-capable articles and photo journals can enter the featured rail.
+    const { featuredPosts, timelinePosts } = partitionBlogTimeline(posts);
 
     return (
         <div className="space-y-8">
             {/* SEO Meta Tags */}
             <SEOHead
-                title="Blog - Latest Articles and Updates"
-                description="Thoughts, tutorials, and updates from our team. Stay up to date with the latest blog posts, changelogs, and documentation."
+                title="Blog - Stories, Thoughts, and Photo Journals"
+                description="Photo journals, short thoughts, articles, tutorials, and updates from our team."
                 ogType="website"
                 twitterCard="summary_large_image"
             />
@@ -130,15 +148,27 @@ export function BlogListPage() {
                 <div className="space-y-1.5">
                     <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
                     <p className="max-w-3xl text-lg text-muted-foreground">
-                        Thoughts, tutorials, and updates from our team.
+                        Photo journals, short thoughts, articles, tutorials, and updates from our team.
                     </p>
                 </div>
-                {isAuthenticated && (
-                    <div>
+                {canWrite && (
+                    <div className="flex flex-wrap gap-2">
                         <Button asChild>
-                            <Link to="/admin/content/blog/new">
-                                <Plus className="h-4 w-4 mr-2" />
-                                New Post
+                            <Link to="/studio/new" search={{ contentType: 'blurb' }}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Share a thought
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link to="/studio/new" search={{ contentType: 'photo' }}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                New photo journal
+                            </Link>
+                        </Button>
+                        <Button variant="ghost" asChild>
+                            <Link to="/studio/new">
+                                <Plus className="mr-2 h-4 w-4" />
+                                New article
                             </Link>
                         </Button>
                     </div>
@@ -219,18 +249,40 @@ export function BlogListPage() {
                 </section>
             )}
 
-            {/* Regular Posts */}
-            {regularPosts.length > 0 && (
+            {/* Chronological timeline: blurbs stay interleaved with full posts. */}
+            {timelinePosts.length > 0 && (
                 <section className="space-y-4">
-                    {featuredPosts.length > 0 && (
-                        <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Latest Posts
-                        </h2>
-                    )}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {regularPosts.map((post) => (
-                            <PostCard key={post.id} post={post} />
-                        ))}
+                    <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Latest
+                    </h2>
+                    <div className="mx-auto max-w-3xl space-y-3">
+                        {/* A protected post ships no body (the API blanks it), so it falls back to
+                            PostCard, which renders the lock affordance instead of an empty frame. */}
+                        {timelinePosts.map((post) =>
+                            post.isProtected ? (
+                                <PostCard key={post.id} post={post} />
+                            ) : post.contentType === 'blurb' ? (
+                                <Link
+                                    key={post.id}
+                                    to={`/blog/${post.slug}`}
+                                    aria-label={`Open thought from ${post.author?.name || 'author'}`}
+                                    className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
+                                </Link>
+                            ) : post.contentType === 'photo' ? (
+                                <Link
+                                    key={post.id}
+                                    to={`/blog/${post.slug}`}
+                                    aria-label={`Open photo journal ${post.title}`}
+                                    className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <PhotoJournalRenderer post={post} variant="timeline" formatDate={formatDate} />
+                                </Link>
+                            ) : (
+                                <PostCard key={post.id} post={post} />
+                            ),
+                        )}
                     </div>
                 </section>
             )}
@@ -268,28 +320,32 @@ export function BlogListPage() {
 }
 
 function FeaturedPostCard({ post }: { post: BlogPost }) {
+    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
+    const photoCount = post.photoAlbum?.length ?? 0;
     return (
         <Link
             to={`/blog/${post.slug}`}
             className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <Card className="h-full overflow-hidden rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
-                {post.heroImage?.url && (
+                {heroUrl !== '#' && (
                     <div className="relative h-48 overflow-hidden">
                         <img
-                            src={post.heroImage.url}
-                            alt={post.heroImage.alt || post.title}
+                            src={heroUrl}
+                            alt={post.heroImage?.alt || post.title}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover"
                         />
                         <div className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            Featured
+                            {post.contentType === 'photo' ? `Featured · ${photoCount} frames` : 'Featured'}
                         </div>
                     </div>
                 )}
                 <CardContent className="p-6">
                     {post.contentType !== 'blog' && (
                         <span className="mb-2 inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {post.contentType}
+                            {contentTypeLabel(post.contentType)}
                         </span>
                     )}
                     <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold tracking-tight line-clamp-2">
@@ -343,15 +399,17 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
                                 {formatDate(post.publishedAt)}
                             </span>
                         )}
-                        {post.readingTimeMinutes && (
+                        {post.contentType === 'photo' ? (
+                            <span className="flex items-center gap-1">{photoCount} photographs</span>
+                        ) : post.readingTimeMinutes ? (
                             <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {post.readingTimeMinutes} min
                             </span>
-                        )}
+                        ) : null}
                     </div>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                        Read post
+                        {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
                         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                     </span>
                 </CardContent>
@@ -361,17 +419,20 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
 }
 
 function PostCard({ post }: { post: BlogPost }) {
+    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
         <Link
             to={`/blog/${post.slug}`}
             className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <Card className="h-full overflow-hidden rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
-                {post.heroImage?.url && (
+                {heroUrl !== '#' && (
                     <div className="relative h-40 overflow-hidden">
                         <img
-                            src={post.heroImage.url}
-                            alt={post.heroImage.alt || post.title}
+                            src={heroUrl}
+                            alt={post.heroImage?.alt || post.title}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover"
                         />
                     </div>
@@ -379,7 +440,7 @@ function PostCard({ post }: { post: BlogPost }) {
                 <CardContent className="p-5">
                     {post.contentType !== 'blog' && (
                         <span className="mb-2 inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {post.contentType}
+                            {contentTypeLabel(post.contentType)}
                         </span>
                     )}
                     <h3 className="mb-2 flex items-center gap-2 text-[0.9375rem] font-semibold line-clamp-2">

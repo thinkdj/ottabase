@@ -8,6 +8,8 @@
  * free text and must never break out of an attribute or script tag.
  */
 
+import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
+
 /** Escape a string for use inside an HTML attribute or text node. */
 export function escapeHtml(value: string): string {
     return value
@@ -25,12 +27,7 @@ export function escapeHtml(value: string): string {
  * payload.
  */
 export function jsonForScriptTag(value: unknown): string {
-    return JSON.stringify(value)
-        .replace(/</g, '\\u003c')
-        .replace(/>/g, '\\u003e')
-        .replace(/&/g, '\\u0026')
-        .replace(/\u2028/g, '\\u2028')
-        .replace(/\u2029/g, '\\u2029');
+    return sanitizeJsonForScript(value);
 }
 
 /**
@@ -66,12 +63,35 @@ export interface PostSeoInput {
     /** Site/app name for og:site_name. */
     siteName?: string | null;
     tags?: string[];
+    /** Short-form thoughts use SocialMediaPosting structured data. */
+    contentType?: string | null;
+    /** Ordered photographs used by a photo journal CollectionPage. */
+    photoAlbum?: Array<{
+        url: string;
+        title?: string | null;
+        alt?: string | null;
+        caption?: string | null;
+        location?: string | null;
+        takenAt?: number | string | null;
+        width?: number | null;
+        height?: number | null;
+    }> | null;
 }
 
 function toIso(value: number | string | null | undefined): string | null {
     if (value === null || value === undefined || value === '') return null;
     const date = typeof value === 'number' ? new Date(value) : new Date(String(value));
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function resolveHttpUrl(value: string | null | undefined, baseUrl: string): string | null {
+    if (!value) return null;
+    try {
+        const resolved = new URL(value, baseUrl);
+        return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -84,7 +104,8 @@ export function buildPostSeoTags(input: PostSeoInput): string {
     const title = escapeHtml(input.title);
     const description = input.excerpt ? escapeHtml(input.excerpt) : null;
     const canonical = escapeHtml(input.canonicalUrl);
-    const image = input.imageUrl && /^https?:\/\//.test(input.imageUrl) ? escapeHtml(input.imageUrl) : null;
+    const resolvedImageUrl = resolveHttpUrl(input.imageUrl, input.canonicalUrl);
+    const image = resolvedImageUrl ? escapeHtml(resolvedImageUrl) : null;
     const publishedIso = toIso(input.publishedAt);
     const modifiedIso = toIso(input.updatedAt);
 
@@ -113,18 +134,43 @@ export function buildPostSeoTags(input: PostSeoInput): string {
     if (description) lines.push(`<meta name="twitter:description" content="${description}" data-blog-seo>`);
     if (image) lines.push(`<meta name="twitter:image" content="${image}" data-blog-seo>`);
 
-    // Article JSON-LD
+    // Article / short-form posting / photo collection JSON-LD
+    const isPhotoJournal = input.contentType === 'photo';
     const jsonLd: Record<string, unknown> = {
         '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: input.title,
+        '@type': input.contentType === 'blurb' ? 'SocialMediaPosting' : isPhotoJournal ? 'CollectionPage' : 'Article',
         url: input.canonicalUrl,
     };
+    if (isPhotoJournal) jsonLd.name = input.title;
+    else jsonLd.headline = input.title;
     if (input.excerpt) jsonLd.description = input.excerpt;
-    if (image) jsonLd.image = [input.imageUrl];
+    if (image) jsonLd.image = [resolvedImageUrl];
     if (publishedIso) jsonLd.datePublished = publishedIso;
     if (modifiedIso) jsonLd.dateModified = modifiedIso;
     if (input.authorName) jsonLd.author = { '@type': 'Person', name: input.authorName };
+    if (isPhotoJournal) {
+        const photographs = (input.photoAlbum ?? []).flatMap((photo, index) => {
+            const contentUrl = resolveHttpUrl(photo.url, input.canonicalUrl);
+            if (!contentUrl) return [];
+
+            const photograph: Record<string, unknown> = {
+                '@type': 'ImageObject',
+                contentUrl,
+                position: index + 1,
+            };
+            const name = photo.title || photo.alt;
+            if (name) photograph.name = name;
+            if (photo.caption) photograph.caption = photo.caption;
+            if (photo.location) photograph.contentLocation = { '@type': 'Place', name: photo.location };
+            const takenAt = toIso(photo.takenAt);
+            if (takenAt) photograph.dateCreated = takenAt;
+            if (photo.width) photograph.width = photo.width;
+            if (photo.height) photograph.height = photo.height;
+            if (index === 0) photograph.representativeOfPage = true;
+            return [photograph];
+        });
+        if (photographs.length > 0) jsonLd.hasPart = photographs;
+    }
     lines.push(`<script type="application/ld+json" data-blog-seo>${jsonForScriptTag(jsonLd)}</script>`);
 
     return lines.join('\n    ');

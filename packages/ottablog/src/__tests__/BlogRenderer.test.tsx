@@ -1,6 +1,6 @@
 import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { BlogRenderer, type BlogPostData } from '../components/BlogRenderer';
+import { BlogExcerptCard, BlogRenderer, BlurbRenderer, type BlogPostData } from '../components/BlogRenderer';
 
 const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
     id: 'test-post-1',
@@ -21,7 +21,102 @@ const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
 });
 
 describe('BlogRenderer', () => {
+    describe('Blurb auto-linking', () => {
+        const linkPost = () =>
+            createMockPost({
+                contentType: 'blurb',
+                blurbText: 'Reading https://example.com/post today.',
+                content: null,
+            });
+
+        it('links URLs in the detail variant', async () => {
+            const { container } = render(<BlurbRenderer post={linkPost()} variant="detail" />);
+            await waitFor(() => expect(container.querySelector('a[href="https://example.com/post"]')).not.toBeNull());
+        });
+
+        it('renders URLs as plain text in the timeline variant', async () => {
+            // Timeline cards are wrapped in a link by the caller, so an anchor here would nest
+            // inside it: invalid DOM, and one click would both open the URL and navigate the card.
+            const { container } = render(<BlurbRenderer post={linkPost()} variant="timeline" />);
+            await waitFor(() => expect(container.textContent).toContain('https://example.com/post'));
+            expect(container.querySelector('a')).toBeNull();
+        });
+    });
+
     describe('Safe rendering', () => {
+        it('renders a blurb as short-form text instead of an article body', async () => {
+            const blurb = createMockPost({
+                title: 'Internal generated title',
+                contentType: 'blurb',
+                blurbText: 'Watched xyz today. https://example.com/review',
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={blurb} disableHooks />);
+
+            expect(container.querySelector('.blog-blurb--detail')).toBeTruthy();
+            expect(container.textContent).toContain('Watched xyz today.');
+            expect(container.querySelector('h1')?.classList.contains('sr-only')).toBe(true);
+            expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.com/review');
+        });
+
+        it('uses the compact blurb renderer in listing cards', () => {
+            const blurb = createMockPost({ contentType: 'blurb', blurbText: 'A passing thought', content: null });
+            const { container } = render(<BlogExcerptCard post={blurb} />);
+            expect(container.querySelector('.blog-blurb--timeline')).toBeTruthy();
+            expect(container.textContent).toContain('A passing thought');
+        });
+
+        it('escapes markup and does not turn non-HTTP protocols into links', () => {
+            const blurb = createMockPost({
+                contentType: 'blurb',
+                blurbText: '<img src=x onerror=alert(1)> javascript:alert(1)',
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={blurb} disableHooks />);
+
+            expect(container.querySelector('img')).toBeNull();
+            expect(container.querySelector('a')).toBeNull();
+            expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
+        });
+
+        it('renders a photo journal as an editorial contact sheet', () => {
+            const journal = createMockPost({
+                title: 'Kyoto, in the rain',
+                contentType: 'photo',
+                photoNote: 'A quiet blue hour.',
+                photoAlbum: [
+                    {
+                        id: 'p1',
+                        url: 'https://images.test/kyoto.jpg',
+                        alt: 'Lanterns reflected in a wet lane',
+                        caption: 'After the last train',
+                        location: 'Kyoto, Japan',
+                    },
+                ],
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={journal} disableHooks />);
+
+            expect(container.querySelector('.blog-photo-journal--detail')).toBeTruthy();
+            expect(container.textContent).toContain('Photo journal · 1 frame');
+            expect(container.textContent).toContain('A quiet blue hour.');
+            expect(container.querySelector('img')?.getAttribute('alt')).toBe('Lanterns reflected in a wet lane');
+        });
+
+        it('uses a compact photo collage in listing cards', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: [
+                    { id: 'p1', url: 'https://images.test/one.jpg' },
+                    { id: 'p2', url: 'https://images.test/two.jpg' },
+                ],
+                content: null,
+            });
+            const { container } = render(<BlogExcerptCard post={journal} />);
+            expect(container.querySelector('.blog-photo-journal--timeline')).toBeTruthy();
+            expect(container.textContent).toContain('Photo journal · 2 frames');
+        });
+
         it('should handle empty content blocks without crashing', async () => {
             const emptyPost = createMockPost();
             const { container } = render(<BlogRenderer post={emptyPost} />);
@@ -163,7 +258,7 @@ describe('BlogRenderer', () => {
 
     describe('Error resilience', () => {
         it('should handle different content types', async () => {
-            const contentTypes = ['blog', 'news', 'docs', 'changelog', 'announcement'];
+            const contentTypes = ['blog', 'blurb', 'photo', 'news', 'docs', 'changelog', 'announcement'];
 
             for (const contentType of contentTypes) {
                 const post = createMockPost({ contentType: contentType as any });
