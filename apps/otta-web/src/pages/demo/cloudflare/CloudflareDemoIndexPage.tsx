@@ -55,6 +55,11 @@ export function CloudflareDemoIndexPage() {
                 'Tenant-aware chat and embeddings via AI Gateway — tenant key → platform floor, gated server-side',
             href: '/demo/cloudflare/ai',
         },
+        {
+            name: 'PDF Rendering',
+            description: 'Secure static DOM capture and Cloudflare Browser Rendering',
+            href: '/demo/cloudflare/pdf',
+        },
     ];
 
     return (

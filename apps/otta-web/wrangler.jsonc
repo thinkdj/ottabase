@@ -29,6 +29,27 @@
     // TanStack Router creates a single worker entry point
     "main": "cloudflare-worker.ts",
 
+    // ottaorm MUST resolve to exactly ONE copy in the worker bundle.
+    //
+    // It holds module-level singletons (globalRLS's policy registry) and classes compared with
+    // `instanceof` (ValidationError, RLSError). esbuild applies tsconfig `paths` per IMPORTING
+    // file: files under apps/otta-web get this app's tsconfig (ottaorm -> src, see the comment in
+    // tsconfig.json), but a workspace package compiled from its own source -- @ottabase/ottablog,
+    // whose `exports` point at src -- gets ITS tsconfig and falls back to node resolution -> dist.
+    // Two copies, and both failure modes are silent:
+    //   - db-utils' initRLS() fills the src registry while ottablog validates against an empty
+    //     dist one, so every write throws "No RLS policy defined for model: posts" -> 403.
+    //   - a ValidationError thrown by the dist copy fails `instanceof` against the src copy, so
+    //     handleCrud returns 500 INTERNAL_SERVER_ERROR instead of 422 + fieldErrors.
+    // Aliases apply to every importer regardless of tsconfig, which is what collapses this to one.
+    // Verify with: wrangler deploy --dry-run --outdir <tmp>, then grep -c "RLS initialized:" (== 1).
+    // ./client is deliberately absent: it is React/browser-only and never enters the worker.
+    "alias": {
+        "@ottabase/ottaorm": "../../packages/ottaorm/src/index.ts",
+        "@ottabase/ottaorm/models": "../../packages/ottaorm/src/models/index.ts",
+        "@ottabase/ottaorm/base": "../../packages/ottaorm/src/base/index.ts",
+    },
+
     // Minify the worker bundle.
     // Safe: models resolve via `static entity` strings, never constructor.name.
     "minify": true,
@@ -150,6 +171,12 @@
     // @see https://developers.cloudflare.com/workers-ai/
     "ai": {
         "binding": "OBCF_AI",
+    },
+
+    // Browser Rendering API — headless Chromium via @cloudflare/puppeteer.
+    // Enable Browser Rendering for the deployed Worker in the Cloudflare dashboard.
+    "browser": {
+        "binding": "OBCF_BROWSER",
     },
 
     // Durable Objects bindings for real-time features

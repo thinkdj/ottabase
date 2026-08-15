@@ -5,7 +5,7 @@
     "private": true,
     "scripts": {
         "dev": "vite --open",
-        "dev:worker": "wrangler dev",
+        "dev:worker": "wrangler dev --local",
         "dev:full": "pnpm build && pnpm dev:worker",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev",
@@ -21,6 +21,7 @@
         "localflare": "localflare"
     },
     "dependencies": {
+        "@cloudflare/puppeteer": "catalog:",
         "@hookform/resolvers": "catalog:",
         "@mantine/carousel": "catalog:",
         "@mantine/core": "catalog:",
@@ -33,6 +34,7 @@
         "@ottabase/brand-engine": "workspace:*",
         "@ottabase/brand-engine-react": "workspace:*",
         "@ottabase/cf": "workspace:*",
+        "@ottabase/cf-pdf": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/comments": "workspace:*",
         "@ottabase/config": "workspace:*",

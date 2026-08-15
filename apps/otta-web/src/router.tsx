@@ -675,6 +675,12 @@ const demoChildren = [
         'CloudflareRealtimeDemoPage',
     ),
     demoChild('cloudflare/ai', () => import('@/pages/demo/cloudflare/CloudflareAIDemoPage'), 'CloudflareAIDemoPage'),
+    demoChild('cloudflare/pdf', () => import('@/pages/demo/cloudflare/CloudflarePdfDemoPage'), 'CloudflarePdfDemoPage'),
+    demoChild(
+        'cloudflare/pdf/playground',
+        () => import('@/pages/demo/cloudflare/CloudflarePdfPackageDemoPage'),
+        'CloudflarePdfPackageDemoPage',
+    ),
     demoChild('api', () => import('@/pages/demo/api/ApiDemoPage'), 'ApiDemoPage'),
     demoChild('theming', () => import('@/pages/demo/theming/ThemingDemoPage'), 'ThemingDemoPage'),
     demoChild('state', () => import('@/pages/demo/state/StateDemoPage'), 'StateDemoPage'),

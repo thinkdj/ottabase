@@ -181,6 +181,14 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
+        to: '/demo/cloudflare/pdf',
+        icon: FileText,
+        label: 'PDF Rendering',
+        title: 'Cloudflare PDF Rendering',
+        description: 'Secure HTML-to-PDF export with static DOM capture, Browser Rendering, and safe metadata.',
+        buttonVariant: 'outline',
+    },
+    {
         to: '/demo/cloudflare/file-upload',
         icon: Upload,
         label: 'File Upload',

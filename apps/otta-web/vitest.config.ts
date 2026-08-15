@@ -74,6 +74,15 @@ export default defineConfig({
                 '../../packages/premium-webhooks/src/react/index.ts',
             ),
             '@ottabase/premium-webhooks': path.resolve(__dirname, '../../packages/premium-webhooks/src/index.ts'),
+            '@ottabase/cf-pdf/metadata': path.resolve(__dirname, '../../packages/cf-pdf/src/metadata.ts'),
+            '@ottabase/cf-pdf/router': path.resolve(__dirname, '../../packages/cf-pdf/src/routes.ts'),
+            '@ottabase/cf-pdf/server': path.resolve(__dirname, '../../packages/cf-pdf/src/server.ts'),
+            '@ottabase/cf-pdf/react': path.resolve(__dirname, '../../packages/cf-pdf/src/react/index.tsx'),
+            '@ottabase/cf-pdf/client': path.resolve(__dirname, '../../packages/cf-pdf/src/client.ts'),
+            '@ottabase/cf-pdf': path.resolve(__dirname, '../../packages/cf-pdf/src/index.ts'),
+            // Workerd provides this runtime-only module. Unit tests import the worker
+            // entrypoint in Node, so map it to the intentionally minimal test double.
+            'cloudflare:workers': path.resolve(__dirname, './src/test-mocks/cloudflare-workers.ts'),
             '@ottabase/cf-realtime/server': path.resolve(__dirname, './src/test-mocks/cf-realtime-server.ts'),
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../../packages/ottarouter/src/index.ts'),
