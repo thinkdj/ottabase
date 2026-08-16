@@ -90,8 +90,10 @@ Components are fully themeable by the brand engine without forking:
     <BrandComponentsProvider overrides={{ button: UppButton }}>{children}</BrandComponentsProvider>;
     ```
 
-    `button`, `badge`, `card` and `input` resolve overrides from context, receiving their original props. Prefer the CSS
-    path — reserve overrides for DOM-level differences.
+    `button`, `badge`, `card` and `input` resolve overrides from context, receiving their original props. Because that
+    registry is a React client context, those override-aware primitives are explicit client components and can be
+    rendered from server routes only through a normal client boundary. Prefer the CSS path — reserve overrides for
+    DOM-level differences.
 
 ## Development
 
