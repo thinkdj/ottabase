@@ -405,6 +405,12 @@ export abstract class AbstractBaseModel {
         for (const key in data) {
             this.attributes[key] = this.castAttributeValue(key, data[key]);
         }
+        // Filled means loaded. `save()` and `refresh()` both fill from a full row, so without this a
+        // record that has just been round-tripped would keep reporting its deferred columns as
+        // missing and `get()` would throw even though the value is right there.
+        if (this.omitted.length > 0) {
+            this.omitted = this.omitted.filter((field) => !(field in data));
+        }
     }
 
     /**

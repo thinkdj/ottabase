@@ -790,6 +790,20 @@ export class Post extends BaseModel {
         },
     };
 
+    /*
+     * ponytail: content and crosspost integrity is enforced by CALLERS, not by the model.
+     *
+     * `validatePostContent` and `validateCrossposts` run in the model's own convenience methods
+     * (createBlurb, createPhotoJournal, updatePhotoJournal) and are re-applied by otta-web's generic
+     * CRUD route, but a plain `Post.create()`, `Post.update()`, or instance `save()` is governed by
+     * the title rule below and nothing else. Another app, or any internal model caller, can persist
+     * a malformed or oversized body and invalid crosspost links.
+     *
+     * That contradicts the Fat Models rule in AGENTS.MD, which puts integrity on the model so it
+     * cannot depend on which app is calling. Upgrade path: run both validators from model-level
+     * create/update, so every write path inherits them and the CRUD route's re-application becomes
+     * defence in depth rather than the only guard.
+     */
     protected static validationRules = {
         title: {
             rules: 'required|min:3|max:200',
@@ -813,8 +827,9 @@ export class Post extends BaseModel {
         const query: Record<string, unknown> = { slug };
         if (options?.appId) query.appId = options.appId;
 
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as Post) : null;
+        // `first`, not `where`: this returns ONE post for a detail view, and a collection read
+        // would omit the deferred columns, so callers would find the body missing.
+        return (await this.first(query)) as Post | null;
     }
 
     /**
@@ -1165,6 +1180,13 @@ export class Post extends BaseModel {
         const contentProvided = options.content !== undefined;
         const content = contentProvided ? validatePostContent(options.content) : null;
         const body = contentProvided && content ? calculateReadingTime(content) : null;
+        // Read BEFORE the setters below overwrite them: this is the album's contribution to the
+        // stored word count as it stands, which is what lets the body's share be recovered.
+        const previousAlbumWords = photoJournalWordCount(
+            (this.get('photoNote') as string | null) ?? null,
+            (this.get('photoAlbum') as PhotoJournalItem[] | null) ?? [],
+        );
+        const previousTotal = (this.get('wordCount') as number | null) ?? 0;
         this.set('title', title);
         this.set('excerpt', createPhotoJournalExcerpt(note, items));
         this.set('blurbText', null);
@@ -1179,12 +1201,17 @@ export class Post extends BaseModel {
         this.set('seriesOrder', null);
         this.set('heroImage', photoJournalHero(items[0], title));
         this.set('footnotes', null);
-        // Only recomputed when the body is part of this write. A status-only PATCH cannot know the
-        // body's word contribution without loading a deferred column, and slightly stale estimates
-        // beat both a wrong count and a read that fails on a collection-loaded record.
+        // Album words always recount, because the note and captions in THIS write changed them.
+        // The body's share is recovered by subtracting the album's PREVIOUS words from the stored
+        // total, so a note-only edit keeps the body's contribution without reading `content` — which
+        // is deferred and may not be loaded. Only when the body is part of the write is its own
+        // count authoritative, and only then does reading time change.
+        const albumWords = photoJournalWordCount(note, items);
         if (contentProvided) {
             this.set('readingTimeMinutes', body?.minutes ?? 1);
-            this.set('wordCount', photoJournalWordCount(note, items) + (body?.words ?? 0));
+            this.set('wordCount', albumWords + (body?.words ?? 0));
+        } else {
+            this.set('wordCount', albumWords + Math.max(0, previousTotal - previousAlbumWords));
         }
         this.set('isProtected', false);
         this.set('passwordHash', null);

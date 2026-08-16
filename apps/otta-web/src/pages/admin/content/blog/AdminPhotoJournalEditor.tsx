@@ -92,7 +92,8 @@ interface PhotoJournalPayload {
     title: string | null;
     note: string | null;
     photos: PhotoJournalItem[];
-    content: OutputData | null;
+    /** Omitted entirely when the editor could not be read, which the API treats as unchanged. */
+    content?: OutputData | null;
     crossposts: PostCrosspost[];
     status: PostStatus;
     allowComments: boolean;
@@ -327,13 +328,34 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
             return;
         }
 
-        // An empty editor saves as null so a journal without a story keeps a clean album-only page.
-        const body = await bodyEditor.save();
+        // `save()` returns null for two very different reasons, and they need opposite handling.
+        //
+        // Not ready yet: the author cannot have edited a body that never mounted, so omit `content`
+        // and let the model's "absent means unchanged" keep whatever is stored.
+        //
+        // Ready but null: its save threw. There may be unsaved work in there, and writing null would
+        // erase the stored story while carrying on as though the save succeeded — the author would
+        // be navigated away having silently lost both. Stop and say so instead.
+        //
+        // Ready and empty returns `{ blocks: [] }`, which still clears the body as it should.
+        let body: OutputData | null = null;
+        if (bodyEditor.isReady) {
+            body = await bodyEditor.save();
+            if (!body) {
+                setAlert({
+                    open: true,
+                    title: 'Could not read the story',
+                    message:
+                        'The journal story editor did not respond, so nothing was saved. Copy any recent edits, reload the page, and try again.',
+                });
+                return;
+            }
+        }
         const payload: PhotoJournalPayload = {
             title: title.trim() || null,
             note: note.trim() || null,
             photos,
-            content: body?.blocks?.length ? body : null,
+            ...(body ? { content: body.blocks.length ? body : null } : {}),
             crossposts: cleanCrossposts(crossposts),
             status: resolvedStatus,
             allowComments,

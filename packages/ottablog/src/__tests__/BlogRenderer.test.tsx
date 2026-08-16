@@ -230,6 +230,90 @@ describe('BlogRenderer', () => {
             expect(spans[4] + spans[5]).toBe(12);
         });
 
+        it('runs the content lifecycle for a journal body, and only on the detail view', async () => {
+            const { addFilter, addAction, HOOKS } = await import('../hooks');
+            const filtered: unknown[] = [];
+            const before: unknown[] = [];
+            const after: unknown[] = [];
+            addFilter(HOOKS['post.content.filter'], (value: unknown) => {
+                filtered.push(value);
+                return value;
+            });
+            addAction(HOOKS['post.content.before'], (value: unknown) => {
+                before.push(value);
+            });
+            addAction(HOOKS['post.content.after'], (value: unknown) => {
+                after.push(value);
+            });
+
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+                content: { blocks: [{ type: 'paragraph', data: { text: 'The rain emptied the streets.' } }] },
+            });
+
+            // A timeline card never renders the body, so filtering it there is work thrown away.
+            const card = render(<BlogExcerptCard post={journal} />);
+            await waitFor(() => expect(filtered).toHaveLength(0));
+            expect(before).toHaveLength(0);
+            card.unmount();
+
+            // Detail runs both, and the action waits for the filter to settle.
+            const detail = render(<BlogRenderer post={journal} />);
+            await waitFor(() => expect(before).toHaveLength(1));
+            expect(after).toHaveLength(0);
+
+            // A parent rerender must NOT churn the pair. filteredPost/filteredProps are fresh
+            // objects every render, so depending on them would fire after+before on every tick.
+            detail.rerender(<BlogRenderer post={journal} />);
+            detail.rerender(<BlogRenderer post={journal} />);
+            await waitFor(() => expect(filtered.length).toBeGreaterThan(0));
+            expect(before).toHaveLength(1);
+            expect(after).toHaveLength(0);
+
+            // And `after` runs exactly once, when the body actually goes away.
+            detail.unmount();
+            expect(after).toHaveLength(1);
+        });
+
+        it('closes one journal lifecycle before opening the next, with the right body each time', async () => {
+            const { addFilter, addAction, HOOKS } = await import('../hooks');
+            const before: any[] = [];
+            const after: any[] = [];
+            addFilter(HOOKS['post.content.filter'], (value: unknown) => value);
+            addAction(HOOKS['post.content.before'], (value: unknown) => {
+                before.push(value);
+            });
+            addAction(HOOKS['post.content.after'], (value: unknown) => {
+                after.push(value);
+            });
+
+            const journal = (id: string, text: string) =>
+                createMockPost({
+                    id,
+                    contentType: 'photo',
+                    photoAlbum: [{ id: `${id}-p1`, url: `https://images.test/${id}.jpg` }],
+                    content: { blocks: [{ type: 'paragraph', data: { text } }] },
+                });
+
+            const view = render(<BlogRenderer post={journal('journal-a', 'Alpha body')} />);
+            await waitFor(() => expect(before).toHaveLength(1));
+            expect(before[0].id).toBe('journal-a');
+
+            // Switching posts: A's cleanup must report A, not whichever journal is now on screen.
+            view.rerender(<BlogRenderer post={journal('journal-b', 'Bravo body')} />);
+            await waitFor(() => expect(before).toHaveLength(2));
+
+            expect(after).toHaveLength(1);
+            expect(after[0].id).toBe('journal-a');
+            expect(after[0].content.blocks[0].data.text).toBe('Alpha body');
+
+            // B opens exactly once, and never with A's body.
+            expect(before[1].id).toBe('journal-b');
+            expect(before[1].content.blocks[0].data.text).toBe('Bravo body');
+            expect(before.filter((entry) => entry.id === 'journal-b')).toHaveLength(1);
+        });
+
         it('uses a compact photo collage in listing cards', () => {
             const journal = createMockPost({
                 contentType: 'photo',

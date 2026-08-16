@@ -348,6 +348,31 @@ describe('ottablog models', () => {
             expect(stored.crossposts).toBeNull();
         });
 
+        it('keeps the body word count when a partial update changes only the note', async () => {
+            // The album's own words recount, and the body's share is recovered from the stored
+            // total, so a note-only edit neither drops the body's words nor reads `content`.
+            const stored: Record<string, unknown> = {
+                title: 'Kyoto, in the rain',
+                photoNote: 'A quiet blue hour.', // 4 album words
+                photoAlbum: [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }],
+                wordCount: 104, // 4 album + 100 body
+            };
+            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const post = Object.assign(Object.create(Post.prototype) as Post, {
+                get: (field: string) => stored[field],
+                set: (field: string, value: unknown) => {
+                    stored[field] = value;
+                },
+                save: async () => undefined,
+                isPhotoJournal: () => true,
+            });
+
+            await post.updatePhotoJournal(photos, { note: 'Rain all evening and then nothing at all.' });
+
+            // 8 new album words, and the body's 100 survive.
+            expect(stored.wordCount).toBe(108);
+        });
+
         it('rejects a journal body that is not editor content', async () => {
             const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
             await expect(Post.createPhotoJournal(photos, { content: { blocks: 'nope' } as never })).rejects.toThrow(

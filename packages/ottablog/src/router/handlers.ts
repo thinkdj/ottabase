@@ -104,6 +104,10 @@ function stripProtectedBody(post: Record<string, unknown>): void {
     post.blurbText = null;
     post.photoNote = null;
     post.photoAlbum = null;
+    // Crossposts point at copies of THIS post elsewhere, so leaving them on a protected payload
+    // hands a reader the way around the password. Whether those copies are public is the author's
+    // business; advertising them from the locked post is not.
+    post.crossposts = null;
 }
 
 /**

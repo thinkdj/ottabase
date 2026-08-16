@@ -235,7 +235,13 @@ export function validateCrossposts(value: unknown): PostCrosspost[] | null {
         const url = crosspostUrl((entry as Record<string, unknown>).url);
         if (!url || seen.has(url)) continue;
         seen.add(url);
-        items.push((entry as Record<string, unknown>).origin ? { url, origin: true } : { url });
+        // Strictly boolean: a truthy test would read `origin: "false"` as true, and could then
+        // reject the whole list for having two originals.
+        const origin = (entry as Record<string, unknown>).origin;
+        if (origin !== undefined && typeof origin !== 'boolean') {
+            throw new CrosspostValidationError('The original marker must be true or false');
+        }
+        items.push(origin === true ? { url, origin: true } : { url });
     }
 
     if (items.filter((item) => item.origin).length > 1) {

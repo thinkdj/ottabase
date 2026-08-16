@@ -225,6 +225,31 @@ describe('createBlogHandlers', () => {
             expect('privateNotes' in post).toBe(false);
         });
 
+        it('drops crossposts from a protected post along with its body', async () => {
+            // A crosspost names a public copy of this very post, so leaving it on a locked payload
+            // hands the reader a way around the password.
+            const locked = record({
+                ...fullPostJson,
+                isProtected: true,
+                crossposts: [{ url: 'https://www.instagram.com/p/abc' }],
+            });
+            vi.mocked(Post.paginate).mockResolvedValue({
+                data: [locked],
+                page: 1,
+                perPage: 15,
+                total: 1,
+                totalPages: 1,
+            } as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts'));
+            const body = (await response.json()) as { data: Record<string, unknown>[] };
+
+            expect(body.data[0].crossposts).toBeNull();
+            expect(body.data[0].photoAlbum).toBeNull();
+            expect(body.data[0].content).toBeNull();
+        });
+
         it('drops privateNotes from a single public post too', async () => {
             vi.mocked(Post.first).mockResolvedValue(record() as any);
             const handlers = createBlogHandlers<Env>({ ...baseConfig });

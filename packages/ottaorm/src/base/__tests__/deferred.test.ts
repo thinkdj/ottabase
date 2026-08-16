@@ -137,6 +137,25 @@ describe('records loaded without their deferred columns', () => {
         expect('notes' in json).toBe(false);
     });
 
+    it('stops throwing once a full row is filled back in, as save and refresh do', () => {
+        const record = collectionRecord();
+        expect(() => record.get('body')).toThrow(/was not loaded/);
+
+        // What save() and refresh() do: fill from a complete row returned by the database.
+        record.fill({ id: 'post-1', title: 'Kyoto', body: 'full text', notes: null });
+
+        expect(record.get('body')).toBe('full text');
+        expect(record.get('notes')).toBeNull();
+    });
+
+    it('keeps flagging columns a partial fill did not include', () => {
+        const record = collectionRecord();
+        record.fill({ title: 'Kyoto renamed' });
+
+        expect(record.get('title')).toBe('Kyoto renamed');
+        expect(() => record.get('body')).toThrow(/was not loaded/);
+    });
+
     it('does not flag anything on a normally loaded record', () => {
         const record = new DeferredPost({
             entity: 'deferred_posts',
