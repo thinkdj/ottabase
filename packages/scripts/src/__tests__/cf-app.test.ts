@@ -53,7 +53,7 @@ describe('resolveCfApp', () => {
         expect(ctx.resources.secrets.kvPreviewId).toBe('KV_PREVIEW_NAMESPACE_ID');
     });
 
-    it('falls back to the root package.json ottabase.cfApp default when not told which app', () => {
+    it('falls back to the root package.json ottabase.defaultApp default when not told which app', () => {
         // Repo has two apps with wrangler.jsonc; the root declares otta-web as the default.
         expect(resolveCfApp().appName).toBe('otta-web');
     });
@@ -68,27 +68,27 @@ describe('resolveCfApp', () => {
         }
     });
 
-    it('honors the OTTABASE_CF_APP env var', () => {
-        const had = Object.prototype.hasOwnProperty.call(process.env, 'OTTABASE_CF_APP');
-        const orig = process.env.OTTABASE_CF_APP;
-        process.env.OTTABASE_CF_APP = 'otta-landing';
+    it('honors the OTTABASE_APP env var', () => {
+        const had = Object.prototype.hasOwnProperty.call(process.env, 'OTTABASE_APP');
+        const orig = process.env.OTTABASE_APP;
+        process.env.OTTABASE_APP = 'otta-landing';
         try {
             expect(resolveCfApp().appName).toBe('otta-landing');
         } finally {
-            if (had) process.env.OTTABASE_CF_APP = orig as string;
-            else delete process.env.OTTABASE_CF_APP;
+            if (had) process.env.OTTABASE_APP = orig as string;
+            else delete process.env.OTTABASE_APP;
         }
     });
 
     it('lets an explicit opts.app win over env and the configured default', () => {
-        const had = Object.prototype.hasOwnProperty.call(process.env, 'OTTABASE_CF_APP');
-        const orig = process.env.OTTABASE_CF_APP;
-        process.env.OTTABASE_CF_APP = 'otta-landing';
+        const had = Object.prototype.hasOwnProperty.call(process.env, 'OTTABASE_APP');
+        const orig = process.env.OTTABASE_APP;
+        process.env.OTTABASE_APP = 'otta-landing';
         try {
             expect(resolveCfApp({ app: 'otta-web' }).appName).toBe('otta-web');
         } finally {
-            if (had) process.env.OTTABASE_CF_APP = orig as string;
-            else delete process.env.OTTABASE_CF_APP;
+            if (had) process.env.OTTABASE_APP = orig as string;
+            else delete process.env.OTTABASE_APP;
         }
     });
 

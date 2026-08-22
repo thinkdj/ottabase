@@ -34,8 +34,8 @@
         "packages/*"
     ],
     "ottabase": {
-        "//": "Default app the cf:* scripts target in this multi-app repo (override per-run with --app=<name> or OTTABASE_CF_APP).",
-        "cfApp": "otta-web"
+        "//": "Default app for app lifecycle and cf:* scripts. Override with an app argument or OTTABASE_APP.",
+        "defaultApp": "otta-web"
     },
     "bin": {
         "otta": "packages/cli/bin/otta.mjs"
@@ -44,10 +44,10 @@
         "help": "node packages/scripts/bin/help.cjs",
         "commands": "node packages/scripts/bin/help.cjs",
         "otta": "node packages/cli/bin/otta.mjs",
-        "dev": "node dev.js",
+        "dev": "pnpm otta start",
         "dev:fe": "pnpm --filter @ottabase/otta-web dev",
         "dev:be": "pnpm --filter @ottabase/otta-web dev:worker",
-        "dev:landing": "pnpm --filter @ottabase/otta-landing dev",
+        "dev:landing": "pnpm otta dev otta-landing",
         "dev:kill": "node packages/scripts/bin/kill-ports.cjs",
         "dev:ui": "turbo dev --filter=@ottabase/otta-web --filter=@ottabase/ui-*",
         "dev:pkg": "turbo dev --filter=@ottabase/*",

@@ -2,6 +2,28 @@
     "name": "@ottabase/otta-landing",
     "version": "1.0.0",
     "private": true,
+    "ottabase": {
+        "start": {
+            "development": {
+                "processes": [
+                    {
+                        "name": "web",
+                        "script": "dev",
+                        "url": "http://127.0.0.1:3000",
+                        "portEnv": "PORT",
+                        "primary": true
+                    }
+                ]
+            },
+            "worker": {
+                "url": "http://127.0.0.1:8788",
+                "unsupportedPlatforms": {
+                    "win32": "OpenNext Worker packaging requires symlinks that are not reliable on native Windows. Run this named environment from WSL or Linux."
+                }
+            },
+            "readyTimeoutMs": 90000
+        }
+    },
     "scripts": {
         "dev": "next dev",
         "build": "next build --webpack",

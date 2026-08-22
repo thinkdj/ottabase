@@ -50,7 +50,7 @@ function getMonorepoRoot(start = process.cwd()): string {
 function readDefaultApp(root: string): string | undefined {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-        const value = pkg?.ottabase?.cfApp;
+        const value = pkg?.ottabase?.defaultApp;
         return typeof value === 'string' ? value : undefined;
     } catch {
         return undefined;
@@ -106,7 +106,7 @@ export function resolveTargetAppDir(options: EnvSecretsOptions = {}): string {
     const root = getMonorepoRoot(cwd);
     const appsRoot = path.join(root, APPS_DIR);
     const candidates = listCandidateApps(root);
-    const requested = options.app || getFlag('app') || env.OTTABASE_CF_APP || env.CF_APP;
+    const requested = options.app || getFlag('app') || env.OTTABASE_APP;
     const defaultApp = readDefaultApp(root);
 
     if (requested) {
@@ -127,7 +127,7 @@ export function resolveTargetAppDir(options: EnvSecretsOptions = {}): string {
     if (candidates.length === 1) return path.join(appsRoot, candidates[0] as string);
 
     const available = candidates.length ? candidates.join(', ') : 'none found';
-    throw new Error(`Could not determine app. Pass --app=<name> or set OTTABASE_CF_APP. Available: ${available}`);
+    throw new Error(`Could not determine app. Pass --app=<name> or set OTTABASE_APP. Available: ${available}`);
 }
 
 function parseLine(line: string): { key: string; value: string } | null {

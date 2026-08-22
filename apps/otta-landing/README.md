@@ -16,7 +16,7 @@ and live switching, plus an **extensible slot framework** for hot-swappable home
 
 ```bash
 pnpm install
-pnpm dev
+pnpm otta start otta-landing
 # http://localhost:3000
 ```
 
@@ -292,6 +292,15 @@ instantly without a full render.
 | `pnpm type-check`    | TypeScript validation                |
 | `pnpm test`          | Run tests                            |
 | `pnpm test:coverage` | Run tests with coverage              |
+
+These are the app's framework-level scripts. From the repo root, `pnpm otta start otta-landing` is the canonical
+development entry point. Use `--env preview`, `--env staging`, or `--env production` to build OpenNext and start that
+Wrangler environment locally. Staging is a local lifecycle topology until deployment CI is separately wired for it.
+`--skip-build` reuses existing `.open-next` output.
+
+Native Windows supports the Next.js development topology (`pnpm otta dev otta-landing`). OpenNext's Worker packager is
+not fully Windows-compatible and requires symlink creation, so use WSL/Linux for the Cloudflare-shaped `preview`,
+`staging`, and `production` starts. CI already runs on Linux.
 
 ## Deployment
 

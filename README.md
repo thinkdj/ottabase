@@ -170,7 +170,7 @@ pnpm install
 # Build packages (required first time)
 pnpm build:pkg
 
-# Start dev (Vite + Wrangler)
+# Start the default app (otta-web: Vite + Wrangler)
 pnpm dev
 
 # Initialize database
@@ -179,22 +179,34 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 ## Otta CLI
 
-The `otta` CLI provides a streamlined interface for monorepo tasks:
+`pnpm otta` is the single app-scoped interface. It discovers apps from `apps/*`, uses the root default when the app is
+omitted, and accepts either an app directory name or package name.
 
 ```bash
-# Scaffold a new app
-otta new web my-app              # Vite + TanStack Router + Workers
-otta new landing my-site         # Next.js landing page
+# Start apps
+pnpm otta start                         # Default app, development
+pnpm otta start otta-landing            # A specific app
+pnpm otta start otta-web --env stage    # Built Worker locally with env.staging
+pnpm otta start otta-web --env preview  # Built Worker locally with env.preview
+pnpm otta start otta-web --env prod     # Built Worker locally with env.production
+pnpm otta dev otta-web --process worker # One process from the dev topology
 
-# Development
-otta dev otta-web                # Start dev server
-otta build otta-web              # Build for production
-otta test otta-web               # Run tests
-otta lint otta-web               # Lint
-otta list                        # List all apps
+# Scaffold a new app
+pnpm otta new web my-app                # Vite + TanStack Router + Workers
+pnpm otta new landing my-site           # Next.js landing page
+
+# App-scoped quality commands
+pnpm otta build otta-web
+pnpm otta test otta-web
+pnpm otta lint otta-web
+pnpm otta list
 ```
 
-See `otta --help` or the [CLI README](./packages/cli/README.md) for more commands.
+Named environment starts are always local, require the environment to exist in `wrangler.jsonc`, and pass `--local` to
+Wrangler; deployment remains a separate CI/manual operation. Supervised output is labeled by process, and the entire
+process tree is stopped when one member fails. The workspace CLI rebuilds itself only when its source is newer than its
+compiled output. See `pnpm otta --help` or the [CLI README](./packages/cli/README.md) for the lifecycle contract and
+options.
 
 ## OttaORM: Fat Models
 
@@ -496,7 +508,8 @@ pnpm commands clean   # Filter to a topic
 The table is generated from `package.json`, so it always matches the scripts that actually exist. The essentials:
 
 ```bash
-pnpm dev              # Start all (Vite + Wrangler)
+pnpm dev              # Start the default app (alias for pnpm otta start)
+pnpm otta --help       # Parameterized app/environment lifecycle
 pnpm build            # Build everything
 pnpm build:pkg        # Build packages only
 pnpm test             # Run tests

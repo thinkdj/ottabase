@@ -69,6 +69,20 @@
                 "binding": "IMAGES",
             },
         },
+        // Local staging lifecycle. Deployment remains separately CI-controlled.
+        "staging": {
+            "vars": {
+                "ENVIRONMENT": "staging",
+                "NODE_ENV": "production",
+            },
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": ".open-next/assets",
+            },
+            "images": {
+                "binding": "IMAGES",
+            },
+        },
         // Preview environment for PR deployments
         // The deploy workflow reads this block to verify secrets and generate wrangler.preview.jsonc
         "preview": {

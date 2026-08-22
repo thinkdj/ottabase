@@ -5,6 +5,7 @@ export { program, run } from './cli.js';
 export { listAllApps, showAppInfo, showTemplates } from './commands/info.js';
 export { newApp } from './commands/new.js';
 export { buildApp, cleanApp, devApp, lintApp, testApp, typeCheckApp } from './commands/run.js';
+export { createStartPlan, formatStartPlan, runStartPlan, startApp, type StartOptions } from './commands/start.js';
 export {
     APP_TEMPLATES,
     clearAppsCache,

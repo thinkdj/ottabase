@@ -68,6 +68,40 @@ export interface AppInfo {
     scripts: Record<string, string>;
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
+    ottabase: OttabaseAppMetadata;
+}
+
+/** A process participating in an app's local hot-reload topology. */
+export interface AppDevelopmentProcess {
+    /** Stable CLI selector used by `otta start --process <name>`. */
+    name: string;
+    /** package.json script to execute from the app workspace. */
+    script: string;
+    /** Local URL used for readiness checks and optional browser opening. */
+    url?: string;
+    /** Override `url` when readiness lives on a dedicated endpoint. */
+    readyUrl?: string;
+    /** Environment variable the process reads for its listen port. */
+    portEnv?: string;
+    /** CLI flag carrying the port, for processes that ignore `portEnv` (Wrangler reads neither). */
+    portArg?: string;
+    /** The one process selected by the shorthand `--port` option and opened in the browser. */
+    primary?: boolean;
+}
+
+/** Declarative app lifecycle metadata stored under package.json `ottabase`. */
+export interface OttabaseAppMetadata {
+    start?: {
+        development?: {
+            processes?: AppDevelopmentProcess[];
+        };
+        worker?: {
+            url?: string;
+            readyUrl?: string;
+            unsupportedPlatforms?: Partial<Record<NodeJS.Platform, string>>;
+        };
+        readyTimeoutMs?: number;
+    };
 }
 
 /**
@@ -140,6 +174,7 @@ export function listApps(): AppInfo[] {
                 scripts: packageJson.scripts || {},
                 dependencies: packageJson.dependencies || {},
                 devDependencies: packageJson.devDependencies || {},
+                ottabase: packageJson.ottabase || {},
             });
         } catch {
             // Skip invalid package.json files
@@ -156,6 +191,47 @@ export function listApps(): AppInfo[] {
 export function getAppInfo(appName: string): AppInfo | null {
     const apps = listApps();
     return apps.find((app) => app.name === appName || app.packageName === appName) || null;
+}
+
+/**
+ * Resolves an optional app selector without baking a product app into the CLI.
+ *
+ * Selection order: explicit argument, OTTABASE_APP, root `ottabase.defaultApp`,
+ * then the only app. The cf:* scripts read the same key and env var.
+ */
+export function resolveApp(appName?: string): AppInfo {
+    const apps = listApps();
+    if (apps.length === 0) {
+        throw new Error('No apps with a package.json were found under apps/.');
+    }
+
+    let requested = appName || process.env.OTTABASE_APP;
+
+    if (!requested) {
+        try {
+            const rootPackage = fs.readJsonSync(path.join(getMonorepoRoot(), 'package.json')) as {
+                ottabase?: { defaultApp?: unknown };
+            };
+            const configured = rootPackage.ottabase?.defaultApp;
+            if (typeof configured === 'string' && configured) requested = configured;
+        } catch {
+            // A malformed root package is reported below as an unresolved multi-app selection.
+        }
+    }
+
+    if (requested) {
+        const app = apps.find((candidate) => candidate.name === requested || candidate.packageName === requested);
+        if (app) return app;
+        throw new Error(
+            `App "${requested}" not found. Available: ${apps.map((candidate) => candidate.name).join(', ')}`,
+        );
+    }
+
+    if (apps.length === 1) return apps[0] as AppInfo;
+
+    throw new Error(
+        `Multiple apps found (${apps.map((app) => app.name).join(', ')}). Pass an app or set OTTABASE_APP.`,
+    );
 }
 
 /**
@@ -177,12 +253,33 @@ export const APP_TEMPLATES = {
 export type AppTemplate = keyof typeof APP_TEMPLATES;
 
 /**
- * Returns the correct pnpm binary name for the current platform.
- * On Windows, pnpm is installed as a .cmd batch file and execFileSync/spawn
- * need the explicit extension when shell mode is disabled.
+ * Returns the conventional pnpm binary name for the current platform.
+ * Use `getPnpmInvocation()` when executing it so Node 24 handles Windows shims safely.
  */
 export function getPnpmBin(): string {
     return process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+}
+
+/**
+ * Builds a shell-injection-safe pnpm process invocation.
+ *
+ * Node 24 does not execute `.cmd` shims directly on Windows. Invoking cmd.exe
+ * explicitly avoids `spawn EINVAL`; strict argument validation keeps the
+ * generated command line limited to pnpm/package/script/path tokens.
+ */
+export function getPnpmInvocation(args: string[]): { command: string; args: string[] } {
+    for (const arg of args) {
+        if (!/^[a-zA-Z0-9@_./\\:=,+-]+$/.test(arg)) {
+            throw new Error(`Unsafe pnpm argument: ${arg}`);
+        }
+    }
+
+    if (process.platform !== 'win32') return { command: 'pnpm', args };
+
+    return {
+        command: process.env.ComSpec || 'cmd.exe',
+        args: ['/d', '/s', '/c', `pnpm ${args.join(' ')}`],
+    };
 }
 
 /**
@@ -284,5 +381,6 @@ export function runPnpmCommand(script: string, filter?: string, args: string[] =
     pnpmArgs.push(safeScript, ...safeArgs);
 
     log.step(`Running: pnpm ${pnpmArgs.join(' ')}`);
-    execFileSync(getPnpmBin(), pnpmArgs, { cwd: root, stdio: 'inherit' });
+    const invocation = getPnpmInvocation(pnpmArgs);
+    execFileSync(invocation.command, invocation.args, { cwd: root, stdio: 'inherit' });
 }

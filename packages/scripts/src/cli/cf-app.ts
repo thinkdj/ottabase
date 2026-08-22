@@ -12,6 +12,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
 
 const APPS_DIR = 'apps';
 const WRANGLER_FILE = 'wrangler.jsonc';
@@ -45,68 +46,20 @@ export function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Parse JSONC (JSON with // and block comments and trailing commas). String-aware. */
+/**
+ * Parse JSONC (JSON with // and block comments and trailing commas).
+ *
+ * Thin wrapper over jsonc-parser so this repo has exactly one implementation of the
+ * format that every wrangler.jsonc is written in - @ottabase/cli parses the same files.
+ */
 export function parseJsonc<T = unknown>(text: string): T {
-    // Pass 1: strip comments, skipping over string literals so a // inside a string survives.
-    let stripped = '';
-    let inString = false;
-    let quote = '';
-    for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        if (inString) {
-            stripped += ch;
-            if (ch === '\\') stripped += text[++i] ?? '';
-            else if (ch === quote) inString = false;
-            continue;
-        }
-        if (ch === '"' || ch === "'") {
-            inString = true;
-            quote = ch;
-            stripped += ch;
-            continue;
-        }
-        if (ch === '/' && text[i + 1] === '/') {
-            while (i < text.length && text[i] !== '\n') i++;
-            stripped += '\n';
-            continue;
-        }
-        if (ch === '/' && text[i + 1] === '*') {
-            i += 2;
-            while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
-            i++; // consume the closing '/'
-            continue;
-        }
-        stripped += ch;
+    const errors: ParseError[] = [];
+    const value = parse(text, errors, { allowTrailingComma: true }) as T;
+    if (errors.length > 0) {
+        const first = errors[0] as ParseError;
+        throw new Error(`Invalid JSONC at character ${first.offset}: ${printParseErrorCode(first.error)}`);
     }
-
-    // Pass 2: drop trailing commas (a comma whose next significant char is } or ]), string-aware.
-    let out = '';
-    inString = false;
-    quote = '';
-    for (let i = 0; i < stripped.length; i++) {
-        const ch = stripped[i];
-        if (inString) {
-            out += ch;
-            if (ch === '\\') out += stripped[++i] ?? '';
-            else if (ch === quote) inString = false;
-            continue;
-        }
-        if (ch === '"' || ch === "'") {
-            inString = true;
-            quote = ch;
-            out += ch;
-            continue;
-        }
-        if (ch === ',') {
-            let j = i + 1;
-            while (j < stripped.length && /\s/.test(stripped[j] as string)) j++;
-            const nextCh = stripped[j];
-            if (nextCh === '}' || nextCh === ']') continue; // skip the trailing comma
-        }
-        out += ch;
-    }
-
-    return JSON.parse(out) as T;
+    return value;
 }
 
 /** Walk up from `start` until a directory containing `apps/` is found (the monorepo root). */
@@ -139,14 +92,14 @@ function getFlag(name: string): string | undefined {
 
 /**
  * Optional default app the consuming monorepo declares in its root package.json:
- *   { "ottabase": { "cfApp": "otta-web" } }
+ *   { "ottabase": { "defaultApp": "otta-web" } }
  * Lets `pnpm cf:setup` stay zero-config in a multi-app repo without the reusable scripts
  * hardcoding any app name.
  */
 function readDefaultApp(root: string): string | undefined {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-        const value = pkg && pkg.ottabase && pkg.ottabase.cfApp;
+        const value = pkg && pkg.ottabase && pkg.ottabase.defaultApp;
         return typeof value === 'string' && value ? value : undefined;
     } catch {
         return undefined;
@@ -193,8 +146,8 @@ function extractResourceNames(cfg: any): CfResourceNames {
 /**
  * Resolve the target app and its Cloudflare resource names from `apps/<app>/wrangler.jsonc`.
  *
- * App selection order: explicit `opts.app` > `--app=<name>` flag > OTTABASE_CF_APP / CF_APP env >
- * root package.json `ottabase.cfApp` > the single app present. With multiple apps and no
+ * App selection order: explicit `opts.app` > `--app=<name>` flag > OTTABASE_APP env >
+ * root package.json `ottabase.defaultApp` > the single app present. With multiple apps and no
  * selection it throws, listing the choices.
  */
 export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
@@ -206,8 +159,7 @@ export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
         throw new Error(`No app with a ${WRANGLER_FILE} found under "${appsRoot}". Run this from the monorepo root.`);
     }
 
-    const requested =
-        opts.app || getFlag('app') || process.env.OTTABASE_CF_APP || process.env.CF_APP || readDefaultApp(root);
+    const requested = opts.app || getFlag('app') || process.env.OTTABASE_APP || readDefaultApp(root);
     let appName: string;
     if (requested) {
         const base = path.basename(requested);
@@ -218,7 +170,7 @@ export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
     } else if (apps.length === 1) {
         appName = apps[0] as string;
     } else {
-        throw new Error(`Multiple apps found (${apps.join(', ')}). Pass --app=<name> or set OTTABASE_CF_APP.`);
+        throw new Error(`Multiple apps found (${apps.join(', ')}). Pass --app=<name> or set OTTABASE_APP.`);
     }
 
     const appDir = path.join(appsRoot, appName);

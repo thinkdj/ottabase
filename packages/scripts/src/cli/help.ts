@@ -67,7 +67,7 @@ interface CommandDoc {
 
 const COMMAND_REGISTRY: CommandDoc[] = [
     // Development
-    { name: 'dev', group: 'Development', desc: 'Start Vite (3003) + Wrangler (3004)' },
+    { name: 'dev', group: 'Development', desc: 'Start the default app topology (Vite + Wrangler for otta-web)' },
     { name: 'dev:fe', group: 'Development', desc: 'Vite dev server only (3003)' },
     { name: 'dev:be', group: 'Development', desc: 'Wrangler worker only (3004)' },
     { name: 'dev:landing', group: 'Development', desc: 'Dev server for the otta-landing app' },
@@ -131,7 +131,7 @@ const COMMAND_REGISTRY: CommandDoc[] = [
     // as the alias that works bare. Both point at the same bin.
     { name: 'commands', group: 'Repo', desc: 'Show this table' },
     { name: 'help', group: 'Repo', desc: 'Same table, via `pnpm run help`' },
-    { name: 'otta', group: 'Repo', desc: 'App-scoped CLI - scaffold, dev, build, test an app' },
+    { name: 'otta', group: 'Repo', desc: 'App lifecycle CLI - scaffold, start, build, test any app' },
     { name: 'git:normalize', group: 'Repo', desc: 'Re-normalize line endings in the git index' },
     { name: 'prepare', group: 'Repo', desc: 'Husky install hook', internal: true },
     { name: 'postinstall', group: 'Repo', desc: 'Build the otta CLI if missing', internal: true },
@@ -337,7 +337,7 @@ export function render(model: HelpModel, options: HelpOptions = {}): string {
             `  ${paint('All:', DIM)}      pnpm commands --all    ${paint('include internal lifecycle scripts', DIM)}`,
         );
     }
-    out.push(`  ${paint('App CLI:', DIM)}  pnpm otta --help       ${paint('scaffold/dev/build a single app', DIM)}`);
+    out.push(`  ${paint('App CLI:', DIM)}  pnpm otta --help       ${paint('start/build/test any app', DIM)}`);
 
     if (model.stale.length) {
         out.push('');

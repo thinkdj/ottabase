@@ -32,16 +32,17 @@ code plus request ID, while the server emits one bounded, secret-redacted JSON l
 # Install
 pnpm install
 
-# Start Vite dev server (fast)
-pnpm dev
+# From the repo root: start Vite + Wrangler as one supervised app
+pnpm otta start otta-web
 
-# OR start with the local Cloudflare Workers runtime
-pnpm dev:worker
+# Optional: start only one process
+pnpm otta dev otta-web --process web
+pnpm otta dev otta-web --process worker
 
 # Initialize database (creates all tables automatically)
 curl -X POST http://localhost:3004/api/ottaorm/init
 
-# Done! Visit http://localhost:3003 (frontend) or http://localhost:3004 (when using dev:worker only)
+# Done! Visit http://localhost:3003
 ```
 
 ### API request bodies
@@ -346,6 +347,13 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 | `pnpm type-check` | TypeScript type checking                                |
 | `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc           |
 
+The package scripts are framework-level building blocks. From the repo root, prefer
+`pnpm otta start otta-web [--env <name>]`; it reads the app's declared process topology, starts Vite and Wrangler
+together for development, performs readiness checks, and supports any configured Wrangler environment locally. Local
+Wrangler serves the tracked `public/` directory while Vite owns frontend HMR, so `pnpm dev` works on a clean checkout
+without generating a placeholder `dist/index.html`. Preview and production environments explicitly use the built `dist/`
+directory.
+
 ## Directory Structure
 
 ```
@@ -465,7 +473,13 @@ const todos = await Todo.all();
 # No Cloudflare account needed. Remote bindings (Workers AI and rate limiting)
 # are disabled locally; use a deployed environment to exercise those services.
 # Local D1/KV/R2 stored in .wrangler/state/v3/
-pnpm dev:worker
+pnpm otta start otta-web
+
+# Production-shaped local Worker (still local bindings; does not deploy)
+pnpm otta start otta-web --env production
+
+# Staging-shaped local Worker (dedicated local binding topology; does not deploy)
+pnpm otta start otta-web --env staging
 ```
 
 ### Production Deployment

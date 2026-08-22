@@ -3,12 +3,12 @@ import pkg from '../package.json' with { type: 'json' };
 import {
     buildApp,
     cleanApp,
-    devApp,
     lintApp,
     listAllApps,
     newApp,
     showAppInfo,
     showTemplates,
+    startApp,
     testApp,
     typeCheckApp,
 } from './commands/index.js';
@@ -68,26 +68,104 @@ program
 // DEVELOPMENT COMMANDS
 // =====================================================
 
-program
-    .command('dev <app>')
-    .description('Start the dev server for an app')
-    .option('-p, --port <port>', 'Port to run on')
-    .action(async (app: string, options: { port?: string }) => {
-        try {
-            let port: number | undefined;
-            if (options.port !== undefined) {
-                port = parseInt(options.port, 10);
-                if (Number.isNaN(port) || port <= 0 || port >= 65536) {
-                    log.error(`Invalid port "${options.port}". Must be a number between 1 and 65535.`);
-                    process.exit(1);
-                }
-            }
-            await devApp(app, { port });
-        } catch (error) {
-            log.error(error instanceof Error ? error.message : String(error));
-            process.exit(1);
+interface StartCommandOptions {
+    env?: string;
+    port?: string;
+    portFor?: string[];
+    process?: string;
+    skipBuild?: boolean;
+    open?: boolean;
+    dryRun?: boolean;
+    timeout?: string;
+}
+
+function collect(value: string, previous: string[]): string[] {
+    return [...previous, value];
+}
+
+function parsePort(value: string | undefined, label: string): number | undefined {
+    if (value === undefined) return undefined;
+    const port = Number(value);
+    if (!Number.isInteger(port) || port <= 0 || port >= 65536) {
+        throw new Error(`Invalid ${label} "${value}". Must be a number between 1 and 65535.`);
+    }
+    return port;
+}
+
+function parseProcessPorts(values: string[] = []): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const value of values) {
+        const separator = value.indexOf('=');
+        if (separator <= 0) {
+            throw new Error(`Invalid --port-for "${value}". Use <process>=<port>, for example worker=3101.`);
         }
-    });
+        const name = value.slice(0, separator);
+        if (!/^[a-z][a-z0-9_-]*$/.test(name)) {
+            throw new Error(`Invalid process name "${name}" in --port-for.`);
+        }
+        result[name] = parsePort(value.slice(separator + 1), `${name} port`) as number;
+    }
+    return result;
+}
+
+function parseTimeout(value: string | undefined): number | undefined {
+    if (value === undefined) return undefined;
+    const seconds = Number(value);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error(`Invalid timeout "${value}". Must be a positive number of seconds.`);
+    }
+    return Math.round(seconds * 1000);
+}
+
+async function handleStart(app: string | undefined, options: StartCommandOptions, environment?: string): Promise<void> {
+    try {
+        await startApp(app, {
+            environment: environment || options.env,
+            process: options.process,
+            port: parsePort(options.port, 'port'),
+            processPorts: parseProcessPorts(options.portFor),
+            skipBuild: options.skipBuild,
+            noOpen: options.open === false,
+            dryRun: options.dryRun,
+            timeoutMs: parseTimeout(options.timeout),
+        });
+    } catch (error) {
+        log.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+    }
+}
+
+function addStartOptions(command: Command, defaultEnvironment?: string): Command {
+    if (defaultEnvironment) {
+        command.option(
+            '-e, --env <environment>',
+            'Environment to start: development, preview, staging, production, or any Wrangler env',
+            defaultEnvironment,
+        );
+    }
+    return command
+        .option('-p, --port <port>', 'Override the primary development process or local Worker port')
+        .option('--port-for <process=port>', 'Override a named development process port', collect, [])
+        .option('--process <name>', 'Start one development process instead of the full app topology')
+        .option('--skip-build', 'Reuse existing output for a named Wrangler environment')
+        .option('--no-open', 'Do not open the app in a browser after readiness checks pass')
+        .option('--timeout <seconds>', 'Readiness timeout in seconds')
+        .option('--dry-run', 'Print the resolved build and process plan without executing it');
+}
+
+addStartOptions(
+    program.command('start [app]').description('Start an app in development or a local Wrangler environment'),
+    'development',
+).action((app: string | undefined, options: StartCommandOptions) => handleStart(app, options));
+
+addStartOptions(program.command('dev [app]').description('Start the hot-reload dev server(s) for an app')).action(
+    (app: string | undefined, options: StartCommandOptions) => handleStart(app, options, 'development'),
+);
+
+addStartOptions(
+    program.command('preview [app]').description('Build and start an app locally with a named Wrangler environment'),
+    'preview',
+).action((app: string | undefined, options: StartCommandOptions) => handleStart(app, options));
 
 // =====================================================
 // BUILD & TEST COMMANDS

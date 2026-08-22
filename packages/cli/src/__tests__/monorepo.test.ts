@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { APP_TEMPLATES, validateAppName } from '../utils/monorepo.js';
+import { APP_TEMPLATES, getPnpmInvocation, resolveApp, validateAppName } from '../utils/monorepo.js';
+
+describe('app and process resolution', () => {
+    it('resolves the root default while still accepting package names', () => {
+        expect(resolveApp().name).toBe('otta-web');
+        expect(resolveApp('@ottabase/otta-landing').name).toBe('otta-landing');
+    });
+
+    it('builds a safe cross-platform pnpm invocation', () => {
+        const invocation = getPnpmInvocation(['run', 'dev:worker']);
+        if (process.platform === 'win32') {
+            expect(invocation.command.toLowerCase()).toMatch(/cmd\.exe$/);
+            expect(invocation.args.at(-1)).toBe('pnpm run dev:worker');
+        } else {
+            expect(invocation).toEqual({ command: 'pnpm', args: ['run', 'dev:worker'] });
+        }
+        expect(() => getPnpmInvocation(['run', 'dev & whoami'])).toThrow(/Unsafe pnpm argument/);
+    });
+});
 
 describe('validateAppName', () => {
     // Invalid-format tests: the regex check fires before any disk I/O, so these are pure.

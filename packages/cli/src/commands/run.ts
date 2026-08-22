@@ -1,8 +1,6 @@
 import { spawn } from 'child_process';
-import { getAppInfo, getMonorepoRoot, getPnpmBin, log } from '../utils/index.js';
-
-// Resolve once at module load — avoids a process.platform call per spawn.
-const PNPM = getPnpmBin();
+import { getAppInfo, getMonorepoRoot, getPnpmInvocation, log } from '../utils/index.js';
+import { startApp } from './start.js';
 
 /**
  * Sanitizes app name for safe use as an execFileSync arg.
@@ -21,75 +19,7 @@ function sanitizeAppName(name: string): string {
  * Starts the dev server for an app
  */
 export async function devApp(appName: string, options: { port?: number } = {}): Promise<void> {
-    const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
-
-    // Check if app has a dev script
-    if (!app.scripts.dev) {
-        throw new Error(`App "${appName}" does not have a dev script defined.`);
-    }
-
-    log.info(`Starting dev server for ${app.name}...`);
-    log.dim(`  Package: ${app.packageName}`);
-    log.dim(`  Path: ${app.path}`);
-
-    // Sanitize and build command args
-    const safePackageName = sanitizeAppName(app.packageName);
-    const args = ['--filter', safePackageName, 'dev'];
-    if (options.port !== undefined) {
-        const safePort = Math.floor(options.port);
-        if (!Number.isFinite(safePort) || safePort <= 0 || safePort >= 65536) {
-            throw new Error(`Invalid port: ${options.port}. Must be an integer between 1 and 65535.`);
-        }
-        args.push('--', '--port', safePort.toString());
-    }
-
-    // Use spawn for streaming output
-    return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, args, {
-            cwd: root,
-            stdio: 'inherit',
-        });
-
-        // Signal handlers
-        const sigintHandler = () => {
-            proc.kill('SIGINT');
-        };
-
-        const sigtermHandler = () => {
-            proc.kill('SIGTERM');
-        };
-
-        // Cleanup function for signal handlers
-        const cleanup = () => {
-            process.off('SIGINT', sigintHandler);
-            process.off('SIGTERM', sigtermHandler);
-        };
-
-        proc.on('error', (error) => {
-            cleanup();
-            reject(error);
-        });
-
-        proc.on('close', (code) => {
-            cleanup();
-            // code is null when the process was killed by a signal (e.g. Ctrl+C SIGINT).
-            // Treat that as a clean exit for a dev server since the user intentionally stopped it.
-            if (code === 0 || code === null) {
-                resolve();
-            } else {
-                reject(new Error(`Dev server exited with code ${code}`));
-            }
-        });
-
-        // Handle SIGINT/SIGTERM gracefully using once() to prevent listener stacking
-        process.once('SIGINT', sigintHandler);
-        process.once('SIGTERM', sigtermHandler);
-    });
+    await startApp(appName, { environment: 'development', port: options.port });
 }
 
 /**
@@ -112,7 +42,8 @@ export async function buildApp(appName: string): Promise<void> {
 
     const safePackageName = sanitizeAppName(app.packageName);
     return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, ['--filter', safePackageName, 'build'], {
+        const invocation = getPnpmInvocation(['--filter', safePackageName, 'build']);
+        const proc = spawn(invocation.command, invocation.args, {
             cwd: root,
             stdio: 'inherit',
         });
@@ -161,7 +92,8 @@ export async function testApp(appName: string, options: { watch?: boolean; cover
     }
 
     return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, args, {
+        const invocation = getPnpmInvocation(args);
+        const proc = spawn(invocation.command, invocation.args, {
             cwd: root,
             stdio: 'inherit',
         });
@@ -205,7 +137,8 @@ export async function lintApp(appName: string, options: { fix?: boolean } = {}):
     }
 
     return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, args, {
+        const invocation = getPnpmInvocation(args);
+        const proc = spawn(invocation.command, invocation.args, {
             cwd: root,
             stdio: 'inherit',
         });
@@ -246,7 +179,8 @@ export async function cleanApp(appName: string): Promise<void> {
 
     const safePackageName = sanitizeAppName(app.packageName);
     return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, ['--filter', safePackageName, 'clean'], {
+        const invocation = getPnpmInvocation(['--filter', safePackageName, 'clean']);
+        const proc = spawn(invocation.command, invocation.args, {
             cwd: root,
             stdio: 'inherit',
         });
@@ -285,7 +219,8 @@ export async function typeCheckApp(appName: string): Promise<void> {
 
     const safePackageName = sanitizeAppName(app.packageName);
     return new Promise((resolve, reject) => {
-        const proc = spawn(PNPM, ['--filter', safePackageName, 'type-check'], {
+        const invocation = getPnpmInvocation(['--filter', safePackageName, 'type-check']);
+        const proc = spawn(invocation.command, invocation.args, {
             cwd: root,
             stdio: 'inherit',
         });

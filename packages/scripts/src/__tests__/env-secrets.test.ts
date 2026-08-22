@@ -20,7 +20,7 @@ function makeRoot(): string {
     fs.mkdirSync(path.join(root, 'apps'), { recursive: true });
     fs.writeFileSync(
         path.join(root, 'package.json'),
-        JSON.stringify({ ottabase: { cfApp: 'otta-web' } }, null, 4),
+        JSON.stringify({ ottabase: { defaultApp: 'otta-web' } }, null, 4),
         'utf8',
     );
     return root;
@@ -150,8 +150,8 @@ describe('env-secrets', () => {
         const landingDir = writeApp(root, 'otta-landing', 'AUTH_SECRET=\n');
 
         expect(resolveTargetAppDir({ cwd: root, env: {} })).toBe(webDir);
-        expect(resolveTargetAppDir({ cwd: root, env: { OTTABASE_CF_APP: 'otta-landing' } })).toBe(landingDir);
-        expect(resolveTargetAppDir({ app: 'otta-landing', cwd: root, env: { OTTABASE_CF_APP: 'otta-web' } })).toBe(
+        expect(resolveTargetAppDir({ cwd: root, env: { OTTABASE_APP: 'otta-landing' } })).toBe(landingDir);
+        expect(resolveTargetAppDir({ app: 'otta-landing', cwd: root, env: { OTTABASE_APP: 'otta-web' } })).toBe(
             landingDir,
         );
         expect(resolveTargetAppDir({ cwd: path.join(landingDir, 'src'), env: {} })).toBe(landingDir);

@@ -19,7 +19,7 @@
     "$schema": "node_modules/wrangler/config-schema.json",
 
     // Wrangler configuration for TanStack Router app with Cloudflare bindings
-    // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
+    // Supports dev (local with HMR), local staging, preview (workerd), and prod (real CF resources)
 
     "name": "otta-web",
     "compatibility_date": "2024-12-30",
@@ -207,14 +207,17 @@
     ],
 
     // Static assets configuration
-    // Vite build outputs to dist/ directory
+    // Local worker development starts alongside Vite, so point Wrangler at the
+    // source-controlled public/ directory. Named preview/production environments
+    // override this with dist/ after their explicit build step. This keeps a clean
+    // checkout runnable without creating a fake dist/index.html.
     "assets": {
-        "directory": "dist",
+        "directory": "public",
         "binding": "OBCF_ASSETS", // Per-deployment binding
     },
 
     // Environment variables
-    // These are available in all environments (dev/preview/prod)
+    // Top-level development variables; named environments redeclare their own vars below.
     "vars": {
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
@@ -321,6 +324,84 @@
                 {
                     "dataset": "referral_clicks",
                     "binding": "OBCF_ANALYTICS_REFERRALS",
+                },
+            ],
+        },
+        // Local staging topology. The app launcher always runs this with --local;
+        // wiring these resource names into deployment CI is a separate operation.
+        "staging": {
+            "vars": {
+                "ENVIRONMENT": "staging",
+                "NODE_ENV": "production",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1003",
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            "durable_objects": {
+                "bindings": [
+                    {
+                        "name": "OBCF_REALTIME",
+                        "class_name": "RealtimeActor",
+                    },
+                    {
+                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                        "class_name": "WebhookEndpointQuota",
+                    },
+                ],
+            },
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": "dist",
+            },
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-staging",
+                    "database_id": "YOUR_STAGING_D1_DATABASE_ID",
+                },
+            ],
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "YOUR_STAGING_KV_NAMESPACE_ID",
+                },
+            ],
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket-staging",
+                },
+            ],
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue-staging",
+                    },
+                ],
+            },
+            "analytics_engine_datasets": [
+                {
+                    "binding": "OBCF_ANALYTICS_CORE",
+                    "dataset": "core_events_staging",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_SHORTLINKS",
+                    "dataset": "shortlink_clicks_staging",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_REFERRALS",
+                    "dataset": "referral_clicks_staging",
                 },
             ],
         },

@@ -3,12 +3,40 @@
     "version": "1.0.0",
     "type": "module",
     "private": true,
+    "ottabase": {
+        "start": {
+            "development": {
+                "processes": [
+                    {
+                        "name": "web",
+                        "script": "dev",
+                        "url": "http://127.0.0.1:3003",
+                        "portEnv": "PORT_FE",
+                        "primary": true
+                    },
+                    {
+                        "name": "worker",
+                        "script": "dev:worker",
+                        "url": "http://127.0.0.1:3004",
+                        "readyUrl": "http://127.0.0.1:3004/api/health",
+                        "portEnv": "PORT_BE",
+                        "portArg": "--port"
+                    }
+                ]
+            },
+            "worker": {
+                "url": "http://127.0.0.1:3004",
+                "readyUrl": "http://127.0.0.1:3004/api/health"
+            },
+            "readyTimeoutMs": 90000
+        }
+    },
     "scripts": {
-        "dev": "vite --open",
+        "dev": "vite",
         "dev:worker": "wrangler dev --local",
-        "dev:full": "pnpm build && pnpm dev:worker",
+        "dev:full": "pnpm build && wrangler dev --local --assets dist",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
-        "preview": "pnpm build && wrangler dev",
+        "preview": "pnpm build && wrangler dev --assets dist",
         "deploy": "pnpm build && wrangler deploy --env production",
         "lint": "eslint src worker ottabase cloudflare-worker.ts",
         "type-check": "tsc --noEmit",

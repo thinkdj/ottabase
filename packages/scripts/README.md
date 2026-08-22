@@ -116,12 +116,12 @@ pnpm env:secrets -- --app=otta-web  # Target specific app
 All app-scoped commands (`cf:*`, `env:secrets`) resolve the target app in this order (first match wins):
 
 1. `--app=<name>` flag: `pnpm cf:setup -- --app=otta-landing`
-2. `OTTABASE_CF_APP` (or `CF_APP`) env var:
-    - bash: `OTTABASE_CF_APP=otta-landing pnpm cf:setup`
-    - PowerShell: `$env:OTTABASE_CF_APP="otta-landing"; pnpm cf:setup`
-3. Root `package.json` → `ottabase.cfApp` (the repo's declared default):
+2. `OTTABASE_APP` env var:
+    - bash: `OTTABASE_APP=otta-landing pnpm cf:setup`
+    - PowerShell: `$env:OTTABASE_APP="otta-landing"; pnpm cf:setup`
+3. Root `package.json` → `ottabase.defaultApp` (the repo's declared default):
     ```json
-    { "ottabase": { "cfApp": "otta-web" } }
+    { "ottabase": { "defaultApp": "otta-web" } }
     ```
 4. The only app under `apps/*` that has a `wrangler.jsonc`.
 

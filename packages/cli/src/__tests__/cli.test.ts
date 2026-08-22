@@ -1,7 +1,29 @@
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { program } from '../cli.js';
 
 describe('CLI Commands', () => {
+    it('runs the workspace executable with current compiled output', () => {
+        const result = spawnSync(process.execPath, [path.join(process.cwd(), 'bin', 'otta.mjs'), '--version'], {
+            cwd: process.cwd(),
+            encoding: 'utf8',
+        });
+
+        expect(result.status, result.stderr).toBe(0);
+        expect(result.stdout).toContain('1.0.0');
+    });
+
+    it('should have the generic start command', () => {
+        const startCmd = program.commands.find((cmd) => cmd.name() === 'start');
+        expect(startCmd).toBeDefined();
+        expect(startCmd?.description()).toContain('local Wrangler environment');
+        expect(startCmd?.options.find((option) => option.long === '--env')).toBeDefined();
+        expect(startCmd?.options.find((option) => option.long === '--process')).toBeDefined();
+        expect(startCmd?.options.find((option) => option.long === '--skip-build')).toBeDefined();
+        expect(startCmd?.options.find((option) => option.long === '--dry-run')).toBeDefined();
+    });
+
     it('should have new command', () => {
         const newCmd = program.commands.find((cmd) => cmd.name() === 'new');
         expect(newCmd).toBeDefined();
@@ -12,6 +34,12 @@ describe('CLI Commands', () => {
         const devCmd = program.commands.find((cmd) => cmd.name() === 'dev');
         expect(devCmd).toBeDefined();
         expect(devCmd?.description()).toContain('dev server');
+    });
+
+    it('should have a preview convenience command', () => {
+        const previewCmd = program.commands.find((cmd) => cmd.name() === 'preview');
+        expect(previewCmd).toBeDefined();
+        expect(previewCmd?.description()).toContain('Wrangler environment');
     });
 
     it('should have build command', () => {
