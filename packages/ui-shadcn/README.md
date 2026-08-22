@@ -91,7 +91,8 @@ Components are fully themeable by the brand engine without forking:
     ```
 
     `button`, `badge`, `card` and `input` resolve overrides from context, receiving their original props. Prefer the CSS
-    path — reserve overrides for DOM-level differences.
+    path — reserve overrides for DOM-level differences. These primitives declare explicit React client boundaries
+    because resolving an override reads context; the package build preserves those directives for Next.js/RSC consumers.
 
 ## Development
 
