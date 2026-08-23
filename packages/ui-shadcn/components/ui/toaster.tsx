@@ -6,17 +6,27 @@ import { Toaster as Sonner } from 'sonner';
 
 export type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-const TOAST_VARIANTS = {
-    base: 'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
-    success:
-        'data-[type=success]:!bg-success/10 data-[type=success]:!text-success data-[type=success]:!border-success/30',
-    error: 'data-[type=error]:!bg-destructive/10 data-[type=error]:!text-destructive data-[type=error]:!border-destructive/30',
-    warning:
-        'data-[type=warning]:!bg-warning/10 data-[type=warning]:!text-warning data-[type=warning]:!border-warning/30',
-    info: 'data-[type=info]:!bg-info/10 data-[type=info]:!text-info data-[type=info]:!border-info/30',
-};
-
 export function Toaster({ style, ...props }: ToasterProps) {
+    const toastStyle = {
+        zIndex: 'var(--z-toast, 100)',
+        '--normal-bg': 'hsl(var(--background) / 0.96)',
+        '--normal-border': 'hsl(var(--border))',
+        '--normal-text': 'hsl(var(--foreground))',
+        '--success-bg': 'hsl(var(--success) / 0.96)',
+        '--success-border': 'hsl(var(--success) / 0.96)',
+        '--success-text': 'hsl(var(--success-foreground))',
+        '--error-bg': 'hsl(var(--destructive) / 0.96)',
+        '--error-border': 'hsl(var(--destructive) / 0.96)',
+        '--error-text': 'hsl(var(--destructive-foreground))',
+        '--warning-bg': 'hsl(var(--warning) / 0.96)',
+        '--warning-border': 'hsl(var(--warning) / 0.96)',
+        '--warning-text': 'hsl(var(--warning-foreground))',
+        '--info-bg': 'hsl(var(--info) / 0.96)',
+        '--info-border': 'hsl(var(--info) / 0.96)',
+        '--info-text': 'hsl(var(--info-foreground))',
+        ...style,
+    } as React.CSSProperties;
+
     const toaster = (
         <Sonner
             className="toaster group"
@@ -26,11 +36,12 @@ export function Toaster({ style, ...props }: ToasterProps) {
             // (z-index: 999999999) but apps can accidentally override the
             // [data-sonner-toaster] rule, so we set it inline too. Callers can
             // still override via the `style` prop.
-            style={{ zIndex: 'var(--z-toast, 100)', ...style }}
+            richColors
+            style={toastStyle}
             toastOptions={{
                 classNames: {
-                    toast: Object.values(TOAST_VARIANTS).join(' '),
-                    description: 'group-[.toast]:text-muted-foreground',
+                    toast: 'group toast shadow-lg',
+                    description: 'group-[.toast]:!text-current/80',
                     actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
                     cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
                 },
