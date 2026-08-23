@@ -12,7 +12,7 @@ in under 5 minutes.
 - **Type-safe** — TypeScript everywhere, no JavaScript escapes
 - **Two-part dev setup** — Vite frontend (port 3003) + Wrangler backend (port 3004)
 
-> **⚠️ Important:** You own this code. Ottabase is a monorepo you clone and customize, not an npm package. See
+> **▲ Important:** You own this code. Ottabase is a monorepo you clone and customize, not an npm package. See
 > [README.md](./README.md) for full ownership details.
 
 ---

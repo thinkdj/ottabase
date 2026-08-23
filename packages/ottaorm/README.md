@@ -679,13 +679,13 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 
 **What happens automatically:**
 
-- ✅ Creates tables that don't exist — including **composite primary keys** (`primaryKey({ columns })`) and table-level
+- ✓ Creates tables that don't exist — including **composite primary keys** (`primaryKey({ columns })`) and table-level
   `UNIQUE` constraints
-- ✅ Adds new columns to existing tables
-- ✅ Creates declared **indexes** (`index()` / `uniqueIndex()`, including composite unique indexes). Idempotent
+- ✓ Adds new columns to existing tables
+- ✓ Creates declared **indexes** (`index()` / `uniqueIndex()`, including composite unique indexes). Idempotent
   (`IF NOT EXISTS`), so it also **backfills** missing indexes onto existing tables
-- ✅ Runs custom migrations (seeds, data backfills)
-- ✅ Tracks all migrations
+- ✓ Runs custom migrations (seeds, data backfills)
+- ✓ Tracks all migrations
 
 ### Adding a New Field
 
@@ -732,10 +732,10 @@ export const appMigrations: Migration[] = [
 
 SQLite's `ALTER TABLE` can only add columns. So a **non-destructive** run (the default) **cannot**:
 
-- ❌ **Change column types** — requires a table rebuild
-- ❌ **Rename columns** — requires a table rebuild
-- ❌ **Drop columns** — requires a table rebuild
-- ⚠️ **Add NOT NULL columns** — must have a `DEFAULT` value
+- ✗ **Change column types** — requires a table rebuild
+- ✗ **Rename columns** — requires a table rebuild
+- ✗ **Drop columns** — requires a table rebuild
+- ◑ **Add NOT NULL columns** — must have a `DEFAULT` value
 
 For type changes, renames, and drops, run with `allowDestructive: true` (plus `renameMap` for renames). The generator
 rebuilds the table (create new → copy intersecting columns → drop old → rename), **preserving primary keys, unique
@@ -1162,7 +1162,7 @@ interface SecurityContext {
 }
 ```
 
-> **⚠️ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
+> **▲ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
 > from raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:
 >
 > ```typescript

@@ -59,7 +59,7 @@ Workers.
 | ------------------------ | --------------- | --------------------------------------------- |
 | Setup complexity         | ✓ Minimal       | ▲ High                                        |
 | Integration effort       | ✓ None          | ▲ High                                        |
-| Time to MVP / App Launch | ▶ Hours to days | ◔ Weeks to months                             |
+| Time to MVP / App Launch | » Hours to days | ◔ Weeks to months                             |
 
 ### Positioning
 
@@ -76,7 +76,7 @@ Workers.
 
 | Capability                          | Ottabase            | Supabase     | Railway            | Convex    |
 | ----------------------------------- | ------------------- | ------------ | ------------------ | --------- |
-| Time to MVP                         | ▶ Hours to days     | ◔ Days–weeks | ◔ Weeks            | ◔ Days    |
+| Time to MVP                         | » Hours to days     | ◔ Days–weeks | ◔ Weeks            | ◔ Days    |
 | Full-stack starter in your repo     | ✓ Yes               | ✗ No         | ✗ No               | ◑ Partial |
 | Model-driven CRUD primitives        | ✓ Built in          | ◑ DIY        | ✗ No               | ◑ Partial |
 | RBAC + multi-tenant SaaS primitives | ✓ Included          | ◑ DIY        | ✗ No               | ◑ DIY     |

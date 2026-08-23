@@ -176,7 +176,7 @@ if (hasPermission(context, 'posts:edit')) {
 **Performance:**
 
 - First request: 2-3 DB queries
-- Cached requests: **0 DB queries** ⚡
+- Cached requests: **0 DB queries**
 
 ### Per-Org Cache Versioning
 

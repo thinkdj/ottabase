@@ -8,8 +8,8 @@ genuinely usable free tier and sells the parts that cost money to run.
 
 | Tier               | Endpoints | Signed delivery | Endpoint health | Delivery history |
 | ------------------ | --------- | --------------- | --------------- | ---------------- |
-| No license         | 1         | ✅              | ✅              | ❌               |
-| Demo "pro" license | 25        | ✅              | ✅              | ✅               |
+| No license         | 1         | ✓               | ✓               | ✗                |
+| Demo "pro" license | 25        | ✓               | ✓               | ✓                |
 
 That split is the point of the example: it exercises a **limit** gate, a **feature** gate, and a free tier that stays
 reachable when the license lapses.

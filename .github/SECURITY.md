@@ -31,8 +31,8 @@ If email is unavailable, use GitHub private reporting to avoid public disclosure
 
 | Version       | Supported |
 | ------------- | --------- |
-| latest (main) | ✅ Yes    |
-| older commits | ❌ No     |
+| latest (main) | ✓ Yes     |
+| older commits | ✗ No      |
 
 ## Credit
 
