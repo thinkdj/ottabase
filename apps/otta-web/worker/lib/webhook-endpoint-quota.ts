@@ -1,5 +1,4 @@
 import type { WebhookCaller, WebhookEndpointQuotaInput, WebhookEndpointReservation } from '@ottabase/premium-webhooks';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import type { WebhookEndpointQuota } from '../durable-objects/WebhookEndpointQuota';
 
 type QuotaStub = Pick<WebhookEndpointQuota, 'reserve' | 'commit' | 'release'>;

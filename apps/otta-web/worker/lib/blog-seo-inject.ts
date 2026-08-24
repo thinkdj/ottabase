@@ -10,7 +10,6 @@
 
 import { Post } from '@ottabase/ottablog';
 import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { resolveBlogOrganizationIdCached } from '../routes/blog';
 import { ensureDbConnection } from './db-utils';

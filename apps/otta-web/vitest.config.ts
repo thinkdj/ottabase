@@ -23,11 +23,12 @@ export default defineConfig({
                 '**/*.d.ts',
                 'public/',
             ],
-            all: true,
-            lines: 70,
-            functions: 70,
-            branches: 65,
-            statements: 70,
+            thresholds: {
+                lines: 70,
+                functions: 70,
+                branches: 65,
+                statements: 70,
+            },
         },
         include: [
             'src/**/*.{test,spec}.{ts,tsx}',
@@ -84,6 +85,7 @@ export default defineConfig({
             // entrypoint in Node, so map it to the intentionally minimal test double.
             'cloudflare:workers': path.resolve(__dirname, './src/test-mocks/cloudflare-workers.ts'),
             '@ottabase/cf-realtime/server': path.resolve(__dirname, './src/test-mocks/cf-realtime-server.ts'),
+            '@ottabase/ottaorm/client': path.resolve(__dirname, '../../packages/ottaorm/src/client/index.ts'),
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../../packages/ottarouter/src/index.ts'),
             '@ottabase/auth/backend': path.resolve(__dirname, '../../packages/auth/src/backend-handler'),

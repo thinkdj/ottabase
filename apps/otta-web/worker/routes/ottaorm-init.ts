@@ -2,7 +2,6 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';

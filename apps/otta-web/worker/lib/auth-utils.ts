@@ -7,7 +7,6 @@ import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
 import { Account, OrganizationMember, UserGroup, UserGroupMember, VerificationToken } from '@ottabase/ottaorm/models';
 import { redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import type { CloudflareEnv } from '../cloudflare-env';
 import { resolveAppMailer } from './email-provider';
 import { createSecureToken } from './utils';
 

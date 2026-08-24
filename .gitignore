@@ -1,7 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # Cloudflare && OpenNext
-cloudflare-env.d.ts
 /wrangler.toml.backup
 /wrangler.jsonc.backup
 wrangler.production.jsonc
@@ -180,4 +179,3 @@ Thumbs.db
 .devdbrc
 
 MARKETING.MD
-

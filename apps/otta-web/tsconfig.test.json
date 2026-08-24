@@ -1,0 +1,14 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom", "node"]
+    },
+    "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.spec.ts", "src/**/*.spec.tsx", "vitest.setup.ts"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "src/__tests__/worker.test.ts",
+        "src/__tests__/audit-route.test.ts",
+        "src/ottabase/models/**"
+    ]
+}

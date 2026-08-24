@@ -26,12 +26,6 @@ function createMockKV() {
             const keys = [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name }));
             return { keys, list_complete: true, cursor: '' };
         }),
-    } as unknown as KVNamespace & {
-        store: Map<string, { value: string; expiration?: number }>;
-        get: ReturnType<typeof vi.fn>;
-        put: ReturnType<typeof vi.fn>;
-        delete: ReturnType<typeof vi.fn>;
-        list: ReturnType<typeof vi.fn>;
     };
 }
 

@@ -4,7 +4,6 @@ import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pa
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { isDevEnvironment, requireSessionOrDev } from '../lib/utils';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import type { ApiRouteContext } from './router';
 
 export interface AuditRouteContext {

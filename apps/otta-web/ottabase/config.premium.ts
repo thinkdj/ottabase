@@ -25,7 +25,6 @@
 import type { PremiumPackage } from '@ottabase/premium';
 import { createWebhooksPackage } from '@ottabase/premium-webhooks';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import type { CloudflareEnv } from '../cloudflare-env';
 import { reserveWebhookEndpointSlot, synchronizeWebhookEndpointQuota } from '../worker/lib/webhook-endpoint-quota';
 import { getOttabaseConfig } from './config.loader';
 

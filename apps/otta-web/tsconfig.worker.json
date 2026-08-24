@@ -1,0 +1,22 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "lib": ["ES2022"],
+        "types": ["@cloudflare/workers-types"]
+    },
+    "include": [
+        "ottabase/**/*.ts",
+        "worker/**/*.ts",
+        "src/lib/auth-backend.ts",
+        "cloudflare-worker.ts",
+        "cloudflare-env.d.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "ottabase/**/*.test.ts",
+        "ottabase/**/__tests__/**",
+        "worker/**/*.test.ts",
+        "worker/**/__tests__/**"
+    ]
+}

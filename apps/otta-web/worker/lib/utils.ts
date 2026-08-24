@@ -1,10 +1,9 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 
-export async function readJson<T = any>(request: Request): Promise<T> {
+export async function readJson<T = any>(request: { json(): Promise<unknown> }): Promise<T> {
     try {
         return (await request.json()) as T;
     } catch {
-        // @ts-expect-error - ok
         return {} as T;
     }
 }

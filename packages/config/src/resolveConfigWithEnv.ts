@@ -23,12 +23,12 @@ const PACKAGE_ENV_KEYS: Record<BuiltInPackageName, string> = {
     referrals: ENV_KEYS.OTTABASE_PKG_REFERRALS,
 };
 
-/** Env-like object (Cloudflare env, process.env, etc.) */
-export type EnvLike = Record<string, unknown>;
+/** Env-like object (Cloudflare env, process.env, etc.). */
+export type EnvLike = object;
 
 function str(env: EnvLike | undefined, key: string): string | undefined {
     if (!env) return undefined;
-    const v = env[key];
+    const v = Reflect.get(env, key);
     return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 

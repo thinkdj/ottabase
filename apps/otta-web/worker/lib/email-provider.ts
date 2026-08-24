@@ -5,7 +5,6 @@ import {
     type DevEmailTrapStore,
 } from '@ottabase/email/providers/dev-trap';
 import { isDevEmailTrapConfigured } from '@ottabase/auth/providers';
-import type { CloudflareEnv } from '../../cloudflare-env';
 
 export type AppEmailProvider = 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer';
 export type ResolvedEmailProvider = Exclude<AppEmailProvider, 'auto'>;

@@ -11,7 +11,6 @@
 import { OttablogTheme } from '@ottabase/ottablog';
 import { blogThemeTokensToCss, type BlogThemeTokens } from '@ottabase/ottablog';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { resolveBlogOrganizationIdCached } from '../routes/blog';
 import { ensureDbConnection } from './db-utils';

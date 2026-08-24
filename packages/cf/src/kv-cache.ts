@@ -11,7 +11,21 @@
  * });
  */
 
-import type { KVNamespace } from '@cloudflare/workers-types';
+/**
+ * Structural slice of KV used by this helper. Keeping package APIs on the
+ * operations they consume avoids coupling callers to one particular release
+ * of the ambient Workers type package.
+ */
+export interface KVCacheBinding {
+    get(key: string, type: 'text'): Promise<string | null>;
+    put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+    delete(key: string): Promise<void>;
+    list(options: { prefix: string; cursor?: string }): Promise<{
+        keys: Array<{ name: string }>;
+        list_complete: boolean;
+        cursor?: string;
+    }>;
+}
 
 /**
  * Read-through cache: returns cached value if present, otherwise calls
@@ -23,7 +37,12 @@ import type { KVNamespace } from '@cloudflare/workers-types';
  * @param fetcher - Async function that produces the value on cache miss
  * @returns The cached or freshly-fetched value
  */
-export async function withCache<T>(kv: KVNamespace, key: string, ttl: number, fetcher: () => Promise<T>): Promise<T> {
+export async function withCache<T>(
+    kv: KVCacheBinding,
+    key: string,
+    ttl: number,
+    fetcher: () => Promise<T>,
+): Promise<T> {
     // Try cache first
     const cached = await kv.get(key, 'text');
     if (cached !== null) {
@@ -40,7 +59,7 @@ export async function withCache<T>(kv: KVNamespace, key: string, ttl: number, fe
  * Invalidate a cached entry.
  * Convenience wrapper — equivalent to `kv.delete(key)`.
  */
-export async function invalidateCache(kv: KVNamespace, key: string): Promise<void> {
+export async function invalidateCache(kv: KVCacheBinding, key: string): Promise<void> {
     await kv.delete(key);
 }
 
@@ -51,7 +70,7 @@ export async function invalidateCache(kv: KVNamespace, key: string): Promise<voi
  * Note: KV list is eventually consistent — recently written keys
  * may not appear immediately.
  */
-export async function invalidateCacheByPrefix(kv: KVNamespace, prefix: string): Promise<number> {
+export async function invalidateCacheByPrefix(kv: KVCacheBinding, prefix: string): Promise<number> {
     let cursor: string | undefined;
     let deleted = 0;
 

@@ -337,15 +337,16 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 
 ## Scripts
 
-| Command           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `pnpm dev`        | Vite dev server (fast local DX)                         |
-| `pnpm dev:worker` | Wrangler dev with local Cloudflare binding simulations  |
-| `pnpm build`      | Build for production                                    |
-| `pnpm preview`    | Build + run on `workerd` via Wrangler (Cloudflare-like) |
-| `pnpm deploy`     | Build + deploy Worker + assets to Cloudflare            |
-| `pnpm type-check` | TypeScript type checking                                |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc           |
+| Command                 | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `pnpm dev`              | Vite dev server (fast local DX)                         |
+| `pnpm dev:worker`       | Wrangler dev with local Cloudflare binding simulations  |
+| `pnpm build`            | Build for production                                    |
+| `pnpm preview`          | Build + run on `workerd` via Wrangler (Cloudflare-like) |
+| `pnpm deploy`           | Build + deploy Worker + assets to Cloudflare            |
+| `pnpm type-check`       | Type-check browser, Worker, and Node tooling separately |
+| `pnpm cf-typegen`       | Generate the committed Cloudflare binding declaration   |
+| `pnpm cf-typegen:check` | Verify the declaration matches `wrangler.jsonc` in CI   |
 
 The package scripts are framework-level building blocks. From the repo root, prefer
 `pnpm otta start otta-web [--env <name>]`; it reads the app's declared process topology, starts Vite and Wrangler
@@ -415,6 +416,7 @@ apps/otta-web/
 - `/demo/cloudflare/queues` - Queues demo
 - `/demo/cloudflare/rate-limiting` - Rate limiting demo
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
+- `/admin/infrastructure/cron` - DB-driven scheduled-task management (platform admin)
 - `/shortlinks` - Shortlink management
 - `/analytics` - Unified analytics (Shortlinks + Referrals tabs, WAE)
 
@@ -429,6 +431,15 @@ apps/otta-web/
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
 - `/api/shortlinks/analytics` - Shortlink clicks (powers /analytics Shortlinks tab)
 - `/api/referrals/analytics` - Referral clicks (powers /analytics Referrals tab)
+- `/api/admin/cron` - Platform-admin task list/create API; manual runs use the same locked executor as scheduled ticks
+
+### Scheduled Tasks
+
+Cloudflare wakes the Worker every minute through the `* * * * *` trigger in `wrangler.jsonc`. The application-owned
+registry in `ottabase/cron/index.ts` is the single source for both executable handlers and the admin handler list.
+Stored task expressions are evaluated in UTC. Creation validates the registered handler, cron expression, task type, and
+JSON payload in `ScheduledTask`, and initializes `nextRunAt`; manual runs and scheduled ticks share atomic locking and
+persisted success/failure accounting. Long or retriable work is dispatched to the existing Queue binding.
 
 ## Using Cloudflare Bindings
 
@@ -462,8 +473,16 @@ import { Todo } from './ottabase/models/Todo';
 const driver = createD1Driver(env.OBCF_D1);
 setDriver(driver);
 
-const todos = await Todo.all();
+const todos = await Todo.all({ limit: 100 });
 ```
+
+Worker collection reads are bounded by OttaORM. Set `OTTAORM_MAX_ALL_ROWS` in `wrangler.jsonc` (this template uses
+`5000`); the runtime still enforces the shared 10,000-row hard ceiling. Prefer an explicit limit for a partial read or
+`Model.pages({ perPage, where })` for a complete keyset scan. `pnpm cf-typegen` regenerates the committed ambient
+`cloudflare-env.d.ts` from the Wrangler config and `.env.example`; `pnpm cf-typegen:check` regenerates a temporary
+candidate with the same inputs, compares it byte-for-byte (apart from its temporary filename), and removes it again.
+Browser and Worker sources intentionally use separate TypeScript programs so DOM globals never merge with Workerd's
+`Request`, `Headers`, binding, or execution-context types.
 
 ## Cloudflare Setup
 

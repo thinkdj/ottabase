@@ -4,15 +4,15 @@ import type { BroadcastOptions } from '../types';
  * Server-side broadcaster for sending messages to channels
  * Use this in your Cloudflare Workers to broadcast messages
  */
-export class RealtimeBroadcaster {
-    private actorNamespace: DurableObjectNamespace;
+export class RealtimeBroadcaster<T extends Rpc.DurableObjectBranded | undefined = undefined> {
+    private actorNamespace: DurableObjectNamespace<T>;
     private actorId: string;
 
     /**
      * @param actorNamespace - The Durable Object namespace for RealtimeActor
      * @param actorId - Optional actor ID (defaults to 'global' for single instance)
      */
-    constructor(actorNamespace: DurableObjectNamespace, actorId: string = 'global') {
+    constructor(actorNamespace: DurableObjectNamespace<T>, actorId: string = 'global') {
         this.actorNamespace = actorNamespace;
         this.actorId = actorId;
     }

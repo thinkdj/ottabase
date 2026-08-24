@@ -15,7 +15,6 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { createBlogHandlers } from '@ottabase/ottablog/router';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { demoBlogPosts } from '../fixtures/demo-blog-content';
 import { requireAdminAccess } from '../lib/admin-guard';

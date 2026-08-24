@@ -1,7 +1,6 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
-import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface DemoRouteContext {
     request: Request;

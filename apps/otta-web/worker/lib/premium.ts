@@ -8,7 +8,6 @@
 // ============================================================
 
 import { createKvStateStore, createPremiumRegistry, type PremiumRegistry } from '@ottabase/premium';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { PREMIUM_PACKAGES } from '../../ottabase/config.premium';
 

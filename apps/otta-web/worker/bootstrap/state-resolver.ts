@@ -10,7 +10,6 @@
 //   5. Reconcile    → DB=READY but KV stale? repopulate KV + arm memo.
 // ============================================================
 
-import type { CloudflareEnv } from '../../cloudflare-env';
 import {
     ENV_LOCK_VAR,
     KV_PLATFORM_STATE_KEY,

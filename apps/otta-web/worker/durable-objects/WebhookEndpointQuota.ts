@@ -1,5 +1,4 @@
 import { DurableObject } from 'cloudflare:workers';
-import type { CloudflareEnv } from '../../cloudflare-env';
 
 const RESERVATIONS_KEY = 'endpoint-reservations';
 const RESERVATION_TTL_MS = 60_000;

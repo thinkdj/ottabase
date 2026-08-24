@@ -10,7 +10,6 @@ import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { SecurityContext } from '@ottabase/ottaorm';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions, getSecurityContext } from './auth-utils';
 import { initDbConnection } from './db-utils';
 

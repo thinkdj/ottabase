@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.worker.json",
+    "compilerOptions": {
+        "types": ["@cloudflare/workers-types", "vitest/globals"]
+    },
+    "include": [
+        "ottabase/**/*.test.ts",
+        "worker/**/*.test.ts",
+        "src/__tests__/worker.test.ts",
+        "src/__tests__/audit-route.test.ts",
+        "src/ottabase/models/**/*.test.ts",
+        "cloudflare-env.d.ts"
+    ],
+    "exclude": ["node_modules", "dist"]
+}
