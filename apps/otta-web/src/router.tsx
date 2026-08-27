@@ -88,12 +88,21 @@ const rootRoute = new RootRoute({
 // ─── Helpers to drastically reduce route-declaration boilerplate ─────────────
 
 type ComponentLoader = () => Promise<{ default: ComponentType<unknown> }>;
+type PageModule = Record<string, unknown>;
+
+function pageComponent(module: PageModule, exportName: string): ComponentType {
+    const component = module[exportName];
+    if (!component) {
+        throw new Error(`Route module does not export ${exportName}`);
+    }
+    return component as ComponentType;
+}
 
 /** Public lazy route under rootRoute. */
-function publicRoute(
-    path: string,
+function publicRoute<const TPath extends string, TSearch = Record<string, unknown>>(
+    path: TPath,
     loader: ComponentLoader,
-    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown }> = {},
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => TSearch }> = {},
 ) {
     return new Route({
         getParentRoute: () => rootRoute,
@@ -104,13 +113,17 @@ function publicRoute(
 }
 
 /** Auth-protected lazy route under rootRoute. */
-function protectedRoute(path: string, loader: () => Promise<Record<string, ComponentType>>, exportName: string) {
+function protectedRoute<const TPath extends string>(
+    path: TPath,
+    loader: () => Promise<PageModule>,
+    exportName: string,
+) {
     return new Route({
         getParentRoute: () => rootRoute,
         path,
         component: lazyRouteComponent(() =>
             loader().then((m) => {
-                const Comp = m[exportName]!;
+                const Comp = pageComponent(m, exportName);
                 return {
                     default: () => (
                         <ProtectedRoute>
@@ -128,11 +141,11 @@ function protectedRoute(path: string, loader: () => Promise<Record<string, Compo
  * `scope` defaults to 'platform' (most restrictive): a page must OPT IN to org-level access, so a
  * forgotten scope fails safe (platform-only) rather than exposing a control-plane page to org admins.
  */
-function makeAdminRoute(
-    path: string,
-    loader: () => Promise<Record<string, ComponentType>>,
+function makeAdminRoute<const TPath extends string, TSearch = Record<string, unknown>>(
+    path: TPath,
+    loader: () => Promise<PageModule>,
     exportName: string,
-    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown; scope: AdminRouteScope }> = {},
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => TSearch; scope: AdminRouteScope }> = {},
 ) {
     const { scope = 'platform', validateSearch } = options;
     return new Route({
@@ -140,7 +153,7 @@ function makeAdminRoute(
         path,
         component: lazyRouteComponent(() =>
             loader().then((m) => {
-                const Comp = m[exportName]!;
+                const Comp = pageComponent(m, exportName);
                 return { default: () => renderAdminRoute(scope, <Comp />) };
             }),
         ),
@@ -157,12 +170,12 @@ function makeAdminRoute(
  * Reuses the blog admin pages inside the StudioShell chrome; the pages resolve
  * their internal links against the active surface (see blogAdminPaths.ts).
  */
-function makeStudioRoute(
-    path: string,
-    loader: () => Promise<Record<string, ComponentType>>,
+function makeStudioRoute<const TPath extends string, TSearch = Record<string, unknown>>(
+    path: TPath,
+    loader: () => Promise<PageModule>,
     exportName: string,
     options: Partial<{
-        validateSearch: (s: Record<string, unknown>) => unknown;
+        validateSearch: (s: Record<string, unknown>) => TSearch;
         /** ANDed with posts:update for sub-routes whose server-side actions require more (org:admin). */
         extraPermissions: string[];
     }> = {},
@@ -173,7 +186,7 @@ function makeStudioRoute(
         path,
         component: lazyRouteComponent(() =>
             Promise.all([loader(), import('@/pages/studio/StudioShell')]).then(([m, shell]) => {
-                const Comp = m[exportName]!;
+                const Comp = pageComponent(m, exportName);
                 const { StudioShell } = shell;
                 return {
                     default: () => (
@@ -255,7 +268,7 @@ const referralsRoute = publicRoute('/referrals', () =>
  * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
  * semantic brand vars for blog subtrees only — never the app shell.
  */
-function blogPublicRoute(path: string, loader: () => Promise<{ default: ComponentType }>) {
+function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => Promise<{ default: ComponentType }>) {
     return publicRoute(path, () =>
         loader().then((m) => {
             const Comp = m.default;
@@ -324,6 +337,11 @@ const adminMenusRoute = makeAdminRoute(
     '/admin/appearance/menus',
     () => import('@/pages/admin/appearance/MenusListPage'),
     'AdminMenusListPage',
+);
+const adminMenuNewRoute = makeAdminRoute(
+    '/admin/appearance/menus/new',
+    () => import('@/pages/admin/appearance/MenuDetailPage'),
+    'AdminMenuDetailPage',
 );
 const adminMenuDetailRoute = makeAdminRoute(
     '/admin/appearance/menus/$menuId',
@@ -617,11 +635,11 @@ const demoLayoutRoute = new Route({
 });
 
 /** Compact helper for the (very repetitive) /demo child routes. */
-function demoChild(path: string, loader: () => Promise<Record<string, ComponentType>>, exportName: string) {
+function demoChild<const TPath extends string>(path: TPath, loader: () => Promise<PageModule>, exportName: string) {
     return new Route({
         getParentRoute: () => demoLayoutRoute,
         path,
-        component: lazyRouteComponent(() => loader().then((m) => ({ default: m[exportName]! }))),
+        component: lazyRouteComponent(() => loader().then((m) => ({ default: pageComponent(m, exportName) }))),
     });
 }
 
@@ -733,6 +751,7 @@ const coreRoutes = [
     adminBrandKitDetailRoute,
     adminBrandLayoutsRoute,
     adminMenusRoute,
+    adminMenuNewRoute,
     adminMenuDetailRoute,
     adminThemeGeneratorRoute,
     adminChangelogRoute,

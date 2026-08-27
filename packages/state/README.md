@@ -1,5 +1,8 @@
 # @ottabase/state
 
+Layout structure in `ThemeInfo.layout` uses and re-exports the canonical `LayoutConfig` from `@ottabase/ottalayout`;
+state does not maintain a narrower copy of the layout variants.
+
 Simple global state management for Ottabase apps using Jotai.
 
 ## Installation

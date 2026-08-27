@@ -1,5 +1,4 @@
-import { api, isApiError } from '@/lib/api';
-import { useApiMutation } from '@ottabase/ottaorm/client';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
@@ -14,7 +13,6 @@ import {
 } from '@ottabase/ui-shadcn';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
 import { stripHtml } from '@ottabase/utils/string';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ExternalLink, Inbox, RefreshCw, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -45,6 +43,8 @@ interface DevMailListResponse {
     hasMore: boolean;
 }
 
+const EMPTY_MESSAGES: DevMailMessage[] = [];
+
 function formatAddress(address: DevMailAddress): string {
     return address.name ? `${address.name} <${address.email}>` : address.email;
 }
@@ -69,9 +69,9 @@ export function AdminDevMailPage() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [toFilter, setToFilter] = useState<string>('');
 
-    const { data, isLoading, isError, error, refetch } = useQuery({
+    const { data, isLoading, isError, error, refetch } = useApiQuery<DevMailListResponse>({
         queryKey: ['admin', 'dev-mail'],
-        queryFn: () => api<DevMailListResponse>('/api/admin/dev-mail?limit=50'),
+        endpoint: '/api/admin/dev-mail?limit=50',
     });
 
     const clearMutation = useApiMutation<{ deleted: number }>({
@@ -81,13 +81,15 @@ export function AdminDevMailPage() {
     });
 
     const deleteMutation = useApiMutation<unknown, string>({
-        endpoint: (messageId) => `/api/admin/dev-mail/${messageId}`,
+        endpoint: (messageId) => `/api/admin/dev-mail/${encodeURIComponent(messageId)}`,
         method: 'DELETE',
         invalidateKeys: [['admin', 'dev-mail']],
-        onSuccess: () => setSelectedId(null),
+        mutationOptions: {
+            onSuccess: () => setSelectedId(null),
+        },
     });
 
-    const messages = data?.messages || [];
+    const messages = data?.messages ?? EMPTY_MESSAGES;
 
     // Collect unique "to" addresses from all messages for the filter dropdown
     const uniqueToAddresses = useMemo(() => {
@@ -168,11 +170,7 @@ export function AdminDevMailPage() {
             {isError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                     <p className="font-semibold">Dev trap unavailable</p>
-                    <p>
-                        {isApiError(error)
-                            ? error.message
-                            : 'Enable DEV_EMAIL_TRAP_ENABLED and OBCF_KV to capture mail locally.'}
-                    </p>
+                    <p>{error?.message ?? 'Enable DEV_EMAIL_TRAP_ENABLED and OBCF_KV to capture mail locally.'}</p>
                 </div>
             )}
 

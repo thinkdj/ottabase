@@ -17,7 +17,6 @@ module.exports = {
         '../../packages/ui-base/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ui-code-highlight/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-tailwind/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/spotlight/src/**/*.{js,ts,jsx,tsx}',

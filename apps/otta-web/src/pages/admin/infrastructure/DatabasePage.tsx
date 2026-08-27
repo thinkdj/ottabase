@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 interface TableDataResponse {
     tableName: string;
     columns: { name: string; type: string; pk: number }[];
-    rows: Record<string, any>[];
+    rows: Record<string, unknown>[];
     pagination: {
         page: number;
         perPage: number;
@@ -60,7 +60,7 @@ export function AdminDbPage() {
 
     const queryClient = useQueryClient();
     const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
-    const [deleteRowDialog, setDeleteRowDialog] = useState<{ id: any; pkField: string } | null>(null);
+    const [deleteRowDialog, setDeleteRowDialog] = useState<{ id: string | number; pkField: string } | null>(null);
     const [tableFilter, setTableFilter] = useState('');
 
     // Load tables list
@@ -134,6 +134,7 @@ export function AdminDbPage() {
 
     const handlePageChange = (newPage: number) => {
         navigate({
+            to: '/admin/infrastructure/database',
             search: { ...search, page: newPage },
         });
     };
@@ -160,7 +161,7 @@ export function AdminDbPage() {
         // Dialog closes on success, stays open on error
     };
 
-    const handleDelete = (row: Record<string, any>) => {
+    const handleDelete = (row: Record<string, unknown>) => {
         if (!tableData) return;
 
         // Find PK field
@@ -168,7 +169,7 @@ export function AdminDbPage() {
         const pkField = pkColumn ? pkColumn.name : 'id';
         const id = row[pkField];
 
-        if (id === undefined) {
+        if (typeof id !== 'string' && typeof id !== 'number') {
             toast.error('Could not determine primary key for this row');
             return;
         }
@@ -220,7 +221,7 @@ export function AdminDbPage() {
     };
 
     // Group tables by category
-    const groupedTables = (() => {
+    const groupedTables: Record<string, string[]> = (() => {
         if (!tablesData?.tables) return {};
 
         const groups: Record<string, string[]> = {
@@ -338,7 +339,7 @@ export function AdminDbPage() {
                                             );
                                         });
                                     })()}
-                                    {Object.values(groupedTables).every((t) => (t as string[]).length === 0) && (
+                                    {Object.values(groupedTables).every((tables) => tables.length === 0) && (
                                         <div className="p-4 text-sm text-muted-foreground">
                                             {tableFilter ? 'No tables match your filter' : 'No tables found'}
                                         </div>

@@ -3,26 +3,22 @@
  * Simple, essential global state types for Ottabase apps
  */
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
+
+// Layout structure is owned by @ottabase/ottalayout. Re-exporting its types
+// keeps existing state consumers on one canonical contract instead of a fork.
+export type {
+    ContainerPadding,
+    ContentWidth,
+    Density,
+    HeaderVariant,
+    LayoutConfig,
+    NavigationVariant,
+    SidebarWidth,
+} from '@ottabase/ottalayout';
+
 // Theme type
 export type Theme = 'light' | 'dark';
-
-/** Layout header variants */
-export type HeaderVariant = 'minimal' | 'sidebar' | 'topbar' | 'none';
-/** Layout navigation placement */
-export type NavigationVariant = 'sidebar' | 'topbar' | 'drawer';
-/** Content width strategy */
-export type ContentWidth = 'fixed' | 'fluid' | 'full';
-/** UI density */
-export type Density = 'compact' | 'comfy';
-
-/** Layout configuration stored per theme/tenant */
-export interface LayoutConfig {
-    header: HeaderVariant;
-    navigation: NavigationVariant;
-    contentWidth: ContentWidth;
-    footer: boolean;
-    density: Density;
-}
 
 // Theme details type
 export interface ThemeInfo {

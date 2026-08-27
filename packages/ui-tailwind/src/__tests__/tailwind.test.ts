@@ -1,196 +1,98 @@
-import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
-describe('Tailwind CSS Configuration Package', () => {
-    describe('Package Structure', () => {
-        it('should be a configuration-only package', () => {
-            // ui-tailwind is a configuration package, not code exports
-            const packageType = 'configuration';
-            expect(packageType).toBe('configuration');
+const require = createRequire(import.meta.url);
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const preset = require(resolve(packageRoot, 'tailwind.base.cjs')) as {
+    darkMode: string[];
+    theme: {
+        extend: {
+            colors: Record<string, unknown>;
+            fontFamily: Record<string, string[]>;
+            fontSize: Record<string, [string, Record<string, string>]>;
+            borderRadius: Record<string, string>;
+            typography: Record<string, { css: Record<string, string> }>;
+        };
+    };
+    plugins: unknown[];
+};
+const packageJson = require(resolve(packageRoot, 'package.json')) as {
+    main: string;
+    files: string[];
+    scripts: Record<string, string>;
+    peerDependencies: Record<string, string>;
+};
+
+describe('@ottabase/ui-tailwind package boundary', () => {
+    it('publishes a resolvable preset and base stylesheet', () => {
+        expect(packageJson.main).toBe('tailwind.base.cjs');
+        expect(packageJson.files).toEqual(expect.arrayContaining(['tailwind.base.cjs', 'styles', 'README.md']));
+        expect(existsSync(resolve(packageRoot, packageJson.main))).toBe(true);
+        expect(existsSync(resolve(packageRoot, 'styles/tailwind.base.css'))).toBe(true);
+    });
+
+    it('declares every runtime plugin loaded by the preset as a peer dependency', () => {
+        expect(Object.keys(packageJson.peerDependencies)).toEqual(
+            expect.arrayContaining([
+                'tailwindcss',
+                '@tailwindcss/forms',
+                '@tailwindcss/typography',
+                'tailwindcss-animate',
+            ]),
+        );
+        expect(preset.plugins).toEqual([
+            require('@tailwindcss/forms'),
+            require('@tailwindcss/typography'),
+            require('tailwindcss-animate'),
+        ]);
+    });
+
+    it('exposes every required workspace gate', () => {
+        expect(packageJson.scripts).toMatchObject({
+            build: 'pnpm pack --dry-run',
+            lint: 'eslint src',
+            'type-check': 'tsc --noEmit',
+            test: 'vitest',
         });
+    });
+});
 
-        it('should define peer dependencies', () => {
-            const peerDeps = ['tailwindcss', 'postcss', '@tailwindcss/forms'];
-            expect(peerDeps).toContain('tailwindcss');
-            expect(peerDeps).toContain('postcss');
-        });
-
-        it('should support Mantine PostCSS preset', () => {
-            const peerDeps = ['postcss-preset-mantine'];
-            expect(peerDeps).toContain('postcss-preset-mantine');
-        });
-
-        it('should include animation support', () => {
-            const peerDeps = ['tailwindcss-animate'];
-            expect(peerDeps).toContain('tailwindcss-animate');
+describe('shared Tailwind preset', () => {
+    it('uses class dark mode and maps semantic colors to runtime theme variables', () => {
+        expect(preset.darkMode).toEqual(['class']);
+        expect(preset.theme.extend.colors).toMatchObject({
+            background: 'hsl(var(--background) / <alpha-value>)',
+            foreground: 'hsl(var(--foreground) / <alpha-value>)',
+            primary: {
+                DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+                foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+            },
+            overlay: 'hsl(var(--overlay) / <alpha-value>)',
         });
     });
 
-    describe('Configuration Purpose', () => {
-        it('should provide Tailwind CSS setup', () => {
-            const purpose = 'Tailwind CSS configuration utility';
-            expect(purpose).toContain('Tailwind');
-        });
-
-        it('should support light and dark modes', () => {
-            const modes = ['light', 'dark', 'auto'];
-            expect(modes).toContain('light');
-            expect(modes).toContain('dark');
-        });
-
-        it('should extend default theme', () => {
-            // Mantine preset extends Tailwind theme
-            const extendsTheme = true;
-            expect(extendsTheme).toBe(true);
-        });
+    it('keeps typography, fonts, and radii backed by Brand Engine variables', () => {
+        expect(preset.theme.extend.fontFamily.sans[0]).toBe('var(--font-body)');
+        expect(preset.theme.extend.fontSize.base).toEqual([
+            'var(--text-base, 1rem)',
+            {
+                lineHeight: 'var(--text-base-lh, 1.5rem)',
+                letterSpacing: 'var(--text-base-ls, inherit)',
+            },
+        ]);
+        expect(preset.theme.extend.borderRadius.full).toBe('var(--radius-full, 9999px)');
+        expect(preset.theme.extend.typography.DEFAULT.css['--tw-prose-links']).toBe('hsl(var(--primary))');
     });
 
-    describe('Plugins', () => {
-        it('should include Tailwind plugins via peer dependencies', () => {
-            const plugins = ['@tailwindcss/forms', '@tailwindcss/typography'];
-            expect(plugins).toContain('@tailwindcss/forms');
-        });
+    it('ships the Tailwind layers and reusable button class', () => {
+        const css = readFileSync(resolve(packageRoot, 'styles/tailwind.base.css'), 'utf8');
 
-        it('should include animation plugins', () => {
-            const hasAnimations = true;
-            expect(hasAnimations).toBe(true);
-        });
-
-        it('should support PostCSS preset', () => {
-            // postcss-preset-mantine is included
-            const hasPostCSSPreset = true;
-            expect(hasPostCSSPreset).toBe(true);
-        });
-    });
-
-    describe('Customization', () => {
-        it('should allow color customization', () => {
-            const colors = {
-                primary: '#3B82F6',
-                secondary: '#8B5CF6',
-            };
-
-            expect(colors.primary).toBe('#3B82F6');
-            expect(colors.secondary).toBe('#8B5CF6');
-        });
-
-        it('should support custom spacing', () => {
-            const spacing = {
-                xs: '0.5rem',
-                sm: '1rem',
-                md: '2rem',
-                lg: '4rem',
-            };
-
-            expect(spacing.xs).toBe('0.5rem');
-            expect(spacing.md).toBe('2rem');
-        });
-
-        it('should extend typography', () => {
-            const typography = {
-                fontFamily: 'system-ui, sans-serif',
-                fontSize: '1rem',
-            };
-
-            expect(typography.fontFamily).toContain('sans-serif');
-        });
-    });
-
-    describe('Responsiveness', () => {
-        it('should define breakpoints', () => {
-            const breakpoints = {
-                sm: '640px',
-                md: '768px',
-                lg: '1024px',
-                xl: '1280px',
-            };
-
-            expect(breakpoints.sm).toBe('640px');
-            expect(breakpoints.lg).toBe('1024px');
-        });
-
-        it('should support mobile-first design', () => {
-            const isMobileFirst = true;
-            expect(isMobileFirst).toBe(true);
-        });
-    });
-
-    describe('Dark Mode', () => {
-        it('should configure dark mode', () => {
-            const darkModeConfig = {
-                strategy: 'class',
-                selector: '.dark',
-            };
-
-            expect(darkModeConfig.strategy).toBe('class');
-            expect(darkModeConfig.selector).toBe('.dark');
-        });
-
-        it('should support dark mode variants', () => {
-            const darkModeVariants = ['dark:bg-gray-900', 'dark:text-white'];
-            expect(darkModeVariants).toContain('dark:bg-gray-900');
-        });
-    });
-
-    describe('Utility Classes', () => {
-        it('should generate responsive utilities', () => {
-            const responsive = ['sm:', 'md:', 'lg:', 'xl:', '2xl:'];
-            expect(responsive).toContain('md:');
-        });
-
-        it('should support hover and focus states', () => {
-            const states = ['hover:', 'focus:', 'active:'];
-            expect(states).toContain('hover:');
-        });
-
-        it('should support arbitrary values', () => {
-            const hasArbitrary = true;
-            expect(hasArbitrary).toBe(true);
-        });
-    });
-
-    describe('Integration', () => {
-        it('should work with Next.js', () => {
-            const isNextJs = true;
-            expect(isNextJs).toBe(true);
-        });
-
-        it('should work with Vite', () => {
-            const isVite = true;
-            expect(isVite).toBe(true);
-        });
-
-        it('should support Mantine components', () => {
-            const hasMantineSupport = true;
-            expect(hasMantineSupport).toBe(true);
-        });
-
-        it('should integrate with PostCSS', () => {
-            // Mantine PostCSS preset handles integration
-            const hasPostCSSIntegration = true;
-            expect(hasPostCSSIntegration).toBe(true);
-        });
-
-        it('should work with both React and Next.js ecosystems', () => {
-            const ecosystems = ['react', 'nextjs', 'vite'];
-            expect(ecosystems).toContain('react');
-        });
-    });
-
-    describe('Dependencies', () => {
-        it('should declare tailwind-merge as dependency', () => {
-            const deps = ['tailwind-merge'];
-            expect(deps).toContain('tailwind-merge');
-        });
-
-        it('should work with Tailwind 3.4.17+', () => {
-            const version = '3.4.17';
-            expect(version).toMatch(/^3\.[4-9]/);
-        });
-
-        it('should support PostCSS 8+', () => {
-            const version = '8.0.0';
-            const major = parseInt(version.split('.')[0]);
-            expect(major).toBeGreaterThanOrEqual(8);
-        });
+        expect(css).toContain('@tailwind base;');
+        expect(css).toContain('@tailwind components;');
+        expect(css).toContain('@tailwind utilities;');
+        expect(css).toContain('.btn-tw');
     });
 });

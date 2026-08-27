@@ -155,7 +155,7 @@ export default class BeforeAfterTool {
         config,
         block,
     }: {
-        data: BeforeAfterData;
+        data: Partial<BeforeAfterData>;
         api: any;
         config: BeforeAfterToolConfig;
         block: any;
@@ -166,11 +166,11 @@ export default class BeforeAfterTool {
         this.namespace = this.config.namespace || 'default';
         this.data = {
             ...DEFAULT_DATA,
-            orientation: this.config.defaultOrientation || DEFAULT_DATA.orientation,
-            sliderPosition: this.config.defaultPosition ?? DEFAULT_DATA.sliderPosition,
-            height: this.config.defaultHeight || DEFAULT_DATA.height,
-            imageFit: this.config.defaultImageFit || DEFAULT_DATA.imageFit,
             ...data,
+            orientation: data.orientation ?? this.config.defaultOrientation ?? DEFAULT_DATA.orientation,
+            sliderPosition: data.sliderPosition ?? this.config.defaultPosition ?? DEFAULT_DATA.sliderPosition,
+            height: data.height ?? this.config.defaultHeight ?? DEFAULT_DATA.height,
+            imageFit: data.imageFit ?? this.config.defaultImageFit ?? DEFAULT_DATA.imageFit,
         };
 
         /* Bind event handler */

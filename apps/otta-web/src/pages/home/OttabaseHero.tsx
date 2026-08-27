@@ -348,7 +348,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                     </p>
                     <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                         <Button asChild size="lg" className="group gap-2 rounded-full px-6 shadow-lg shadow-primary/20">
-                            <Link to="/docs">
+                            <Link to="/docs/$" params={{ _splat: '' }}>
                                 Start building
                                 <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                             </Link>

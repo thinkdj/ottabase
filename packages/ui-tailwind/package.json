@@ -1,10 +1,11 @@
 {
     "name": "@ottabase/ui-tailwind",
     "version": "0.0.0",
-    "main": "index.js",
+    "main": "tailwind.base.cjs",
     "files": [
-        "dist",
-        "src"
+        "tailwind.base.cjs",
+        "styles",
+        "README.md"
     ],
     "peerDependencies": {
         "tailwindcss": "catalog:",
@@ -17,7 +18,15 @@
     "dependencies": {
         "tailwind-merge": "catalog:"
     },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
     "scripts": {
+        "build": "pnpm pack --dry-run",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"
     },

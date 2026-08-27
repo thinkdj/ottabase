@@ -7,7 +7,7 @@
 
 import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
-import { useSession } from '@/lib/auth';
+import { useSession, type User as SessionUser } from '@/lib/auth';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { changePassword, requestEmailVerification } from '@/lib/auth-api';
 import { AiPersonalProviders } from './AiPersonalProviders';
@@ -45,15 +45,40 @@ interface LinkedAccountRecord {
     createdAt?: number | null;
 }
 
+interface UserProfileRecord {
+    id: string;
+    email: string;
+    name?: string | null;
+    image?: string | null;
+    timezone?: string | null;
+    emailVerified?: number | null;
+    createdAt?: number | null;
+    updatedAt?: number | null;
+    linkedAccounts?: LinkedAccountRecord[];
+}
+
+type SessionProfileUpdate = Partial<
+    Pick<UserProfileRecord, 'name' | 'email' | 'image' | 'timezone' | 'emailVerified' | 'createdAt' | 'updatedAt'>
+>;
+
+function getSessionTimezone(user: SessionUser | null): string {
+    const timezone: unknown = user?.timezone;
+    return typeof timezone === 'string' ? timezone : '';
+}
+
+function normalize(value: string): string {
+    return value.trim();
+}
+
 export function UserProfilePage() {
     const { user, updateUser, refreshSession } = useSession();
     const toast = useRBACToast();
+    const sessionTimezone = getSessionTimezone(user);
 
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        timezone:
-            (user as { timezone?: string })?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        timezone: sessionTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     });
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
@@ -75,8 +100,6 @@ export function UserProfilePage() {
         newPassword: '',
         confirmPassword: '',
     });
-
-    const normalize = useCallback((value: string) => value.trim(), []);
 
     // OttaSelect items: id = IANA name, name = display label (searchable). Browser timezone always first.
     const browserTz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
@@ -102,14 +125,13 @@ export function UserProfilePage() {
         (next: { name: string; email: string; timezone: string }) => {
             const currentName = normalize(user?.name ?? '');
             const currentEmail = normalize(user?.email ?? '');
-            const currentTz = (user as { timezone?: string })?.timezone ?? '';
             return (
                 normalize(next.name) !== currentName ||
                 normalize(next.email) !== currentEmail ||
-                normalize(next.timezone) !== currentTz
+                normalize(next.timezone) !== sessionTimezone
             );
         },
-        [normalize, user?.email, user?.name, user],
+        [sessionTimezone, user?.email, user?.name],
     );
 
     useEffect(() => {
@@ -117,14 +139,11 @@ export function UserProfilePage() {
             setFormData({
                 name: user.name || '',
                 email: user.email || '',
-                timezone:
-                    (user as { timezone?: string }).timezone ||
-                    Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                    'UTC',
+                timezone: sessionTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
             });
             setHasChanges(false);
         }
-    }, [user?.name, user?.email, (user as { timezone?: string })?.timezone]);
+    }, [sessionTimezone, user]);
 
     // Fetch full profile (including timezone) - the session may not include DB-only fields
     useEffect(() => {
@@ -134,14 +153,7 @@ export function UserProfilePage() {
         async function loadProfile() {
             setIsAccountsLoading(true);
             try {
-                const data = await api<
-                    {
-                        linkedAccounts?: LinkedAccountRecord[];
-                        name?: string;
-                        email?: string;
-                        timezone?: string;
-                    } & Record<string, unknown>
-                >('/api/users/me');
+                const data = await api<UserProfileRecord>('/api/users/me');
                 if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
                     const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -152,7 +164,7 @@ export function UserProfilePage() {
                         timezone: tz,
                     }));
                     // Sync session so computeHasChanges and future visits have timezone
-                    updateUser({ timezone: tz } as Partial<typeof user>);
+                    updateUser({ timezone: tz } satisfies Partial<SessionUser>);
                 }
             } catch (error) {
                 console.error('Failed to load profile', error);
@@ -168,8 +180,7 @@ export function UserProfilePage() {
         return () => {
             cancelled = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- updateUser changes when session updates; including it causes infinite loop
-    }, [user?.id]);
+    }, [updateUser, user?.id]);
 
     const userInitials = user?.name
         ? user.name
@@ -205,7 +216,7 @@ export function UserProfilePage() {
                 return;
             }
 
-            const updates: Record<string, string | null> = {};
+            const updates: { name?: string; timezone?: string | null } = {};
 
             if (trimmedName !== normalize(user.name ?? '')) {
                 updates.name = trimmedName;
@@ -220,8 +231,7 @@ export function UserProfilePage() {
                 return;
             }
 
-            const currentTz = (user as { timezone?: string }).timezone ?? '';
-            if (trimmedTimezone !== currentTz) {
+            if (trimmedTimezone !== sessionTimezone) {
                 updates.timezone = trimmedTimezone || null;
             }
 
@@ -231,49 +241,41 @@ export function UserProfilePage() {
                 return;
             }
 
-            const response = await api<Record<string, any>>('/api/users/me', {
+            const updatedUser = await api<UserProfileRecord>('/api/users/me', {
                 method: 'PATCH',
                 body: updates,
             });
 
-            const updatedUser = (
-                response && typeof response === 'object' && 'data' in response
-                    ? (response as { data?: Record<string, any> }).data
-                    : response
-            ) as Record<string, any> | undefined;
-
-            const safeUpdates: Record<string, any> = {};
-            if (updatedUser?.name !== undefined) safeUpdates.name = updatedUser.name;
-            if (updatedUser?.email !== undefined) safeUpdates.email = updatedUser.email;
-            if (updatedUser?.image !== undefined) safeUpdates.image = updatedUser.image;
-            if (updatedUser?.timezone !== undefined) safeUpdates.timezone = updatedUser.timezone;
-            if (updatedUser?.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
-            if (updatedUser?.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
-            if (updatedUser?.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
+            const safeUpdates: SessionProfileUpdate = {};
+            if (updatedUser.name !== undefined) safeUpdates.name = updatedUser.name;
+            if (updatedUser.email !== undefined) safeUpdates.email = updatedUser.email;
+            if (updatedUser.image !== undefined) safeUpdates.image = updatedUser.image;
+            if (updatedUser.timezone !== undefined) safeUpdates.timezone = updatedUser.timezone;
+            if (updatedUser.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
+            if (updatedUser.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
+            if (updatedUser.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
 
             if (Object.keys(safeUpdates).length > 0) {
-                updateUser(safeUpdates);
-                if (safeUpdates.timezone) {
+                updateUser(safeUpdates satisfies Partial<SessionUser>);
+                if (typeof safeUpdates.timezone === 'string' && safeUpdates.timezone) {
                     setTimezoneConfig({ userTimezone: safeUpdates.timezone });
                 }
             }
 
             setFormData({
-                name: updatedUser?.name ?? user.name ?? '',
-                email: updatedUser?.email ?? user.email ?? '',
-                timezone: updatedUser?.timezone ?? formData.timezone,
+                name: updatedUser.name ?? user.name ?? '',
+                email: updatedUser.email ?? user.email ?? '',
+                timezone: updatedUser.timezone ?? formData.timezone,
             });
-            if (updatedUser?.linkedAccounts) {
+            if (updatedUser.linkedAccounts) {
                 setLinkedAccounts(updatedUser.linkedAccounts);
             }
-            if (refreshSession) {
-                await refreshSession();
-                // refreshSession replaces the whole session from the server, which does NOT carry
-                // the client-only timezone (it isn't part of the session snapshot). Re-apply the
-                // just-saved value so it isn't reverted to the browser default (phantom "unsaved").
-                if (safeUpdates.timezone) {
-                    updateUser({ timezone: safeUpdates.timezone } as Partial<typeof user>);
-                }
+            await refreshSession();
+            // refreshSession replaces the whole session from the server, which does NOT carry
+            // the client-only timezone (it isn't part of the session snapshot). Re-apply the
+            // just-saved value so it isn't reverted to the browser default (phantom "unsaved").
+            if (typeof safeUpdates.timezone === 'string' && safeUpdates.timezone) {
+                updateUser({ timezone: safeUpdates.timezone } satisfies Partial<SessionUser>);
             }
             setHasChanges(false);
             toast.success('Profile updated', 'Your profile has been updated successfully');

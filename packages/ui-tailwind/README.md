@@ -17,7 +17,8 @@ module.exports = {
     presets: [sharedPreset],
     content: [
         './src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-tailwind/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
         // …other workspace paths that use Tailwind classes
     ],
 };

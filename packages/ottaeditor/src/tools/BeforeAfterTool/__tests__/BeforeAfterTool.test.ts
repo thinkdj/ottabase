@@ -17,7 +17,7 @@ describe('BeforeAfterTool', () => {
 
     beforeEach(() => {
         tool = new BeforeAfterTool({
-            data: {} as any,
+            data: {},
             api: mockApi,
             config: {},
             block: {},
@@ -85,6 +85,26 @@ describe('BeforeAfterTool', () => {
         const s = t.save();
         expect(s.orientation).toBe('vertical');
         expect(s.sliderPosition).toBe(75);
+    });
+
+    it('should prefer persisted block data over constructor defaults', () => {
+        const t = new BeforeAfterTool({
+            data: {
+                beforeUrl: '',
+                afterUrl: '',
+                beforeLabel: 'Before',
+                afterLabel: 'After',
+                orientation: 'horizontal',
+                sliderPosition: 25,
+                caption: '',
+            },
+            api: mockApi,
+            config: { defaultOrientation: 'vertical', defaultPosition: 75 },
+            block: {},
+        });
+
+        expect(t.save().orientation).toBe('horizontal');
+        expect(t.save().sliderPosition).toBe(25);
     });
 
     /* ── Rendering ───────────────────────────────────────────────────────── */

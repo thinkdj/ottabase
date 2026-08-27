@@ -332,7 +332,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                                             {msg.userId && (
                                                 <p className="text-xs text-muted-foreground">User: {msg.userId}</p>
                                             )}
-                                            {msg.data && (
+                                            {msg.data !== undefined && msg.data !== null && (
                                                 <pre className="mt-2 overflow-x-auto rounded bg-muted/40 p-2 text-xs">
                                                     {JSON.stringify(msg.data, null, 2)}
                                                 </pre>

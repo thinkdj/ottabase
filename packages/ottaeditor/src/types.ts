@@ -1,19 +1,13 @@
-import EditorJS, {
-    API,
-    BlockAPI,
-    BlockTool,
-    BlockToolConstructable,
-    OutputData,
-    ToolSettings,
-} from '@editorjs/editorjs';
+import EditorJS, { API, BlockTool, BlockToolConstructable, OutputData } from '@editorjs/editorjs';
 import type { UndoRedoState } from './undo-redo';
 
 /**
  * Configuration for a single EditorJS tool/plugin
  */
-export interface OttaEditorToolConfig {
+export interface OttaEditorToolConfig<Config extends object = object> {
     class: BlockToolConstructable | BlockTool;
-    config?: ToolSettings;
+    /** Options passed to the tool constructor (not EditorJS's outer ToolSettings wrapper). */
+    config?: Config;
     shortcut?: string;
     inlineToolbar?: boolean | string[];
     toolbox?: {
@@ -105,10 +99,11 @@ export interface OttaEditorConfig {
 /**
  * Plugin registration interface for extending OttaEditor
  */
-export interface OttaEditorPlugin {
+export interface OttaEditorPlugin<Config extends object = object> {
     name: string;
     tool: BlockToolConstructable | BlockTool;
-    config?: ToolSettings;
+    /** Tool-specific options passed through as EditorJS `settings.config`. */
+    config?: Config;
 }
 
 /**

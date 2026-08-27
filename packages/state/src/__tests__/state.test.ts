@@ -1,4 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { createStore } from 'jotai';
+import { describe, expect, it } from 'vitest';
+import { createAppState, type LayoutConfig } from '../index';
 
 describe('Jotai State Management', () => {
     describe('State Initialization', () => {
@@ -45,6 +47,24 @@ describe('Jotai State Management', () => {
     });
 
     describe('Layout Configuration', () => {
+        it('stores the canonical Ottalayout contract without narrowing valid variants', () => {
+            const layout: LayoutConfig = {
+                header: 'none',
+                navigation: 'none',
+                contentWidth: 'xl',
+                footer: false,
+                density: 'spacious',
+                sidebarWidth: 'wide',
+                containerPadding: 'lg',
+            };
+            const { appStateAtom } = createAppState({
+                appName: 'Layout test',
+                initialState: { themeInfo: { name: 'custom', layout } },
+            });
+
+            expect(createStore().get(appStateAtom).themeInfo.layout).toEqual(layout);
+        });
+
         it('should export layout provider type', () => {
             // Default layout provider should be 'mantine'
             const DEFAULT_LAYOUT_PROVIDER = 'mantine';

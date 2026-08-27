@@ -63,6 +63,9 @@ unsafe inline attributes/protocols.
 | `readOnly`          | `boolean`              | Read-only mode        |
 | `onChange`          | `(api, event) => void` | Change callback       |
 
+Plugin `config` is the tool-specific options object passed to that tool's constructor (for example
+`{ provider: 'r2', uploadEndpoint: '/api/upload' }`). It is not EditorJS's outer `ToolSettings` wrapper.
+
 ### Returns
 
 | Property              | Type                        | Description            |

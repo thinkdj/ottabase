@@ -31,22 +31,26 @@ import { toast } from 'sonner';
 import { menuApi, type MenuItemDto, type MenuRenderType, type MenuWithItemsDto } from './menus/menuApi';
 
 export function AdminMenuDetailPage() {
-    const { menuId } = useParams({ strict: false, from: '/admin/appearance/menus/$menuId' });
+    const { menuId } = useParams({ strict: false });
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const isNew = menuId === 'new';
+    const isNew = !menuId;
 
     const [previewType, setPreviewType] = useState<MenuRenderType>('sidebar');
 
     const { data: menu, isLoading } = useQuery({
         queryKey: ['menus', menuId],
-        queryFn: () => menuApi.get(menuId!),
+        queryFn: () => {
+            if (!menuId) throw new Error('A menu id is required to load menu details');
+            return menuApi.get(menuId);
+        },
         enabled: !!menuId && !isNew,
     });
+    const menuType = menu?.type;
 
     useEffect(() => {
-        if (menu) setPreviewType(menu.type);
-    }, [menu?.type]);
+        if (menuType) setPreviewType(menuType);
+    }, [menuType]);
 
     const createMenuMutation = useMutation({
         mutationFn: (body: { name: string; slug: string; type?: MenuRenderType }) => menuApi.create(body),
@@ -384,7 +388,6 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
                 ))}
                 {newItemParentId !== undefined ? (
                     <ItemForm
-                        menuId={menu.id}
                         parentId={newItemParentId ?? null}
                         allItems={menu.items}
                         onSubmit={(body) => createItemMutation.mutate(body)}
@@ -455,7 +458,6 @@ function ItemTreeNode({
                 item={node.item}
                 menuId={menuId}
                 allItems={allItems}
-                depth={depth}
                 editing={editingId === node.item.id}
                 onEdit={() => setEditingId(editingId === node.item.id ? null : node.item.id)}
                 onAddChild={() => onAddChild(node.item.id)}
@@ -484,7 +486,6 @@ function ItemRow({
     item,
     menuId,
     allItems,
-    depth,
     editing,
     onEdit,
     onAddChild,
@@ -494,7 +495,6 @@ function ItemRow({
     item: MenuItemDto;
     menuId: string;
     allItems: MenuItemDto[];
-    depth: number;
     editing: boolean;
     onEdit: () => void;
     onAddChild: () => void;
@@ -513,7 +513,6 @@ function ItemRow({
     if (editing) {
         return (
             <ItemForm
-                menuId={menuId}
                 item={item}
                 parentId={item.parentId ?? null}
                 allItems={allItems}
@@ -574,7 +573,6 @@ function ItemRow({
 }
 
 function ItemForm({
-    menuId,
     item,
     parentId,
     allItems,
@@ -582,7 +580,6 @@ function ItemForm({
     onCancel,
     submitting = false,
 }: {
-    menuId: string;
     item?: MenuItemDto;
     parentId?: string | null;
     allItems: MenuItemDto[];

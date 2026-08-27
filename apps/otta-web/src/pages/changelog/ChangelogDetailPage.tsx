@@ -46,8 +46,7 @@ function formatLongDate(iso: string | null): string {
 }
 
 export function ChangelogDetailPage() {
-    const params = useParams({ strict: false });
-    const slug = (params as { slug?: string }).slug ?? '';
+    const { slug } = useParams({ from: '/changelog/$slug' });
     const { user } = useSession();
 
     // Use the blog API with contentType filter for changelogs
@@ -94,7 +93,7 @@ export function ChangelogDetailPage() {
     // entry is guaranteed to be defined after the above checks
     const description = entry.excerpt ?? undefined;
     const heroUrl = entry.heroImage?.url;
-    const currentUserId = (user as any)?.id;
+    const currentUserId = user?.id;
     const isAuthor = currentUserId && entry.authorId && currentUserId === entry.authorId;
 
     return (
@@ -188,7 +187,11 @@ export function ChangelogDetailPage() {
                     <MediaLightboxProvider variant="immersive">
                         <div className="changelog-prose prose prose-neutral max-w-none dark:prose-invert prose-headings:scroll-mt-20 prose-p:leading-relaxed">
                             <Blocks
-                                data={entry.content}
+                                data={{
+                                    ...entry.content,
+                                    time: entry.content.time ?? 0,
+                                    version: entry.content.version ?? '2.30.0',
+                                }}
                                 config={{ ...defaultEJSRConfigs }}
                                 renderers={customRenderers}
                             />
