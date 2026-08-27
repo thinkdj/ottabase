@@ -55,6 +55,7 @@ interface AdminUserDetailResponse {
 }
 
 interface UserOrganization {
+    id: string;
     organizationId: string;
     organizationName: string;
     role: MemberRole;
@@ -83,7 +84,11 @@ export function UserRBACPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState('');
     const [selectedRole, setSelectedRole] = useState<MemberRole>('member');
-    const [removeMembership, setRemoveMembership] = useState<{ organizationId: string; orgName: string } | null>(null);
+    const [removeMembership, setRemoveMembership] = useState<{
+        memberId: string;
+        organizationId: string;
+        orgName: string;
+    } | null>(null);
 
     const userDetailQueryKey = ['users', 'admin', userId] as const;
 
@@ -109,6 +114,7 @@ export function UserRBACPage() {
     const userOrgs: UserOrganization[] = rawMemberships.map((m) => {
         const org = orgs.find((o) => o.id === m.organizationId);
         return {
+            id: m.id,
             organizationId: m.organizationId,
             organizationName: org?.name || m.organizationId,
             role: m.role,
@@ -159,14 +165,14 @@ export function UserRBACPage() {
         );
     };
 
-    const handleRemove = (organizationId: string, orgName: string) => {
-        setRemoveMembership({ organizationId, orgName });
+    const handleRemove = (memberId: string, organizationId: string, orgName: string) => {
+        setRemoveMembership({ memberId, organizationId, orgName });
     };
 
     const handleConfirmRemove = () => {
         if (!removeMembership) return;
         removeMutation.mutate(
-            { userId, organizationId: removeMembership.organizationId },
+            { memberId: removeMembership.memberId, userId, organizationId: removeMembership.organizationId },
             {
                 onSuccess: () => {
                     toast.rbac.memberRemoved();
@@ -420,7 +426,11 @@ export function UserRBACPage() {
                                                 size="icon"
                                                 className="text-muted-foreground hover:text-destructive"
                                                 onClick={() =>
-                                                    handleRemove(membership.organizationId, membership.organizationName)
+                                                    handleRemove(
+                                                        membership.id,
+                                                        membership.organizationId,
+                                                        membership.organizationName,
+                                                    )
                                                 }
                                                 disabled={removeMutation.isPending}
                                             >

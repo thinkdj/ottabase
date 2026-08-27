@@ -226,7 +226,12 @@ export function UserManagementPage() {
                                                 className="text-muted-foreground hover:text-foreground"
                                                 asChild
                                             >
-                                                <Link to={`/admin/access/users/${user.id}/rbac`}>View</Link>
+                                                <Link
+                                                    to="/admin/access/users/$userId/rbac"
+                                                    params={{ userId: user.id }}
+                                                >
+                                                    View
+                                                </Link>
                                             </Button>
                                         </TableCell>
                                     </TableRow>

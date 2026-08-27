@@ -1,14 +1,13 @@
-import type { KVNamespace } from '@cloudflare/workers-types';
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { Role, UserRole } from '@ottabase/ottaorm/models';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { bumpProfileVersion } from '../lib/auth-utils';
 import type { ApiRouteContext } from './router';
 
 /** Invalidate all RBAC cache entries when system roles change */
-async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void> {
+async function invalidateRBACCache(env: ApiRouteContext['env']): Promise<void> {
     if (!env.OBCF_KV) return;
     try {
         await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
@@ -23,14 +22,13 @@ async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void
  * holder's session snapshot until their JWT expires. Role edits are rare admin actions, so
  * enumerating holders and bumping each is acceptable. Best-effort.
  */
-async function refreshRoleHolderSessions(context: ApiRouteContext, roleId: string): Promise<void> {
-    try {
-        const userRoles = await UserRole.where({ roleId });
-        const userIds = [...new Set(userRoles.map((ur) => String(ur.get('userId'))).filter(Boolean))];
-        await Promise.allSettled(userIds.map((userId) => bumpProfileVersion(context.env, userId)));
-    } catch (error) {
-        console.warn('Failed to refresh sessions of role holders:', error);
-    }
+async function getRoleHolderUserIds(roleId: string): Promise<string[]> {
+    const userRoles = await UserRole.where({ roleId });
+    return [...new Set(userRoles.map((ur) => String(ur.get('userId'))).filter(Boolean))];
+}
+
+async function refreshRoleHolderSessions(context: ApiRouteContext, userIds: string[]): Promise<void> {
+    await Promise.allSettled(userIds.map((userId) => bumpProfileVersion(context.env, userId)));
 }
 
 /**
@@ -39,7 +37,9 @@ async function refreshRoleHolderSessions(context: ApiRouteContext, roleId: strin
 export async function handleAdminRolesList(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) return auth;
-    const roles = await Role.all({ orderBy: 'name', orderDirection: 'asc' });
+    const roles = [] as InstanceType<typeof Role>[];
+    for await (const page of Role.pages({ perPage: 100 })) roles.push(...page);
+    roles.sort((left, right) => String(left.get('name')).localeCompare(String(right.get('name'))));
     return jsonResponse({ data: roles.map((r) => r.toJson()) });
 }
 
@@ -76,6 +76,21 @@ export async function handleAdminRoleUpdate(context: ApiRouteContext, roleId: st
         return errorResponse('Cannot edit system roles (create a custom role instead)', 403, { code: 'FORBIDDEN' });
     }
     const body = (await context.request.json()) as any;
+    let holderUserIds: string[] = [];
+    if (body.permissions !== undefined) {
+        try {
+            holderUserIds = await getRoleHolderUserIds(roleId);
+        } catch (error) {
+            console.error(
+                JSON.stringify({
+                    event: 'role_holder_enumeration_failed',
+                    roleId: roleId.slice(0, 128),
+                    error: redactErrorForLog(error),
+                }),
+            );
+            return errorResponse('Could not safely update role holders', 500, { code: 'ROLE_HOLDER_LOOKUP_FAILED' });
+        }
+    }
     if (body.name !== undefined) role.set('name', body.name);
     if (body.description !== undefined) role.set('description', body.description);
     if (body.permissions !== undefined) {
@@ -85,7 +100,7 @@ export async function handleAdminRoleUpdate(context: ApiRouteContext, roleId: st
     await invalidateRBACCache(context.env);
     // A changed permission set only reaches live sessions on a snapshot refresh.
     if (body.permissions !== undefined) {
-        await refreshRoleHolderSessions(context, roleId);
+        await refreshRoleHolderSessions(context, holderUserIds);
     }
     return jsonResponse({ data: role.toJson() });
 }
@@ -99,9 +114,24 @@ export async function handleAdminRoleDelete(context: ApiRouteContext, roleId: st
     const role = await Role.find(roleId);
     if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
     if (role.get('isSystem')) return errorResponse('Cannot delete system roles', 403, { code: 'FORBIDDEN' });
-    // Enumerate holders BEFORE deleting (the user_roles rows may be gone afterwards).
-    await refreshRoleHolderSessions(context, roleId);
-    await role.delete();
+    // Capture holders before deletion, but bump their profile versions only AFTER the role and
+    // grants are gone. Bumping first lets an intervening request cache the old role under the new
+    // version and keep it until another natural refresh.
+    let holderUserIds: string[];
+    try {
+        holderUserIds = await getRoleHolderUserIds(roleId);
+    } catch (error) {
+        console.error(
+            JSON.stringify({
+                event: 'role_holder_enumeration_failed',
+                roleId: roleId.slice(0, 128),
+                error: redactErrorForLog(error),
+            }),
+        );
+        return errorResponse('Could not safely delete role', 500, { code: 'ROLE_HOLDER_LOOKUP_FAILED' });
+    }
+    await Role.delete(roleId);
     await invalidateRBACCache(context.env);
+    await refreshRoleHolderSessions(context, holderUserIds);
     return jsonResponse({ success: true });
 }
