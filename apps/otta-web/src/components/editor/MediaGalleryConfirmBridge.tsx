@@ -12,6 +12,12 @@ import { useEffect, useState } from 'react';
 // Marker key read by MediaGalleryTool to detect whether the bridge is mounted.
 const BRIDGE_ACTIVE_KEY = '__mgConfirmBridgeActive';
 
+declare global {
+    interface Window {
+        __mgConfirmBridgeActive?: boolean;
+    }
+}
+
 interface ConfirmRequest {
     /** Unique id so the tool can match the response to the right pending action */
     id: string;
@@ -29,9 +35,9 @@ export function MediaGalleryConfirmBridge() {
 
     useEffect(() => {
         // Signal to the vanilla-DOM tool that the React bridge is active
-        (window as Record<string, unknown>)[BRIDGE_ACTIVE_KEY] = true;
+        window[BRIDGE_ACTIVE_KEY] = true;
         return () => {
-            delete (window as Record<string, unknown>)[BRIDGE_ACTIVE_KEY];
+            delete window[BRIDGE_ACTIVE_KEY];
         };
     }, []);
 

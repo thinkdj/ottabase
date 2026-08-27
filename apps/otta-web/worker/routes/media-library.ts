@@ -1,13 +1,12 @@
 import { getSession } from '@ottabase/auth/backend';
 import { createImagesClient } from '@ottabase/cf/images';
-import { createR2Client } from '@ottabase/cf/r2';
-import { createMediaLibraryRecordInput } from '@ottabase/medialibrary';
-import type { MediaType, NewMediaType } from '@ottabase/ottaorm';
+import { createR2Client, type R2Config } from '@ottabase/cf/r2';
+import { createMediaLibraryRecordInput, type CreateMediaLibraryRecordInput } from '@ottabase/medialibrary';
+import type { MediaType } from '@ottabase/ottaorm';
 import { Media, globalRLS } from '@ottabase/ottaorm';
 import { deleteFileFromR2 } from '@ottabase/ottaupload/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { buildMediaLibraryAccessFilter } from '../../ottabase/models/mediaLibraryPolicy';
 import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
 import { initDbConnection } from '../lib/db-utils';
@@ -23,7 +22,7 @@ async function getResolvedMediaSecurityContext(request: Request, env: Cloudflare
 export async function persistUploadedMediaRecord(
     request: Request,
     env: CloudflareEnv,
-    input: Partial<NewMediaType>,
+    input: Omit<CreateMediaLibraryRecordInput, 'appId' | 'organizationId' | 'userId'>,
     options?: {
         upsertByStorageKey?: boolean;
     },
@@ -101,7 +100,7 @@ async function deleteStoredMedia(env: CloudflareEnv, mediaItem: Media): Promise<
         throw new Error('R2 bucket binding not configured');
     }
 
-    const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+    const r2Client = createR2Client({ bucket: env.OBCF_R2 as unknown as R2Config['bucket'] });
     const result = await deleteFileFromR2(storageKey, r2Client);
     if (!result.success) {
         throw new Error(result.error || 'Failed to delete media file');

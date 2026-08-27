@@ -41,7 +41,9 @@ export async function uploadFileToR2(
         const key = options.generateKey ? options.generateKey(file) : generateFileKey(file);
 
         // Upload to R2
-        const result = await r2Client.put(key, await file.arrayBuffer(), {
+        // Stream into R2. `request.formData()` already materializes the File; copying it again into
+        // an ArrayBuffer can double peak memory and exhaust a Worker on otherwise valid uploads.
+        const result = await r2Client.put(key, file.stream(), {
             httpMetadata: {
                 contentType: file.type || 'application/octet-stream',
             },

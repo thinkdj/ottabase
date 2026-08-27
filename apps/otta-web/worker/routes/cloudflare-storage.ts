@@ -3,12 +3,30 @@ import { createImagesClient } from '@ottabase/cf/images';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createR2Client } from '@ottabase/cf/r2';
 import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { persistUploadedMediaRecord } from './media-library';
 import type { ApiRouteContext } from './router';
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const INLINE_SAFE_MIME_TYPES = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+
+function safeDownloadName(key: string): string {
+    const name = key.split('/').pop() || 'download';
+    return name.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 180) || 'download';
+}
+
+function applySafeObjectHeaders(headers: Headers, key: string): void {
+    const contentType = (headers.get('Content-Type') || 'application/octet-stream').split(';', 1)[0]!.toLowerCase();
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Content-Security-Policy', "sandbox; default-src 'none'");
+    headers.set(
+        'Content-Disposition',
+        `${INLINE_SAFE_MIME_TYPES.has(contentType) ? 'inline' : 'attachment'}; filename="${safeDownloadName(key)}"`,
+    );
+}
 
 /** Deterministic hash of userId for avatar path obfuscation (SHA-256, 32 hex chars) */
 async function hashUserId(userId: string): Promise<string> {
@@ -111,7 +129,7 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
         const headers = new Headers();
         object.writeHttpMetadata(headers);
         headers.set('etag', object.httpEtag);
-        headers.set('Content-Disposition', `attachment; filename="${key}"`);
+        applySafeObjectHeaders(headers, key);
 
         return new Response(object.body, { headers });
     }
@@ -152,7 +170,6 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
 
 export async function handleUpload(context: ApiRouteContext): Promise<Response> {
     const { request, env } = context;
-    const envConfig = env as Record<string, string | undefined>;
     if (request.method !== 'POST') {
         return errorResponse('Method not allowed', 405, {
             code: 'METHOD_NOT_ALLOWED',
@@ -160,24 +177,34 @@ export async function handleUpload(context: ApiRouteContext): Promise<Response> 
     }
 
     try {
+        // Authenticate before parsing multipart data so anonymous callers cannot force the Worker
+        // to buffer a large request. Content-Length is an early rejection only; File.size below is
+        // authoritative because transfer encodings may omit it.
+        const session = await getSession(request, env as any, getAuthOptions(env));
+        if (!session?.user?.id) {
+            return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+        }
+
+        const contentLength = Number(request.headers.get('Content-Length'));
+        if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_BYTES) {
+            return errorResponse('Upload exceeds the 10 MB limit', 413, { code: 'PAYLOAD_TOO_LARGE' });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file');
         const provider = (formData.get('provider') as string) || 'r2';
-        const session = await getSession(request, env as any, getAuthOptions(env));
         const customKey = formData.get('key') as string | null;
 
         if (!(file instanceof File)) {
             return errorResponse('file is required', 400);
         }
-
-        // All uploads require an authenticated session to prevent orphan R2 objects and abuse
-        if (!session?.user?.id) {
-            return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+        if (file.size > MAX_UPLOAD_BYTES) {
+            return errorResponse('Upload exceeds the 10 MB limit', 413, { code: 'PAYLOAD_TOO_LARGE' });
         }
 
         if (provider === 'cloudflare-images') {
-            const accountId = envConfig.CLOUDFLARE_ACCOUNT_ID as string;
-            const apiToken = envConfig.CLOUDFLARE_API_TOKEN as string;
+            const accountId = env.CLOUDFLARE_ACCOUNT_ID;
+            const apiToken = env.CLOUDFLARE_API_TOKEN;
 
             if (!accountId || !apiToken) {
                 return errorResponse(
@@ -230,7 +257,7 @@ export async function handleUpload(context: ApiRouteContext): Promise<Response> 
 
         // Avatar upload: use fixed key {userId}/avatar.png so each upload overwrites
         let uploadOptions: { maxFileSize: number; generateKey?: (file: File) => string } = {
-            maxFileSize: 50 * 1024 * 1024,
+            maxFileSize: MAX_UPLOAD_BYTES,
         };
 
         if (customKey === 'avatar') {
@@ -275,7 +302,13 @@ export async function handleUpload(context: ApiRouteContext): Promise<Response> 
 
         return errorResponse(result.error || 'Upload failed', 400);
     } catch (error) {
-        return errorResponse(error instanceof Error ? error.message : 'Upload failed', 500);
+        console.error(
+            JSON.stringify({
+                event: 'file_upload_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
+        return errorResponse('Upload failed', 500, { code: 'UPLOAD_FAILED' });
     }
 }
 
@@ -300,6 +333,7 @@ export async function handleUploadFile(context: ApiRouteContext): Promise<Respon
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
+    applySafeObjectHeaders(headers, key);
 
     return new Response(object.body, { headers });
 }
@@ -309,9 +343,8 @@ export async function handleCloudflareImages(context: ApiRouteContext): Promise<
     if (auth instanceof Response) return auth;
 
     const { env, request } = context;
-    const envConfig = env as Record<string, string | undefined>;
-    const accountId = envConfig.CF_IMAGES_ACCOUNT_ID;
-    const apiToken = envConfig.CF_IMAGES_API_TOKEN;
+    const accountId = env.CF_IMAGES_ACCOUNT_ID;
+    const apiToken = env.CF_IMAGES_API_TOKEN;
 
     if (!accountId || !apiToken) {
         return errorResponse('Cloudflare Images credentials not configured', 500, {
