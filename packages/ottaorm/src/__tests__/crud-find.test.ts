@@ -1,9 +1,9 @@
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { BaseModel } from '../base/BaseModel';
+import { BaseModel, ConcurrentMutationError } from '../base/BaseModel';
 import { handleCrud, parseCrudRequest } from '../crud';
 import { clearModelRegistry, registerModel } from '../registry';
-import { ValidationError } from '../validation';
+import { DomainValidationError, ValidationError } from '../validation';
 
 const testTable = sqliteTable('tests', {
     id: text('id').primaryKey(),
@@ -124,7 +124,15 @@ describe('OttaORM field/value find functionality', () => {
         });
 
         it('should not trigger field/value lookup when field is missing', async () => {
-            const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+            const paginateSpy = vi.spyOn(TestModel, 'paginate').mockResolvedValue({
+                data: [],
+                total: 0,
+                page: 1,
+                perPage: 15,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPrevPage: false,
+            });
 
             registerModel(TestModel);
 
@@ -138,14 +146,22 @@ describe('OttaORM field/value find functionality', () => {
             });
 
             // Should fall through to regular list query
-            expect(whereSpy).toHaveBeenCalled();
+            expect(paginateSpy).toHaveBeenCalledWith(1, 15, undefined, expect.any(Object));
             expect(result.success).toBe(true);
 
-            whereSpy.mockRestore();
+            paginateSpy.mockRestore();
         });
 
         it('should not trigger field/value lookup when value is undefined', async () => {
-            const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+            const paginateSpy = vi.spyOn(TestModel, 'paginate').mockResolvedValue({
+                data: [],
+                total: 0,
+                page: 1,
+                perPage: 15,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPrevPage: false,
+            });
 
             registerModel(TestModel);
 
@@ -159,10 +175,10 @@ describe('OttaORM field/value find functionality', () => {
             });
 
             // Should fall through to regular list query
-            expect(whereSpy).toHaveBeenCalled();
+            expect(paginateSpy).toHaveBeenCalledWith(1, 15, undefined, expect.any(Object));
             expect(result.success).toBe(true);
 
-            whereSpy.mockRestore();
+            paginateSpy.mockRestore();
         });
 
         it('should handle empty string value', async () => {
@@ -363,6 +379,12 @@ describe('OttaORM field/value find functionality', () => {
             expect(parsed?.parseError?.code).toBe('INVALID_BODY');
         });
 
+        it.each(['1oops', '1.5', '', '9007199254740992'])('rejects non-strict numeric input %j', async (limit) => {
+            const url = new URL(`http://localhost/api/ottaorm/tests?limit=${encodeURIComponent(limit)}`);
+            const parsed = await parseCrudRequest(new Request(url), url, '/api/ottaorm');
+            expect(parsed?.parseError).toMatchObject({ code: 'INVALID_QUERY' });
+        });
+
         it('handleCrud should short-circuit with 400 when parseError is present', async () => {
             registerModel(TestModel);
 
@@ -402,6 +424,47 @@ describe('OttaORM field/value find functionality', () => {
             expect(result.fieldErrors!.name).toContain('Name is too short');
         });
 
+        it('maps fat-model domain validation to its declared safe 4xx contract', async () => {
+            vi.spyOn(TestModel, 'create').mockRejectedValue(
+                new DomainValidationError('Scheduled records require a date', {
+                    code: 'INVALID_SCHEDULE',
+                    fieldErrors: { publishAt: 'A publication date is required' },
+                    status: 422,
+                }),
+            );
+            registerModel(TestModel);
+
+            const result = await handleCrud({ method: 'POST', model: 'tests', body: { status: 'scheduled' } });
+
+            expect(result).toMatchObject({
+                success: false,
+                status: 422,
+                code: 'INVALID_SCHEDULE',
+                fieldErrors: { publishAt: ['A publication date is required'] },
+            });
+        });
+
+        it('maps a lost atomic mutation race to 409 without exposing predicates', async () => {
+            vi.spyOn(TestModel, 'updateConstrained').mockRejectedValue(new ConcurrentMutationError('tests'));
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'PATCH',
+                model: 'tests',
+                id: 'r1',
+                body: { slug: 'after' },
+                mutationGuard: { where: { appId: 'app-1' }, expected: { updatedAt: 1 } },
+            });
+
+            expect(result).toEqual({
+                success: false,
+                error: 'Record changed before the mutation completed',
+                code: 'STALE_WRITE',
+                status: 409,
+            });
+            expect(JSON.stringify(result)).not.toContain('app-1');
+        });
+
         it('returns an opaque 500 and emits one bounded redacted log for unknown errors', async () => {
             vi.spyOn(TestModel, 'create').mockRejectedValue(
                 new Error('D1_ERROR password=private-password token=private-token'),
@@ -435,36 +498,38 @@ describe('OttaORM field/value find functionality', () => {
     });
 });
 
-describe('handleCrud - list query limit/offset capping', () => {
+describe('handleCrud - bounded list query validation', () => {
     beforeEach(() => {
         clearModelRegistry();
     });
 
-    it('should cap limit to MAX_LIST_LIMIT (1000)', async () => {
+    it('rejects a limit above MAX_LIST_LIMIT (1000)', async () => {
         const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
         registerModel(TestModel);
 
-        await handleCrud({
+        const result = await handleCrud({
             method: 'GET',
             model: 'tests',
             query: { limit: 99999 },
         });
 
-        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ limit: 1000 }));
+        expect(result).toMatchObject({ success: false, status: 400, code: 'INVALID_QUERY' });
+        expect(whereSpy).not.toHaveBeenCalled();
         whereSpy.mockRestore();
     });
 
-    it('should cap offset to MAX_LIST_OFFSET (100000)', async () => {
+    it('rejects an offset above MAX_LIST_OFFSET (100000)', async () => {
         const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
         registerModel(TestModel);
 
-        await handleCrud({
+        const result = await handleCrud({
             method: 'GET',
             model: 'tests',
             query: { offset: 9999999 },
         });
 
-        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ offset: 100000 }));
+        expect(result).toMatchObject({ success: false, status: 400, code: 'INVALID_QUERY' });
+        expect(whereSpy).not.toHaveBeenCalled();
         whereSpy.mockRestore();
     });
 
@@ -482,18 +547,47 @@ describe('handleCrud - list query limit/offset capping', () => {
         whereSpy.mockRestore();
     });
 
-    it('should floor negative limit to 1', async () => {
+    it('rejects a negative limit', async () => {
         const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
         registerModel(TestModel);
 
-        await handleCrud({
+        const result = await handleCrud({
             method: 'GET',
             model: 'tests',
             query: { limit: -5 },
         });
 
-        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ limit: 1 }));
+        expect(result).toMatchObject({ success: false, status: 400, code: 'INVALID_QUERY' });
+        expect(whereSpy).not.toHaveBeenCalled();
         whereSpy.mockRestore();
+    });
+
+    it('defaults a list without a window to a bounded page', async () => {
+        const paginateSpy = vi.spyOn(TestModel, 'paginate').mockResolvedValue({
+            data: [],
+            total: 0,
+            page: 1,
+            perPage: 15,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+        });
+        registerModel(TestModel);
+
+        const result = await handleCrud({ method: 'GET', model: 'tests' });
+
+        expect(result.success).toBe(true);
+        expect(paginateSpy).toHaveBeenCalledWith(1, 15, undefined, expect.any(Object));
+    });
+
+    it('rejects mixed page and offset contracts', async () => {
+        registerModel(TestModel);
+        const result = await handleCrud({
+            method: 'GET',
+            model: 'tests',
+            query: { page: 1, offset: 0 },
+        });
+        expect(result).toMatchObject({ success: false, status: 400, code: 'INVALID_QUERY' });
     });
 });
 

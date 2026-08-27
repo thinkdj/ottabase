@@ -31,7 +31,7 @@ export async function handleD1Init(context: ApiRouteContext): Promise<Response> 
     ]);
 
     registerConnection('default', createD1Driver(env.OBCF_D1));
-    const count = (await Todo.all()).length;
+    const count = await Todo.count();
 
     return jsonResponse({
         success: true,
@@ -54,10 +54,14 @@ export async function handleD1Todos(context: ApiRouteContext): Promise<Response>
     registerConnection('default', createD1Driver(env.OBCF_D1));
 
     if (request.method === 'GET') {
-        const todos = await Todo.all({
-            orderBy: 'createdAt',
-            orderDirection: 'desc',
-        });
+        const todos = await Todo.where(
+            {},
+            {
+                orderBy: 'createdAt',
+                orderDirection: 'desc',
+                limit: 100,
+            },
+        );
         return jsonResponse({ todos: todos.map((t) => t.toJson()) });
     }
 

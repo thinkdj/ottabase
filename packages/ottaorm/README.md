@@ -14,7 +14,9 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
 - **Soft Deletes** - Optional `deletedAt` support with `restore()`, `withTrashed()`, `onlyTrashed()`
 - **Batch Operations** - Atomic batch execution via D1's native batch API
 - **Optimistic Updates** - Built-in optimistic cache updates in TanStack Query mutation hooks
-- **Query Safeguards** - Auto-capped `limit` (max 1000) and `offset` (max 100k) on list endpoints
+- **Query Safeguards** - Lists default to page 1 with 15 rows; malformed or out-of-range pagination is rejected
+- **Bounded Collection Reads** - `all()` counts and uses a sentinel before materializing rows; `pages()` provides
+  explicit primary-key keyset scans
 - **Field Metadata** - UI config, validation, form/table config
 - **Type Casting** - Automatic boolean, date, json conversion
 - **Per-App Models** - Core models + app-specific models
@@ -129,6 +131,32 @@ const todo = await Todo.create({ title: 'Buy groceries' });
 await todo.toggle();
 const all = await Todo.all();
 ```
+
+### Bounded collection reads
+
+`Model.all()` is protected by an immutable 10,000-row ceiling. The runtime request is configured with
+`configureOttaORM({ maxAllRows })`; values must be positive safe integers and are capped at 10,000. If no value is
+provided, the requested default is 20,000 and the effective ceiling remains 10,000. An implicit `all()` performs a count
+and a `max + 1` sentinel read before returning rows, so it fails closed instead of silently truncating a table.
+
+Use an explicit bounded limit for a deliberately partial read, or keyset pages for a complete scan:
+
+```typescript
+const preview = await Todo.all({ limit: 100 });
+
+for await (const page of Todo.pages({ perPage: 500, where: { completed: false } })) {
+    await processPage(page);
+}
+```
+
+`pages()` orders by the primary key and adds a caller filter with `$and`, so a scan cannot overwrite an existing
+primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`) and nested `$and`/`$or` groups are supported.
+OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from a legacy
+array predicate, `$in`, nested boolean groups, or several lists in the same query; scalar bindings and search terms
+count against the same budget. Planned results are de-duplicated and receive the requested ordering, offset, and limit
+globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a projection. The
+same planner covers rows, counts, sums, and paginated totals. In the Worker template set `OTTAORM_MAX_ALL_ROWS` in the
+Wrangler environment; the generated ambient `CloudflareEnv` includes it.
 
 ## D1 Database Setup
 
@@ -253,6 +281,19 @@ export default {
 
 Models auto-generate Zod schemas from field metadata. Validation runs automatically in `create()` and `update()`, and
 can be used client-side via `@ottabase/forms`.
+
+Model-owned business rules can throw `DomainValidationError`. Generic and secure CRUD recognize this framework error
+without depending on an application package and return its stable code and optional field errors as a 400 or 422:
+
+```typescript
+import { DomainValidationError } from '@ottabase/ottaorm';
+
+throw new DomainValidationError('A published post needs a title', {
+    code: 'PUBLISHED_TITLE_REQUIRED',
+    status: 422,
+    fieldErrors: { title: 'Add a title before publishing' },
+});
+```
 
 ### Automatic (in create/update)
 
@@ -897,8 +938,25 @@ const membership = await OrganizationMember.first({
 });
 console.log(membership.get('role')); // 'admin', 'member', etc.
 
-// Update member role
-await OrganizationMember.update(membership.id, { role: 'admin' });
+// Admin roster writes are optimistic and atomic. Pass the role/status snapshot shown to the
+// administrator so a concurrent change cannot be overwritten.
+const changed = await OrganizationMember.updateRosterMembership(
+    'user-456',
+    org.id,
+    { role: 'admin' },
+    { role: membership.get('role'), status: membership.get('status') },
+);
+
+if (changed.status === 'updated') {
+    console.log(changed.member); // plain OrganizationMember row data
+} else {
+    console.log(changed.status); // not_found | stale | last_active_owner
+}
+
+const removed = await OrganizationMember.removeRosterMembership('user-456', org.id, {
+    role: 'admin',
+    status: 'active',
+});
 ```
 
 **Available Roles:** `platform_owner` (system-scoped, `*:*`), `owner` (org-scoped, scoped permissions), `admin`
@@ -924,6 +982,17 @@ await OrganizationMember.activatePendingInvites(user.id, user.email);
 // Accessible org ids for the security context (active memberships + owned orgs)
 const orgIds = await OrganizationMember.organizationIdsForUser(user.id);
 ```
+
+**Roster mutation safety.** Use `updateRosterMembership` and `removeRosterMembership` for administrative membership
+writes. They run the membership mutation and any organization-scoped `user_roles` revocation in one transactional D1
+batch, with the expected role/status and last-active-owner guard repeated on every mutating statement. Role demotions
+revoke grants; removals always revoke; status-only suspension leaves grants untouched. A failed guard is classified as
+`not_found`, `stale`, or `last_active_owner` without performing an unsafe follow-up write.
+
+The fat model rejects invalid effective membership states with a framework `DomainValidationError` (safe HTTP 422 in
+generic CRUD), and SQLite checks remain the final integrity boundary: role/status must use the documented enums, and a
+row without `userId` must be an `invited` row with `invitedEmail`. This applies equally to direct model writes and
+generic OttaORM CRUD.
 
 ### UserGroup Model (generic groups)
 
@@ -1065,7 +1134,9 @@ and applied automatically by the secure CRUD handler.
   layer throws instead of silently dropping the filter (which would otherwise leak across tenants). Keep policy `field`
   / `contextFields` / `enforceOnWrite` names in sync with your table columns.
 - **Caller `where` can't widen scope.** The RLS filter is merged last, so a client can't override a security field.
-- **Read-before-write.** Update/delete first verify the record is visible under the caller's RLS filter.
+- **Authorized snapshot plus atomic write.** Update/delete first load the complete record under the caller's RLS filter,
+  then carry those predicates and an available `updatedAt`/`version` value into the actual database mutation. A row that
+  leaves scope or changes between the read and write fails with a conflict instead of being mutated.
 - **Denials are opaque at the API boundary.** Unauthenticated callers receive a generic 401 and authenticated callers a
   generic 403. Policy text, security context, attempted request data, and stack traces are never returned to clients.
 - **Unknown models stay private.** `MODEL_NOT_FOUND` never lists registered models or server registration paths.
@@ -1286,17 +1357,27 @@ Search uses fields marked `searchable: true` in model metadata and supports pagi
 GET /api/ottaorm/posts?search=hello&orderBy=createdAt&orderDirection=desc&page=1&perPage=10
 ```
 
+Applications that need caller-aware mutation preparation can pass `prepareAuthorizedMutation` to
+`executeSecureCrudRequest`. For updates it runs only after RLS has loaded the authorized, complete current row, and
+before model validation and the atomic write. It may return a replacement body or a CRUD response. Keep reusable
+business rules in the model's `prepareUpdateMutation` hook; use this boundary callback only for request/session concerns
+such as permission checks or normalizing server-owned tenant/author fields.
+
 ### Query Limits
 
-To prevent abuse, the CRUD API enforces upper bounds on query parameters:
+Every list is bounded. With no window parameters the endpoint uses `page=1&perPage=15`; an explicit `offset` without a
+`limit` uses the maximum non-paginated window of 1,000 rows. Pagination (`page`/`perPage`) cannot be mixed with
+windowing (`limit`/`offset`). Values must be base-10 safe integers in these ranges:
 
-| Parameter | Paginated | Non-paginated |
-| --------- | --------- | ------------- |
-| `perPage` | max 100   | N/A           |
-| `limit`   | N/A       | max 1000      |
-| `offset`  | N/A       | max 100,000   |
+| Parameter | Minimum | Maximum      |
+| --------- | ------- | ------------ |
+| `page`    | 1       | safe integer |
+| `perPage` | 1       | 100          |
+| `limit`   | 1       | 1,000        |
+| `offset`  | 0       | 100,000      |
 
-Values exceeding these limits are silently capped to the maximum.
+Malformed, fractional, negative, mixed-mode, or out-of-range inputs return a 400 response; values are never silently
+coerced or capped.
 
 ### Client Hooks
 

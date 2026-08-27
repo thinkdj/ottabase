@@ -15,6 +15,7 @@ import {
 } from '@ottabase/ottablog';
 import {
     clearConnection,
+    configureOttaORM,
     hasConnection,
     initRLS,
     type ModelRLSConfig,
@@ -44,7 +45,6 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
-import type { CloudflareEnv } from '../cloudflare-env';
 import { getPremiumPackageModels, premium } from './premium';
 import { readJson } from './utils';
 
@@ -58,11 +58,15 @@ export function initAdminCron(env: CloudflareEnv): Response | null {
         });
     }
 
+    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS });
     registerConnection('default', createD1Driver(env.OBCF_D1));
     return null;
 }
 
-export async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
+export async function checkMigrationAuth(
+    request: { url: string; method: string; headers: { get(name: string): string | null }; json(): Promise<unknown> },
+    env: CloudflareEnv,
+): Promise<boolean> {
     // Deliberately narrower than isDevEnvironment(): this gates schema auto-migrations
     // (including destructive ones), so ONLY an explicit 'development' ENVIRONMENT bypasses
     // MIGRATION_SECRET. An UNSET ENVIRONMENT must fail closed — otherwise a production deploy
@@ -185,6 +189,8 @@ function registerAppModels(env: CloudflareEnv): void {
 
 export function ensureDbConnection(env: CloudflareEnv): void {
     if (!env.OBCF_D1) return;
+
+    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS });
 
     // Cloudflare bindings are stable object references within an isolate, so
     // reference equality is sufficient to detect whether this isolate has

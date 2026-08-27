@@ -221,6 +221,7 @@
     "vars": {
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
+        "OTTAORM_MAX_ALL_ROWS": "5000",
         // Local dev only: lets @ottabase/auth fall back to its built-in insecure signing
         // secret when AUTH_SECRET is unset. Intentionally NOT set in env.production, so a
         // production deploy without AUTH_SECRET fails closed instead of using a public secret.
@@ -244,6 +245,7 @@
             "vars": {
                 "ENVIRONMENT": "production",
                 "NODE_ENV": "production",
+                "OTTAORM_MAX_ALL_ROWS": "5000",
                 // For Analytics (Workers Analytics Engine): Substituted from GitHub Secret at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },
@@ -333,6 +335,7 @@
             "vars": {
                 "ENVIRONMENT": "staging",
                 "NODE_ENV": "production",
+                "OTTAORM_MAX_ALL_ROWS": "5000",
             },
             "unsafe": {
                 "bindings": [
@@ -410,6 +413,7 @@
             "vars": {
                 "ENVIRONMENT": "preview",
                 "NODE_ENV": "production",
+                "OTTAORM_MAX_ALL_ROWS": "5000",
                 // For Analytics (WAE): substituted from GitHub Secret at deploy
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },

@@ -306,7 +306,7 @@ export class AuditLog extends BaseModel {
      * Get recent audit logs
      */
     static async getRecent(limit: number = 100) {
-        return this.all({ orderBy: 'createdAt', orderDirection: 'desc', limit });
+        return this.where({}, { orderBy: 'createdAt', orderDirection: 'desc', limit });
     }
 
     /**
@@ -319,15 +319,16 @@ export class AuditLog extends BaseModel {
     /**
      * Get audit logs in date range
      */
-    static async getByDateRange(startDate: Date, endDate: Date) {
-        const logs = await this.all();
-        return logs.filter((log) => {
-            const createdAt = log.get('createdAt');
-            if (createdAt instanceof Date) {
-                return createdAt >= startDate && createdAt <= endDate;
-            }
-            return false;
-        });
+    static async getByDateRange(startDate: Date, endDate: Date, limit: number = 1000) {
+        return this.where(
+            {
+                createdAt: {
+                    $gte: startDate.getTime(),
+                    $lte: endDate.getTime(),
+                },
+            },
+            { orderBy: 'createdAt', orderDirection: 'desc', limit },
+        );
     }
 
     /**

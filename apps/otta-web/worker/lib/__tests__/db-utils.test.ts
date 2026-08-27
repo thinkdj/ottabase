@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureDbConnection, resetDbConnectionForTests } from '../db-utils';
+import { ensureDbConnection, initAdminCron, resetDbConnectionForTests } from '../db-utils';
 
 const {
     mockRegisterConnection,
@@ -9,6 +9,7 @@ const {
     mockClearConnection,
     mockHasConnection,
     mockCreateD1Driver,
+    mockConfigureOttaORM,
 } = vi.hoisted(() => ({
     mockRegisterConnection: vi.fn(),
     mockRegisterModels: vi.fn(),
@@ -17,6 +18,7 @@ const {
     mockClearConnection: vi.fn(),
     mockHasConnection: vi.fn(() => false),
     mockCreateD1Driver: vi.fn((binding) => ({ binding })),
+    mockConfigureOttaORM: vi.fn(),
 }));
 
 vi.mock('@ottabase/brand-engine/persistence', () => ({
@@ -50,6 +52,7 @@ vi.mock('@ottabase/ottablog', () => ({
 vi.mock('@ottabase/ottaorm', () => ({
     BaseModel: class BaseModel {},
     clearConnection: mockClearConnection,
+    configureOttaORM: mockConfigureOttaORM,
     hasConnection: mockHasConnection,
     initRLS: mockInitRLS,
     registerConnection: mockRegisterConnection,
@@ -112,7 +115,7 @@ describe('ensureDbConnection', () => {
     });
 
     it('registers the connection only once per isolate for the same binding', () => {
-        const env = { OBCF_D1: { id: 'binding-1' } } as any;
+        const env = { OBCF_D1: { id: 'binding-1' }, OTTAORM_MAX_ALL_ROWS: '5000' } as any;
 
         ensureDbConnection(env);
         const policyCallsAfterFirst = mockRegisterPolicy.mock.calls.length;
@@ -122,6 +125,11 @@ describe('ensureDbConnection', () => {
         expect(mockRegisterConnection).toHaveBeenCalledTimes(1);
         expect(mockRegisterModels).toHaveBeenCalledTimes(1);
         expect(mockInitRLS).toHaveBeenCalledTimes(1);
+        // Runtime safety configuration is intentionally refreshed on every entry,
+        // even when the isolate can reuse the existing database connection.
+        expect(mockConfigureOttaORM).toHaveBeenCalledTimes(2);
+        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(1, { maxAllRows: '5000' });
+        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(2, { maxAllRows: '5000' });
         // Asserted as "unchanged by the second call", NOT as a fixed number: the policy
         // count is a function of which packages are enabled (media, plus ottaai's credential
         // policy, plus the ottablog org-mode overrides), so a hard-coded 1 would break every
@@ -141,5 +149,32 @@ describe('ensureDbConnection', () => {
         expect(mockCreateD1Driver).toHaveBeenCalledTimes(2);
         expect(mockRegisterConnection).toHaveBeenCalledTimes(2);
         expect(mockClearConnection).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('initAdminCron', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('configures OttaORM before registering the cron connection', () => {
+        const binding = { id: 'cron-binding' };
+        const response = initAdminCron({ OBCF_D1: binding, OTTAORM_MAX_ALL_ROWS: '2500' } as any);
+
+        expect(response).toBeNull();
+        expect(mockConfigureOttaORM).toHaveBeenCalledWith({ maxAllRows: '2500' });
+        expect(mockCreateD1Driver).toHaveBeenCalledWith(binding);
+        expect(mockConfigureOttaORM.mock.invocationCallOrder[0]).toBeLessThan(
+            mockRegisterConnection.mock.invocationCallOrder[0],
+        );
+    });
+
+    it('fails closed without a D1 binding', async () => {
+        const response = initAdminCron({} as any);
+
+        expect(response?.status).toBe(500);
+        expect(response?.headers.get('cache-control')).toBe('no-store');
+        await expect(response?.json()).resolves.toMatchObject({ code: 'CONFIG_ERROR' });
+        expect(mockConfigureOttaORM).not.toHaveBeenCalled();
     });
 });

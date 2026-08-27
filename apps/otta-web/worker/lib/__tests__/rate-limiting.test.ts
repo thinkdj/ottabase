@@ -98,6 +98,14 @@ describe('enforceBruteForceThrottle (secret-gated, fail-open policy)', () => {
         for (let i = 0; i < 10; i++) await enforceBruteForceThrottle(makeRequest(), env, 'k', 'test');
         const res = await enforceBruteForceThrottle(makeRequest(), env, 'k', 'test');
         expect(res?.status).toBe(429);
+        expect(res?.headers.get('cache-control')).toBe('no-store');
+        expect(res?.headers.get('ratelimit-limit')).toBe('10');
+        expect(res?.headers.get('ratelimit-remaining')).toBe('0');
+        await expect(res?.json()).resolves.toMatchObject({
+            error: 'Too many requests. Please try again later.',
+            code: 'RATE_LIMITED',
+            metadata: { limit: 10, remaining: 0 },
+        });
     });
 
     it('FAILS OPEN (null) with a logged warning when the limiter binding is unavailable', async () => {

@@ -40,6 +40,9 @@ export {
     parseSqliteUniqueConstraintForApi,
     rlsMiddleware,
     secureCrud,
+    type AuthorizedMutationContext,
+    type PrepareAuthorizedMutation,
+    type SecureCrudHooks,
     type SecureCrudOptions,
 } from './secure-crud';
 

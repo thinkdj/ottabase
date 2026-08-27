@@ -4,8 +4,9 @@
  * Replaces manual tenant filtering with automatic RLS enforcement
  */
 
-import { handleCrud, type CrudRequest, type CrudResponse } from '../crud';
+import { handleCrud, parseStrictQueryInteger, type CrudRequest, type CrudResponse } from '../crud';
 import { getModel } from '../registry';
+import { normalizeValidationFailure } from '../validation';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { globalRLS, RLSError } from './engine';
@@ -65,6 +66,25 @@ export interface SecureCrudOptions {
     url: URL;
     context: SecurityContext;
     env?: any;
+    prepareAuthorizedMutation?: PrepareAuthorizedMutation;
+}
+
+export interface AuthorizedMutationContext {
+    method: 'POST' | 'PATCH' | 'PUT';
+    model: string;
+    id?: string;
+    body: Record<string, unknown>;
+    /** Complete authorized persistence snapshot; undefined for create. */
+    currentData?: Record<string, unknown>;
+    context: SecurityContext;
+}
+
+export type PrepareAuthorizedMutation = (
+    mutation: AuthorizedMutationContext,
+) => Promise<{ body: Record<string, unknown> } | CrudResponse> | { body: Record<string, unknown> } | CrudResponse;
+
+export interface SecureCrudHooks {
+    prepareAuthorizedMutation?: PrepareAuthorizedMutation;
 }
 
 /**
@@ -74,7 +94,7 @@ export interface SecureCrudOptions {
  * and enforces it on every read/write (verifying access before update/delete).
  */
 export async function secureCrud(options: SecureCrudOptions): Promise<Response> {
-    const { request, url, context } = options;
+    const { request, url, context, prepareAuthorizedMutation } = options;
 
     try {
         // Parse CRUD request
@@ -137,52 +157,28 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                 query.orderDirection = orderDirection;
             }
 
-            const limit = url.searchParams.get('limit');
-            if (limit) {
-                const parsedLimit = parseInt(limit, 10);
-                if (!Number.isFinite(parsedLimit)) {
+            const numericParameters: Array<{
+                raw: string | null;
+                name: 'limit' | 'offset' | 'page' | 'perPage';
+            }> = [
+                { raw: url.searchParams.get('limit'), name: 'limit' },
+                { raw: url.searchParams.get('offset'), name: 'offset' },
+                { raw: url.searchParams.get('page'), name: 'page' },
+                {
+                    raw: url.searchParams.get('perPage') ?? url.searchParams.get('per_page'),
+                    name: 'perPage',
+                },
+            ];
+            for (const parameter of numericParameters) {
+                if (parameter.raw === null) continue;
+                try {
+                    query[parameter.name] = parseStrictQueryInteger(parameter.raw, parameter.name);
+                } catch {
                     return errorResponse('Invalid query parameter', 400, {
                         code: 'INVALID_QUERY',
-                        details: 'limit must be a valid integer',
+                        details: `${parameter.name} must be a safe integer`,
                     });
                 }
-                query.limit = Math.min(Math.max(1, parsedLimit), 1000);
-            }
-
-            const offset = url.searchParams.get('offset');
-            if (offset) {
-                const parsedOffset = parseInt(offset, 10);
-                if (!Number.isFinite(parsedOffset)) {
-                    return errorResponse('Invalid query parameter', 400, {
-                        code: 'INVALID_QUERY',
-                        details: 'offset must be a valid integer',
-                    });
-                }
-                query.offset = Math.min(Math.max(0, parsedOffset), 100_000);
-            }
-
-            const page = url.searchParams.get('page');
-            if (page) {
-                const parsedPage = parseInt(page, 10);
-                if (!Number.isFinite(parsedPage)) {
-                    return errorResponse('Invalid query parameter', 400, {
-                        code: 'INVALID_QUERY',
-                        details: 'page must be a valid integer',
-                    });
-                }
-                query.page = parsedPage;
-            }
-
-            const perPage = url.searchParams.get('perPage') || url.searchParams.get('per_page');
-            if (perPage) {
-                const parsedPerPage = parseInt(perPage, 10);
-                if (!Number.isFinite(parsedPerPage)) {
-                    return errorResponse('Invalid query parameter', 400, {
-                        code: 'INVALID_QUERY',
-                        details: 'perPage must be a valid integer',
-                    });
-                }
-                query.perPage = parsedPerPage;
             }
 
             const uniqueField = url.searchParams.get('uniqueField');
@@ -218,6 +214,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             body,
             query,
             context,
+            prepareAuthorizedMutation,
         });
 
         if (!result.success) {
@@ -244,6 +241,14 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             return errorResponse(failure.error!, failure.status, { code: failure.code });
         }
 
+        const validation = normalizeValidationFailure(error);
+        if (validation) {
+            return errorResponse(validation.message, validation.status, {
+                code: validation.code,
+                fieldErrors: validation.fieldErrors,
+            });
+        }
+
         console.error(
             JSON.stringify({
                 event: 'ottaorm_secure_crud_failed',
@@ -264,6 +269,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
 export async function executeSecureCrudRequest(
     crudRequest: CrudRequest,
     context: SecurityContext,
+    hooks: SecureCrudHooks = {},
 ): Promise<CrudResponse> {
     const { method, model, id, body, query } = crudRequest;
 
@@ -275,7 +281,7 @@ export async function executeSecureCrudRequest(
             success: false,
             error: crudRequest.parseError.message,
             code: crudRequest.parseError.code,
-            status: 400,
+            status: crudRequest.parseError.status ?? 400,
         };
     }
 
@@ -287,6 +293,7 @@ export async function executeSecureCrudRequest(
             body,
             query,
             context,
+            prepareAuthorizedMutation: hooks.prepareAuthorizedMutation,
         });
     } catch (error) {
         if (error instanceof RLSError) {
@@ -302,22 +309,15 @@ export async function executeSecureCrudRequest(
             return publicRlsFailure(context);
         }
 
-        // Handle ValidationError from BaseModel.create/update
-        // Returns field-level errors for forms to display inline
-        if (error && typeof error === 'object' && 'fieldErrors' in error && (error as any).name === 'ValidationError') {
-            const err = error as unknown as { message?: string; fieldErrors: Record<string, string> };
-            const raw = err.fieldErrors;
-            const fieldErrors: Record<string, string[]> = {};
-            for (const [k, v] of Object.entries(raw)) {
-                fieldErrors[k] = [v];
-            }
+        const validation = normalizeValidationFailure(error);
+        if (validation) {
             return {
                 success: false,
-                error: err.message || 'Validation failed',
-                code: 'VALIDATION_ERROR',
-                fieldErrors,
+                error: validation.message,
+                code: validation.code,
+                fieldErrors: validation.fieldErrors,
                 hint: `Validation failed for ${model}`,
-                status: 422,
+                status: validation.status,
             };
         }
 
@@ -401,8 +401,39 @@ async function executeSecureCrud(params: {
     body?: any;
     query?: any;
     context: SecurityContext;
+    prepareAuthorizedMutation?: PrepareAuthorizedMutation;
 }): Promise<CrudResponse> {
-    const { method, model, id, body, query, context } = params;
+    const { method, model, id, body, query, context, prepareAuthorizedMutation } = params;
+
+    const prepareMutation = async (
+        mutationMethod: 'POST' | 'PATCH' | 'PUT',
+        mutationBody: Record<string, unknown>,
+        currentData?: Record<string, unknown>,
+    ): Promise<{ body: Record<string, unknown> } | CrudResponse> => {
+        if (!prepareAuthorizedMutation) return { body: mutationBody };
+        return prepareAuthorizedMutation({
+            method: mutationMethod,
+            model,
+            id,
+            body: mutationBody,
+            currentData,
+            context,
+        });
+    };
+
+    const mutationGuard = (
+        Model: { hasColumn?: (field: string) => boolean },
+        rlsFilter: Record<string, any>,
+        currentData: Record<string, unknown>,
+    ): NonNullable<CrudRequest['mutationGuard']> => {
+        const expected: Record<string, unknown> = {};
+        for (const field of ['updatedAt', 'version']) {
+            if (Model.hasColumn?.(field) && Object.prototype.hasOwnProperty.call(currentData, field)) {
+                expected[field] = currentData[field];
+            }
+        }
+        return { where: rlsFilter, ...(Object.keys(expected).length > 0 ? { expected } : {}) };
+    };
 
     // READ operations
     if (method === 'GET') {
@@ -436,12 +467,16 @@ async function executeSecureCrud(params: {
 
     // CREATE operations
     if (method === 'POST') {
-        if (!body) {
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
             return { success: false, error: 'Missing request body', status: 400 };
         }
 
+        const prepared = await prepareMutation('POST', { ...body });
+        if ('success' in prepared) return prepared;
+        const mutationBody = prepared.body;
+
         // Validate write and inject security context (mutates body to inject tenant/owner ids)
-        globalRLS.validateWrite(model, context, body, 'create');
+        globalRLS.validateWrite(model, context, mutationBody, 'create');
 
         // Fail closed: a security field that isn't a real column can't be enforced by the DB.
         const writableSecurityFields = securityWriteFields(model);
@@ -450,7 +485,7 @@ async function executeSecureCrud(params: {
         const crudRequest: CrudRequest = {
             method: 'POST',
             model,
-            body,
+            body: mutationBody,
             allowedWritableFields: writableSecurityFields.length > 0 ? writableSecurityFields : undefined,
         };
 
@@ -463,7 +498,7 @@ async function executeSecureCrud(params: {
             return { success: false, error: 'Missing record ID', status: 400 };
         }
 
-        if (!body) {
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
             return { success: false, error: 'Missing request body', status: 400 };
         }
 
@@ -471,13 +506,10 @@ async function executeSecureCrud(params: {
         const rlsFilter = globalRLS.getReadFilter(model, context);
         assertSecurityColumns(model, Object.keys(rlsFilter), context);
 
-        const verifyResult = await handleCrud({
-            method: 'GET',
-            model,
-            id,
-            query: { where: rlsFilter },
-        });
-        if (!verifyResult.success || !verifyResult.data) {
+        const Model = getModel(model);
+        if (!Model) return handleCrud({ method, model, id, body });
+        const currentData = await Model.readMutationSnapshot(id, rlsFilter);
+        if (!currentData) {
             return {
                 success: false,
                 error: 'Record not found or access denied',
@@ -485,8 +517,12 @@ async function executeSecureCrud(params: {
             };
         }
 
+        const prepared = await prepareMutation(method, { ...body }, currentData);
+        if ('success' in prepared) return prepared;
+        const mutationBody = prepared.body;
+
         // Validate write
-        globalRLS.validateWrite(model, context, body, 'update');
+        globalRLS.validateWrite(model, context, mutationBody, 'update');
 
         const writableSecurityFields = securityWriteFields(model);
         assertSecurityColumns(model, writableSecurityFields, context);
@@ -495,7 +531,9 @@ async function executeSecureCrud(params: {
             method: method === 'PUT' ? 'PUT' : 'PATCH',
             model,
             id,
-            body,
+            body: mutationBody,
+            currentData,
+            mutationGuard: mutationGuard(Model, rlsFilter, currentData),
             allowedWritableFields: writableSecurityFields.length > 0 ? writableSecurityFields : undefined,
         };
 
@@ -512,13 +550,10 @@ async function executeSecureCrud(params: {
         const rlsFilter = globalRLS.getReadFilter(model, context);
         assertSecurityColumns(model, Object.keys(rlsFilter), context);
 
-        const verifyResult = await handleCrud({
-            method: 'GET',
-            model,
-            id,
-            query: { where: rlsFilter },
-        });
-        if (!verifyResult.success || !verifyResult.data) {
+        const Model = getModel(model);
+        if (!Model) return handleCrud({ method: 'DELETE', model, id });
+        const currentData = await Model.readMutationSnapshot(id, rlsFilter);
+        if (!currentData) {
             return {
                 success: false,
                 error: 'Record not found or access denied',
@@ -533,6 +568,7 @@ async function executeSecureCrud(params: {
             method: 'DELETE',
             model,
             id,
+            mutationGuard: mutationGuard(Model, rlsFilter, currentData),
         };
 
         return handleCrud(crudRequest);

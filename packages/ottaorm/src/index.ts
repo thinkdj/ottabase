@@ -19,7 +19,7 @@ export {
 export type { ModelMetadata, ModelRegistryEntry } from './registry';
 
 // Generic CRUD handler
-export { handleCrud, parseCrudRequest } from './crud';
+export { handleCrud, parseCrudRequest, parseStrictQueryInteger, validateCrudQuery } from './crud';
 export type { CrudRequest, CrudResponse } from './crud';
 
 // Row-Level Security (RLS)
@@ -36,7 +36,17 @@ export {
     rlsMiddleware,
     secureCrud,
 } from './rls';
-export type { ModelRLSConfig, RLSPolicy, RLSViolation, SecureCrudOptions, SecurityContext, SecurityLevel } from './rls';
+export type {
+    AuthorizedMutationContext,
+    ModelRLSConfig,
+    PrepareAuthorizedMutation,
+    RLSPolicy,
+    RLSViolation,
+    SecureCrudHooks,
+    SecureCrudOptions,
+    SecurityContext,
+    SecurityLevel,
+} from './rls';
 
 // Migrations
 export { coreMigrations, rollbackMigrations, runMigrations } from './migrations';
@@ -46,23 +56,49 @@ export type { Migration } from './migrations';
 export { autoInit, collectTableSchemas, runAutoMigrations } from './migrations';
 export type { AutoInitConfig, RuntimeMigrationConfig } from './migrations';
 
+// Runtime read-safety policy
+export {
+    configureOttaORM,
+    getOttaORMMaxAllRows,
+    OTTAORM_ALL_HARD_LIMIT,
+    OttaORMAllRowsLimitError,
+} from './runtime-config';
+export type { OttaORMRuntimeConfig } from './runtime-config';
+
 /**
  * Base models (Edge-safe)
  */
-export { AbstractBaseModel, BaseModel } from './base';
+export {
+    AbstractBaseModel,
+    BaseModel,
+    ConcurrentMutationError,
+    QueryBindingLimitError,
+    MAX_SEARCH_TERM_BYTES,
+} from './base';
 export type {
     IModelConstructorParams,
+    AtomicMutationGuard,
+    CollectionQueryOptions,
+    KeysetPagesOptions,
     ModelFieldDescriptor,
     ModelFieldType,
     ModelFields,
     PackageType,
     PaginationResult,
     RelationshipConfig,
+    UpdateMutationContext,
 } from './base';
 
 // Validation (Zod schema builder from field metadata)
-export { ValidationError, buildZodSchema, validateField, validateWithSchema } from './validation';
-export type { ValidationResult } from './validation';
+export {
+    DomainValidationError,
+    ValidationError,
+    buildZodSchema,
+    normalizeValidationFailure,
+    validateField,
+    validateWithSchema,
+} from './validation';
+export type { DomainValidationErrorOptions, NormalizedValidationFailure, ValidationResult } from './validation';
 
 /**
  * Core models (SQL only - Edge-safe)
@@ -127,15 +163,21 @@ export type {
     NewUserType,
     NewVerificationTokenType,
     OrganizationMemberType,
+    OrganizationRosterRole,
+    OrganizationRosterStatus,
     // Multi-tenant/RBAC types
     OrganizationType,
     PermissionType,
     RoleType,
+    RemoveRosterMembershipResult,
+    RosterMembershipChanges,
+    RosterMembershipExpected,
     SessionType,
     TagType,
     UserGroupMemberType,
     UserGroupType,
     UserRoleType,
     UserType,
+    UpdateRosterMembershipResult,
     VerificationTokenType,
 } from './models';

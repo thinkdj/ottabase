@@ -63,6 +63,7 @@
     },
     "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/ottaorm#readme",
     "dependencies": {
+        "@ottabase/cron": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/utils": "workspace:*",
         "zod": "catalog:"

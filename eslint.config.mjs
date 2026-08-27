@@ -30,7 +30,12 @@ import storybook from 'eslint-plugin-storybook';
 const CLIENT_GLOBS = ['apps/*/src/**/*.{ts,tsx}'];
 
 /** Edge/server code: Workers, route handlers, and framework package sources. */
-const SERVER_GLOBS = ['apps/*/worker/**/*.ts', 'apps/*/cloudflare-worker.ts', 'packages/*/src/**/*.{ts,tsx}'];
+const SERVER_GLOBS = [
+    'apps/*/worker/**/*.ts',
+    'apps/*/ottabase/**/*.{ts,tsx}',
+    'apps/*/cloudflare-worker.ts',
+    'packages/*/src/**/*.{ts,tsx}',
+];
 
 /** Node-only tooling. Genuinely allowed to use `process`, raw responses, etc. */
 const TOOLING_GLOBS = [
@@ -69,7 +74,23 @@ const NO_PROCESS_ENV = {
         'process.env is not available in the Cloudflare Workers runtime. Read configuration from the env binding (getOttabaseConfig(env)) instead.',
 };
 
-const SERVER_SYNTAX_RULES = [NO_HANDROLLED_JSON_RESPONSE, NO_PROCESS_ENV];
+/**
+ * `Model.all()` is a complete-set request and must go through OttaORM's
+ * bounded implementation or the explicit keyset `pages()` API. The selector
+ * intentionally targets model-shaped calls and `withTrashed().all()` without
+ * matching D1's lowercase statement `.all()` or `Promise.all()`.
+ */
+const NO_UNBOUNDED_MODEL_ALL = {
+    selector: [
+        "CallExpression[callee.type='MemberExpression'][callee.property.name='all'][callee.object.type='ThisExpression']",
+        "CallExpression[callee.type='MemberExpression'][callee.property.name='all'][callee.object.type='Identifier'][callee.object.name=/^[A-Z]/][callee.object.name!='Promise']",
+        "CallExpression[callee.type='MemberExpression'][callee.property.name='all'][callee.object.type='CallExpression'][callee.object.callee.property.name='withTrashed']",
+    ].join(','),
+    message:
+        'Do not read a model with .all() from a request path. Use a bounded where/aggregate query or iterate Model.pages({ perPage }).',
+};
+
+const SERVER_SYNTAX_RULES = [NO_HANDROLLED_JSON_RESPONSE, NO_PROCESS_ENV, NO_UNBOUNDED_MODEL_ALL];
 
 // ============================================================
 // Local plugin: Ottabase-specific rules
@@ -299,8 +320,6 @@ export default [
         // Hand-rolled JSON responses predating the errorResponse() contract.
         // Fix: return errorResponse(...) / jsonResponse(...) from @ottabase/utils.
         files: [
-            'apps/otta-web/worker/bootstrap/routes.ts',
-            'apps/otta-web/worker/lib/rate-limiting.ts',
             'packages/analytics/src/server.ts',
             'packages/auth/src/backend-handler.ts',
             'packages/cf-realtime/src/server/RealtimeActor.ts',

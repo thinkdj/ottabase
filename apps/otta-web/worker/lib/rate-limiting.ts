@@ -2,7 +2,6 @@ import { createKVClient } from '@ottabase/cf/kv';
 import { userKey, globalKey } from '@ottabase/cf/cache-keys';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import type { CloudflareEnv } from '../cloudflare-env';
 
 /**
  * Build scoped rate limit key
@@ -131,16 +130,11 @@ function buildRateLimitResponse(rateLimitData: {
     });
 
     if (!success) {
-        return new Response(
-            JSON.stringify({
-                error: 'Too many requests. Please try again later.',
-                code: 'RATE_LIMITED',
-                limit,
-                remaining,
-                resetAfter,
-            }),
-            { status: 429, headers },
-        );
+        return errorResponse('Too many requests. Please try again later.', 429, {
+            code: 'RATE_LIMITED',
+            metadata: { limit, remaining, resetAfter },
+            headers,
+        });
     }
 
     return null;

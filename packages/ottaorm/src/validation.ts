@@ -46,6 +46,74 @@ export class ValidationError extends Error {
     }
 }
 
+export interface DomainValidationErrorOptions {
+    /** Stable machine-readable API code. */
+    code?: string;
+    /** Field-level messages for form consumers. */
+    fieldErrors?: Record<string, string | string[]>;
+    /** Use 400 for malformed input and 422 for a well-formed invalid domain state. */
+    status?: 400 | 422;
+}
+
+/**
+ * Validation failure raised by a fat model's cross-field/domain rules.
+ *
+ * `ValidationError` is produced by the metadata/Zod field validator. Domain
+ * rules (state transitions, mutually-dependent fields, aggregate invariants)
+ * use this class so generic CRUD can expose the same safe 4xx contract without
+ * importing a feature package such as ottablog.
+ */
+export class DomainValidationError extends Error {
+    readonly code: string;
+    readonly fieldErrors: Record<string, string[]>;
+    readonly status: 400 | 422;
+
+    constructor(message: string, options: DomainValidationErrorOptions = {}) {
+        super(message);
+        this.name = 'DomainValidationError';
+        this.code = options.code ?? 'VALIDATION_ERROR';
+        this.status = options.status ?? 422;
+        this.fieldErrors = Object.fromEntries(
+            Object.entries(options.fieldErrors ?? {}).map(([field, messages]) => [
+                field,
+                Array.isArray(messages) ? messages : [messages],
+            ]),
+        );
+    }
+}
+
+export interface NormalizedValidationFailure {
+    message: string;
+    code: string;
+    fieldErrors: Record<string, string[]>;
+    status: 400 | 422;
+}
+
+/** Normalize framework validation errors at request boundaries. */
+export function normalizeValidationFailure(error: unknown): NormalizedValidationFailure | null {
+    if (error instanceof DomainValidationError) {
+        return {
+            message: error.message,
+            code: error.code,
+            fieldErrors: error.fieldErrors,
+            status: error.status,
+        };
+    }
+
+    if (error instanceof ValidationError) {
+        return {
+            message: error.message,
+            code: 'VALIDATION_ERROR',
+            fieldErrors: Object.fromEntries(
+                Object.entries(error.fieldErrors).map(([field, message]) => [field, [message]]),
+            ),
+            status: 422,
+        };
+    }
+
+    return null;
+}
+
 /**
  * Parse pipe-separated validation rules string into a Map
  * e.g., "required|email|min:8|max:100" → Map { required: true, email: true, min: 8, max: 100 }

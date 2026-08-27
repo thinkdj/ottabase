@@ -101,10 +101,12 @@ describe('secureCrud response boundary', () => {
 describe('executeSecureCrudRequest', () => {
     beforeEach(() => {
         globalRLS.clear();
+        clearModelRegistry();
     });
 
     afterEach(() => {
         globalRLS.clear();
+        clearModelRegistry();
         vi.restoreAllMocks();
     });
 
@@ -253,6 +255,83 @@ describe('executeSecureCrudRequest', () => {
         );
         expect(result.success).toBe(false);
         expect(result.status).toBe(400);
+    });
+
+    it('PATCH: reuses the authorized row for model normalization', async () => {
+        globalRLS.register({ model: 'posts', policy: RLSPolicies.TenantScoped(false) });
+        const postsTable = sqliteTable('posts', {
+            id: text('id').primaryKey(),
+            title: text('title'),
+            organizationId: text('organization_id'),
+            updatedAt: text('updated_at'),
+        });
+        class SecurePost extends BaseModel {
+            static entity = 'posts';
+            static table = postsTable;
+        }
+        registerModel(SecurePost);
+        const currentData = {
+            id: 'p1',
+            title: 'Before',
+            organizationId: 'org-1',
+            updatedAt: 'snapshot-1',
+            passwordHash: 'hidden',
+        };
+        vi.spyOn(SecurePost, 'readMutationSnapshot').mockResolvedValue(currentData);
+        const handleCrudSpy = vi.spyOn(crud, 'handleCrud').mockResolvedValue({
+            success: true,
+            data: { ...currentData, title: 'After' },
+            status: 200,
+        });
+
+        const result = await executeSecureCrudRequest(
+            { method: 'PATCH', model: 'posts', id: 'p1', body: { title: 'After' } },
+            { userId: 'u1', organizationId: 'org-1' },
+        );
+
+        expect(result.success).toBe(true);
+        expect(handleCrudSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: 'PATCH',
+                model: 'posts',
+                id: 'p1',
+                currentData,
+                mutationGuard: {
+                    where: { organizationId: 'org-1' },
+                    expected: { updatedAt: 'snapshot-1' },
+                },
+            }),
+        );
+    });
+
+    it('invokes the authorized mutation hook after the scoped snapshot read', async () => {
+        globalRLS.register({ model: 'posts', policy: RLSPolicies.TenantScoped(false) });
+        const postsTable = sqliteTable('posts_hook', {
+            id: text('id').primaryKey(),
+            organizationId: text('organization_id'),
+            title: text('title'),
+        });
+        class SecurePost extends BaseModel {
+            static entity = 'posts';
+            static table = postsTable;
+        }
+        registerModel(SecurePost);
+        const currentData = { id: 'p1', organizationId: 'org-1', passwordHash: 'hidden-hash' };
+        vi.spyOn(SecurePost, 'readMutationSnapshot').mockResolvedValue(currentData);
+        vi.spyOn(crud, 'handleCrud').mockResolvedValue({ success: true, data: {}, status: 200 });
+        const prepareAuthorizedMutation = vi.fn(({ body }) => ({ body: { ...body, title: 'normalized' } }));
+
+        const result = await executeSecureCrudRequest(
+            { method: 'PATCH', model: 'posts', id: 'p1', body: { title: 'raw' } },
+            { userId: 'u1', organizationId: 'org-1' },
+            { prepareAuthorizedMutation },
+        );
+
+        expect(result.success).toBe(true);
+        expect(prepareAuthorizedMutation).toHaveBeenCalledWith(
+            expect.objectContaining({ currentData, body: { title: 'raw' } }),
+        );
+        expect(crud.handleCrud).toHaveBeenCalledWith(expect.objectContaining({ body: { title: 'normalized' } }));
     });
 
     it('DELETE: returns 400 when id missing', async () => {

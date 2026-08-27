@@ -5,13 +5,20 @@
 // ============================================================
 
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { ConcurrentMutationError, QueryBindingLimitError, type AtomicMutationGuard } from '../base/BaseModel';
 import { getModel, hasModel } from '../registry';
-import { ValidationError } from '../validation';
+import { normalizeValidationFailure } from '../validation';
 
 /** Maximum allowed limit for non-paginated list queries */
 const MAX_LIST_LIMIT = 1000;
 /** Maximum allowed offset for list queries */
 const MAX_LIST_OFFSET = 100_000;
+const DEFAULT_LIST_PAGE_SIZE = 15;
+const MAX_PAGE_SIZE = 100;
+const MAX_PAGE = 1_000;
+// D1 limits LIKE/GLOB patterns to 50 bytes; reserve two bytes for the `%` wrappers.
+const MAX_SEARCH_BYTES = 48;
+const MAX_CRUD_BODY_BYTES = 1_048_576;
 
 export interface CrudRequest {
     method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -21,11 +28,19 @@ export interface CrudRequest {
     /** Allow additional server-controlled fields to pass writable checks */
     allowedWritableFields?: string[];
     /**
+     * Trusted current row from an authorization/read-before-write boundary.
+     * Models may reuse it for cross-field normalization instead of querying the
+     * same row again. Never populate this from a client request body.
+     */
+    currentData?: Record<string, unknown>;
+    /** Server-derived RLS/snapshot predicates for the actual mutation statement. */
+    mutationGuard?: AtomicMutationGuard;
+    /**
      * Populated by parseCrudRequest when the incoming request is malformed
      * (e.g. invalid JSON body or invalid `where` query JSON). handleCrud
      * short-circuits with 400 when this is set — fail closed, not open.
      */
-    parseError?: { message: string; code: string };
+    parseError?: { message: string; code: string; status?: 400 | 413 };
     query?: {
         where?: Record<string, unknown>;
         orderBy?: string;
@@ -41,6 +56,60 @@ export interface CrudRequest {
         value?: string;
         search?: string;
     };
+}
+
+interface QueryValidationFailure {
+    message: string;
+    details: string;
+}
+
+function validateInteger(
+    value: number | undefined,
+    name: string,
+    minimum: number,
+    maximum?: number,
+): QueryValidationFailure | null {
+    if (value === undefined) return null;
+    if (!Number.isSafeInteger(value) || value < minimum || (maximum !== undefined && value > maximum)) {
+        const range = maximum === undefined ? `at least ${minimum}` : `between ${minimum} and ${maximum}`;
+        return { message: 'Invalid query parameter', details: `${name} must be a safe integer ${range}` };
+    }
+    return null;
+}
+
+export function validateCrudQuery(query?: CrudRequest['query']): QueryValidationFailure | null {
+    if (!query) return null;
+    const failure =
+        validateInteger(query.limit, 'limit', 1, MAX_LIST_LIMIT) ??
+        validateInteger(query.offset, 'offset', 0, MAX_LIST_OFFSET) ??
+        validateInteger(query.page, 'page', 1, MAX_PAGE) ??
+        validateInteger(query.perPage, 'perPage', 1, MAX_PAGE_SIZE);
+    if (failure) return failure;
+
+    if (query.page !== undefined && query.perPage !== undefined && query.page * query.perPage > 10_000) {
+        return { message: 'Invalid query parameter', details: 'page window is too large' };
+    }
+
+    if (query.search !== undefined && new TextEncoder().encode(query.search).byteLength > MAX_SEARCH_BYTES) {
+        return { message: 'Invalid query parameter', details: `search must not exceed ${MAX_SEARCH_BYTES} bytes` };
+    }
+
+    const usesWindow = query.limit !== undefined || query.offset !== undefined;
+    const usesPagination = query.page !== undefined || query.perPage !== undefined;
+    if (usesWindow && usesPagination) {
+        return {
+            message: 'Invalid query parameter',
+            details: 'limit/offset cannot be combined with page/perPage',
+        };
+    }
+    return null;
+}
+
+export function parseStrictQueryInteger(raw: string, name: string): number {
+    if (!/^-?\d+$/.test(raw)) throw new TypeError(`${name} must be an integer`);
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value)) throw new TypeError(`${name} must be a safe integer`);
+    return value;
 }
 
 export interface CrudResponse {
@@ -82,6 +151,17 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             success: false,
             error: request.parseError.message,
             code: request.parseError.code,
+            status: request.parseError.status ?? 400,
+        };
+    }
+
+    const invalidQuery = validateCrudQuery(query);
+    if (invalidQuery) {
+        return {
+            success: false,
+            error: invalidQuery.message,
+            code: 'INVALID_QUERY',
+            details: invalidQuery.details,
             status: 400,
         };
     }
@@ -187,19 +267,24 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                 };
             }
 
-            // Check for pagination
-            if (query?.page || query?.perPage) {
-                const page = query.page || 1;
-                const perPage = Math.min(query.perPage || 15, 100); // Cap at 100
+            // Default to a bounded page. An explicit limit/offset request uses
+            // the separate bounded-window path below.
+            if (
+                query?.page !== undefined ||
+                query?.perPage !== undefined ||
+                (query?.limit === undefined && query?.offset === undefined)
+            ) {
+                const page = query?.page ?? 1;
+                const perPage = query?.perPage ?? DEFAULT_LIST_PAGE_SIZE;
                 const result =
                     search && searchableFields.length > 0 && typeof Model.searchPaginate === 'function'
-                        ? await Model.searchPaginate(search, searchableFields, page, perPage, query.where, {
-                              orderBy: query.orderBy,
-                              orderDirection: query.orderDirection,
+                        ? await Model.searchPaginate(search, searchableFields, page, perPage, query?.where, {
+                              orderBy: query?.orderBy,
+                              orderDirection: query?.orderDirection,
                           })
-                        : await Model.paginate(page, perPage, query.where, {
-                              orderBy: query.orderBy,
-                              orderDirection: query.orderDirection,
+                        : await Model.paginate(page, perPage, query?.where, {
+                              orderBy: query?.orderBy,
+                              orderDirection: query?.orderDirection,
                           });
 
                 const totalPages = Math.max(1, result.totalPages);
@@ -226,8 +311,8 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             }
 
             // Regular list (non-paginated) — cap limit/offset to prevent abuse
-            const cappedLimit = query?.limit ? Math.min(Math.max(1, query.limit), MAX_LIST_LIMIT) : undefined;
-            const cappedOffset = query?.offset ? Math.min(Math.max(0, query.offset), MAX_LIST_OFFSET) : undefined;
+            const cappedLimit = query?.limit ?? MAX_LIST_LIMIT;
+            const cappedOffset = query?.offset ?? 0;
 
             const records =
                 search && searchableFields.length > 0 && typeof Model.search === 'function'
@@ -323,7 +408,9 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                     status: 400,
                 };
             }
-            const record = await Model.update(id, body);
+            const record = request.mutationGuard
+                ? await Model.updateConstrained(id, body, request.mutationGuard, request.currentData)
+                : await Model.update(id, body, undefined, request.currentData);
             return {
                 success: true,
                 data: record.toJson(),
@@ -333,7 +420,8 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
 
         // DELETE - delete record
         if (method === 'DELETE' && id) {
-            await Model.delete(id);
+            if (request.mutationGuard) await Model.deleteConstrained(id, request.mutationGuard);
+            else await Model.delete(id);
             return {
                 success: true,
                 data: { success: true, message: `${singularize(entityName)} deleted` },
@@ -347,16 +435,33 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             status: 400,
         };
     } catch (error) {
-        // Return structured field errors for validation failures
-        if (error instanceof ValidationError) {
+        // Return structured field errors for field and fat-model domain validation.
+        const validation = normalizeValidationFailure(error);
+        if (validation) {
             return {
                 success: false,
-                error: error.message,
-                code: 'VALIDATION_ERROR',
-                fieldErrors: Object.fromEntries(
-                    Object.entries(error.fieldErrors).map(([k, v]) => [k, Array.isArray(v) ? v : [v]]),
-                ),
-                status: 422,
+                error: validation.message,
+                code: validation.code,
+                fieldErrors: validation.fieldErrors,
+                status: validation.status,
+            };
+        }
+
+        if (error instanceof ConcurrentMutationError) {
+            return {
+                success: false,
+                error: 'Record changed before the mutation completed',
+                code: 'STALE_WRITE',
+                status: 409,
+            };
+        }
+
+        if (error instanceof QueryBindingLimitError) {
+            return {
+                success: false,
+                error: 'Query filter is too complex',
+                code: 'QUERY_TOO_COMPLEX',
+                status: 400,
             };
         }
 
@@ -503,17 +608,41 @@ export async function parseCrudRequest(
     }
 
     const limit = url.searchParams.get('limit');
-    if (limit) query.limit = parseInt(limit, 10);
+    if (limit !== null) {
+        try {
+            query.limit = parseStrictQueryInteger(limit, 'limit');
+        } catch {
+            parseError ??= { message: 'Invalid numeric query parameter', code: 'INVALID_QUERY' };
+        }
+    }
 
     const offset = url.searchParams.get('offset');
-    if (offset) query.offset = parseInt(offset, 10);
+    if (offset !== null) {
+        try {
+            query.offset = parseStrictQueryInteger(offset, 'offset');
+        } catch {
+            parseError ??= { message: 'Invalid numeric query parameter', code: 'INVALID_QUERY' };
+        }
+    }
 
     const page = url.searchParams.get('page');
-    if (page) query.page = parseInt(page, 10);
+    if (page !== null) {
+        try {
+            query.page = parseStrictQueryInteger(page, 'page');
+        } catch {
+            parseError ??= { message: 'Invalid numeric query parameter', code: 'INVALID_QUERY' };
+        }
+    }
 
     // Support both perPage and per_page
-    const perPage = url.searchParams.get('perPage') || url.searchParams.get('per_page');
-    if (perPage) query.perPage = parseInt(perPage, 10);
+    const perPage = url.searchParams.get('perPage') ?? url.searchParams.get('per_page');
+    if (perPage !== null) {
+        try {
+            query.perPage = parseStrictQueryInteger(perPage, 'perPage');
+        } catch {
+            parseError ??= { message: 'Invalid numeric query parameter', code: 'INVALID_QUERY' };
+        }
+    }
 
     const uniqueField = url.searchParams.get('uniqueField');
     if (uniqueField) query.uniqueField = uniqueField;
@@ -537,7 +666,42 @@ export async function parseCrudRequest(
     let body: Record<string, unknown> | undefined;
     if (request.method === 'POST' || request.method === 'PATCH' || request.method === 'PUT') {
         try {
-            const parsed = await request.json();
+            const declaredLength = Number(request.headers.get('content-length'));
+            if (Number.isFinite(declaredLength) && declaredLength > MAX_CRUD_BODY_BYTES) {
+                return {
+                    method: request.method as CrudRequest['method'],
+                    model,
+                    id,
+                    query,
+                    parseError: { message: 'Request body is too large', code: 'PAYLOAD_TOO_LARGE', status: 413 },
+                };
+            }
+            const reader = request.body?.getReader();
+            const chunks: Uint8Array[] = [];
+            let byteLength = 0;
+            while (reader) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                byteLength += value.byteLength;
+                if (byteLength > MAX_CRUD_BODY_BYTES) {
+                    await reader.cancel();
+                    return {
+                        method: request.method as CrudRequest['method'],
+                        model,
+                        id,
+                        query,
+                        parseError: { message: 'Request body is too large', code: 'PAYLOAD_TOO_LARGE', status: 413 },
+                    };
+                }
+                chunks.push(value);
+            }
+            const bytes = new Uint8Array(byteLength);
+            let position = 0;
+            for (const chunk of chunks) {
+                bytes.set(chunk, position);
+                position += chunk.byteLength;
+            }
+            const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
             if (typeof parsed === 'string') {
                 try {
                     body = JSON.parse(parsed) as Record<string, unknown>;
