@@ -5,10 +5,19 @@
  * Supports multiple content types, SEO, hero images, and OttaEditor content.
  */
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { BaseModel, ModelFields, type IModelConstructorParams, type PackageType } from '@ottabase/ottaorm';
+import {
+    BaseModel,
+    DomainValidationError,
+    ModelFields,
+    type IModelConstructorParams,
+    type PackageType,
+    type UpdateMutationContext,
+} from '@ottabase/ottaorm';
+import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import {
     calculateReadingTime,
     BlurbValidationError,
+    ContentValidationError,
     CONTENT_TYPES,
     createBlurbExcerpt,
     createBlurbTitle,
@@ -23,6 +32,8 @@ import {
     validatePhotoJournalItems,
     validatePostContent,
     validatePhotoJournalNote,
+    validatePostWrite,
+    normalizePostTimestamp,
     type ContentType,
     type EditorJSData,
     type PhotoJournalItem,
@@ -64,6 +75,15 @@ export interface PhotoJournalWriteOptions extends BlurbWriteOptions {
     content?: EditorJSData | null;
 }
 
+export interface ScheduledPublishResult {
+    posts: Array<{ id: string; title: string; slug: string }>;
+    /** More due rows existed when this bounded batch was selected. */
+    hasMore: boolean;
+}
+
+/** Leaves five D1 bind slots for status/timestamp predicates and update values. */
+const MAX_SCHEDULED_PUBLISH_BATCH = 90;
+
 function photoJournalWordCount(note: string | null, items: PhotoJournalItem[]): number {
     return [note, ...items.map((item) => item.caption), ...items.map((item) => item.location)]
         .filter((value): value is string => Boolean(value))
@@ -82,6 +102,222 @@ function photoJournalHero(item: PhotoJournalItem, title: string) {
         height: item.height || undefined,
         mimeType: item.mimeType || undefined,
     };
+}
+
+const SUBTYPE_WRITE_FIELDS = new Set([
+    'blurbText',
+    'photoNote',
+    'photoAlbum',
+    'content',
+    'contentType',
+    'title',
+    'excerpt',
+    'heroImage',
+    'footnotes',
+    'categoryId',
+    'seriesId',
+    'seriesOrder',
+    'readingTimeMinutes',
+    'wordCount',
+]);
+
+function photoJournalWordCountForWrite(note: string | null, items: PhotoJournalItem[], content: EditorJSData | null) {
+    const body = content ? calculateReadingTime(content) : null;
+    return {
+        readingTimeMinutes: body?.minutes ?? 1,
+        wordCount: photoJournalWordCount(note, items) + (body?.words ?? 0),
+    };
+}
+
+/**
+ * Own the publication state machine at the model boundary so every write path agrees.
+ * `publishedAt` is the editorial first-publication date; `postedAt` is when the current transition
+ * actually went live. Editing an already-live post preserves both, while entering `published`
+ * initializes missing values and entering any non-scheduled state clears a stale schedule.
+ */
+function publicationFieldsForWrite(
+    effective: Record<string, any>,
+    data: Record<string, any>,
+    operation: 'create' | 'update',
+    current?: Record<string, any>,
+): Record<string, any> {
+    const status = (effective.status ?? 'draft') as PostStatus;
+    const enteringStatus = operation === 'create' || (data.status !== undefined && data.status !== current?.status);
+
+    if (status === 'scheduled') {
+        const publishAt = normalizePostTimestamp(effective.publishAt, 'Publish date');
+        if (publishAt === null) {
+            throw new ContentValidationError('Scheduled posts must include a publish date');
+        }
+        return {
+            ...(operation === 'create' || enteringStatus || data.publishAt !== undefined ? { publishAt } : {}),
+            ...(operation === 'create' ? { publishedAt: null, postedAt: null } : {}),
+        };
+    }
+
+    if (status === 'published') {
+        const now = Date.now();
+        const publishedAt = normalizePostTimestamp(effective.publishedAt, 'Published date') ?? now;
+        const postedAt = enteringStatus ? now : (normalizePostTimestamp(effective.postedAt, 'Posted date') ?? now);
+        return {
+            ...(operation === 'create' || enteringStatus ? { publishAt: null } : {}),
+            ...(operation === 'create' ||
+            enteringStatus ||
+            data.publishedAt !== undefined ||
+            effective.publishedAt == null
+                ? { publishedAt }
+                : {}),
+            ...(operation === 'create' || enteringStatus || data.postedAt !== undefined || effective.postedAt == null
+                ? { postedAt }
+                : {}),
+        };
+    }
+
+    return operation === 'create'
+        ? { publishAt: null, publishedAt: null, postedAt: null }
+        : data.status !== undefined
+          ? { publishAt: null }
+          : {};
+}
+
+/**
+ * Normalize the complete effective post, then return only the fields this operation should
+ * write. Updates use a trusted complete current row when the caller already loaded one,
+ * otherwise they fetch it so omitted subtype columns are validated and preserved instead
+ * of being judged in isolation.
+ */
+function normalizeWriteData(
+    data: Record<string, any>,
+    operation: 'create' | 'update',
+    current?: Record<string, any>,
+): Record<string, any> {
+    const currentType = current?.contentType;
+    const requestedType = data.contentType;
+    const isTypeTransition =
+        operation === 'update' &&
+        requestedType !== undefined &&
+        requestedType !== currentType &&
+        (currentType === 'blurb' || currentType === 'photo');
+    const effectiveInput = { ...(current ?? {}), ...data };
+
+    // Remove the old subtype's columns before validating the target subtype. Explicit target
+    // fields in `data` win, so blurb -> photo and photo -> blurb remain valid transitions.
+    if (isTypeTransition) {
+        if (currentType === 'blurb') effectiveInput.blurbText = data.blurbText ?? null;
+        if (currentType === 'photo') {
+            effectiveInput.photoNote = data.photoNote ?? null;
+            effectiveInput.photoAlbum = data.photoAlbum ?? null;
+        }
+    }
+
+    const effective = validatePostWrite(effectiveInput);
+    const writeData = {
+        ...data,
+        ...publicationFieldsForWrite(effective, data, operation, current),
+        ...(operation === 'create' ? { authorId: data.authorId ?? data.userId ?? null } : {}),
+    };
+    const contentType = effective.contentType ?? 'blog';
+    const subtypeWrite = operation === 'create' || Object.keys(data).some((key) => SUBTYPE_WRITE_FIELDS.has(key));
+
+    if (contentType === 'blurb' && subtypeWrite) {
+        const text = validateBlurbText(effective.blurbText);
+        return {
+            ...writeData,
+            title: createBlurbTitle(text),
+            excerpt: createBlurbExcerpt(text),
+            blurbText: text,
+            photoNote: null,
+            photoAlbum: null,
+            content: null,
+            contentType: 'blurb',
+            categoryId: null,
+            seriesId: null,
+            seriesOrder: null,
+            heroImage: null,
+            footnotes: null,
+            readingTimeMinutes: 1,
+            wordCount: text.split(/\s+/).filter(Boolean).length,
+            isProtected: false,
+            passwordHash: null,
+            passwordHint: null,
+        };
+    }
+
+    if (contentType === 'photo' && subtypeWrite) {
+        const items = validatePhotoJournalItems(effective.photoAlbum);
+        const note = validatePhotoJournalNote(effective.photoNote);
+        const content = validatePostContent(effective.content);
+        const title = createPhotoJournalTitle(effective.title, items[0]);
+        return {
+            ...writeData,
+            title,
+            excerpt: createPhotoJournalExcerpt(note, items),
+            blurbText: null,
+            photoNote: note,
+            photoAlbum: items,
+            content,
+            contentType: 'photo',
+            categoryId: null,
+            seriesId: null,
+            seriesOrder: null,
+            heroImage: photoJournalHero(items[0], title),
+            footnotes: null,
+            ...photoJournalWordCountForWrite(note, items, content),
+            isProtected: false,
+            passwordHash: null,
+            passwordHint: null,
+        };
+    }
+
+    // Leaving a blurb/photo explicitly clears every derived field. A photo body's omission is
+    // also an explicit clear: retaining it would make an article carry a hidden journal body.
+    if (operation === 'update' && (currentType === 'blurb' || currentType === 'photo') && data.contentType) {
+        return {
+            ...writeData,
+            blurbText: null,
+            photoNote: null,
+            photoAlbum: null,
+            content: data.content === undefined ? null : effective.content,
+            heroImage: null,
+            footnotes: null,
+        };
+    }
+
+    if (contentType !== 'blurb' && contentType !== 'photo' && (operation === 'create' || data.content !== undefined)) {
+        const content = validatePostContent(effective.content);
+        const reading = content ? calculateReadingTime(content) : { minutes: 1, words: 0 };
+        return {
+            ...writeData,
+            content,
+            readingTimeMinutes: reading.minutes,
+            wordCount: reading.words,
+        };
+    }
+
+    return operation === 'create'
+        ? {
+              ...writeData,
+              contentType,
+              blurbText: null,
+              photoNote: null,
+              photoAlbum: null,
+          }
+        : writeData;
+}
+
+function normalizeWriteDataForCrud(
+    data: Record<string, any>,
+    operation: 'create' | 'update',
+    current?: Record<string, any>,
+): Record<string, any> {
+    try {
+        return normalizeWriteData(data, operation, current);
+    } catch (error) {
+        if (error instanceof ContentValidationError) {
+            throw new DomainValidationError(error.message, { status: 422 });
+        }
+        throw error;
+    }
 }
 
 /**
@@ -163,17 +399,12 @@ export class Post extends BaseModel {
             'meta',
             'privateNotes',
             'footnotes',
-            'authorId',
-            'readingTimeMinutes',
-            'wordCount',
             'isFeatured',
             'allowComments',
             'isProtected',
             'passwordHash',
             'passwordHint',
             'publishAt',
-            'publishedAt',
-            'postedAt',
             'appId',
             'organizationId',
             'userId',
@@ -198,17 +429,12 @@ export class Post extends BaseModel {
             'meta',
             'privateNotes',
             'footnotes',
-            'authorId',
-            'readingTimeMinutes',
-            'wordCount',
             'isFeatured',
             'allowComments',
             'isProtected',
             'passwordHash',
             'passwordHint',
             'publishAt',
-            'publishedAt',
-            'postedAt',
             'appId',
             'organizationId',
             'userId',
@@ -790,20 +1016,6 @@ export class Post extends BaseModel {
         },
     };
 
-    /*
-     * ponytail: content and crosspost integrity is enforced by CALLERS, not by the model.
-     *
-     * `validatePostContent` and `validateCrossposts` run in the model's own convenience methods
-     * (createBlurb, createPhotoJournal, updatePhotoJournal) and are re-applied by otta-web's generic
-     * CRUD route, but a plain `Post.create()`, `Post.update()`, or instance `save()` is governed by
-     * the title rule below and nothing else. Another app, or any internal model caller, can persist
-     * a malformed or oversized body and invalid crosspost links.
-     *
-     * That contradicts the Fat Models rule in AGENTS.MD, which puts integrity on the model so it
-     * cannot depend on which app is calling. Upgrade path: run both validators from model-level
-     * create/update, so every write path inherits them and the CRUD route's re-application becomes
-     * defence in depth rather than the only guard.
-     */
     protected static validationRules = {
         title: {
             rules: 'required|min:3|max:200',
@@ -815,6 +1027,57 @@ export class Post extends BaseModel {
             },
         },
     };
+
+    /**
+     * Content integrity for EVERY write path, per the Fat Models rule in AGENTS.MD.
+     *
+     * `create`, `update`, and instance `save()` all funnel through `prepareForDatabase`, so this one
+     * override is what makes the caps and shape rules unskippable — the convenience methods
+     * (createBlurb, createPhotoJournal, updatePhotoJournal) and the routes that re-apply the same
+     * validators are now defence in depth, not the only guard. A host app calling `Post.create()`
+     * directly inherits identical rules.
+     *
+     * Deliberately here rather than in `validationRules`: those are per-field string rules resolved
+     * against a schema, and these are cross-field (a `contentType` decides which columns may carry
+     * a value) with normalization attached (URLs come back sanitized, blank albums come back null).
+     *
+     * Partial payloads are the norm — `Post.update(id, { viewCount })` sends one column — so
+     * `validatePostWrite` judges only what is present. See its own comment for the PATCH contract.
+     */
+    protected static prepareForDatabase(data: Record<string, any>): Record<string, any> {
+        return super.prepareForDatabase(validatePostWrite(data));
+    }
+
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>> {
+        const withDefaults = { ...(this.defaults as Record<string, any>), ...data };
+        const normalized = normalizeWriteDataForCrud(withDefaults, 'create');
+        return (await super.create.call(this, normalized, driver)) as InstanceType<T>;
+    }
+
+    protected static async prepareUpdateMutation(
+        data: Record<string, any>,
+        { id, currentData, driver }: UpdateMutationContext,
+    ): Promise<Record<string, any>> {
+        const canReuseCurrent =
+            currentData !== undefined &&
+            String(currentData[this.primaryKey]) === String(id) &&
+            typeof currentData.contentType === 'string';
+        let current = canReuseCurrent ? (currentData as Record<string, any>) : undefined;
+        if (!current) {
+            const record = await this.find(id, driver);
+            if (!record) {
+                // Let the guarded persistence statement report the missing/concurrent row.
+                return data;
+            }
+            current = record.toJson() as Record<string, any>;
+        }
+
+        return normalizeWriteDataForCrud(data, 'update', current);
+    }
 
     // ============================================================
     // QUERY HELPERS
@@ -1002,12 +1265,14 @@ export class Post extends BaseModel {
         const text = validateBlurbText(textValue);
         const now = Date.now();
         const status = options.status ?? 'draft';
-        if (status === 'scheduled' && !options.publishAt) {
+        const publishAt = status === 'scheduled' ? normalizePostTimestamp(options.publishAt, 'Publish date') : null;
+        if (status === 'scheduled' && publishAt === null) {
             throw new BlurbValidationError('Scheduled blurbs must include a publish date');
         }
 
         const words = text.split(/\s+/).filter(Boolean).length;
-        const publishedAt = status === 'published' ? (options.publishedAt ?? now) : (options.publishedAt ?? null);
+        const publishedAt =
+            status === 'published' ? (normalizePostTimestamp(options.publishedAt, 'Published date') ?? now) : null;
 
         return (await this.create({
             title: createBlurbTitle(text),
@@ -1032,7 +1297,7 @@ export class Post extends BaseModel {
             isProtected: false,
             passwordHash: null,
             passwordHint: null,
-            publishAt: status === 'scheduled' ? options.publishAt : null,
+            publishAt,
             publishedAt,
             postedAt: status === 'published' ? now : null,
             appId: options.appId ?? null,
@@ -1049,12 +1314,14 @@ export class Post extends BaseModel {
         const now = Date.now();
         const title = createPhotoJournalTitle(options.title, items[0], now);
         const status = options.status ?? 'draft';
-        if (status === 'scheduled' && !options.publishAt) {
+        const publishAt = status === 'scheduled' ? normalizePostTimestamp(options.publishAt, 'Publish date') : null;
+        if (status === 'scheduled' && publishAt === null) {
             throw new PhotoJournalValidationError('Scheduled photo journals must include a publish date');
         }
 
         const slugBase = generateSlug(title) || 'photo-journal';
-        const publishedAt = status === 'published' ? (options.publishedAt ?? now) : (options.publishedAt ?? null);
+        const publishedAt =
+            status === 'published' ? (normalizePostTimestamp(options.publishedAt, 'Published date') ?? now) : null;
         const content = validatePostContent(options.content);
         const body = content ? calculateReadingTime(content) : null;
         return (await this.create({
@@ -1080,7 +1347,7 @@ export class Post extends BaseModel {
             isProtected: false,
             passwordHash: null,
             passwordHint: null,
-            publishAt: status === 'scheduled' ? options.publishAt : null,
+            publishAt,
             publishedAt,
             postedAt: status === 'published' ? now : null,
             appId: options.appId ?? null,
@@ -1140,14 +1407,19 @@ export class Post extends BaseModel {
 
         if (typeof options.allowComments === 'boolean') this.set('allowComments', options.allowComments);
         if (options.status) {
-            if (options.status === 'scheduled' && !options.publishAt) {
+            const publishAt =
+                options.status === 'scheduled' ? normalizePostTimestamp(options.publishAt, 'Publish date') : null;
+            if (options.status === 'scheduled' && publishAt === null) {
                 throw new BlurbValidationError('Scheduled blurbs must include a publish date');
             }
             this.set('status', options.status);
-            this.set('publishAt', options.status === 'scheduled' ? options.publishAt : null);
+            this.set('publishAt', publishAt);
             if (options.status === 'published') {
                 const now = Date.now();
-                this.set('publishedAt', this.get('publishedAt') || options.publishedAt || now);
+                this.set(
+                    'publishedAt',
+                    this.get('publishedAt') || normalizePostTimestamp(options.publishedAt, 'Published date') || now,
+                );
                 this.set('postedAt', now);
             }
         }
@@ -1220,14 +1492,19 @@ export class Post extends BaseModel {
         if (typeof options.allowComments === 'boolean') this.set('allowComments', options.allowComments);
         if (typeof options.isFeatured === 'boolean') this.set('isFeatured', options.isFeatured);
         if (options.status) {
-            if (options.status === 'scheduled' && !options.publishAt) {
+            const publishAt =
+                options.status === 'scheduled' ? normalizePostTimestamp(options.publishAt, 'Publish date') : null;
+            if (options.status === 'scheduled' && publishAt === null) {
                 throw new PhotoJournalValidationError('Scheduled photo journals must include a publish date');
             }
             this.set('status', options.status);
-            this.set('publishAt', options.status === 'scheduled' ? options.publishAt : null);
+            this.set('publishAt', publishAt);
             if (options.status === 'published') {
                 const now = Date.now();
-                this.set('publishedAt', this.get('publishedAt') || options.publishedAt || now);
+                this.set(
+                    'publishedAt',
+                    this.get('publishedAt') || normalizePostTimestamp(options.publishedAt, 'Published date') || now,
+                );
                 this.set('postedAt', now);
             }
         }
@@ -1260,10 +1537,23 @@ export class Post extends BaseModel {
     }
 
     /**
+     * The body, or null when this record came from a collection read that deferred it.
+     *
+     * `get('content')` THROWS on such a record — deliberately, so a lazy read cannot be mistaken for
+     * an empty one (see AbstractBaseModel.get). The derive-from-body helpers below want the other
+     * answer: with no body in hand there is nothing to derive, so they leave the stored value alone
+     * rather than failing a save that never concerned the body.
+     */
+    private loadedContent(): EditorJSData | null {
+        if (this.omitted.includes('content')) return null;
+        return this.get('content') as EditorJSData | null;
+    }
+
+    /**
      * Update reading time and word count from content
      */
     updateReadingStats() {
-        const content = this.get('content') as EditorJSData | null;
+        const content = this.loadedContent();
         if (!content) return;
 
         const readingTime = calculateReadingTime(content);
@@ -1285,7 +1575,7 @@ export class Post extends BaseModel {
      * Auto-generate excerpt from content if not set
      */
     generateExcerpt() {
-        const content = this.get('content') as EditorJSData | null;
+        const content = this.loadedContent();
         if (!content || this.get('excerpt')) return;
 
         const excerpt = extractExcerpt(content);
@@ -1306,29 +1596,59 @@ export class Post extends BaseModel {
     // ============================================================
 
     /**
-     * Publish all posts whose publishAt timestamp has passed.
-     * Call this from a cron handler to auto-publish scheduled posts.
+     * Publish one bounded batch of due posts in a single conditional UPDATE.
+     *
+     * The old row-by-row save loop issued a read plus an update for every post,
+     * which could exhaust D1's per-invocation query budget. Selecting at most 91
+     * lightweight rows and updating at most 90 IDs keeps both memory and query
+     * count constant. The status/time predicates are repeated in the UPDATE so
+     * overlapping cron invocations cannot report the same post as published.
      */
-    static async publishScheduled(options?: { appId?: string }): Promise<Post[]> {
+    static async publishScheduled(
+        options?: { appId?: string; batchSize?: number },
+        driver?: DbDriver,
+    ): Promise<ScheduledPublishResult> {
+        const batchSize = options?.batchSize ?? MAX_SCHEDULED_PUBLISH_BATCH;
+        if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > MAX_SCHEDULED_PUBLISH_BATCH) {
+            throw new TypeError(
+                `publishScheduled batchSize must be an integer from 1 to ${MAX_SCHEDULED_PUBLISH_BATCH}`,
+            );
+        }
+
         const now = Date.now();
         const query: Record<string, unknown> = { status: 'scheduled' };
         if (options?.appId) query.appId = options.appId;
 
-        const scheduled = await this.where(query);
-        const published: Post[] = [];
+        const due = await this.where(
+            { ...query, publishAt: { $lte: now } },
+            {
+                orderBy: 'publishAt',
+                orderDirection: 'asc',
+                limit: batchSize + 1,
+                select: ['id', 'title', 'slug', 'publishAt'],
+            },
+            driver,
+        );
+        const selected = due.slice(0, batchSize);
+        if (selected.length === 0) return { posts: [], hasMore: false };
 
-        for (const post of scheduled) {
-            const publishAt = post.get('publishAt') as number | null;
-            if (publishAt && publishAt <= now) {
-                post.set('status', 'published');
-                post.set('publishedAt', publishAt);
-                post.set('postedAt', now);
-                await post.save();
-                published.push(post as Post);
-            }
-        }
+        const ids = selected.map((post) => String(post.get('id')));
+        const db = this.getDriver(driver).getDb();
+        const posts = await db
+            .update(postsTable)
+            .set({
+                status: 'published',
+                publishedAt: sql`${postsTable.publishAt}`,
+                postedAt: now,
+                updatedAt: now,
+            })
+            .where(and(inArray(postsTable.id, ids), eq(postsTable.status, 'scheduled'), lte(postsTable.publishAt, now)))
+            .returning({ id: postsTable.id, title: postsTable.title, slug: postsTable.slug });
 
-        return published;
+        return {
+            posts,
+            hasMore: due.length > batchSize,
+        };
     }
 
     // ============================================================
@@ -1371,31 +1691,20 @@ export class Post extends BaseModel {
             ];
 
             if (candidateIds.length > 0) {
-                // Leave room for status, app/org scope, and the LIMIT bind in the
-                // same statement. D1's bound-parameter ceiling applies to all of
-                // those values, not just the id list.
-                const RELATED_ID_CHUNK = 95;
-                const candidates: InstanceType<typeof BaseModel>[] = [];
-                for (let i = 0; i < candidateIds.length; i += RELATED_ID_CHUNK) {
-                    candidates.push(
-                        ...(await this.where(
-                            {
-                                id: candidateIds.slice(i, i + RELATED_ID_CHUNK),
-                                status: 'published',
-                                ...(options?.appId ? { appId: options.appId } : {}),
-                                ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
-                            },
-                            {
-                                orderBy: 'publishedAt',
-                                orderDirection: 'desc',
-                                limit: limit + 1,
-                            },
-                        )),
-                    );
-                }
-                // Re-sort merged chunks so cross-chunk ordering matches a single query.
-                candidates.sort(
-                    (a, b) => ((b.get('publishedAt') as number) ?? 0) - ((a.get('publishedAt') as number) ?? 0),
+                // BaseModel owns D1-safe IN chunking and the stable cross-chunk
+                // merge, including the global limit. Keep that logic in one place.
+                const candidates = await this.where(
+                    {
+                        id: candidateIds,
+                        status: 'published',
+                        ...(options?.appId ? { appId: options.appId } : {}),
+                        ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
+                    },
+                    {
+                        orderBy: 'publishedAt',
+                        orderDirection: 'desc',
+                        limit: limit + 1,
+                    },
                 );
                 for (const p of candidates) {
                     if (

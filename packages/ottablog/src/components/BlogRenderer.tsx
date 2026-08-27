@@ -9,7 +9,7 @@ import '@ottabase/ottarenderer/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { applyFilters, doAction, HOOKS } from '../hooks';
+import { applyFilters, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
 import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
@@ -18,6 +18,7 @@ import type { BlurbRendererProps, BlogExcerptCardProps, BlogPostData, BlogRender
 import { BlurbText, BlurbTextLinksAllowed } from './BlurbText';
 import { CrosspostsRow } from './Crossposts';
 import { PhotoJournalRenderer } from './PhotoJournalRenderer';
+import { usePostRenderLifecycle } from './usePostRenderLifecycle';
 
 // The prop/data interfaces are declared in the pure `./blog-renderer-types` module so that
 // pure sites can reference them without importing this rendered file. Re-export them here so
@@ -34,37 +35,51 @@ export function BlurbRenderer({
     ...rest
 }: BlurbRendererProps) {
     const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
-    const [filteredText, setFilteredText] = useState(post.blurbText ?? post.excerpt ?? '');
+    const rawText = post.blurbText ?? post.excerpt ?? '';
+    // The source token changes for a same-ID refetch and when hooks are re-enabled. A post ID alone
+    // cannot identify an input generation: using it briefly rendered a previous filter result for
+    // newly fetched content carrying the same ID.
+    const filterSource = useMemo(() => ({ post, rawText, hooksDisabled: disableHooks }), [post, rawText, disableHooks]);
+    const [filteredText, setFilteredText] = useState<{ source: typeof filterSource; value: string } | null>(null);
 
     const props: BlurbRendererProps = { post, variant, themeId, disableHooks, ...rest };
 
     useEffect(() => {
         let active = true;
-        if (disableHooks) {
-            setFilteredText(post.blurbText ?? post.excerpt ?? '');
-            return () => {
-                active = false;
-            };
+        if (!disableHooks) {
+            setFilteredText(null);
+            void Promise.resolve(applyFilters(HOOKS['post.blurb.filter'], rawText, post))
+                .then((value: string) => {
+                    if (active) setFilteredText({ source: filterSource, value: String(value ?? '') });
+                })
+                .catch((error: unknown) => {
+                    console.error('Error in post.blurb.filter:', redactErrorForLog(error));
+                    if (active) setFilteredText({ source: filterSource, value: rawText });
+                });
         }
-        void Promise.resolve(applyFilters(HOOKS['post.blurb.filter'], post.blurbText ?? post.excerpt ?? '', post)).then(
-            (value: string) => {
-                if (active) setFilteredText(String(value ?? ''));
-            },
-        );
         return () => {
             active = false;
         };
-    }, [post, disableHooks]);
+    }, [disableHooks, filterSource, post, rawText]);
 
-    const filteredPost = { ...post, blurbText: filteredText };
+    const textReady = disableHooks || filteredText?.source === filterSource;
+    const renderedText = disableHooks || !textReady ? rawText : (filteredText?.value ?? rawText);
+    const filteredPost = { ...post, blurbText: renderedText };
+    const filteredProps = { ...props, post: filteredPost };
+    usePostRenderLifecycle({
+        enabled: !disableHooks && textReady,
+        revision: filteredText,
+        payload: { post: filteredPost, props: filteredProps },
+    });
+
     const renderer = theme.renderers.renderBlurb ?? defaultTheme.renderers.renderBlurb;
     let rendered: React.ReactNode = null;
     try {
-        rendered = renderer?.(filteredPost, props);
+        rendered = renderer?.(filteredPost, filteredProps);
     } catch (error) {
         console.error('Error in theme renderBlurb:', redactErrorForLog(error));
         rendered = (
-            <BlurbText text={filteredText} className={variant === 'detail' ? 'text-xl leading-relaxed' : 'text-base'} />
+            <BlurbText text={renderedText} className={variant === 'detail' ? 'text-xl leading-relaxed' : 'text-base'} />
         );
     }
 
@@ -162,41 +177,55 @@ function ArticleBlogRenderer({
         ],
     );
 
-    // Apply filters to post data (synchronously for React)
-    const [filteredPost, setFilteredPost] = useState<BlogPostData>(post);
-    const [filteredContent, setFilteredContent] = useState<EditorJSData | null>(post.content || null);
-    const [isFilteringComplete, setIsFilteringComplete] = useState(false);
+    // Keep the filtered result stamped with the post it belongs to. Until the current post's
+    // async filters settle, rendering falls back to the current raw values rather than showing a
+    // previous post's title or body.
+    const filterSource = useMemo(() => ({ post, hooksDisabled: disableHooks }), [post, disableHooks]);
+    const [filteredState, setFilteredState] = useState<{
+        source: typeof filterSource;
+        post: BlogPostData;
+        content: EditorJSData | null;
+    } | null>(null);
 
     useEffect(() => {
-        if (!disableHooks) {
-            setIsFilteringComplete(false);
+        if (disableHooks) return;
 
-            // Apply filters asynchronously
-            Promise.all([
-                applyFilters(HOOKS['post.title.filter'], post.title, post),
-                applyFilters(HOOKS['post.excerpt.filter'], post.excerpt, post),
-                applyFilters(HOOKS['post.content.filter'], post.content, post),
-            ]).then(([filteredTitle, filteredExcerpt, filteredContentResult]) => {
+        let active = true;
+        setFilteredState(null);
+        void Promise.all([
+            applyFilters(HOOKS['post.title.filter'], post.title, post),
+            applyFilters(HOOKS['post.excerpt.filter'], post.excerpt, post),
+            applyFilters(HOOKS['post.content.filter'], post.content, post),
+        ])
+            .then(([filteredTitle, filteredExcerpt, filteredContentResult]) => {
+                if (!active) return;
                 const newFilteredPost = {
                     ...post,
                     title: filteredTitle as string,
                     excerpt: filteredExcerpt as string | null,
                 };
 
-                setFilteredPost(newFilteredPost);
-                setFilteredContent(filteredContentResult as EditorJSData | null);
-                setIsFilteringComplete(true);
-
-                // Execute action hooks AFTER filters have been applied (fixes race condition)
-                doAction(HOOKS['post.render.before'], newFilteredPost, props);
+                setFilteredState({
+                    source: filterSource,
+                    post: newFilteredPost,
+                    content: filteredContentResult as EditorJSData | null,
+                });
+            })
+            .catch((error: unknown) => {
+                console.error('Error in post render filters:', redactErrorForLog(error));
+                if (!active) return;
+                setFilteredState({ source: filterSource, post, content: post.content || null });
             });
-        } else {
-            // If hooks are disabled, use original post data
-            setFilteredPost(post);
-            setFilteredContent(post.content || null);
-            setIsFilteringComplete(true);
-        }
-    }, [post, disableHooks, props]);
+
+        return () => {
+            active = false;
+        };
+    }, [post, disableHooks, filterSource]);
+
+    const filteringForThisPost = !disableHooks && filteredState?.source === filterSource;
+    const isFilteringComplete = disableHooks || filteringForThisPost;
+    const filteredPost = disableHooks || !filteringForThisPost ? post : filteredState!.post;
+    const filteredContent = disableHooks || !filteringForThisPost ? post.content || null : filteredState!.content;
 
     // Use theme renderers if available, otherwise fall back to default (memoized)
     // Wrap each renderer in error handling to prevent theme bugs from crashing the entire render
@@ -268,22 +297,12 @@ function ArticleBlogRenderer({
 
     const containerClass = `${theme.config?.classes?.container || ''} ${className}`.trim();
 
-    // Execute action hooks (side effects only, not for rendering)
-    // Only run after filtering is complete to ensure hooks receive filtered data
-    useEffect(() => {
-        if (!disableHooks && isFilteringComplete) {
-            doAction(HOOKS['post.content.before'], filteredPost, props);
-            return () => {
-                doAction(HOOKS['post.content.after'], filteredPost, props);
-            };
-        }
-    }, [disableHooks, isFilteringComplete, filteredPost, props]);
-
-    useEffect(() => {
-        if (!disableHooks && isFilteringComplete) {
-            doAction(HOOKS['post.render.after'], filteredPost, props);
-        }
-    }, [disableHooks, isFilteringComplete, filteredPost, props]);
+    usePostRenderLifecycle({
+        enabled: !disableHooks && isFilteringComplete,
+        revision: filteredState,
+        payload: { post: filteredPost, props },
+        includeContent: true,
+    });
 
     return (
         <article className={`blog-post ${containerClass}`}>
@@ -347,6 +366,7 @@ export function BlogExcerptCard({
 }: BlogExcerptCardProps) {
     // Check for a theme-provided card renderer
     const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
+    const cardHref = sanitizeUrl(href || `/blog/${post.slug}`);
 
     if (post.contentType === 'blurb') {
         const blurb = (
@@ -363,7 +383,7 @@ export function BlogExcerptCard({
         );
         if (LinkComponent) {
             return (
-                <LinkComponent href={href || `/blog/${post.slug}`} className="block rounded-xl outline-none">
+                <LinkComponent href={cardHref} className="block rounded-xl outline-none">
                     {blurb}
                 </LinkComponent>
             );
@@ -392,7 +412,7 @@ export function BlogExcerptCard({
         );
         if (LinkComponent) {
             return (
-                <LinkComponent href={href || `/blog/${post.slug}`} className="block rounded-2xl outline-none">
+                <LinkComponent href={cardHref} className="block rounded-2xl outline-none">
                     {journal}
                 </LinkComponent>
             );
@@ -426,7 +446,7 @@ export function BlogExcerptCard({
 
     const Wrapper = LinkComponent
         ? ({ children }: { children: React.ReactNode }) => (
-              <LinkComponent href={href || `/blog/${post.slug}`} className={`blog-card ${className}`}>
+              <LinkComponent href={cardHref} className={`blog-card ${className}`}>
                   {children}
               </LinkComponent>
           )

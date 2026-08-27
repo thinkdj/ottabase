@@ -1,12 +1,13 @@
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { applyFilters, doAction, HOOKS } from '../hooks';
+import React, { useEffect, useMemo, useState } from 'react';
+import { applyFilters, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
 import type { EditorJSData, PhotoJournalItem } from '../types';
 import type { PhotoJournalRendererProps } from './blog-renderer-types';
 import { BlurbTextLinksAllowed } from './BlurbText';
 import { CrosspostsRow } from './Crossposts';
 import { PhotoJournalGallery } from './PhotoJournalGallery';
+import { usePostRenderLifecycle } from './usePostRenderLifecycle';
 
 /** Theme-aware controller for photo journals. */
 export function PhotoJournalRenderer({
@@ -17,36 +18,37 @@ export function PhotoJournalRenderer({
     ...rest
 }: PhotoJournalRendererProps) {
     const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
-    const [photos, setPhotos] = useState<PhotoJournalItem[]>(post.photoAlbum ?? []);
+    const filterSource = useMemo(() => ({ post, variant, hooksDisabled: disableHooks }), [post, variant, disableHooks]);
+    const [photos, setPhotos] = useState<{ source: typeof filterSource; value: PhotoJournalItem[] } | null>(null);
     // A journal body is article content in every way that matters to a plugin, so it runs the same
     // `post.content.filter` an article body does. Without this, anything that transforms or
     // instruments article bodies would silently skip journals.
     // Stamped with the post it was filtered FOR. A bare boolean would still read "complete" for one
     // render after switching posts, letting the next journal open its lifecycle with the previous
     // journal's body.
-    const [filteredBody, setFilteredBody] = useState<{ postId: string; content: EditorJSData | null } | null>(null);
+    const [filteredBody, setFilteredBody] = useState<{
+        source: typeof filterSource;
+        content: EditorJSData | null;
+    } | null>(null);
     const props: PhotoJournalRendererProps = { post, variant, themeId, disableHooks, ...rest };
 
     useEffect(() => {
         let active = true;
-        if (disableHooks) {
-            setPhotos(post.photoAlbum ?? []);
-            return () => {
-                active = false;
-            };
+        if (!disableHooks) {
+            setPhotos(null);
+            void Promise.resolve(applyFilters(HOOKS['post.photoJournal.filter'], post.photoAlbum ?? [], post))
+                .then((value: PhotoJournalItem[]) => {
+                    if (active) setPhotos({ source: filterSource, value: Array.isArray(value) ? value : [] });
+                })
+                .catch((error: unknown) => {
+                    console.error('Error in post.photoJournal.filter:', redactErrorForLog(error));
+                    if (active) setPhotos({ source: filterSource, value: post.photoAlbum ?? [] });
+                });
         }
-        void Promise.resolve(applyFilters(HOOKS['post.photoJournal.filter'], post.photoAlbum ?? [], post))
-            .then((value: PhotoJournalItem[]) => {
-                if (active) setPhotos(Array.isArray(value) ? value : []);
-            })
-            .catch((error: unknown) => {
-                console.error('Error in post.photoJournal.filter:', redactErrorForLog(error));
-                if (active) setPhotos(post.photoAlbum ?? []);
-            });
         return () => {
             active = false;
         };
-    }, [disableHooks, post]);
+    }, [disableHooks, filterSource, post]);
 
     /*
      * The content lifecycle belongs to the DETAIL view only.
@@ -61,30 +63,36 @@ export function PhotoJournalRenderer({
     useEffect(() => {
         if (!runsContentLifecycle) return;
         let active = true;
+        setFilteredBody(null);
         void Promise.resolve(applyFilters(HOOKS['post.content.filter'], post.content ?? null, post))
             .then((value: EditorJSData | null) => {
-                if (active) setFilteredBody({ postId: post.id, content: value ?? null });
+                if (active) setFilteredBody({ source: filterSource, content: value ?? null });
             })
             .catch((error: unknown) => {
                 console.error('Error in post.content.filter:', redactErrorForLog(error));
-                if (active) setFilteredBody({ postId: post.id, content: post.content ?? null });
+                if (active) setFilteredBody({ source: filterSource, content: post.content ?? null });
             });
         return () => {
             active = false;
         };
-    }, [runsContentLifecycle, post]);
+    }, [filterSource, post, runsContentLifecycle]);
 
     // Only a body filtered for THIS post counts. Between switching posts and the new filter
     // resolving there is no body, rather than the previous journal's.
-    const bodyIsForThisPost = filteredBody?.postId === post.id;
+    const photosAreForThisPost = photos?.source === filterSource;
+    const displayedPhotos = useMemo(
+        () => (disableHooks || !photosAreForThisPost ? (post.photoAlbum ?? []) : photos!.value),
+        [disableHooks, photos, photosAreForThisPost, post.photoAlbum],
+    );
+    const bodyIsForThisPost = filteredBody?.source === filterSource;
     const contentReady = runsContentLifecycle ? bodyIsForThisPost : true;
     const filteredContent = runsContentLifecycle
         ? bodyIsForThisPost
             ? (filteredBody?.content ?? null)
-            : null
+            : (post.content ?? null)
         : (post.content ?? null);
 
-    const filteredPost = { ...post, photoAlbum: photos, content: filteredContent };
+    const filteredPost = { ...post, photoAlbum: displayedPhotos, content: filteredContent };
     const filteredProps = { ...props, post: filteredPost };
 
     /*
@@ -101,17 +109,14 @@ export function PhotoJournalRenderer({
      * the previous journal's cleanup runs, so reading it there would close journal A's lifecycle by
      * handing the plugin journal B.
      */
-    const lifecyclePayload = useRef({ post: filteredPost, props: filteredProps });
-    lifecyclePayload.current = { post: filteredPost, props: filteredProps };
-
-    useEffect(() => {
-        if (!runsContentLifecycle || !contentReady) return;
-        const opened = lifecyclePayload.current;
-        doAction(HOOKS['post.content.before'], opened.post, opened.props);
-        return () => {
-            doAction(HOOKS['post.content.after'], opened.post, opened.props);
-        };
-    }, [runsContentLifecycle, contentReady, post.id, filteredContent]);
+    const renderReady = (disableHooks || photosAreForThisPost) && contentReady;
+    const lifecycleRevision = useMemo(() => ({ photos, filteredBody }), [filteredBody, photos]);
+    usePostRenderLifecycle({
+        enabled: !disableHooks && renderReady,
+        revision: lifecycleRevision,
+        payload: { post: filteredPost, props: filteredProps },
+        includeContent: runsContentLifecycle,
+    });
 
     const renderer = theme.renderers.renderPhotoJournal ?? defaultTheme.renderers.renderPhotoJournal;
     let rendered: React.ReactNode;

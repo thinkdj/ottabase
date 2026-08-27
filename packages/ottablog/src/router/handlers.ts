@@ -8,7 +8,7 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { globalRLS, RLSError, type SecurityContext } from '@ottabase/ottaorm';
+import { globalRLS, MAX_SEARCH_TERM_BYTES, RLSError, type SecurityContext } from '@ottabase/ottaorm';
 import {
     OttablogPlugin,
     OttablogTheme,
@@ -23,6 +23,13 @@ import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
 import { ContentValidationError, type EditorJSData, type PostCrosspost } from '../types';
 import type { BlogEditorialWriteResult, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
+
+function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number): number {
+    const raw = value == null || value === '' ? '' : String(value);
+    if (!/^-?\d+$/.test(raw)) return fallback;
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
 
 async function readJson<T>(request: Request): Promise<T> {
     try {
@@ -61,7 +68,7 @@ async function findPublishedPostBySlug(
 }
 
 /** Conservative D1 bound-parameter chunk size for IN (...) lists that carry no other bound conditions. */
-const D1_IN_CHUNK = 100;
+const D1_IN_CHUNK = 90;
 // Public responses use an explicit allowlist. A user's account/login email is
 // private even when that user is the author of public content.
 const PUBLIC_AUTHOR_FIELDS = ['id', 'name', 'image'] as const;
@@ -104,6 +111,7 @@ function stripProtectedBody(post: Record<string, unknown>): void {
     post.blurbText = null;
     post.photoNote = null;
     post.photoAlbum = null;
+    post.meta = null;
     // Crossposts point at copies of THIS post elsewhere, so leaving them on a protected payload
     // hands a reader the way around the password. Whether those copies are public is the author's
     // business; advertising them from the locked post is not.
@@ -115,7 +123,7 @@ function stripProtectedBody(post: Record<string, unknown>): void {
  * Output per post is shape-identical to publicPostJson's enriched object
  * (privateNotes stripped, protected content stripped, tags[], categories[],
  * legacy categoryName/categorySlug, seriesTitle, author{}). Query count is
- * bounded: 6 flat queries per page (each id list chunked at 100 for D1's
+ * bounded: 6 flat queries per page (each id list chunked at 90 for D1's
  * bound-parameter limit), matching the RSS handler's whereIn batching pattern.
  */
 async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unknown>[]> {
@@ -223,6 +231,16 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
         }
         rest.seriesTitle = rest.seriesId ? (seriesTitleById.get(rest.seriesId as string) ?? null) : null;
 
+        // A collection read never SELECTs Post.deferred, and `toJson()` walks loaded attributes, so
+        // those columns would be absent from a list payload while a detail payload carries them —
+        // the same endpoint family answering with two different shapes, and `post.content === null`
+        // quietly false on one of them. Normalize to null: a list says "no body here", not "no such
+        // field". privateNotes is excluded on purpose — it is destructured off above and must stay
+        // off, not come back as an always-null key advertising that the column exists.
+        for (const column of Post.deferred) {
+            if (column !== 'privateNotes' && !(column in rest)) rest[column] = null;
+        }
+
         return rest;
     });
 }
@@ -326,11 +344,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     function resolveAppId(context: Ctx): string {
-        return (
-            context.url.searchParams.get('appId') ||
-            context.request.headers.get('x-app-id') ||
-            config.defaultAppId(context.env)
-        );
+        // App scope is server configuration, never request-controlled input.
+        return config.defaultAppId(context.env);
     }
 
     /**
@@ -668,6 +683,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         };
     }
 
+    function requiresPublishPermission(status: unknown): boolean {
+        return status === 'published' || status === 'scheduled';
+    }
+
     async function handleBlogBlurbCreate(context: Ctx): Promise<Response> {
         const guard = editorialGuard('create');
         if (!guard) return editorialGuardMissing();
@@ -680,7 +699,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const securityContext = editorialWriteContext(auth, context);
         if (securityContext instanceof Response) return securityContext;
         if (securityContext.organizationId == null && !securityContext.platformAdmin) {
-            return errorResponse('An active organization is required to create blurbs', 403, { code: 'FORBIDDEN' });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         const body = await readJson<BlurbBody>(context.request);
@@ -694,9 +713,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             !securityContext.platformAdmin &&
             !hasGrantedPermission(securityContext.permissions, 'posts:publish')
         ) {
-            return errorResponse('Publishing blurbs requires the posts:publish permission', 403, {
-                code: 'FORBIDDEN',
-            });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         const writeData: Record<string, unknown> = {
@@ -754,14 +771,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const body = await readJson<BlurbBody>(context.request);
         const options = readEditorialOptions(body);
         if (options instanceof Response) return options;
+        const currentStatus = post.get('status');
+        const effectiveStatus = options.status ?? currentStatus;
         if (
-            (options.status === 'published' || options.status === 'scheduled') &&
+            (requiresPublishPermission(currentStatus) || requiresPublishPermission(effectiveStatus)) &&
             !securityContext.platformAdmin &&
             !hasGrantedPermission(securityContext.permissions, 'posts:publish')
         ) {
-            return errorResponse('Publishing blurbs requires the posts:publish permission', 403, {
-                code: 'FORBIDDEN',
-            });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         try {
@@ -804,9 +821,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const securityContext = editorialWriteContext(auth, context);
         if (securityContext instanceof Response) return securityContext;
         if (securityContext.organizationId == null && !securityContext.platformAdmin) {
-            return errorResponse('An active organization is required to create photo journals', 403, {
-                code: 'FORBIDDEN',
-            });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         const body = await readJson<PhotoJournalBody>(context.request);
@@ -821,9 +836,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             !securityContext.platformAdmin &&
             !hasGrantedPermission(securityContext.permissions, 'posts:publish')
         ) {
-            return errorResponse('Publishing photo journals requires the posts:publish permission', 403, {
-                code: 'FORBIDDEN',
-            });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         const writeData: Record<string, unknown> = {
@@ -884,14 +897,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (body.isFeatured !== undefined && typeof body.isFeatured !== 'boolean') {
             return errorResponse('isFeatured must be a boolean', 400, { code: 'VALIDATION_ERROR' });
         }
+        const currentStatus = post.get('status');
+        const effectiveStatus = options.status ?? currentStatus;
         if (
-            (options.status === 'published' || options.status === 'scheduled') &&
+            (requiresPublishPermission(currentStatus) || requiresPublishPermission(effectiveStatus)) &&
             !securityContext.platformAdmin &&
             !hasGrantedPermission(securityContext.permissions, 'posts:publish')
         ) {
-            return errorResponse('Publishing photo journals requires the posts:publish permission', 403, {
-                code: 'FORBIDDEN',
-            });
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
         }
 
         try {
@@ -922,8 +935,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-        const perPage = Math.min(50, Math.max(1, parseInt(url.searchParams.get('perPage') || '15', 10)));
+        const page = parseBoundedInteger(url.searchParams.get('page'), 1, 1, 1000);
+        const perPage = parseBoundedInteger(url.searchParams.get('perPage'), 15, 1, 50);
         // Always app-scoped (param → x-app-id → config default): on a shared
         // multi-app database, one app's public list must never serve another's.
         const appId = resolveAppId(context);
@@ -986,6 +999,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         const searchTerm = search?.trim() || null;
+        if (searchTerm && new TextEncoder().encode(searchTerm).byteLength > MAX_SEARCH_TERM_BYTES) {
+            return jsonResponse({ error: 'Search term is too long', code: 'INVALID_SEARCH' }, 400);
+        }
         const searchFields = ['title', 'slug', 'excerpt', 'blurbText', 'photoNote'];
 
         let result;
@@ -1232,7 +1248,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
-        const limit = Math.min(10, Math.max(1, parseInt(url.searchParams.get('limit') || '4', 10)));
+        const limit = parseBoundedInteger(url.searchParams.get('limit'), 4, 1, 10);
 
         const postWhere: Record<string, unknown> = { id: postId, appId };
         if (organizationId !== undefined) postWhere.organizationId = organizationId;
@@ -1271,7 +1287,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         const contentType = url.searchParams.get('contentType') || null;
-        const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '25', 10)));
+        const limit = parseBoundedInteger(url.searchParams.get('limit'), 25, 1, 100);
 
         const where: Record<string, unknown> = { status: 'published' };
         if (appId) where.appId = appId;
@@ -1398,7 +1414,7 @@ ${items}
         // silently drop older posts from a real deployment's sitemap the moment
         // it passed that default (the old endpoint was unbounded). Sitemap-index
         // pagination is the follow-up once a single deployment nears 50k posts.
-        const limit = Math.min(50000, Math.max(1, parseInt(url.searchParams.get('limit') || '50000', 10)));
+        const limit = parseBoundedInteger(url.searchParams.get('limit'), 50000, 1, 50000);
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
         if (organizationId !== undefined) where.organizationId = organizationId;
@@ -1464,15 +1480,12 @@ ${urls}
         // Deliberately cross-app when no ?appId is given: one shared-DB cron
         // publishes every app's due posts. Pass ?appId= to restrict a run.
         const appId = url.searchParams.get('appId') || null;
-        const published = await Post.publishScheduled({ appId: appId ?? undefined });
+        const result = await Post.publishScheduled({ appId: appId ?? undefined });
 
         return jsonResponse({
-            published: published.length,
-            posts: published.map((p) => ({
-                id: p.get('id'),
-                title: p.get('title'),
-                slug: p.get('slug'),
-            })),
+            published: result.posts.length,
+            posts: result.posts,
+            hasMore: result.hasMore,
         });
     }
 

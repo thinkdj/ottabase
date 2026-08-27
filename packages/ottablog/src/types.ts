@@ -136,6 +136,25 @@ export class ContentValidationError extends Error {
     }
 }
 
+/** Largest millisecond value accepted by JavaScript's Date/`toISOString`. */
+export const MAX_JAVASCRIPT_DATE_TIMESTAMP = 8_640_000_000_000_000;
+
+function isJavascriptDateTimestamp(value: number): boolean {
+    return Number.isFinite(value) && Math.abs(value) <= MAX_JAVASCRIPT_DATE_TIMESTAMP;
+}
+
+/** Normalize a D1 timestamp and reject values that cannot represent a real instant. */
+export function normalizePostTimestamp(value: unknown, label: string): number | null {
+    if (value === undefined || value === null || value === '') return null;
+
+    const timestamp =
+        value instanceof Date ? value.getTime() : typeof value === 'number' ? value : new Date(String(value)).getTime();
+    if (!isJavascriptDateTimestamp(timestamp) || timestamp <= 0) {
+        throw new ContentValidationError(`${label} must be a valid positive date`);
+    }
+    return Math.trunc(timestamp);
+}
+
 /** Expected author-input failure that may safely be returned as a 4xx response. */
 export class BlurbValidationError extends ContentValidationError {
     constructor(message: string) {
@@ -274,6 +293,8 @@ export function createBlurbExcerpt(value: string, maxLength = 240): string {
 
 export const PHOTO_JOURNAL_MAX_ITEMS = 60;
 export const PHOTO_JOURNAL_NOTE_MAX_LENGTH = 2000;
+export const PHOTO_JOURNAL_URL_MAX_LENGTH = 4096;
+export const PHOTO_JOURNAL_ALBUM_MAX_BYTES = 512 * 1024;
 
 /** Expected author-input failure that may safely be exposed as a 4xx response. */
 export class PhotoJournalValidationError extends ContentValidationError {
@@ -343,8 +364,11 @@ function safePhotoUrl(value: unknown, label: string, required = false): string |
     }
     if (typeof value !== 'string') throw new PhotoJournalValidationError(`${label} must be a URL`);
     const trimmed = value.trim();
+    if (trimmed.length > PHOTO_JOURNAL_URL_MAX_LENGTH) {
+        throw new PhotoJournalValidationError(`${label} must be ${PHOTO_JOURNAL_URL_MAX_LENGTH} characters or fewer`);
+    }
     const sanitized = sanitizeUrl(trimmed);
-    if (sanitized === '#' || !/^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(sanitized)) {
+    if (sanitized.startsWith('//') || sanitized === '#' || !/^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(sanitized)) {
         throw new PhotoJournalValidationError(`${label} must use HTTP(S) or an application-relative URL`);
     }
     return sanitized;
@@ -359,7 +383,16 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
         throw new PhotoJournalValidationError(`Photo journals support up to ${PHOTO_JOURNAL_MAX_ITEMS} photographs`);
     }
 
-    return value.map((raw, index) => {
+    // Identity namespaces are intentionally independent. An app-generated photo `id` may happen
+    // to equal another asset's media-library ID (or even its URL) without identifying the same
+    // photograph. Conflating the namespaces rejected valid albums while still making it hard to
+    // explain which identity was duplicated.
+    const seenIds = new Set<string>();
+    const seenMediaIds = new Set<string>();
+    const seenUrls = new Set<string>();
+    const items: PhotoJournalItem[] = [];
+
+    value.forEach((raw, index) => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} is invalid`);
         }
@@ -373,12 +406,12 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
         if (height !== null && (!Number.isFinite(height) || height <= 0)) {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} has an invalid height`);
         }
-        if (takenAt !== null && !Number.isFinite(takenAt)) {
+        if (takenAt !== null && !isJavascriptDateTimestamp(takenAt)) {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} has an invalid date`);
         }
 
         const mediaId = optionalPhotoText(item.mediaId, 'Media ID', 128);
-        return {
+        const entry: PhotoJournalItem = {
             id: optionalPhotoText(item.id, 'Photograph ID', 128) ?? mediaId ?? crypto.randomUUID(),
             mediaId,
             url: safePhotoUrl(item.url, `Photograph ${index + 1} URL`, true)!,
@@ -388,16 +421,119 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
             alt: optionalPhotoText(item.alt, 'Alternative text', 300),
             caption: optionalPhotoText(item.caption, 'Caption', 600),
             location: optionalPhotoText(item.location, 'Location', 180),
-            takenAt,
+            takenAt: takenAt === null ? null : Math.trunc(takenAt),
             width,
             height,
             mimeType: optionalPhotoText(item.mimeType, 'MIME type', 100),
         };
+
+        /*
+         * The same photograph twice is a caller mistake, and a silently damaging one: `id` is both
+         * the React key for the tile and the lightbox registration key, so a repeat renders one
+         * frame where two were asked for and leaves that frame unopenable. Reject on ANY identity
+         * a duplicate can arrive under — an explicit `id`, the media library's `mediaId`, or the URL
+         * itself. Rejecting preserves the caller's ordered album instead of silently changing it.
+         */
+        if (
+            seenIds.has(entry.id) ||
+            (entry.mediaId != null && seenMediaIds.has(entry.mediaId)) ||
+            seenUrls.has(entry.url)
+        ) {
+            throw new PhotoJournalValidationError(`Photograph ${index + 1} duplicates an earlier photograph`);
+        }
+        seenIds.add(entry.id);
+        if (entry.mediaId != null) seenMediaIds.add(entry.mediaId);
+        seenUrls.add(entry.url);
+        items.push(entry);
     });
+
+    const bytes = new TextEncoder().encode(JSON.stringify(items)).length;
+    if (bytes > PHOTO_JOURNAL_ALBUM_MAX_BYTES) {
+        throw new PhotoJournalValidationError(
+            `Photo journal metadata must be ${Math.floor(PHOTO_JOURNAL_ALBUM_MAX_BYTES / 1024)}KB or smaller`,
+        );
+    }
+
+    return items;
 }
 
 export function validatePhotoJournalNote(value: unknown): string | null {
     return optionalPhotoText(value, 'Field note', PHOTO_JOURNAL_NOTE_MAX_LENGTH);
+}
+
+/**
+ * Every content column on a post, checked as ONE payload, at the only place all writes meet.
+ *
+ * `Post.prepareForDatabase` runs this, so `create`, `update`, and instance `save()` all inherit it
+ * and no caller can opt out — that is the whole point. The routes keep calling it too (generic CRUD
+ * does), which turns a throw into a 400 with a useful message instead of a 500; that is now defence
+ * in depth rather than the only guard.
+ *
+ * PATCH semantics, matching the model's write methods: a key that is ABSENT means "not in this
+ * write" and is left alone; an explicit `null` clears. Only keys actually present are rewritten, so
+ * the result is safe to hand to the database as-is.
+ *
+ * Cross-field rules exist because the columns are not independent. `contentType` decides which of
+ * them are meaningful, and a post claiming one type while carrying another's payload renders as a
+ * blank frame or a missing body — the renderer dispatches on `contentType` alone. Those rules apply
+ * only when `contentType` is part of THIS write: a partial update that never mentions it cannot be
+ * judged without re-reading the row, and a read per write is a cost every caller would pay for a
+ * case the write methods already prevent.
+ */
+export function validatePostWrite<T extends Record<string, any>>(data: T): T {
+    const out: Record<string, any> = { ...data };
+    const present = (key: string) => key in out && out[key] !== undefined;
+
+    if (present('contentType')) {
+        if (
+            typeof out.contentType !== 'string' ||
+            !Object.prototype.hasOwnProperty.call(CONTENT_TYPES, out.contentType)
+        ) {
+            throw new ContentValidationError('contentType must be a supported content type');
+        }
+    }
+    if (present('status')) {
+        if (typeof out.status !== 'string' || !Object.prototype.hasOwnProperty.call(POST_STATUSES, out.status)) {
+            throw new ContentValidationError('status must be a supported publication status');
+        }
+    }
+
+    if (present('blurbText') && out.blurbText !== null) out.blurbText = validateBlurbText(out.blurbText);
+    if (present('photoNote')) out.photoNote = validatePhotoJournalNote(out.photoNote);
+    if (present('crossposts')) out.crossposts = validateCrossposts(out.crossposts);
+    if (present('content')) out.content = validatePostContent(out.content);
+    if (present('publishAt')) out.publishAt = normalizePostTimestamp(out.publishAt, 'Publish date');
+    if (present('publishedAt')) out.publishedAt = normalizePostTimestamp(out.publishedAt, 'Published date');
+    if (present('postedAt')) out.postedAt = normalizePostTimestamp(out.postedAt, 'Posted date');
+    if (present('photoAlbum')) {
+        // An empty album is stored as NULL rather than `[]`, so "this post has no photographs" has
+        // one representation. The `contentType` rule below is what reports it when that is wrong,
+        // with a message about the post rather than about the array.
+        const album = out.photoAlbum;
+        out.photoAlbum =
+            album === null || (Array.isArray(album) && album.length === 0) ? null : validatePhotoJournalItems(album);
+    }
+
+    if (!present('contentType')) return out as T;
+    const contentType = out.contentType;
+
+    if (contentType === 'photo') {
+        if (!present('photoAlbum') || out.photoAlbum === null) {
+            throw new PhotoJournalValidationError('A photo journal needs at least one photograph');
+        }
+    } else if (out.photoAlbum != null || out.photoNote != null) {
+        throw new PhotoJournalValidationError(`A ${contentType} post cannot carry a photo album or field note`);
+    }
+
+    if (contentType === 'blurb') {
+        if (!present('blurbText') || out.blurbText === null) {
+            throw new BlurbValidationError('Blurb text is required');
+        }
+    } else if (out.blurbText != null) {
+        throw new BlurbValidationError(`A ${contentType} post cannot carry blurb text`);
+    }
+
+    return out as T;
 }
 
 export function createPhotoJournalTitle(

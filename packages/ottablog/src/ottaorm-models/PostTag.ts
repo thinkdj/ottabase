@@ -6,7 +6,7 @@
  *
  * For universal/core tags (non-blog), use Tag from @ottabase/ottaorm.
  */
-import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { BaseModel, ModelFields, type PackageType, type UpdateMutationContext } from '@ottabase/ottaorm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
 import { generateSlug } from '../types';
 import { postTagsTable } from './PostTag.schema';
@@ -188,14 +188,12 @@ export class PostTag extends BaseModel {
         return (await super.create.call(this, data, driver)) as InstanceType<T>;
     }
 
-    static async update<T extends typeof BaseModel>(
-        this: T,
-        id: string | number,
+    protected static async prepareUpdateMutation(
         data: Record<string, any>,
-        driver?: any,
-    ): Promise<InstanceType<T>> {
-        await prepareUpdateSlug(this, id, data, PostTag.slugConfig, driver);
-        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
+        { id, currentData, driver }: UpdateMutationContext,
+    ): Promise<Record<string, any>> {
+        await prepareUpdateSlug(this, id, data, PostTag.slugConfig, driver, currentData);
+        return data;
     }
 
     /**

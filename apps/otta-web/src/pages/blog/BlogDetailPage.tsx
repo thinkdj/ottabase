@@ -548,7 +548,8 @@ export function BlogDetailPage() {
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             {prevPost && (
                                                 <Link
-                                                    to={`/blog/${prevPost.slug}`}
+                                                    to="/blog/$slug"
+                                                    params={{ slug: prevPost.slug }}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 >
                                                     <ArrowLeft className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
@@ -564,7 +565,8 @@ export function BlogDetailPage() {
                                             )}
                                             {nextPost && (
                                                 <Link
-                                                    to={`/blog/${nextPost.slug}`}
+                                                    to="/blog/$slug"
+                                                    params={{ slug: nextPost.slug }}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
                                                 >
                                                     <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
@@ -729,7 +731,8 @@ export function BlogDetailPage() {
                                         <span>{p.title} (current)</span>
                                     ) : (
                                         <Link
-                                            to={`/blog/${p.slug}`}
+                                            to="/blog/$slug"
+                                            params={{ slug: p.slug }}
                                             className="text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                         >
                                             {p.title}

@@ -87,7 +87,7 @@ export interface BlogRouterConfig<Env = unknown> {
      */
     resolveOrganizationId?: (ctx: BlogRequestContext<Env>) => Promise<string | null> | string | null;
 
-    /** Default appId when the request carries no `?appId=` or `x-app-id` header. */
+    /** Trusted server-configured appId for this router instance. */
     defaultAppId: (env: Env) => string;
 
     /**

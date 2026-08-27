@@ -4,7 +4,7 @@
  * OttaORM model for blog series - groups related posts into ordered collections.
  * Perfect for multi-part tutorials, article series, or themed content.
  */
-import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { BaseModel, ModelFields, type PackageType, type UpdateMutationContext } from '@ottabase/ottaorm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
 import { generateSlug } from '../types';
 import { seriesTable } from './PostSeries.schema';
@@ -212,14 +212,12 @@ export class PostSeries extends BaseModel {
         return (await super.create.call(this, data, driver)) as InstanceType<T>;
     }
 
-    static async update<T extends typeof BaseModel>(
-        this: T,
-        id: string | number,
+    protected static async prepareUpdateMutation(
         data: Record<string, any>,
-        driver?: any,
-    ): Promise<InstanceType<T>> {
-        await prepareUpdateSlug(this, id, data, PostSeries.slugConfig, driver);
-        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
+        { id, currentData, driver }: UpdateMutationContext,
+    ): Promise<Record<string, any>> {
+        await prepareUpdateSlug(this, id, data, PostSeries.slugConfig, driver, currentData);
+        return data;
     }
 
     /**

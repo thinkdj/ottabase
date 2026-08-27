@@ -95,6 +95,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
         title: '',
         message: '',
     });
+    const [pendingSavedPostId, setPendingSavedPostId] = useState<string | null>(null);
 
     const createBlurb = useApiMutation<BlurbEditorPost, BlurbPayload>({
         endpoint: '/api/blog/blurbs',
@@ -120,7 +121,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                 .map((tag) => ({ id: tag!.id, name: tag!.name })),
         [allTags, selectedTagIds],
     );
-    const { data: tagLinksData } = blogTagLinkHooks.useList(
+    const { data: tagLinksData, refetch: refetchTagLinks } = blogTagLinkHooks.useList(
         { where: initialData ? { postId: initialData.id } : undefined },
         { enabled: Boolean(initialData), staleTime: 30_000 },
     );
@@ -185,10 +186,26 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
             const existingTagIds = tagLinks.map((link) => link.tagId);
             const toAdd = selectedTagIds.filter((id) => !existingTagIds.includes(id));
             const toRemove = tagLinks.filter((link) => !selectedTagIds.includes(link.tagId));
-            await Promise.all([
-                ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId: saved.id, tagId })),
-                ...toRemove.map((link) => deleteTagLink.mutateAsync(link.id)),
-            ]);
+            // Same split as the photo journal editor: the blurb write is the one that must not be
+            // repeated, so a failing tag link no longer reports the whole save as failed and invites
+            // a retry that creates a second blurb. See AdminPhotoJournalEditor for the full reasoning.
+            const tagFailures = (
+                await Promise.allSettled([
+                    ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId: saved.id, tagId })),
+                    ...toRemove.map((link) => deleteTagLink.mutateAsync(link.id)),
+                ])
+            ).filter((result) => result.status === 'rejected').length;
+            if (initialData) await refetchTagLinks();
+
+            if (tagFailures > 0) {
+                if (!initialData) setPendingSavedPostId(saved.id);
+                setAlert({
+                    open: true,
+                    title: 'Saved, but the tags did not all stick',
+                    message: `The blurb was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied — check the tags below and save again.`,
+                });
+                return;
+            }
             allowNavigateRef.current = true;
             navigate({ to: surface.contentPath });
         } catch (error) {
@@ -198,6 +215,15 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                 message: error instanceof Error ? error.message : 'Please try again.',
             });
         }
+    };
+
+    const dismissAlert = () => {
+        setAlert((current) => ({ ...current, open: false }));
+        if (!pendingSavedPostId) return;
+        const savedPostId = pendingSavedPostId;
+        setPendingSavedPostId(null);
+        allowNavigateRef.current = true;
+        navigate({ to: surface.editPath(savedPostId) });
     };
 
     const handleDelete = async () => {
@@ -415,7 +441,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                 onCancel={() => setDeleteOpen(false)}
             />
             <UnsavedChangesDialog blocker={blocker} />
-            <AlertDialog open={alert.open} onOpenChange={(open) => setAlert((current) => ({ ...current, open }))}>
+            <AlertDialog open={alert.open} onOpenChange={(open) => !open && dismissAlert()}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{alert.title}</AlertDialogTitle>

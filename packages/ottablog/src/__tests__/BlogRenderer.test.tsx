@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { BlogExcerptCard, BlogRenderer, BlurbRenderer, type BlogPostData } from '../components/BlogRenderer';
 
@@ -115,6 +116,21 @@ describe('BlogRenderer', () => {
             await waitFor(() => expect(container.textContent).toContain('x.com'));
             expect(container.querySelectorAll('a.u-syndication')).toHaveLength(1);
         });
+
+        it('sanitizes a caller-provided card href before handing it to a link component', async () => {
+            const LinkComponent = ({ href, children }: { href: string; children: ReactNode }) => (
+                <a href={href}>{children}</a>
+            );
+            const { container } = render(
+                <BlogExcerptCard
+                    post={createMockPost({ contentType: 'blurb', content: null, blurbText: 'Safe wrapper.' })}
+                    href="javascript:alert(1)"
+                    LinkComponent={LinkComponent}
+                />,
+            );
+
+            await waitFor(() => expect(container.querySelector('a')?.getAttribute('href')).toBe('#'));
+        });
     });
 
     describe('Safe rendering', () => {
@@ -133,10 +149,10 @@ describe('BlogRenderer', () => {
             expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.com/review');
         });
 
-        it('uses the compact blurb renderer in listing cards', () => {
+        it('uses the compact blurb renderer in listing cards', async () => {
             const blurb = createMockPost({ contentType: 'blurb', blurbText: 'A passing thought', content: null });
             const { container } = render(<BlogExcerptCard post={blurb} />);
-            expect(container.querySelector('.blog-blurb--timeline')).toBeTruthy();
+            await waitFor(() => expect(container.querySelector('.blog-blurb--timeline')).toBeTruthy());
             expect(container.textContent).toContain('A passing thought');
         });
 
@@ -175,6 +191,49 @@ describe('BlogRenderer', () => {
             expect(container.textContent).toContain('Photo journal · 1 frame');
             expect(container.textContent).toContain('A quiet blue hour.');
             expect(container.querySelector('img')?.getAttribute('alt')).toBe('Lanterns reflected in a wet lane');
+        });
+
+        it('omits unrenderable photo dates instead of crashing the public renderer', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                publishedAt: 1e20,
+                photoAlbum: [{ id: 'p1', url: 'https://images.test/kyoto.jpg', takenAt: 1e20 }],
+                content: null,
+            });
+
+            expect(() => render(<BlogRenderer post={journal} disableHooks />)).not.toThrow();
+        });
+
+        it('lets a surrounding page own the journal header without duplicating it', () => {
+            // showTitle/showMetadata are declared on BlogRendererProps for EVERY content type, so a
+            // shell that renders its own header and turns them off expects a journal to obey the
+            // same contract an article does. It used to draw its header regardless — two <h1>s.
+            const journal = createMockPost({
+                title: 'Kyoto, in the rain',
+                contentType: 'photo',
+                photoNote: 'A quiet blue hour.',
+                photoAlbum: [{ id: 'p1', url: 'https://images.test/kyoto.jpg' }],
+                publishedAt: Date.parse('2024-01-15T00:00:00Z'),
+                content: null,
+            });
+
+            const owned = render(<BlogRenderer post={journal} showTitle={false} showMetadata={false} disableHooks />);
+            expect(owned.container.querySelector('h1')).toBeNull();
+            expect(owned.container.textContent).not.toContain('Photo journal · 1 frame');
+            expect(owned.container.textContent).not.toContain('Test Author');
+            // The field note is authored body copy, not chrome — the excerpt is derived FROM it —
+            // so owning the header must never delete it.
+            expect(owned.container.textContent).toContain('A quiet blue hour.');
+            // The album is the point of the page and is never part of the header contract.
+            expect(owned.container.querySelectorAll('img')).toHaveLength(1);
+            owned.unmount();
+
+            // Absent still means shown: PhotoJournalRenderer forwards props without ArticleBlogRenderer's
+            // defaults, so anything other than an explicit `false` keeps the full header.
+            const { container } = render(<BlogRenderer post={journal} disableHooks />);
+            expect(container.querySelector('h1')?.textContent).toBe('Kyoto, in the rain');
+            expect(container.textContent).toContain('Photo journal · 1 frame');
+            expect(container.textContent).toContain('Test Author');
         });
 
         it('varies journal frames by photograph while never stretching one into blank space', () => {
@@ -273,7 +332,7 @@ describe('BlogRenderer', () => {
 
             // And `after` runs exactly once, when the body actually goes away.
             detail.unmount();
-            expect(after).toHaveLength(1);
+            await waitFor(() => expect(after).toHaveLength(1));
         });
 
         it('closes one journal lifecycle before opening the next, with the right body each time', async () => {
@@ -314,7 +373,69 @@ describe('BlogRenderer', () => {
             expect(before.filter((entry) => entry.id === 'journal-b')).toHaveLength(1);
         });
 
-        it('uses a compact photo collage in listing cards', () => {
+        it('never commits a stale filter result when the same post ID is refetched', async () => {
+            const { addFilter, HOOKS, removeHook } = await import('../hooks');
+            const pending: Array<(value: string) => void> = [];
+            addFilter(
+                HOOKS['post.title.filter'],
+                () => new Promise<string>((resolve) => pending.push(resolve)),
+                undefined,
+                'same-id-refetch',
+            );
+
+            const view = render(<BlogRenderer post={createMockPost({ title: 'First input' })} />);
+            await waitFor(() => expect(pending).toHaveLength(1));
+
+            view.rerender(<BlogRenderer post={createMockPost({ title: 'Second input' })} />);
+            await waitFor(() => expect(pending).toHaveLength(2));
+
+            await act(async () => pending[0]('STALE RESULT'));
+            expect(view.container.textContent).toContain('Second input');
+            expect(view.container.textContent).not.toContain('STALE RESULT');
+
+            await act(async () => pending[1]('FRESH RESULT'));
+            await waitFor(() => expect(view.container.textContent).toContain('FRESH RESULT'));
+            removeHook(HOOKS['post.title.filter'], 'same-id-refetch');
+        });
+
+        it('serializes async before/after actions for one render generation', async () => {
+            const { addAction, HOOKS, removeHook } = await import('../hooks');
+            const sequence: string[] = [];
+            let releaseBefore!: () => void;
+            const beforeGate = new Promise<void>((resolve) => {
+                releaseBefore = resolve;
+            });
+            addAction(
+                HOOKS['post.render.before'],
+                async () => {
+                    sequence.push('before:start');
+                    await beforeGate;
+                    sequence.push('before:end');
+                },
+                undefined,
+                'async-render-before',
+            );
+            addAction(
+                HOOKS['post.render.after'],
+                () => {
+                    sequence.push('after');
+                },
+                undefined,
+                'async-render-after',
+            );
+
+            const view = render(<BlogRenderer post={createMockPost()} />);
+            await waitFor(() => expect(sequence).toEqual(['before:start']));
+            view.unmount();
+            expect(sequence).toEqual(['before:start']);
+
+            await act(async () => releaseBefore());
+            await waitFor(() => expect(sequence).toEqual(['before:start', 'before:end', 'after']));
+            removeHook(HOOKS['post.render.before'], 'async-render-before');
+            removeHook(HOOKS['post.render.after'], 'async-render-after');
+        });
+
+        it('uses a compact photo collage in listing cards', async () => {
             const journal = createMockPost({
                 contentType: 'photo',
                 photoAlbum: [
@@ -324,7 +445,7 @@ describe('BlogRenderer', () => {
                 content: null,
             });
             const { container } = render(<BlogExcerptCard post={journal} />);
-            expect(container.querySelector('.blog-photo-journal--timeline')).toBeTruthy();
+            await waitFor(() => expect(container.querySelector('.blog-photo-journal--timeline')).toBeTruthy());
             expect(container.textContent).toContain('Photo journal · 2 frames');
         });
 

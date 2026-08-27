@@ -7,7 +7,7 @@
  * trusted admins, or sanitize HTML (e.g. DOMPurify) before saving in the admin UI to prevent XSS.
  */
 
-import React from 'react';
+import type React from 'react';
 import type { Plugin } from './types';
 import { HOOKS } from '../hooks';
 import type { BlogPostData } from '../components/BlogRenderer';

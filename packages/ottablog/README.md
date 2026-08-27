@@ -104,6 +104,8 @@ export {
     postCategoryLinksTable,
     postVersionsTable,
     seriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
 } from '@ottabase/ottablog';
 ```
 
@@ -158,7 +160,10 @@ await Post.byCategory('category-123');
 await Post.bySeries('series-123');
 await Post.popular({ limit: 5 }); // Most viewed posts
 await Post.related('post-123', { categoryIds: ['cat-1', 'cat-2'], limit: 4 }); // Related by junction categories, then content type
-await Post.publishScheduled(); // Publish all due scheduled posts
+const scheduled = await Post.publishScheduled(); // Atomically publish up to 90 due posts
+if (scheduled.hasMore) {
+    // Trigger another bounded run (or let the next cron invocation continue draining).
+}
 
 // Instance methods
 await post.publish();
@@ -247,6 +252,11 @@ timeline collage before publishing.
 The renderer shows a compact three-frame collage in mixed timelines and an asymmetric editorial contact sheet on the
 permalink. Detail images register with the immersive media lightbox. Custom themes can provide `renderPhotoJournal`;
 plugins can filter the ordered album with `post.photoJournal.filter`.
+
+The detail view honors `showTitle` and `showMetadata` like every other content type, so a page that renders its own
+header can pass `showTitle={false}` without getting a second title. Absent means shown — only an explicit `false` hides
+anything. `photoNote` is deliberately outside that contract: it is authored body copy (the excerpt is derived from it),
+so it renders whatever the header flags say.
 
 This feature adds nullable `posts.photo_note` and JSON `posts.photo_album` columns. Run the normal OttaORM auto-init
 endpoint after upgrading; existing rows need no rewrite.
@@ -620,9 +630,21 @@ import {
     PostTagLink,
     PostVersion,
     PostSeries,
+    OttablogPlugin,
+    OttablogTheme,
 } from '@ottabase/ottablog';
 
-registerModels([Post, PostCategory, PostCategoryLink, PostTag, PostTagLink, PostVersion, PostSeries]);
+registerModels([
+    Post,
+    PostCategory,
+    PostCategoryLink,
+    PostTag,
+    PostTagLink,
+    PostVersion,
+    PostSeries,
+    OttablogPlugin,
+    OttablogTheme,
+]);
 ```
 
 ## EditorJS Integration
@@ -677,6 +699,8 @@ const post = await Post.create({
 - `series` - Content series grouping
 - `post_tag_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`tagId`)
 - `post_category_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`categoryId`)
+- `ottablog_themes` - Database-backed theme registry and active theme state
+- `ottablog_plugins` - Database-backed plugin registry, enablement, and configuration
 
 ## Mountable HTTP Surface
 
@@ -758,6 +782,14 @@ GET /api/blog/posts?page=1&perPage=10&contentType=blog&categoryId=xyz&tagId=abc&
 Supports filtering by content type, category, tag, series, and full-text search. Responses include enriched tag,
 category, series, and public author data (`id`, display `name`, and `image`). Account email and `privateNotes` are never
 included in public responses.
+
+List reads skip the big body columns (`Post.deferred`) for cost, so `content` and `footnotes` come back as `null` here
+and carry their real values on the detail endpoint. They are always present as keys — a list answers "no body here",
+never "no such field".
+
+For password-protected posts that have not been unlocked, public serializers blank `content`, `footnotes`, `blurbText`,
+`photoNote`, `photoAlbum`, crossposts, and custom/plugin `meta`; `privateNotes` is omitted on every public response.
+Titles and excerpts remain available for the lock screen teaser.
 
 ### Post by Slug
 
@@ -869,8 +901,10 @@ Returns an XML sitemap of all published posts for SEO.
 POST /api/blog/publish-scheduled?appId=xyz
 ```
 
-Publishes all posts with `status: 'scheduled'` whose `publishAt` date has passed. Designed to be called from a
-cron/scheduled worker.
+Atomically publishes one bounded batch (up to 90) of posts with `status: 'scheduled'` whose `publishAt` date has passed.
+The response includes `{ published, posts, hasMore }`; `hasMore: true` means another invocation can continue draining
+the backlog. The bounded select plus conditional bulk update uses two D1 queries regardless of batch size and is safe
+when scheduled invocations overlap.
 
 ### Demo Content Seed
 
@@ -901,6 +935,47 @@ for a fresh deployment and safe to repeat after an administrator edits the seede
 - **Analytics Ready** - Reading time and view tracking
 - **Version Control** - Full post history with optional retention (`maxVersionsToKeep`); older versions pruned on save
 - **Content Organization** - Categories, tags, and series support
+
+## Write Validation (every path)
+
+`Post.create()` and `Post.update()` normalize an effective row at the model boundary, so generic CRUD and the dedicated
+blurb/photo routes share one discriminated write contract. Updates reuse the trusted row already loaded by the secure
+read-before-write boundary (or load it when called directly): omitted subtype fields are preserved, subtype transitions
+validate the effective row, and leaving a blurb or photo journal clears its old derived body, hero, and footnote fields.
+`Post.prepareForDatabase` still runs `validatePostWrite` on every write, so instance `save()` and direct model calls
+cannot bypass the caps or cross-column checks.
+
+What it enforces, per column, when that column is part of the write:
+
+| Column       | Rule                                                                                                                                                                                                                                                |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blurbText`  | Non-empty, ≤ `BLURB_MAX_LENGTH`, line endings normalized                                                                                                                                                                                            |
+| `photoNote`  | ≤ `PHOTO_JOURNAL_NOTE_MAX_LENGTH`, trimmed, blank → null                                                                                                                                                                                            |
+| `photoAlbum` | 1–`PHOTO_JOURNAL_MAX_ITEMS` frames, unique IDs, media IDs, and URLs within their respective namespaces, JavaScript-Date-safe `takenAt`, every URL sanitized and http(s)/relative, each URL ≤ 4096 chars, serialized metadata ≤ 512 KiB, `[]` → null |
+| `content`    | EditorJS envelope with a `blocks` array, ≤ `POST_CONTENT_MAX_BYTES` serialized                                                                                                                                                                      |
+| `crossposts` | ≤ `MAX_CROSSPOSTS` absolute http(s) links, deduplicated, at most one `origin`                                                                                                                                                                       |
+
+Plus cross-column coherence, evaluated against the effective row on updates:
+
+- `contentType: 'photo'` requires a non-empty `photoAlbum` in that write — the renderer dispatches on `contentType`, so
+  a journal without frames renders as an empty page.
+- `contentType: 'blurb'` requires `blurbText`.
+- Any other `contentType` rejects a non-null `photoAlbum`, `photoNote`, or `blurbText`.
+- `status: 'scheduled'` requires `publishAt`; entering `published` initializes `publishedAt` and `postedAt` in the
+  model, while entering a non-scheduled state clears a stale `publishAt`.
+- Article `wordCount`/`readingTimeMinutes`, publication timestamps, and initial `authorId` are model-owned derived
+  fields rather than client-writable CRUD input.
+
+**PATCH contract:** a key that is absent means "not in this write" and is left alone; an explicit `null` clears. This is
+what lets single-column writes such as `trackView()` and `publish()` keep working under a validator that runs on
+everything.
+
+Duplicate photographs are rejected when an `id`, `mediaId`, or URL repeats in the same identity namespace. The
+namespaces stay separate: an app-local ID may legitimately equal another asset's media-library ID. `id` keys both the
+React tile and the lightbox registration, so a repeated ID would render one unopenable frame. The admin editor applies
+the same rule when photographs are added, including within a single media-library selection. Publication timestamps must
+be positive values inside JavaScript's renderable Date range and are normalized to integer D1 milliseconds; photo
+`takenAt` values use the same Date range (and may represent pre-epoch archival images).
 
 ## CRUD Writable Fields
 
@@ -966,6 +1041,11 @@ Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)*
 The `@ottabase/ottablog/renderer` subpath includes a `BlogRenderer` component for rendering blog posts with theme
 support. (It is not exported from the pure root — see [Module Entry Points](#module-entry-points).)
 
+Hook-enabled renderers start each input generation in a pending phase. A same-ID refetch cannot reuse the previous
+generation's filtered data, and plugin actions are serialized as `render.before`, optional `content.before`,
+`content.after`, then `render.after` before the next generation opens. Disabling hooks bypasses both filtering and the
+lifecycle without leaving a stale filtered generation active.
+
 ### Option 1: Tailwind Classes (Recommended)
 
 The default theme uses Tailwind CSS classes. No additional CSS import required:
@@ -978,22 +1058,12 @@ initOttablog({ defaultThemeId: 'default' });
 <BlogRenderer post={post} showHeroImage showMetadata />;
 ```
 
-### Option 2: Optional CSS Styles
+### Option 2: Renderer base CSS
 
-A CSS file is provided at `src/components/BlogRenderer.css` with:
-
-- `.blog-post` and related classes for post rendering
-- `.blog-card` and related classes for post listings
-- Dark mode support via `prefers-color-scheme`
-
-**To use the CSS:**
-
-```typescript
-// Import in your app entry point (only if not using Tailwind)
-import '@ottabase/ottablog/src/components/BlogRenderer.css';
-```
-
-**Note:** The CSS is optional and not required if you're using Tailwind or custom themes.
+Importing `@ottabase/ottablog/renderer` loads the renderer's bundled `BlogRenderer.css` automatically. It supplies the
+`.blog-post`, `.blog-card`, and related structural styles, and uses the active theme's tokens. No `src/...` CSS path is
+part of the public package API; override these classes in app CSS or replace the theme renderers when you need a custom
+visual system.
 
 ### Option 3: Custom Themes
 

@@ -9,13 +9,15 @@ import { BlurbValidationError } from '../types';
 vi.mock('../ottaorm-models', () => ({
     Post: {
         entity: 'posts',
+        // The real static. List handlers read it to normalize the columns a collection read skips.
+        deferred: ['content', 'footnotes', 'privateNotes'],
         first: vi.fn(async () => null),
         where: vi.fn(async () => []),
         paginate: vi.fn(async () => ({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 })),
         search: vi.fn(async () => []),
         find: vi.fn(async () => null),
         related: vi.fn(async () => []),
-        publishScheduled: vi.fn(async () => []),
+        publishScheduled: vi.fn(async () => ({ posts: [], hasMore: false })),
         findBySlug: vi.fn(async () => null),
         create: vi.fn(),
         createBlurb: vi.fn(),
@@ -225,6 +227,32 @@ describe('createBlogHandlers', () => {
             expect('privateNotes' in post).toBe(false);
         });
 
+        it('answers with null for the columns a collection read deferred, never a missing key', async () => {
+            // A real list read never SELECTs Post.deferred, so `toJson()` has no key for them at
+            // all. Left alone, /posts and /posts/by-slug would answer with different SHAPES and
+            // `post.content === null` would be quietly false on one of them.
+            // `record()` is already the shape a collection read produces: no body columns at all.
+            vi.mocked(Post.paginate).mockResolvedValue({
+                data: [record()],
+                page: 1,
+                perPage: 15,
+                total: 1,
+                totalPages: 1,
+            } as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts'));
+            const post = ((await response.json()) as { data: Record<string, unknown>[] }).data[0];
+
+            expect(post.content).toBeNull();
+            expect(post.footnotes).toBeNull();
+            // privateNotes is the exception: an always-null key would advertise a column that must
+            // stay off public payloads entirely.
+            expect('privateNotes' in post).toBe(false);
+            // Everything a card actually renders is still a real value, not a null placeholder.
+            expect(post.photoAlbum).toEqual([{ id: 'ph1', url: 'https://images.test/1.jpg' }]);
+        });
+
         it('drops crossposts from a protected post along with its body', async () => {
             // A crosspost names a public copy of this very post, so leaving it on a locked payload
             // hands the reader a way around the password.
@@ -298,6 +326,25 @@ describe('createBlogHandlers', () => {
 
         expect(response.status).toBe(401);
         expect(connect).not.toHaveBeenCalled();
+    });
+
+    it('publish-scheduled returns the bounded batch and continuation signal', async () => {
+        vi.mocked(Post.publishScheduled).mockResolvedValueOnce({
+            posts: [{ id: 'p1', title: 'Due now', slug: 'due-now' }],
+            hasMore: true,
+        });
+        const handlers = createBlogHandlers<Env>({ ...baseConfig, checkCronAuth: () => true });
+
+        const response = await handlers.handleBlogPublishScheduled(
+            ctxFor('/publish-scheduled?appId=test-app', { method: 'POST' }),
+        );
+
+        await expect(response.json()).resolves.toMatchObject({
+            published: 1,
+            posts: [{ id: 'p1', title: 'Due now', slug: 'due-now' }],
+            hasMore: true,
+        });
+        expect(Post.publishScheduled).toHaveBeenCalledWith({ appId: 'test-app' });
     });
 
     it('seed-demo responds 404 when no demo content is configured', async () => {
@@ -620,6 +667,7 @@ describe('createBlogHandlers', () => {
         };
         const updated = { id: 'b1', contentType: 'blurb', blurbText: 'Revised thought' };
         const record = {
+            get: (field: string) => (field === 'status' ? 'draft' : undefined),
             toJson: () => ({ id: 'b1', organizationId: 'org-1', userId: 'u1', contentType: 'blurb' }),
             updateBlurb: vi.fn(async () => ({ toJson: () => updated })),
         };
@@ -724,6 +772,54 @@ describe('createBlogHandlers', () => {
         validateWrite.mockRestore();
     });
 
+    it('requires publish permission when a PATCH targets an already public subtype', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:update'],
+        };
+        const stored: Record<string, unknown> = {
+            id: 'public-1',
+            status: 'published',
+            contentType: 'blurb',
+            blurbText: 'Public thought',
+            photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+        };
+        const record = {
+            get: (field: string) => stored[field],
+            toJson: () => stored,
+            updateBlurb: vi.fn(),
+            updatePhotoJournal: vi.fn(),
+        };
+        vi.mocked(Post.first).mockResolvedValue(record as any);
+        const getReadFilter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: async () => ({
+                session: { user: { id: 'u1', organizationId: 'org-1' } },
+                securityContext,
+            }),
+        });
+
+        const blurbResponse = await handlers.handleBlogBlurbUpdate(
+            ctxFor('/blurbs/public-1', { method: 'PATCH', body: JSON.stringify({ text: 'Changed' }) }),
+            'public-1',
+        );
+        const photoResponse = await handlers.handleBlogPhotoJournalUpdate(
+            ctxFor('/photo-journals/public-1', { method: 'PATCH', body: JSON.stringify({ note: 'Changed' }) }),
+            'public-1',
+        );
+
+        expect(blurbResponse.status).toBe(403);
+        expect(photoResponse.status).toBe(403);
+        expect((await blurbResponse.json()).error).toBe('Access denied');
+        expect((await photoResponse.json()).error).toBe('Access denied');
+        expect(record.updateBlurb).not.toHaveBeenCalled();
+        expect(record.updatePhotoJournal).not.toHaveBeenCalled();
+        getReadFilter.mockRestore();
+    });
+
     it('projects public author data without exposing the account email', async () => {
         const authorFields = {
             id: 'author-1',
@@ -783,6 +879,7 @@ describe('createBlogHandlers', () => {
             blurbText: 'secret thought',
             photoNote: 'secret note',
             photoAlbum: [{ id: 'p1', url: 'https://images.test/secret.jpg' }],
+            meta: { pluginSecret: 'do not ship' },
         };
         const record = {
             get: (field: string) => postFields[field as keyof typeof postFields] ?? null,
@@ -801,6 +898,7 @@ describe('createBlogHandlers', () => {
         expect(body.blurbText).toBeNull();
         expect(body.photoNote).toBeNull();
         expect(body.photoAlbum).toBeNull();
+        expect(body.meta).toBeNull();
         // The lock screen still needs something to show.
         expect(body.title).toBe('Locked');
         expect(body.excerpt).toBe('Teaser stays public');
@@ -851,10 +949,10 @@ describe('createBlogHandlers', () => {
             let where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
             expect(where.appId).toBe('test-app');
 
-            // Explicit ?appId still wins.
+            // Request-controlled app IDs are ignored.
             await handlers.handleBlogPostsList(ctxFor('/posts?appId=other-app'));
             where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
-            expect(where.appId).toBe('other-app');
+            expect(where.appId).toBe('test-app');
         });
 
         it('scopes related posts to the resolved app', async () => {

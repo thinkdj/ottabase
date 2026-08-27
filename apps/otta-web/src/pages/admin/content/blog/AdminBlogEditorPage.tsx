@@ -514,6 +514,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         title: '',
         message: '',
     });
+    const [pendingSavedPostId, setPendingSavedPostId] = useState<string | null>(null);
     const [slugError, setSlugError] = useState<string | null>(null);
     const justSavedRef = useRef(false);
 
@@ -927,17 +928,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         }
     };
 
-    // Calculate word count from EditorJS content
-    const calculateWordCount = (data: OutputData | null): number => {
-        if (!data?.blocks) return 0;
-        let text = '';
-        for (const block of data.blocks) {
-            const blockText = getTextFromData(block.data);
-            if (blockText) text += ' ' + blockText;
-        }
-        return text.trim().split(/\s+/).filter(Boolean).length;
-    };
-
     // Get next version number
     const getNextVersionNumber = (): number => {
         if (versions.length === 0) return 1;
@@ -1000,9 +990,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             const privateNotes = await notesEditor.save();
             const footnotes = await footnotesEditor.save();
 
-            // Calculate word count
-            const wordCount = calculateWordCount(content);
-
             // Build SEO meta
             const seoMeta: SeoMeta = {
                 title: seoTitle || undefined,
@@ -1035,8 +1022,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 return;
             }
 
-            const shouldSetPublishedAt = publishNow || (resolvedStatus === 'published' && !initialData?.publishedAt);
-            const publishedAtValue = shouldSetPublishedAt ? Date.now() : undefined;
             const publishAtPayload = publishNow || resolvedStatus !== 'scheduled' ? null : publishAtValue;
             const expectedUpdatedAt = initialData?.updatedAt ? new Date(initialData.updatedAt).getTime() : undefined;
 
@@ -1060,12 +1045,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 passwordHint: passwordHint || undefined,
                 ...(isProtected && password.trim() ? { password: password.trim() } : {}),
                 publishAt: publishAtPayload,
-                ...(publishedAtValue !== undefined ? { publishedAt: publishedAtValue } : {}),
                 ...(expectedUpdatedAt !== undefined ? { expectedUpdatedAt } : {}),
                 seriesId: seriesId || undefined,
                 seriesOrder: seriesOrder || undefined,
                 maxVersionsToKeep: maxVersionsToKeep || undefined,
-                wordCount,
             };
 
             // Create version snapshot before saving (edit mode only)
@@ -1094,25 +1077,54 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 // Invalidate post detail; when initialData refreshes we sync form state so isDirty stays false
                 queryClient.invalidateQueries({ queryKey: ['posts'] });
 
+                /*
+                 * The post is saved by this point. Its tag and category links are separate writes,
+                 * and `Promise.all` used to throw the first failure straight to the catch below —
+                 * which skipped the refetches, skipped categories entirely, skipped version pruning,
+                 * and told the author the post had not been saved when it had.
+                 *
+                 * allSettled instead: attempt every link, always refetch so the form shows what the
+                 * server actually holds rather than the optimistic selection, and report the misses
+                 * as what they are. Saving again retries only the links that are still missing.
+                 */
+                const settleLinks = async (mutations: Promise<unknown>[], refetch: () => Promise<unknown>) => {
+                    if (mutations.length === 0) return 0;
+                    const results = await Promise.allSettled(mutations);
+                    await refetch();
+                    return results.filter((result) => result.status === 'rejected').length;
+                };
+
                 // Sync tag links: remove deleted, add new
                 const existingTagIds = tagLinks.map((tl) => tl.tagId);
                 const toAdd = selectedTagIds.filter((id) => !existingTagIds.includes(id));
                 const toRemove = tagLinks.filter((tl) => !selectedTagIds.includes(tl.tagId));
-                await Promise.all([
-                    ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId, tagId })),
-                    ...toRemove.map((tl) => deleteTagLink.mutateAsync(tl.id)),
-                ]);
-                if (toAdd.length > 0 || toRemove.length > 0) refetchTagLinks();
+                const tagFailures = await settleLinks(
+                    [
+                        ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId, tagId })),
+                        ...toRemove.map((tl) => deleteTagLink.mutateAsync(tl.id)),
+                    ],
+                    refetchTagLinks,
+                );
 
                 // Sync category links: remove deleted, add new
                 const existingCatIds = categoryLinks.map((cl) => cl.categoryId);
                 const catsToAdd = selectedCategoryIds.filter((id) => !existingCatIds.includes(id));
                 const catsToRemove = categoryLinks.filter((cl) => !selectedCategoryIds.includes(cl.categoryId));
-                await Promise.all([
-                    ...catsToAdd.map((categoryId) => createCategoryLink.mutateAsync({ postId, categoryId })),
-                    ...catsToRemove.map((cl) => deleteCategoryLink.mutateAsync(cl.id)),
-                ]);
-                if (catsToAdd.length > 0 || catsToRemove.length > 0) refetchCategoryLinks();
+                const categoryFailures = await settleLinks(
+                    [
+                        ...catsToAdd.map((categoryId) => createCategoryLink.mutateAsync({ postId, categoryId })),
+                        ...catsToRemove.map((cl) => deleteCategoryLink.mutateAsync(cl.id)),
+                    ],
+                    refetchCategoryLinks,
+                );
+
+                if (tagFailures + categoryFailures > 0) {
+                    setAlertDialog({
+                        open: true,
+                        title: 'Saved, but some links did not stick',
+                        message: `The post was saved. ${tagFailures + categoryFailures} tag or category change${tagFailures + categoryFailures === 1 ? '' : 's'} could not be applied — the selections below now show what the server holds. Adjust them and save again.`,
+                    });
+                }
 
                 // Prune old versions if setting is enabled
                 if (maxVersionsToKeep && maxVersionsToKeep > 0) {
@@ -1125,30 +1137,39 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 const created = await createPost.mutateAsync(postData);
                 justSavedRef.current = true;
 
-                // Create tag links for the new post
+                // Links for the new post, best-effort for the reason above — and it matters most
+                // here: the post EXISTS now, so letting a failed tag link reach the catch below
+                // reports "could not save" for a post that saved, and the retry creates a second one.
                 const newPostId = (created as { id?: string })?.id;
-                if (newPostId && selectedTagIds.length > 0) {
-                    await Promise.all(
-                        selectedTagIds.map((tagId) => createTagLink.mutateAsync({ postId: newPostId, tagId })),
-                    );
+                const linkFailures = newPostId
+                    ? (
+                          await Promise.allSettled([
+                              ...selectedTagIds.map((tagId) => createTagLink.mutateAsync({ postId: newPostId, tagId })),
+                              ...selectedCategoryIds.map((categoryId) =>
+                                  createCategoryLink.mutateAsync({ postId: newPostId, categoryId }),
+                              ),
+                          ])
+                      ).filter((result) => result.status === 'rejected').length
+                    : 0;
+
+                if (linkFailures > 0) {
+                    setPendingSavedPostId(newPostId ?? null);
+                    setAlertDialog({
+                        open: true,
+                        title: 'Saved, but some links did not stick',
+                        message: `The post was created. ${linkFailures} tag or category change${linkFailures === 1 ? '' : 's'} could not be applied — check them on the editor and save again.`,
+                    });
                 }
 
-                // Create category links for the new post
-                if (newPostId && selectedCategoryIds.length > 0) {
-                    await Promise.all(
-                        selectedCategoryIds.map((categoryId) =>
-                            createCategoryLink.mutateAsync({ postId: newPostId, categoryId }),
-                        ),
-                    );
-                }
-
-                // Go to the new post's editor so user stays on "blog details" for that post.
-                // Mark as intentional so the navigation guard doesn't block the redirect.
-                allowNavigateRef.current = true;
-                if (newPostId) {
-                    navigate({ to: surface.editPath(newPostId) });
-                } else {
-                    navigate({ to: surface.contentPath });
+                if (linkFailures === 0) {
+                    // Go to the new post's editor so user stays on "blog details" for that post.
+                    // Mark as intentional so the navigation guard doesn't block the redirect.
+                    allowNavigateRef.current = true;
+                    if (newPostId) {
+                        navigate({ to: surface.editPath(newPostId) });
+                    } else {
+                        navigate({ to: surface.contentPath });
+                    }
                 }
             }
         } catch (error) {
@@ -1163,6 +1184,15 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             }
             setAlertDialog({ open: true, title: 'Error', message: 'Failed to save post. Please try again.' });
         }
+    };
+
+    const dismissAlertDialog = () => {
+        setAlertDialog((current) => ({ ...current, open: false }));
+        if (!pendingSavedPostId) return;
+        const savedPostId = pendingSavedPostId;
+        setPendingSavedPostId(null);
+        allowNavigateRef.current = true;
+        navigate({ to: surface.editPath(savedPostId) });
     };
 
     const handleLoadVersion = async () => {
@@ -2357,19 +2387,14 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             <UnsavedChangesDialog blocker={blocker} />
 
             {/* General Alert Dialog */}
-            <AlertDialog
-                open={alertDialog.open}
-                onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}
-            >
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && dismissAlertDialog()}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
                         <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
-                            OK
-                        </AlertDialogAction>
+                        <AlertDialogAction>OK</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

@@ -187,6 +187,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
     const [libraryOpen, setLibraryOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [alert, setAlert] = useState({ open: false, title: '', message: '' });
+    const [pendingSavedPostId, setPendingSavedPostId] = useState<string | null>(null);
 
     const createPhotoJournal = useApiMutation<PhotoJournalEditorPost, PhotoJournalPayload>({
         endpoint: '/api/blog/photo-journals',
@@ -212,7 +213,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 .map((tag) => ({ id: tag!.id, name: tag!.name })),
         [allTags, selectedTagIds],
     );
-    const { data: tagLinksData } = blogTagLinkHooks.useList(
+    const { data: tagLinksData, refetch: refetchTagLinks } = blogTagLinkHooks.useList(
         { where: initialData ? { postId: initialData.id } : undefined },
         { enabled: Boolean(initialData), staleTime: 30_000 },
     );
@@ -283,10 +284,27 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
 
     const addPhotos = (items: MediaSelectionPayload[]) => {
         const incoming = items.map(photoFromMedia);
-        const existingKeys = new Set(photos.flatMap((photo) => [photo.mediaId, photo.url]).filter(Boolean));
-        const unique = incoming.filter(
-            (photo) => !existingKeys.has(photo.mediaId || '') && !existingKeys.has(photo.url),
-        );
+        // Seeded from the album, then GROWN as each photograph is accepted — otherwise one selection
+        // containing the same photo twice is filtered here so the model never receives a duplicate.
+        // validatePhotoJournalItems rejects them as well, avoiding a mismatch between editor and DB.
+        // Keep the three identity namespaces separate, matching validatePhotoJournalItems. An
+        // app-local photo ID can legitimately equal a different asset's media-library ID.
+        const seenIds = new Set(photos.map((photo) => photo.id));
+        const seenMediaIds = new Set(photos.map((photo) => photo.mediaId).filter(Boolean));
+        const seenUrls = new Set(photos.map((photo) => photo.url));
+        const unique = incoming.filter((photo) => {
+            if (
+                seenIds.has(photo.id) ||
+                (photo.mediaId != null && seenMediaIds.has(photo.mediaId)) ||
+                seenUrls.has(photo.url)
+            ) {
+                return false;
+            }
+            seenIds.add(photo.id);
+            if (photo.mediaId != null) seenMediaIds.add(photo.mediaId);
+            seenUrls.add(photo.url);
+            return true;
+        });
         const available = PHOTO_JOURNAL_MAX_ITEMS - photos.length;
         setPhotos((current) => [...current, ...unique.slice(0, available)]);
         setLibraryOpen(false);
@@ -319,7 +337,11 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
 
         const resolvedStatus = publishNow ? 'published' : status;
         const publishAtValue = publishAt ? new Date(publishAt).getTime() : null;
-        if (resolvedStatus === 'scheduled' && !publishAtValue) {
+        const publishAtForPayload =
+            typeof publishAtValue === 'number' && Number.isFinite(publishAtValue) && publishAtValue > 0
+                ? publishAtValue
+                : null;
+        if (resolvedStatus === 'scheduled' && publishAtForPayload === null) {
             setAlert({
                 open: true,
                 title: 'Publish date required',
@@ -360,7 +382,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
             status: resolvedStatus,
             allowComments,
             isFeatured,
-            publishAt: resolvedStatus === 'scheduled' ? publishAtValue : null,
+            publishAt: resolvedStatus === 'scheduled' ? publishAtForPayload : null,
         };
 
         try {
@@ -370,10 +392,37 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
             const existingTagIds = tagLinks.map((link) => link.tagId);
             const toAdd = selectedTagIds.filter((id) => !existingTagIds.includes(id));
             const toRemove = tagLinks.filter((link) => !selectedTagIds.includes(link.tagId));
-            await Promise.all([
-                ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId: saved.id, tagId })),
-                ...toRemove.map((link) => deleteTagLink.mutateAsync(link.id)),
-            ]);
+            /*
+             * The journal and its tag links are separate writes, and only the first one is unsafe to
+             * repeat. `Promise.all` used to reject the whole save on any tag failure, so a journal
+             * that HAD been created reported "could not save" — and the obvious retry created a
+             * second journal. allSettled keeps the two failure domains apart: the post is saved, the
+             * tags are reconciled best-effort, and the author is told exactly which half missed.
+             *
+             * ponytail: reporting, not repair. Real atomicity needs a server endpoint that owns the
+             * post and its links in one request — worth building when tag writes actually start
+             * failing, not before.
+             */
+            const tagFailures = (
+                await Promise.allSettled([
+                    ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId: saved.id, tagId })),
+                    ...toRemove.map((link) => deleteTagLink.mutateAsync(link.id)),
+                ])
+            ).filter((result) => result.status === 'rejected').length;
+            if (initialData) await refetchTagLinks();
+
+            if (tagFailures > 0) {
+                // A newly-created journal must become an edit before another save is possible, but
+                // navigate only after the author has seen this result; component-local alerts do
+                // not survive a create -> edit route change.
+                if (!initialData) setPendingSavedPostId(saved.id);
+                setAlert({
+                    open: true,
+                    title: 'Saved, but the tags did not all stick',
+                    message: `The photo journal was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied — check the tags below and save again.`,
+                });
+                return;
+            }
             allowNavigateRef.current = true;
             navigate({ to: surface.contentPath });
         } catch (error) {
@@ -383,6 +432,15 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 message: error instanceof Error ? error.message : 'Please try again.',
             });
         }
+    };
+
+    const dismissAlert = () => {
+        setAlert((current) => ({ ...current, open: false }));
+        if (!pendingSavedPostId) return;
+        const savedPostId = pendingSavedPostId;
+        setPendingSavedPostId(null);
+        allowNavigateRef.current = true;
+        navigate({ to: surface.editPath(savedPostId) });
     };
 
     const handleDelete = async () => {
@@ -866,7 +924,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 onCancel={() => setDeleteOpen(false)}
             />
             <UnsavedChangesDialog blocker={blocker} />
-            <AlertDialog open={alert.open} onOpenChange={(open) => setAlert((current) => ({ ...current, open }))}>
+            <AlertDialog open={alert.open} onOpenChange={(open) => !open && dismissAlert()}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{alert.title}</AlertDialogTitle>

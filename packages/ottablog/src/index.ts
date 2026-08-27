@@ -131,6 +131,7 @@ export {
     validatePhotoJournalItems,
     validatePhotoJournalNote,
     validatePostContent,
+    validatePostWrite,
 } from './types';
 
 // Slug utilities (shared across models)

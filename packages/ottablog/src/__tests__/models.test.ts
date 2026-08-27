@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BaseModel } from '@ottabase/ottaorm';
 import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink, PostVersion } from '../ottaorm-models';
 import { POST_CONTENT_MAX_BYTES, PostContentValidationError } from '../types';
 
@@ -89,6 +90,14 @@ describe('ottablog models', () => {
             const writable = (Post as any).writable as { create: string[]; update: string[] };
             expect(writable.create).toContain('blurbText');
             expect(writable.update).toContain('blurbText');
+        });
+
+        it('keeps derived publication, attribution, and reading fields out of generic writes', () => {
+            const writable = (Post as any).writable as { create: string[]; update: string[] };
+            for (const field of ['authorId', 'publishedAt', 'postedAt', 'readingTimeMinutes', 'wordCount']) {
+                expect(writable.create).not.toContain(field);
+                expect(writable.update).not.toContain(field);
+            }
         });
 
         it('defers the heavy body columns but never what the timeline renders', () => {
@@ -677,6 +686,269 @@ describe('ottablog models', () => {
         });
     });
 
+    describe('Post write-path integrity', () => {
+        // `create`, `update`, and instance `save()` all funnel through prepareForDatabase, so a rule
+        // proven here is one no caller can address its way around — including a host app calling
+        // Post.create() directly, which is exactly what the route-level validators cannot cover.
+        const prepare = (data: Record<string, unknown>) =>
+            (
+                Post as unknown as {
+                    prepareForDatabase: (d: Record<string, unknown>) => Record<string, unknown>;
+                }
+            ).prepareForDatabase(data);
+        const prepareUpdate = (data: Record<string, unknown>, currentData?: Record<string, unknown>, id = 'post-1') =>
+            (
+                Post as unknown as {
+                    prepareUpdateMutation: (
+                        d: Record<string, unknown>,
+                        context: { id: string; currentData?: Record<string, unknown>; driver?: undefined },
+                    ) => Promise<Record<string, unknown>>;
+                }
+            ).prepareUpdateMutation(data, { id, currentData, driver: undefined });
+
+        it('runs the content validators from the model, not only from the routes', () => {
+            expect(() => prepare({ contentType: 'photo', photoAlbum: [{ url: 'javascript:alert(1)' }] })).toThrow(
+                'HTTP(S)',
+            );
+            expect(() => prepare({ contentType: 'photo', photoAlbum: [] })).toThrow('needs at least one photograph');
+            expect(() => prepare({ contentType: 'blog', blurbText: 'stray' })).toThrow('cannot carry blurb text');
+            expect(() => prepare({ content: { notBlocks: true } })).toThrow('blocks array');
+        });
+
+        it('leaves a partial update alone so single-column writes still work', () => {
+            // trackView() and publish() send whatever the instance holds; a guard that demanded a
+            // whole coherent post would break every one of them.
+            expect(() => prepare({ viewCount: 12 })).not.toThrow();
+            expect(() => prepare({ status: 'published', publishedAt: Date.now() })).not.toThrow();
+        });
+
+        it('normalizes generic creates through the same subtype contract', async () => {
+            const create = vi.spyOn(BaseModel, 'create').mockResolvedValue({} as never);
+
+            await Post.create({
+                title: 'Caller supplied title',
+                contentType: 'blurb',
+                blurbText: 'A normalized thought',
+            });
+
+            expect(create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'A normalized thought',
+                    excerpt: 'A normalized thought',
+                    contentType: 'blurb',
+                    photoAlbum: null,
+                    content: null,
+                    readingTimeMinutes: 1,
+                    wordCount: 3,
+                }),
+                undefined,
+            );
+            create.mockRestore();
+        });
+
+        it('enforces publication invariants for generic model creates', async () => {
+            await expect(
+                Post.create({ title: 'Later', slug: 'later', status: 'scheduled', contentType: 'blog' }),
+            ).rejects.toThrow('must include a publish date');
+
+            const create = vi.spyOn(BaseModel, 'create').mockResolvedValue({} as never);
+            const before = Date.now();
+            await Post.create({ title: 'Live', slug: 'live', status: 'published', contentType: 'blog' });
+            const written = create.mock.calls[0][0] as Record<string, unknown>;
+            expect(written.publishAt).toBeNull();
+            expect(written.publishedAt).toEqual(expect.any(Number));
+            expect(written.postedAt).toEqual(expect.any(Number));
+            expect(written.publishedAt as number).toBeGreaterThanOrEqual(before);
+            create.mockRestore();
+        });
+
+        it('derives article reading metadata from the effective body', async () => {
+            const create = vi.spyOn(BaseModel, 'create').mockResolvedValue({} as never);
+            await Post.create({
+                title: 'Measured',
+                slug: 'measured',
+                contentType: 'blog',
+                userId: 'author-1',
+                content: { blocks: [{ type: 'paragraph', data: { text: 'one two three four' } }] },
+            });
+
+            expect(create).toHaveBeenCalledWith(
+                expect.objectContaining({ authorId: 'author-1', wordCount: 4, readingTimeMinutes: 1 }),
+                undefined,
+            );
+            create.mockRestore();
+        });
+
+        it('validates the effective publication state and preserves live timestamps on edits', async () => {
+            const current = {
+                id: 'post-1',
+                title: 'Already live',
+                contentType: 'blog',
+                status: 'published',
+                publishAt: null,
+                publishedAt: 1_700_000_000_000,
+                postedAt: 1_700_000_000_100,
+            };
+            expect(await prepareUpdate({ title: 'Still live' }, current)).toEqual({ title: 'Still live' });
+
+            const repaired = await prepareUpdate(
+                { title: 'Repair legacy timestamps' },
+                { ...current, publishedAt: null, postedAt: null },
+            );
+            expect(repaired).toEqual(
+                expect.objectContaining({
+                    publishedAt: expect.any(Number),
+                    postedAt: expect.any(Number),
+                }),
+            );
+
+            await expect(prepareUpdate({ status: 'scheduled' }, current)).rejects.toThrow(
+                'must include a publish date',
+            );
+        });
+
+        it('loads the current row before validating and normalizing subtype transitions', async () => {
+            const current = new Post({
+                entity: 'posts',
+                data: {
+                    id: 'photo-1',
+                    title: 'A journal',
+                    contentType: 'photo',
+                    photoAlbum: [{ id: 'p1', url: 'https://images.test/p1.jpg' }],
+                    photoNote: 'A note',
+                    content: { blocks: [{ type: 'paragraph', data: { text: 'body' } }] },
+                    heroImage: { url: 'https://images.test/p1.jpg' },
+                    footnotes: { blocks: [] },
+                },
+            });
+            const find = vi.spyOn(Post, 'find').mockResolvedValue(current);
+            const normalized = await prepareUpdate({ contentType: 'blog', title: 'An article' }, undefined, 'photo-1');
+
+            expect(find).toHaveBeenCalledWith('photo-1', undefined);
+            expect(normalized).toEqual(
+                expect.objectContaining({
+                    contentType: 'blog',
+                    content: null,
+                    blurbText: null,
+                    photoNote: null,
+                    photoAlbum: null,
+                    heroImage: null,
+                    footnotes: null,
+                }),
+            );
+            find.mockRestore();
+        });
+
+        it('reuses a trusted current row instead of reading it twice', async () => {
+            const current = {
+                id: 'photo-1',
+                title: 'A journal',
+                contentType: 'photo',
+                photoAlbum: [{ id: 'p1', url: 'https://images.test/p1.jpg' }],
+                photoNote: 'A note',
+                content: { blocks: [{ type: 'paragraph', data: { text: 'body' } }] },
+            };
+            const find = vi.spyOn(Post, 'find');
+            const normalized = await prepareUpdate({ contentType: 'blog', title: 'An article' }, current, 'photo-1');
+
+            expect(find).not.toHaveBeenCalled();
+            expect(normalized).toEqual(
+                expect.objectContaining({
+                    contentType: 'blog',
+                    content: null,
+                    photoNote: null,
+                    photoAlbum: null,
+                }),
+            );
+            find.mockRestore();
+        });
+    });
+
+    describe('taxonomy slug mutation hooks', () => {
+        it.each([
+            [PostSeries, { id: 'series-1', appId: 'app-1', title: 'Series', slug: 'series' }, { title: 'Renamed' }],
+            [
+                PostCategory,
+                { id: 'cat-1', appId: 'app-1', name: 'Category', slug: 'category', type: 'post' },
+                { name: 'Renamed' },
+            ],
+            [PostTag, { id: 'tag-1', appId: 'app-1', name: 'Tag', slug: 'tag', type: 'post' }, { name: 'Renamed' }],
+        ] as const)(
+            '%s reuses the authorized current snapshot for slug normalization',
+            async (Model, current, data) => {
+                const find = vi.spyOn(Model, 'find');
+                const first = vi.spyOn(Model, 'first').mockResolvedValue(null);
+                const prepareUpdateMutation = (
+                    Model as unknown as {
+                        prepareUpdateMutation: (
+                            value: Record<string, unknown>,
+                            context: { id: string; currentData: Record<string, unknown>; driver?: undefined },
+                        ) => Promise<Record<string, unknown>>;
+                    }
+                ).prepareUpdateMutation.bind(Model);
+
+                const normalized = await prepareUpdateMutation(
+                    { ...data },
+                    {
+                        id: current.id,
+                        currentData: { ...current },
+                        driver: undefined,
+                    },
+                );
+
+                expect(find).not.toHaveBeenCalled();
+                expect(first).toHaveBeenCalled();
+                expect(normalized.slug).toBe(current.slug);
+                first.mockRestore();
+                find.mockRestore();
+            },
+        );
+    });
+
+    describe('Post deferred-column safety', () => {
+        // Exactly what a collection read hands back: Post.deferred columns absent, and `get` on one
+        // of them throwing rather than answering null.
+        const fromCollectionRead = () =>
+            new Post({
+                entity: 'posts',
+                data: { id: 'post-1', title: 'Kyoto, in the rain', excerpt: 'A quiet blue hour.' },
+                omitted: ['content', 'footnotes', 'privateNotes'],
+            });
+
+        it('still throws on a bare get of a deferred column', () => {
+            // The guard below must not become a silent null for everyone — that is the failure mode
+            // the ORM raises this error to prevent.
+            expect(() => fromCollectionRead().get('content')).toThrow(/not loaded/);
+        });
+
+        it('derives from the body only when the body was actually loaded', () => {
+            const post = fromCollectionRead();
+            // Nothing to derive from, so both leave the stored values alone rather than throwing
+            // inside an unrelated save.
+            expect(() => post.updateReadingStats()).not.toThrow();
+            expect(() => post.generateExcerpt()).not.toThrow();
+            expect(post.get('excerpt')).toBe('A quiet blue hour.');
+            expect(post.get('wordCount')).toBeUndefined();
+        });
+
+        it('derives normally from a fully loaded record', () => {
+            const post = new Post({
+                entity: 'posts',
+                data: {
+                    id: 'post-2',
+                    title: 'Kyoto, in the rain',
+                    excerpt: null,
+                    content: { blocks: [{ type: 'paragraph', data: { text: 'The rain emptied the streets.' } }] },
+                },
+            });
+
+            post.updateReadingStats();
+            post.generateExcerpt();
+            expect(post.get('wordCount')).toBeGreaterThan(0);
+            expect(post.get('excerpt')).toContain('The rain emptied the streets.');
+        });
+    });
+
     describe('Model query helpers', () => {
         it('Post should have static findBySlug method', () => {
             expect(Post.findBySlug).toBeDefined();
@@ -706,6 +978,54 @@ describe('ottablog models', () => {
         it('Post should have static publishScheduled method', () => {
             expect(Post.publishScheduled).toBeDefined();
             expect(typeof Post.publishScheduled).toBe('function');
+        });
+
+        it('publishes a bounded scheduled batch with one conditional update', async () => {
+            const due = ['p1', 'p2', 'p3'].map(
+                (id) =>
+                    new Post({
+                        entity: 'posts',
+                        data: { id, title: `Post ${id}`, slug: id, publishAt: 1, status: 'scheduled' },
+                    }),
+            );
+            const whereSpy = vi.spyOn(Post, 'where').mockResolvedValue(due as any);
+            const returning = vi.fn(async () => [
+                { id: 'p1', title: 'Post p1', slug: 'p1' },
+                { id: 'p2', title: 'Post p2', slug: 'p2' },
+            ]);
+            const update = vi.fn(() => ({
+                set: vi.fn(() => ({
+                    where: vi.fn(() => ({ returning })),
+                })),
+            }));
+            const driver = { getDb: () => ({ update }) };
+
+            const result = await Post.publishScheduled({ appId: 'app-1', batchSize: 2 }, driver as never);
+
+            expect(whereSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'scheduled', appId: 'app-1' }),
+                expect.objectContaining({
+                    orderBy: 'publishAt',
+                    orderDirection: 'asc',
+                    limit: 3,
+                    select: ['id', 'title', 'slug', 'publishAt'],
+                }),
+                driver,
+            );
+            expect(update).toHaveBeenCalledTimes(1);
+            expect(returning).toHaveBeenCalledTimes(1);
+            expect(result).toEqual({
+                posts: [
+                    { id: 'p1', title: 'Post p1', slug: 'p1' },
+                    { id: 'p2', title: 'Post p2', slug: 'p2' },
+                ],
+                hasMore: true,
+            });
+            whereSpy.mockRestore();
+        });
+
+        it('rejects an unbounded scheduled publish batch', async () => {
+            await expect(Post.publishScheduled({ batchSize: 91 })).rejects.toThrow(/integer from 1 to 90/);
         });
 
         it('Post should have static related method', () => {

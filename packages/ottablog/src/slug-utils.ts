@@ -105,8 +105,12 @@ export async function prepareUpdateSlug(
     data: Record<string, any>,
     config: SlugLifecycleConfig,
     driver?: any,
+    currentData?: Record<string, unknown>,
 ): Promise<void> {
-    const current = await Model.find(id, driver);
+    // Secure CRUD already loaded a complete RLS-authorized snapshot. Reuse it so slug
+    // normalization never issues a second, unscoped primary-key probe; direct model calls still
+    // fall back to find().
+    const current = currentData ? { get: (field: string) => currentData[field] } : await Model.find(id, driver);
     if (!current) return;
 
     const currentAppId = current.get('appId') as string | null;

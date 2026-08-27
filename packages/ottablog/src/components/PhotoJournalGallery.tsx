@@ -44,6 +44,18 @@ function photoAspect(item: PhotoJournalItem, index: number): string {
     return 'aspect-square';
 }
 
+function renderableDate<T extends Date | string | number>(
+    value: T,
+    format: (timestamp: T) => string,
+): { iso: string; label: string } | null {
+    try {
+        const date = new Date(value);
+        return { iso: date.toISOString(), label: format(value) };
+    } catch {
+        return null;
+    }
+}
+
 function formatPhotoDate(value: number): string {
     return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(value));
 }
@@ -84,6 +96,7 @@ function PhotoTile({
     tone: 'editorial' | 'minimal';
 }) {
     const viewerItem = photoViewerItem(item);
+    const takenAt = item.takenAt ? renderableDate(item.takenAt, formatPhotoDate) : null;
     const { open, isEnabled } = useMediaLightboxRegistration(
         `photo-journal-${postId}-${item.id}`,
         interactive ? viewerItem : null,
@@ -139,14 +152,12 @@ function PhotoTile({
             ) : (
                 <div className={frameClass}>{image}</div>
             )}
-            {interactive && (item.caption || item.location || item.takenAt) && (
+            {interactive && (item.caption || item.location || takenAt) && (
                 <figcaption className="mt-2 flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs leading-relaxed text-muted-foreground">
                     <span>{item.caption || item.alt || `Photograph ${index + 1}`}</span>
                     <span className="flex gap-2 text-[0.625rem] font-medium uppercase tracking-[0.14em]">
                         {item.location && <span>{item.location}</span>}
-                        {item.takenAt && (
-                            <time dateTime={new Date(item.takenAt).toISOString()}>{formatPhotoDate(item.takenAt)}</time>
-                        )}
+                        {takenAt && <time dateTime={takenAt.iso}>{takenAt.label}</time>}
                     </span>
                 </figcaption>
             )}
@@ -203,31 +214,54 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
 
     const photos = post.photoAlbum ?? [];
     const formatDate = props.formatDate || defaultFormatDate;
+    const publishedDate = post.publishedAt ? renderableDate(post.publishedAt, formatDate) : null;
+
+    /*
+     * The same visibility contract every other renderer honours (BlogRendererProps declares these
+     * for ALL content types, so a caller that turns the title off on an article expects the same
+     * from a journal). Absent means shown: PhotoJournalRenderer forwards `...rest` without applying
+     * ArticleBlogRenderer's defaults, so only an explicit `false` hides anything.
+     *
+     * The field note is NOT part of this. It reads like a standfirst but it is authored body copy —
+     * the excerpt is DERIVED from it (createPhotoJournalExcerpt), not the other way round — so
+     * `showExcerpt`, which defaults to false for articles, would silently delete content from every
+     * existing caller. A shell that owns the chrome still owns only the chrome.
+     */
+    const showTitle = props.showTitle !== false;
+    const showMetadata = props.showMetadata !== false;
+    const byline = showMetadata && (post.author?.name || publishedDate);
+
     return (
         <div className="space-y-10 sm:space-y-14">
-            <header className="mx-auto max-w-3xl text-center">
-                <p className="mb-4 text-[0.625rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                    Photo journal · {photos.length} {photos.length === 1 ? 'frame' : 'frames'}
-                </p>
-                <h1
-                    className={`${tone === 'editorial' ? 'font-serif' : 'font-light'} text-4xl tracking-[-0.035em] sm:text-6xl`}
-                >
-                    {post.title}
-                </h1>
-                <div className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    {post.author?.name && <span>{post.author.name}</span>}
-                    {post.author?.name && post.publishedAt && <span aria-hidden="true">·</span>}
-                    {post.publishedAt && (
-                        <time dateTime={new Date(post.publishedAt).toISOString()}>{formatDate(post.publishedAt)}</time>
+            {(showTitle || byline || post.photoNote) && (
+                <header className="mx-auto max-w-3xl text-center">
+                    {showTitle && (
+                        <>
+                            <p className="mb-4 text-[0.625rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                Photo journal · {photos.length} {photos.length === 1 ? 'frame' : 'frames'}
+                            </p>
+                            <h1
+                                className={`${tone === 'editorial' ? 'font-serif' : 'font-light'} text-4xl tracking-[-0.035em] sm:text-6xl`}
+                            >
+                                {post.title}
+                            </h1>
+                        </>
                     )}
-                </div>
-                {post.photoNote && (
-                    <BlurbText
-                        text={post.photoNote}
-                        className="mx-auto mt-7 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg"
-                    />
-                )}
-            </header>
+                    {byline && (
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            {post.author?.name && <span>{post.author.name}</span>}
+                            {post.author?.name && publishedDate && <span aria-hidden="true">·</span>}
+                            {publishedDate && <time dateTime={publishedDate.iso}>{publishedDate.label}</time>}
+                        </div>
+                    )}
+                    {post.photoNote && (
+                        <BlurbText
+                            text={post.photoNote}
+                            className="mx-auto mt-7 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg"
+                        />
+                    )}
+                </header>
+            )}
 
             {/*
              * `items-start` is the whole fix: grid items stretch to the row by default, so a short

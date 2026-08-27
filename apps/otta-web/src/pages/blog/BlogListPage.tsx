@@ -291,7 +291,8 @@ export function BlogListPage() {
                             ) : post.contentType === 'blurb' ? (
                                 <Link
                                     key={post.id}
-                                    to={`/blog/${post.slug}`}
+                                    to="/blog/$slug"
+                                    params={{ slug: post.slug }}
                                     aria-label={`Open thought from ${post.author?.name || 'author'}`}
                                     // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
                                     className="group block rounded-l-sm rounded-r-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -301,7 +302,8 @@ export function BlogListPage() {
                             ) : post.contentType === 'photo' ? (
                                 <Link
                                     key={post.id}
-                                    to={`/blog/${post.slug}`}
+                                    to="/blog/$slug"
+                                    params={{ slug: post.slug }}
                                     aria-label={`Open photo journal ${post.title}`}
                                     className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
@@ -352,7 +354,8 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
         <Link
-            to={`/blog/${post.slug}`}
+            to="/blog/$slug"
+            params={{ slug: post.slug }}
             className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
@@ -450,7 +453,8 @@ function PostCard({ post }: { post: BlogPost }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
         <Link
-            to={`/blog/${post.slug}`}
+            to="/blog/$slug"
+            params={{ slug: post.slug }}
             className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">

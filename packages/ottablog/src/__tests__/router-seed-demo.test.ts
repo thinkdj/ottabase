@@ -118,7 +118,7 @@ describe('handleBlogDemoSeed', () => {
         expect(vi.mocked(Post.create).mock.calls[0][0]).toEqual(
             expect.objectContaining({
                 slug: 'sample-article',
-                appId: 'site-a',
+                appId: 'test-app',
                 organizationId: 'org-123',
                 contentType: 'blog',
                 status: 'published',
@@ -152,7 +152,7 @@ describe('handleBlogDemoSeed', () => {
         // No organizationId in the probe: an org-filtered lookup would miss a
         // same-slug row in another tenant and turn the insert into a hard
         // constraint failure instead of a clean "already exists".
-        expect(Post.first).toHaveBeenCalledWith({ slug: 'sample-article', appId: 'site-a' });
+        expect(Post.first).toHaveBeenCalledWith({ slug: 'sample-article', appId: 'test-app' });
     });
 
     it('leaves existing rows untouched on a repeat seed', async () => {
@@ -174,7 +174,7 @@ describe('blog by-slug app scoping', () => {
         vi.mocked(Post.first).mockResolvedValue(null as any);
     });
 
-    it('scopes by-slug reads to the x-app-id header', async () => {
+    it('ignores request app headers and uses configured app scope', async () => {
         const handlers = createBlogHandlers<Env>(baseConfig);
         await handlers.handleBlogPostBySlug(
             {
@@ -183,10 +183,10 @@ describe('blog by-slug app scoping', () => {
             },
             'hello',
         );
-        expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'site-b', status: 'published' }));
+        expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'test-app', status: 'published' }));
     });
 
-    it('prefers the appId query param over the header on unlock reads', async () => {
+    it('ignores request app query/header values on unlock reads', async () => {
         const handlers = createBlogHandlers<Env>(baseConfig);
         await handlers.handleBlogPostUnlock({
             ...ctxFor('/posts/unlock?appId=site-q'),
@@ -196,7 +196,7 @@ describe('blog by-slug app scoping', () => {
                 body: JSON.stringify({ slug: 's', password: 'p' }),
             }),
         });
-        expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'site-q' }));
+        expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'test-app' }));
     });
 
     it('returns 404 when no published row matches the resolved appId (no null-app fallback)', async () => {
@@ -207,7 +207,7 @@ describe('blog by-slug app scoping', () => {
         expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'test-app' }));
     });
 
-    it('scopes taxonomy slug lookups by appId (header default, explicit type, query precedence)', async () => {
+    it('scopes taxonomy slug lookups to configured appId', async () => {
         const handlers = createBlogHandlers<Env>(baseConfig);
 
         await handlers.handleBlogTagBySlug(
@@ -219,7 +219,7 @@ describe('blog by-slug app scoping', () => {
         );
         expect(PostTag.findBySlug).toHaveBeenCalledWith(
             't',
-            expect.objectContaining({ appId: 'site-b', type: 'post' }),
+            expect.objectContaining({ appId: 'test-app', type: 'post' }),
         );
 
         await handlers.handleBlogCategoryBySlug(ctxFor('/categories/by-slug/c?type=docs'), 'c');
@@ -237,6 +237,6 @@ describe('blog by-slug app scoping', () => {
             },
             's',
         );
-        expect(PostSeries.findBySlug).toHaveBeenCalledWith('s', expect.objectContaining({ appId: 'site-q' }));
+        expect(PostSeries.findBySlug).toHaveBeenCalledWith('s', expect.objectContaining({ appId: 'test-app' }));
     });
 });
