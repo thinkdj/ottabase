@@ -2,6 +2,7 @@ import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@otta
 import { getSession } from '@ottabase/auth/backend';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { parseBoundedInteger } from '@ottabase/utils/pagination';
 import type { ApiRouteContext } from './router';
 import { getAuthOptions } from '../lib/auth-utils';
 import { requireSessionOrDev } from '../lib/utils';
@@ -29,7 +30,7 @@ export async function handleCoreAnalytics(context: ApiRouteContext): Promise<Res
     }
 
     const eventFilter = url.searchParams.get('event') ?? '';
-    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days') ?? '7', 10)));
+    const days = parseBoundedInteger(url.searchParams.get('days'), 7, 1, 90);
     const groupBy = url.searchParams.get('groupBy') ?? 'event';
 
     // core_events: index1=event, blob3=country. Map to query column names.

@@ -7,8 +7,7 @@ import { User } from '@ottabase/ottaorm/models';
 import { ReferralTracking } from '@ottabase/referrals';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
 import { getAuthOptions } from '../lib/auth-utils';
 import { readJson, requireSessionOrDev } from '../lib/utils';
 
@@ -244,7 +243,7 @@ export async function handleReferralsAnalytics(context: ReferralRouteContext): P
     }
 
     const referralCode = url.searchParams.get('referralCode') ?? '';
-    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days') ?? '7', 10)));
+    const days = parseBoundedInteger(url.searchParams.get('days'), 7, 1, 90);
     const groupBy = url.searchParams.get('groupBy') ?? 'country';
 
     // Map referral-specific groupBy to generic groupBy shortcuts

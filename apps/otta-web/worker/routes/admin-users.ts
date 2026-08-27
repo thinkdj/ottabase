@@ -1,3 +1,4 @@
+import { MAX_SEARCH_TERM_BYTES } from '@ottabase/ottaorm';
 import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -22,6 +23,9 @@ export async function handleAdminUsers(context: ApiRouteContext): Promise<Respon
     const { page, perPage, search } = parsePaginationParams(url.searchParams, {
         defaults: { perPage: 25, orderBy: 'createdAt', order: 'desc' },
     });
+    if (search && new TextEncoder().encode(search).byteLength > MAX_SEARCH_TERM_BYTES) {
+        return errorResponse('Search term is too long', 400, { code: 'INVALID_SEARCH' });
+    }
 
     let paginationResult;
     if (search) {
@@ -54,6 +58,9 @@ export async function handleAdminUserSearch(context: ApiRouteContext): Promise<R
 
     const url = new URL(context.request.url);
     const query = (url.searchParams.get('q') || '').trim();
+    if (new TextEncoder().encode(query).byteLength > MAX_SEARCH_TERM_BYTES) {
+        return errorResponse('Search term is too long', 400, { code: 'INVALID_SEARCH' });
+    }
 
     if (query.length < 2) {
         return jsonResponse({ data: [] });

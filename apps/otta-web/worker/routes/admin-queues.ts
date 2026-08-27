@@ -1,6 +1,7 @@
 import { createKVClient } from '@ottabase/cf/kv';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { parseBoundedInteger } from '@ottabase/utils/pagination';
 import {
     deleteDLQJob,
     getDLQJob,
@@ -53,7 +54,7 @@ export async function handleAdminQueuesProcessed(context: AdminQueuesContext): P
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) return auth;
 
-    const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
+    const limit = parseBoundedInteger(context.url.searchParams.get('limit'), 50, 1, 100);
     const jobs = await getRecentProcessedJobs(context.env, limit);
     return jsonResponse({ jobs });
 }
@@ -62,7 +63,7 @@ export async function handleAdminQueuesFailed(context: AdminQueuesContext): Prom
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) return auth;
 
-    const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
+    const limit = parseBoundedInteger(context.url.searchParams.get('limit'), 50, 1, 100);
     const jobs = await getFailedJobs(context.env, limit);
     return jsonResponse({ jobs });
 }
@@ -79,7 +80,7 @@ export async function handleAdminQueuesPending(context: AdminQueuesContext): Pro
     }
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+    const limit = parseBoundedInteger(url.searchParams.get('limit'), 50, 1, 100);
     const listResult = await kv.list({
         prefix: 'queue:message:',
         limit,
@@ -137,7 +138,7 @@ export async function handleAdminQueuesDLQList(context: AdminQueuesContext): Pro
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) return auth;
 
-    const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
+    const limit = parseBoundedInteger(context.url.searchParams.get('limit'), 50, 1, 100);
     const cursor = context.url.searchParams.get('cursor') || undefined;
     const result = await getDLQJobs(context.env, limit, cursor);
     return jsonResponse(result);

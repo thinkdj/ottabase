@@ -146,6 +146,15 @@ export function parsePaginationParams(
         order: options?.defaults?.order ?? PAGINATION_DEFAULTS.order,
         search: options?.defaults?.search ?? '',
     };
+    const MAX_PAGE = 1000;
+
+    function parsePage(value: unknown, fallback: number): number {
+        if (value === undefined || value === null || value === '') return fallback;
+        const raw = String(value);
+        if (!/^\d+$/.test(raw)) return fallback;
+        const parsed = Number(raw);
+        return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= MAX_PAGE ? parsed : fallback;
+    }
 
     // Handle URLSearchParams
     if (source instanceof URLSearchParams) {
@@ -155,11 +164,11 @@ export function parsePaginationParams(
         const orderStr = source.get('order') || source.get('direction');
         const searchStr = source.get('search') || source.get('q');
 
-        const page = pageStr ? parseInt(pageStr, 10) : defaults.page;
-        const perPage = perPageStr ? parseInt(perPageStr, 10) : defaults.perPage;
+        const page = parsePage(pageStr, defaults.page);
+        const perPage = parsePage(perPageStr, defaults.perPage);
 
         return {
-            page: isNaN(page) || page < 1 ? defaults.page : page,
+            page,
             perPage:
                 isNaN(perPage) || perPage < 1 ? defaults.perPage : Math.min(perPage, PAGINATION_DEFAULTS.maxPerPage),
             orderBy: orderByStr || defaults.orderBy,
@@ -169,8 +178,7 @@ export function parsePaginationParams(
     }
 
     // Handle plain object
-    const page =
-        typeof source.page === 'number' ? source.page : source.page ? parseInt(String(source.page), 10) : defaults.page;
+    const page = parsePage(source.page, defaults.page);
 
     const perPageValue = source.perPage ?? source.per_page;
     const perPage =
@@ -184,12 +192,20 @@ export function parsePaginationParams(
     const orderValue = source.order ?? source.direction;
 
     return {
-        page: isNaN(page) || page < 1 ? defaults.page : page,
+        page,
         perPage: isNaN(perPage) || perPage < 1 ? defaults.perPage : Math.min(perPage, PAGINATION_DEFAULTS.maxPerPage),
         orderBy: (orderByValue as string) || defaults.orderBy,
         order: orderValue === 'asc' || orderValue === 'desc' ? orderValue : defaults.order,
         search: (source.search as string) || (source.q as string) || defaults.search,
     };
+}
+
+export function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number): number {
+    if (value === undefined || value === null || value === '') return fallback;
+    const raw = String(value);
+    if (!/^-?\d+$/.test(raw)) return fallback;
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
 // ============================================================
