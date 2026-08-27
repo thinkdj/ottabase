@@ -61,38 +61,45 @@ describe('parseCron', () => {
     it('should throw on invalid single values', () => {
         expect(() => parseCron('abc * * * *')).toThrow('Invalid value');
     });
+
+    it('should reject out-of-range and descending values instead of producing an empty schedule', () => {
+        expect(() => parseCron('60 * * * *')).toThrow('Value out of bounds');
+        expect(() => parseCron('* 24 * * *')).toThrow('Value out of bounds');
+        expect(() => parseCron('10-5 * * * *')).toThrow('Range out of bounds');
+        expect(() => parseCron('1,,2 * * * *')).toThrow('Invalid value');
+    });
 });
 
 describe('matchesCron', () => {
     it('should match every minute', () => {
-        const date = new Date('2024-06-15T10:30:00');
+        const date = new Date('2024-06-15T10:30:00Z');
         expect(matchesCron('* * * * *', date)).toBe(true);
     });
 
     it('should match specific time', () => {
-        const date = new Date('2024-06-15T09:30:00');
+        const date = new Date('2024-06-15T09:30:00Z');
         expect(matchesCron('30 9 * * *', date)).toBe(true);
         expect(matchesCron('31 9 * * *', date)).toBe(false);
         expect(matchesCron('30 10 * * *', date)).toBe(false);
     });
 
     it('should match specific day', () => {
-        const date = new Date('2024-06-15T00:00:00'); // Saturday
+        const date = new Date('2024-06-15T00:00:00Z'); // Saturday
         expect(matchesCron('0 0 15 * *', date)).toBe(true);
         expect(matchesCron('0 0 16 * *', date)).toBe(false);
     });
 
     it('should match weekday', () => {
-        const saturday = new Date('2024-06-15T00:00:00'); // Saturday = 6
+        const saturday = new Date('2024-06-15T00:00:00Z'); // Saturday = 6
         expect(matchesCron('0 0 * * 6', saturday)).toBe(true);
         expect(matchesCron('0 0 * * 0', saturday)).toBe(false); // Sunday
 
-        const monday = new Date('2024-06-17T00:00:00'); // Monday = 1
+        const monday = new Date('2024-06-17T00:00:00Z'); // Monday = 1
         expect(matchesCron('0 0 * * 1', monday)).toBe(true);
     });
 
     it('should match month', () => {
-        const june = new Date('2024-06-15T00:00:00');
+        const june = new Date('2024-06-15T00:00:00Z');
         expect(matchesCron('0 0 15 6 *', june)).toBe(true);
         expect(matchesCron('0 0 15 7 *', june)).toBe(false);
     });
@@ -103,7 +110,7 @@ describe('matchesCron', () => {
             // June 15, 2024 is a Saturday (weekday=6)
             // "0 0 15 * 1" = 15th of month OR Monday
             // Day 15 matches, but it's Saturday not Monday - should still match (OR logic)
-            const date = new Date('2024-06-15T00:00:00');
+            const date = new Date('2024-06-15T00:00:00Z');
             expect(matchesCron('0 0 15 * 1', date)).toBe(true);
         });
 
@@ -111,7 +118,7 @@ describe('matchesCron', () => {
             // June 17, 2024 is a Monday (weekday=1)
             // "0 0 15 * 1" = 15th of month OR Monday
             // It's day 17 not 15, but it's Monday - should match (OR logic)
-            const date = new Date('2024-06-17T00:00:00');
+            const date = new Date('2024-06-17T00:00:00Z');
             expect(matchesCron('0 0 15 * 1', date)).toBe(true);
         });
 
@@ -119,18 +126,18 @@ describe('matchesCron', () => {
             // June 16, 2024 is a Sunday (weekday=0)
             // "0 0 15 * 1" = 15th of month OR Monday
             // It's day 16 not 15, and it's Sunday not Monday - should NOT match
-            const date = new Date('2024-06-16T00:00:00');
+            const date = new Date('2024-06-16T00:00:00Z');
             expect(matchesCron('0 0 15 * 1', date)).toBe(false);
         });
 
         it('should only check day when weekday is wildcard', () => {
-            const date = new Date('2024-06-15T00:00:00'); // Saturday
+            const date = new Date('2024-06-15T00:00:00Z'); // Saturday
             expect(matchesCron('0 0 15 * *', date)).toBe(true);
             expect(matchesCron('0 0 14 * *', date)).toBe(false);
         });
 
         it('should only check weekday when day is wildcard', () => {
-            const saturday = new Date('2024-06-15T00:00:00'); // Saturday=6
+            const saturday = new Date('2024-06-15T00:00:00Z'); // Saturday=6
             expect(matchesCron('0 0 * * 6', saturday)).toBe(true);
             expect(matchesCron('0 0 * * 1', saturday)).toBe(false);
         });
@@ -139,45 +146,55 @@ describe('matchesCron', () => {
 
 describe('getNextRun', () => {
     it('should get next minute', () => {
-        const now = new Date('2024-06-15T10:30:45');
+        const now = new Date('2024-06-15T10:30:45Z');
         const next = getNextRun('* * * * *', now);
-        expect(next.getMinutes()).toBe(31);
-        expect(next.getSeconds()).toBe(0);
+        expect(next.getUTCMinutes()).toBe(31);
+        expect(next.getUTCSeconds()).toBe(0);
     });
 
     it('should get next hour', () => {
-        const now = new Date('2024-06-15T10:30:00');
+        const now = new Date('2024-06-15T10:30:00Z');
         const next = getNextRun('0 * * * *', now);
-        expect(next.getHours()).toBe(11);
-        expect(next.getMinutes()).toBe(0);
+        expect(next.getUTCHours()).toBe(11);
+        expect(next.getUTCMinutes()).toBe(0);
     });
 
     it('should get next day', () => {
-        const now = new Date('2024-06-15T23:30:00');
+        const now = new Date('2024-06-15T23:30:00Z');
         const next = getNextRun('0 0 * * *', now);
-        expect(next.getDate()).toBe(16);
-        expect(next.getHours()).toBe(0);
-        expect(next.getMinutes()).toBe(0);
+        expect(next.getUTCDate()).toBe(16);
+        expect(next.getUTCHours()).toBe(0);
+        expect(next.getUTCMinutes()).toBe(0);
     });
 
     it('should handle daily at 9am', () => {
         // Before 9am
-        const morning = new Date('2024-06-15T08:00:00');
+        const morning = new Date('2024-06-15T08:00:00Z');
         let next = getNextRun('0 9 * * *', morning);
-        expect(next.getDate()).toBe(15);
-        expect(next.getHours()).toBe(9);
+        expect(next.getUTCDate()).toBe(15);
+        expect(next.getUTCHours()).toBe(9);
 
         // After 9am
-        const afternoon = new Date('2024-06-15T10:00:00');
+        const afternoon = new Date('2024-06-15T10:00:00Z');
         next = getNextRun('0 9 * * *', afternoon);
-        expect(next.getDate()).toBe(16);
-        expect(next.getHours()).toBe(9);
+        expect(next.getUTCDate()).toBe(16);
+        expect(next.getUTCHours()).toBe(9);
     });
 
     it('should handle every 5 minutes', () => {
-        const now = new Date('2024-06-15T10:32:00');
+        const now = new Date('2024-06-15T10:32:00Z');
         const next = getNextRun('*/5 * * * *', now);
-        expect(next.getMinutes()).toBe(35);
+        expect(next.getUTCMinutes()).toBe(35);
+    });
+
+    it('evaluates schedules in UTC regardless of the host timezone', () => {
+        const next = getNextRun('0 0 * * *', new Date('2024-06-15T23:59:30-07:00'));
+        expect(next.toISOString()).toBe('2024-06-17T00:00:00.000Z');
+    });
+
+    it('accepts sparse valid schedules such as leap day', () => {
+        const next = getNextRun('0 0 29 2 *', new Date('2024-03-01T00:00:00Z'));
+        expect(next.toISOString()).toBe('2028-02-29T00:00:00.000Z');
     });
 });
 

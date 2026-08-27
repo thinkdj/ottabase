@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createCronHandler, CronHandler } from '../handler';
-import type { ScheduledEvent, ExecutionContext } from '../types';
+import type { ScheduledController, ExecutionContext } from '../types';
 
 // Mock Cloudflare types
-const createMockEvent = (cron: string): ScheduledEvent => ({
+const createMockEvent = (cron: string): ScheduledController => ({
     cron,
     scheduledTime: Date.now(),
-    type: 'scheduled',
+    noRetry: vi.fn(),
 });
 
 const createMockCtx = (): ExecutionContext => ({
     waitUntil: vi.fn(),
     passThroughOnException: vi.fn(),
+    props: undefined,
 });
 
 interface TestEnv {
@@ -90,7 +91,7 @@ describe('CronHandler', () => {
 
             const context = mockFn.mock.calls[0][0];
             expect(context.env).toBe(mockEnv);
-            expect(context.event).toBe(event);
+            expect(context.controller).toBe(event);
             expect(context.ctx).toBe(mockCtx);
             expect(context.cron).toBe('0 0 * * *');
             expect(context.scheduledTime).toBeInstanceOf(Date);
@@ -124,8 +125,12 @@ describe('CronHandler', () => {
     describe('hooks', () => {
         it('should call onBeforeJob before handler', async () => {
             const order: string[] = [];
-            const onBeforeJob = vi.fn(() => order.push('before'));
-            const handler = vi.fn(() => order.push('handler'));
+            const onBeforeJob = vi.fn(() => {
+                order.push('before');
+            });
+            const handler = vi.fn(() => {
+                order.push('handler');
+            });
 
             const cron = createCronHandler<TestEnv>({ onBeforeJob }).on('0 0 * * *', handler);
 
@@ -136,8 +141,12 @@ describe('CronHandler', () => {
 
         it('should call onAfterJob after handler', async () => {
             const order: string[] = [];
-            const onAfterJob = vi.fn(() => order.push('after'));
-            const handler = vi.fn(() => order.push('handler'));
+            const onAfterJob = vi.fn(() => {
+                order.push('after');
+            });
+            const handler = vi.fn(() => {
+                order.push('handler');
+            });
 
             const cron = createCronHandler<TestEnv>({ onAfterJob }).on('0 0 * * *', handler);
 
@@ -147,7 +156,8 @@ describe('CronHandler', () => {
         });
 
         it('should call onError when handler throws', async () => {
-            const error = new Error('Test error');
+            const error = new Error('Test error; token=super-secret');
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
             const onError = vi.fn();
             const handler = vi.fn(() => {
                 throw error;
@@ -158,6 +168,9 @@ describe('CronHandler', () => {
             await cron.handler(createMockEvent('0 0 * * *'), mockEnv, mockCtx);
 
             expect(onError).toHaveBeenCalledWith(error, expect.any(Object));
+            expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('token=[REDACTED]'));
+            expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining('super-secret'));
+            consoleError.mockRestore();
         });
 
         it('should rethrow error when no onError hook provided', async () => {

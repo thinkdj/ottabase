@@ -1,6 +1,7 @@
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
+import type { QueuedJob } from '@ottabase/queue';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import type { CloudflareEnv } from './cloudflare-env';
+import { handleAppScheduled } from './ottabase/cron';
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
@@ -39,6 +40,15 @@ function isHtmlRequest(request: Request): boolean {
 
     const accept = request.headers.get('Accept');
     return !!accept && accept.includes('text/html');
+}
+
+/** Rebuild an inbound request without edge-only `cf` metadata for the Assets service binding. */
+function createAssetRequest(request: Request, url: string | URL = request.url): Request {
+    return new Request(url, {
+        method: request.method,
+        headers: request.headers,
+        redirect: request.redirect,
+    });
 }
 
 export default {
@@ -110,14 +120,14 @@ export default {
                 });
             }
 
-            let response = await env.OBCF_ASSETS.fetch(request.clone());
+            let response = await env.OBCF_ASSETS.fetch(createAssetRequest(request));
 
             if (isHtmlRequest(request) && (response.status === 404 || SPA_REDIRECT_STATUSES.has(response.status))) {
                 const indexUrl = new URL(request.url);
                 // Fetch the root '/' instead of '/index.html' because Cloudflare Assets natively
                 // redirects '/index.html' to '/' (308), which strips the SPA path in the browser.
                 indexUrl.pathname = '/';
-                response = await env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request.clone()));
+                response = await env.OBCF_ASSETS.fetch(createAssetRequest(request, indexUrl));
             }
 
             if (isHtmlRequest(request) && response.ok) {
@@ -137,5 +147,6 @@ export default {
             return handleUnhandledRequestError(err, request);
         }
     },
+    scheduled: handleAppScheduled,
     queue: queueHandler,
-};
+} satisfies ExportedHandler<CloudflareEnv, QueuedJob<unknown>>;

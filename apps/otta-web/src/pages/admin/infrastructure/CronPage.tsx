@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { useApiMutation } from '@ottabase/ottaorm/client';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
@@ -27,8 +26,21 @@ import {
     Textarea,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { api, isApiError } from '@/lib/api';
-import { ArrowLeft, RefreshCw, CheckCircle, Play, Pause, Plus, Trash2, Calendar, AlertTriangle } from 'lucide-react';
+import { isApiError } from '@/lib/api';
+import { clampCronPage, formatCronPayload } from './cron-page-utils';
+import {
+    ArrowLeft,
+    RefreshCw,
+    CheckCircle,
+    Play,
+    Pause,
+    Plus,
+    Trash2,
+    Calendar,
+    AlertTriangle,
+    ChevronLeft,
+    ChevronRight,
+} from 'lucide-react';
 
 interface ScheduledTask {
     id: string;
@@ -52,7 +64,15 @@ interface ScheduledTask {
 
 interface CronOverview {
     tasks: ScheduledTask[];
-    registeredHandlers: string[];
+    pagination: {
+        page: number;
+        perPage: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
+    registeredHandlers: Array<{ name: string; description: string }>;
     stats: {
         total: number;
         active: number;
@@ -77,6 +97,7 @@ const CRON_PRESETS = [
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 export function AdminCronPage() {
+    const [page, setPage] = useState(1);
     const [isCreating, setIsCreating] = useState(false);
     const [newTask, setNewTask] = useState({
         name: '',
@@ -116,19 +137,27 @@ export function AdminCronPage() {
         data: overview,
         isLoading,
         refetch,
-    } = useQuery({
-        queryKey: ['admin', 'cron', 'overview'],
-        queryFn: () => api<CronOverview>('/api/admin/cron'),
-        refetchInterval: 30000, // Refresh every 30 seconds
+    } = useApiQuery<CronOverview>({
+        entity: 'scheduled_tasks',
+        queryKey: ['admin', 'cron', 'overview', page],
+        endpoint: `/api/admin/cron?page=${page}&per_page=50`,
+        queryOptions: { refetchInterval: 30000 },
     });
+
+    useEffect(() => {
+        if (!overview?.pagination) return;
+        const clamped = clampCronPage(page, overview.pagination.totalPages);
+        if (clamped !== page) setPage(clamped);
+    }, [overview?.pagination, page]);
 
     const createMutation = useApiMutation<ScheduledTask, typeof newTask>({
         endpoint: '/api/admin/cron',
         method: 'POST',
-        invalidateKeys: [['admin', 'cron']],
+        invalidateEntities: ['scheduled_tasks'],
         mutationOptions: {
             onSuccess: () => {
                 setIsCreating(false);
+                setPage(1);
                 setPayloadError(null);
                 setNewTask({
                     name: '',
@@ -146,13 +175,13 @@ export function AdminCronPage() {
     const toggleMutation = useApiMutation<unknown, string>({
         endpoint: (taskId) => `/api/admin/cron/${taskId}/toggle`,
         method: 'POST',
-        invalidateKeys: [['admin', 'cron']],
+        invalidateEntities: ['scheduled_tasks'],
     });
 
     const deleteMutation = useApiMutation<unknown, string>({
         endpoint: (taskId) => `/api/admin/cron/${taskId}`,
         method: 'DELETE',
-        invalidateKeys: [['admin', 'cron']],
+        invalidateEntities: ['scheduled_tasks'],
         mutationOptions: {
             onSuccess: () => setDeleteDialog(null),
             onError: (error) => {
@@ -168,7 +197,7 @@ export function AdminCronPage() {
     const runNowMutation = useApiMutation<unknown, string>({
         endpoint: (taskId) => `/api/admin/cron/${taskId}/run`,
         method: 'POST',
-        invalidateKeys: [['admin', 'cron']],
+        invalidateEntities: ['scheduled_tasks'],
     });
 
     const handleCreateTask = (e: React.FormEvent) => {
@@ -306,8 +335,8 @@ export function AdminCronPage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {overview?.registeredHandlers?.map((handler) => (
-                                                <SelectItem key={handler} value={handler}>
-                                                    {handler}
+                                                <SelectItem key={handler.name} value={handler.name}>
+                                                    {handler.name}
                                                 </SelectItem>
                                             )) ?? (
                                                 <SelectItem value="" disabled>
@@ -506,7 +535,7 @@ export function AdminCronPage() {
                                                         View payload
                                                     </summary>
                                                     <pre className="mt-1 overflow-auto rounded-lg bg-muted/40 p-2 font-mono text-xs">
-                                                        {JSON.stringify(JSON.parse(task.payload), null, 2)}
+                                                        {formatCronPayload(task.payload)}
                                                     </pre>
                                                 </details>
                                             )}
@@ -517,7 +546,7 @@ export function AdminCronPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => runNowMutation.mutate(task.id)}
-                                                disabled={runNowMutation.isPending || !task.isActive}
+                                                disabled={runNowMutation.isPending}
                                                 title="Run now"
                                                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
                                             >
@@ -555,6 +584,35 @@ export function AdminCronPage() {
                             ))}
                         </div>
                     )}
+
+                    {overview?.pagination && overview.pagination.totalPages > 1 && (
+                        <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+                            <span className="text-xs text-muted-foreground">
+                                Page {overview.pagination.page} of {overview.pagination.totalPages} ·{' '}
+                                {overview.pagination.total} tasks
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                                    disabled={!overview.pagination.hasPrevPage || isLoading}
+                                    aria-label="Previous page"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage((current) => current + 1)}
+                                    disabled={!overview.pagination.hasNextPage || isLoading}
+                                    aria-label="Next page"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -568,12 +626,15 @@ export function AdminCronPage() {
                     <CardContent>
                         <div className="flex flex-wrap gap-2">
                             {overview.registeredHandlers.map((handler) => (
-                                <code
-                                    key={handler}
-                                    className="rounded-full bg-background px-2.5 py-1 font-mono text-xs text-muted-foreground ring-1 ring-border"
+                                <div
+                                    key={handler.name}
+                                    className="rounded-lg bg-background px-3 py-2 text-xs ring-1 ring-border"
                                 >
-                                    {handler}
-                                </code>
+                                    <code className="font-mono text-foreground">{handler.name}</code>
+                                    {handler.description && (
+                                        <p className="mt-1 text-muted-foreground">{handler.description}</p>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     </CardContent>

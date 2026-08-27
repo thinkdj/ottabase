@@ -15,10 +15,22 @@ interface CronField {
     step?: number;
 }
 
+function parseInteger(value: string, description: string): number {
+    if (!/^\d+$/.test(value)) {
+        throw new Error(`Invalid ${description}: "${value}"`);
+    }
+
+    return Number(value);
+}
+
 /**
  * Parse a single cron field
  */
 function parseField(field: string, min: number, max: number): CronField {
+    if (!field || field.split('/').length > 2) {
+        throw new Error(`Invalid cron field: "${field}"`);
+    }
+
     const values: number[] = [];
 
     // Handle step values (e.g., */5, 10-20/3)
@@ -27,8 +39,8 @@ function parseField(field: string, min: number, max: number): CronField {
 
     if (field.includes('/')) {
         const [base, stepStr] = field.split('/');
-        const parsedStep = parseInt(stepStr, 10);
-        if (isNaN(parsedStep) || parsedStep <= 0) {
+        const parsedStep = /^\d+$/.test(stepStr) ? Number(stepStr) : NaN;
+        if (!Number.isSafeInteger(parsedStep) || parsedStep <= 0) {
             throw new Error(`Invalid step value: "${stepStr}"`);
         }
         step = parsedStep;
@@ -47,28 +59,42 @@ function parseField(field: string, min: number, max: number): CronField {
     const parts = fieldPart.split(',');
 
     for (const part of parts) {
+        if (!part) {
+            throw new Error(`Invalid value: "${part}"`);
+        }
+
         // Handle ranges (e.g., 1-5)
         if (part.includes('-')) {
             const [startStr, endStr] = part.split('-');
-            const start = parseInt(startStr, 10);
-            const end = parseInt(endStr, 10);
-
-            // Validate range values
-            if (isNaN(start) || isNaN(end)) {
+            if (part.split('-').length !== 2) {
                 throw new Error(`Invalid range: "${part}"`);
             }
 
+            let start: number;
+            let end: number;
+
+            try {
+                start = parseInteger(startStr, 'range');
+                end = parseInteger(endStr, 'range');
+            } catch {
+                throw new Error(`Invalid range: "${part}"`);
+            }
+
+            if (start < min || start > max || end < min || end > max || start > end) {
+                throw new Error(`Range out of bounds: "${part}" (expected ${min}-${max})`);
+            }
+
             for (let i = start; i <= end; i++) {
-                if (i >= min && i <= max && !values.includes(i)) {
+                if (!values.includes(i)) {
                     values.push(i);
                 }
             }
         } else {
-            const value = parseInt(part, 10);
-            if (isNaN(value)) {
-                throw new Error(`Invalid value: "${part}"`);
+            const value = parseInteger(part, 'value');
+            if (value < min || value > max) {
+                throw new Error(`Value out of bounds: "${part}" (expected ${min}-${max})`);
             }
-            if (value >= min && value <= max && !values.includes(value)) {
+            if (!values.includes(value)) {
                 values.push(value);
             }
         }
@@ -133,11 +159,11 @@ export function parseCron(expression: string): ParsedCron {
 export function matchesCron(expression: string, date: Date): boolean {
     const cron = parseCron(expression);
 
-    const minute = date.getMinutes();
-    const hour = date.getHours();
-    const day = date.getDate();
-    const month = date.getMonth() + 1; // JS months are 0-indexed
-    const weekday = date.getDay(); // 0 = Sunday
+    const minute = date.getUTCMinutes();
+    const hour = date.getUTCHours();
+    const day = date.getUTCDate();
+    const month = date.getUTCMonth() + 1; // JS months are 0-indexed
+    const weekday = date.getUTCDay(); // 0 = Sunday
 
     // Check basic fields
     if (!cron.minutes.includes(minute)) return false;
@@ -169,29 +195,30 @@ export function getNextRun(expression: string, after: Date = new Date()): Date {
     const next = new Date(after);
 
     // Start from the next minute
-    next.setSeconds(0, 0);
-    next.setMinutes(next.getMinutes() + 1);
+    next.setUTCSeconds(0, 0);
+    next.setUTCMinutes(next.getUTCMinutes() + 1);
 
-    // Search for the next matching time (max 2 years ahead)
+    // Eight years covers the full Gregorian leap-day gap even when the search
+    // begins just after February 29 in a century year that is not a leap year.
     const maxDate = new Date(after);
-    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    maxDate.setUTCFullYear(maxDate.getUTCFullYear() + 8);
 
     while (next < maxDate) {
-        const minute = next.getMinutes();
-        const hour = next.getHours();
-        const day = next.getDate();
-        const month = next.getMonth() + 1;
-        const weekday = next.getDay();
+        const minute = next.getUTCMinutes();
+        const hour = next.getUTCHours();
+        const day = next.getUTCDate();
+        const month = next.getUTCMonth() + 1;
+        const weekday = next.getUTCDay();
 
         // Check month
         if (!cron.months.includes(month)) {
             // Jump to next valid month
             const nextMonth = cron.months.find((m) => m > month) ?? cron.months[0];
             if (nextMonth <= month) {
-                next.setFullYear(next.getFullYear() + 1);
+                next.setUTCFullYear(next.getUTCFullYear() + 1);
             }
-            next.setMonth(nextMonth - 1, 1);
-            next.setHours(0, 0, 0, 0);
+            next.setUTCMonth(nextMonth - 1, 1);
+            next.setUTCHours(0, 0, 0, 0);
             continue;
         }
 
@@ -214,8 +241,8 @@ export function getNextRun(expression: string, after: Date = new Date()): Date {
                     : dayMatches || weekdayMatches;
 
         if (!dayOk) {
-            next.setDate(next.getDate() + 1);
-            next.setHours(0, 0, 0, 0);
+            next.setUTCDate(next.getUTCDate() + 1);
+            next.setUTCHours(0, 0, 0, 0);
             continue;
         }
 
@@ -223,10 +250,10 @@ export function getNextRun(expression: string, after: Date = new Date()): Date {
         if (!cron.hours.includes(hour)) {
             const nextHour = cron.hours.find((h) => h > hour);
             if (nextHour !== undefined) {
-                next.setHours(nextHour, cron.minutes[0], 0, 0);
+                next.setUTCHours(nextHour, cron.minutes[0], 0, 0);
             } else {
-                next.setDate(next.getDate() + 1);
-                next.setHours(cron.hours[0], cron.minutes[0], 0, 0);
+                next.setUTCDate(next.getUTCDate() + 1);
+                next.setUTCHours(cron.hours[0], cron.minutes[0], 0, 0);
             }
             continue;
         }
@@ -235,9 +262,9 @@ export function getNextRun(expression: string, after: Date = new Date()): Date {
         if (!cron.minutes.includes(minute)) {
             const nextMinute = cron.minutes.find((m) => m > minute);
             if (nextMinute !== undefined) {
-                next.setMinutes(nextMinute, 0, 0);
+                next.setUTCMinutes(nextMinute, 0, 0);
             } else {
-                next.setHours(next.getHours() + 1, cron.minutes[0], 0, 0);
+                next.setUTCHours(next.getUTCHours() + 1, cron.minutes[0], 0, 0);
             }
             continue;
         }
@@ -246,8 +273,7 @@ export function getNextRun(expression: string, after: Date = new Date()): Date {
         return next;
     }
 
-    // Fallback - shouldn't happen with valid cron
-    return next;
+    throw new Error(`Cron expression has no occurrence within eight years: "${expression}"`);
 }
 
 /**

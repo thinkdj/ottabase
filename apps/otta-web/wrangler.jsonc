@@ -29,6 +29,12 @@
     // TanStack Router creates a single worker entry point
     "main": "cloudflare-worker.ts",
 
+    // The DB-driven scheduler evaluates individual task expressions in UTC.
+    // Cloudflare only needs to wake the Worker once per minute.
+    "triggers": {
+        "crons": ["* * * * *"],
+    },
+
     // ottaorm MUST resolve to exactly ONE copy in the worker bundle.
     //
     // It holds module-level singletons (globalRLS's policy registry) and classes compared with

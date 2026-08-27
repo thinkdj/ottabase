@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Scheduler, createScheduler, TaskRepository, ScheduledTaskRecord } from '../scheduler';
+import { Scheduler, createScheduler, createTaskRepository, TaskRepository, ScheduledTaskRecord } from '../scheduler';
 
 // Mock task data
 const createMockTask = (overrides: Partial<ScheduledTaskRecord> = {}): ScheduledTaskRecord => ({
@@ -23,23 +23,11 @@ const createMockTask = (overrides: Partial<ScheduledTaskRecord> = {}): Scheduled
 // Mock repository
 const createMockRepository = (tasks: ScheduledTaskRecord[] = []): TaskRepository => ({
     getDueTasks: vi.fn().mockResolvedValue(tasks),
+    getTask: vi.fn().mockImplementation(async (id: string) => tasks.find((task) => task.id === id) ?? null),
     acquireLock: vi.fn().mockResolvedValue(true), // Default: lock acquired
-    markCompleted: vi.fn().mockResolvedValue(undefined),
-    markFailed: vi.fn().mockResolvedValue(undefined),
+    markCompleted: vi.fn().mockResolvedValue(true),
+    markFailed: vi.fn().mockResolvedValue(true),
 });
-
-// Mock execution context that collects promises for awaiting
-const createMockCtx = () => {
-    const promises: Promise<unknown>[] = [];
-    return {
-        waitUntil: vi.fn((p: Promise<unknown>) => {
-            promises.push(p);
-        }),
-        async flush() {
-            await Promise.all(promises);
-        },
-    };
-};
 
 interface TestEnv {
     DB: { query: () => Promise<void> };
@@ -91,17 +79,16 @@ describe('Scheduler', () => {
             const handlerFn = vi.fn();
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            const result = await scheduler.tick(mockEnv, repository);
 
             expect(repository.getDueTasks).toHaveBeenCalled();
-            expect(repository.acquireLock).toHaveBeenCalledWith(task.id);
+            expect(repository.acquireLock).toHaveBeenCalledWith(task.id, expect.any(Date), true);
             expect(handlerFn).toHaveBeenCalled();
             expect(repository.markCompleted).toHaveBeenCalled();
+            expect(result).toEqual({ executed: 1, failed: 0, skipped: 0 });
         });
 
         it('should pass context to handler', async () => {
@@ -110,12 +97,10 @@ describe('Scheduler', () => {
                 payload: JSON.stringify({ userId: '123' }),
             });
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            await scheduler.tick(mockEnv, repository);
 
             const context = handlerFn.mock.calls[0][0];
             expect(context.env).toBe(mockEnv);
@@ -128,25 +113,29 @@ describe('Scheduler', () => {
         it('should skip task with no registered handler', async () => {
             const task = createMockTask({ task: 'unknown:handler' });
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>();
-            const result = await scheduler.tick(mockEnv, ctx, repository);
+            const result = await scheduler.tick(mockEnv, repository);
 
-            expect(result.skipped).toBe(1);
+            expect(result.failed).toBe(1);
             expect(result.executed).toBe(0);
+            expect(repository.markFailed).toHaveBeenCalledWith(
+                task.id,
+                expect.any(Date),
+                expect.stringContaining('No handler registered'),
+                expect.any(Date),
+            );
         });
 
         it('should skip non-handler task types', async () => {
             const task = createMockTask({ taskType: 'command' });
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', async () => {});
 
-            const result = await scheduler.tick(mockEnv, ctx, repository);
+            const result = await scheduler.tick(mockEnv, repository);
 
-            expect(result.skipped).toBe(1);
+            expect(result.failed).toBe(1);
         });
 
         it('should handle multiple due tasks', async () => {
@@ -158,23 +147,21 @@ describe('Scheduler', () => {
                 createMockTask({ id: '2', task: 'handler2' }),
             ];
             const repository = createMockRepository(tasks);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>().handler('handler1', handler1).handler('handler2', handler2);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            const result = await scheduler.tick(mockEnv, repository);
 
             expect(handler1).toHaveBeenCalled();
             expect(handler2).toHaveBeenCalled();
+            expect(result.executed).toBe(2);
         });
 
         it('should return empty result when no tasks due', async () => {
             const repository = createMockRepository([]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>();
-            const result = await scheduler.tick(mockEnv, ctx, repository);
+            const result = await scheduler.tick(mockEnv, repository);
 
             expect(result.executed).toBe(0);
             expect(result.failed).toBe(0);
@@ -188,14 +175,18 @@ describe('Scheduler', () => {
             const handlerFn = vi.fn().mockRejectedValue(error);
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            const result = await scheduler.tick(mockEnv, repository);
 
-            expect(repository.markFailed).toHaveBeenCalledWith(task.id, 'Task failed', expect.any(Date));
+            expect(repository.markFailed).toHaveBeenCalledWith(
+                task.id,
+                expect.any(Date),
+                'Task failed',
+                expect.any(Date),
+            );
+            expect(result).toEqual({ executed: 0, failed: 1, skipped: 0 });
         });
 
         it('should call onError hook when provided', async () => {
@@ -204,12 +195,10 @@ describe('Scheduler', () => {
             const onError = vi.fn();
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>({ onError }).handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            await scheduler.tick(mockEnv, repository);
 
             expect(onError).toHaveBeenCalledWith(error, expect.any(Object));
         });
@@ -227,12 +216,10 @@ describe('Scheduler', () => {
 
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>({ onBeforeTask }).handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            await scheduler.tick(mockEnv, repository);
 
             expect(order).toEqual(['before', 'handler']);
         });
@@ -248,12 +235,10 @@ describe('Scheduler', () => {
 
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             const scheduler = createScheduler<TestEnv>({ onAfterTask }).handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            await scheduler.tick(mockEnv, repository);
 
             expect(order).toEqual(['handler', 'after']);
         });
@@ -262,22 +247,26 @@ describe('Scheduler', () => {
     describe('runTask', () => {
         it('should manually run a task', async () => {
             const handlerFn = vi.fn();
+            const task = createMockTask();
+            const repository = createMockRepository([task]);
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.runTask('test:handler', mockEnv, { foo: 'bar' });
+            const result = await scheduler.runTask(task.id, mockEnv, repository);
 
             expect(handlerFn).toHaveBeenCalled();
             const context = handlerFn.mock.calls[0][0];
-            expect(context.taskId).toBe('manual');
-            expect(context.payload).toEqual({ foo: 'bar' });
+            expect(context.taskId).toBe(task.id);
+            expect(result.status).toBe('completed');
         });
 
-        it('should throw for unknown handler', async () => {
+        it('should report a missing stored task', async () => {
+            const repository = createMockRepository();
             const scheduler = createScheduler<TestEnv>();
 
-            await expect(scheduler.runTask('unknown', mockEnv)).rejects.toThrow(
-                'No handler registered for task: unknown',
-            );
+            await expect(scheduler.runTask('unknown', mockEnv, repository)).resolves.toEqual({
+                taskId: 'unknown',
+                status: 'not_found',
+            });
         });
     });
 
@@ -286,36 +275,86 @@ describe('Scheduler', () => {
             const handlerFn = vi.fn();
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             // Simulate another worker already acquired the lock
             (repository.acquireLock as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            const result = await scheduler.tick(mockEnv, repository);
 
-            expect(repository.acquireLock).toHaveBeenCalledWith(task.id);
+            expect(repository.acquireLock).toHaveBeenCalledWith(task.id, expect.any(Date), true);
             expect(handlerFn).not.toHaveBeenCalled();
             expect(repository.markCompleted).not.toHaveBeenCalled();
+            expect(result.skipped).toBe(1);
         });
 
         it('should not mark task as failed if lock was not acquired', async () => {
             const handlerFn = vi.fn();
             const task = createMockTask();
             const repository = createMockRepository([task]);
-            const ctx = createMockCtx();
 
             // Simulate another worker already acquired the lock
             (repository.acquireLock as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
             const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
 
-            await scheduler.tick(mockEnv, ctx, repository);
-            await ctx.flush();
+            await scheduler.tick(mockEnv, repository);
 
             expect(repository.markFailed).not.toHaveBeenCalled();
         });
+    });
+
+    it('marks malformed stored JSON from a manual run as failed after acquiring the lock', async () => {
+        const handlerFn = vi.fn();
+        const task = createMockTask({ payload: '{broken' });
+        const repository = createMockRepository([task]);
+        const scheduler = createScheduler<TestEnv>().handler('test:handler', handlerFn);
+
+        const result = await scheduler.runTask(task.id, mockEnv, repository);
+
+        expect(handlerFn).not.toHaveBeenCalled();
+        expect(repository.markFailed).toHaveBeenCalledWith(
+            task.id,
+            expect.any(Date),
+            expect.any(String),
+            expect.any(Date),
+        );
+        expect(result.status).toBe('failed');
+    });
+
+    it('uses an atomic, reclaimable database lock for concurrent workers', async () => {
+        const executeRaw = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+        const model = {
+            due: vi.fn().mockResolvedValue([]),
+            find: vi.fn().mockResolvedValue(null),
+            acquireExecutionLock: vi.fn().mockResolvedValue(true),
+            completeExecution: vi.fn().mockResolvedValue(true),
+            failExecution: vi.fn().mockResolvedValue(true),
+        };
+        const repository = createTaskRepository(model, { executeRaw }, { lockTimeoutMs: 60_000 });
+        const startedAt = new Date('2026-08-27T10:00:00Z');
+
+        await expect(repository.acquireLock('task-1', startedAt, true)).resolves.toBe(true);
+
+        expect(model.acquireExecutionLock).toHaveBeenCalledWith(
+            'task-1',
+            startedAt,
+            new Date(startedAt.getTime() - 60_000),
+            true,
+            { executeRaw },
+        );
+    });
+
+    it('does not let a reclaimed execution publish a stale completion', async () => {
+        const task = createMockTask();
+        const repository = createMockRepository([task]);
+        (repository.markCompleted as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+        const scheduler = createScheduler<TestEnv>().handler('test:handler', async () => {});
+
+        const result = await scheduler.tick(mockEnv, repository);
+
+        expect(result).toEqual({ executed: 0, failed: 0, skipped: 1 });
+        expect(repository.markFailed).not.toHaveBeenCalled();
     });
 });

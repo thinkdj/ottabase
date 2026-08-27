@@ -3,7 +3,7 @@
  * Core types for the cron handler system
  */
 
-import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
+import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types';
 
 /**
  * Context passed to cron job handlers
@@ -11,8 +11,8 @@ import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types
 export interface CronContext<E = unknown> {
     /** Worker environment bindings */
     env: E;
-    /** The scheduled event from Cloudflare */
-    event: ScheduledEvent;
+    /** The scheduled controller from Cloudflare */
+    controller: ScheduledController;
     /** Execution context for waitUntil, etc. */
     ctx: ExecutionContext;
     /** Cron expression that triggered this job */
@@ -54,10 +54,10 @@ export interface CronHandlerOptions<E = unknown> {
  * The scheduled event handler signature expected by Cloudflare Workers
  */
 export type ScheduledHandler<E = unknown> = (
-    event: ScheduledEvent,
+    controller: ScheduledController,
     env: E,
     ctx: ExecutionContext,
 ) => Promise<void> | void;
 
 // Re-export Cloudflare types for convenience
-export type { ScheduledEvent, ExecutionContext };
+export type { ScheduledController, ExecutionContext };

@@ -289,19 +289,19 @@ export default { scheduled: handler };`}</code>
                         </h4>
                         <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`import { createScheduler, createTaskRepository } from '@ottabase/cron';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { ScheduledTask } from '@ottabase/ottaorm/models';
 
-const repo = createTaskRepository(db);
-const scheduler = createScheduler({
-    repository: repo,
-    handlers: {
-        'send-digest': async (task, ctx) => {
-            // Send daily digest email
-        },
+const scheduler = createScheduler<CloudflareEnv>().handler(
+    'queue:send-digest',
+    async ({ env, payload }) => {
+        await env.OBCF_QUEUE.send({ type: 'send-digest', payload });
     },
-});
+);
 
-// Run pending tasks (called from Cloudflare scheduled event)
-await scheduler.runPending();`}</code>
+// Called by the Worker's one-minute scheduled handler.
+const repository = createTaskRepository(ScheduledTask, createD1Driver(env.OBCF_D1));
+const result = await scheduler.tick(env, repository);`}</code>
                         </pre>
                     </div>
                 </CardContent>

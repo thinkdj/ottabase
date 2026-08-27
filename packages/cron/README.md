@@ -59,14 +59,11 @@ For dynamic tasks managed via database:
 
 ### Prerequisites: Database Setup
 
-The DB scheduler requires the `scheduled_tasks` table. If using OttaORM migrations:
+The DB scheduler requires the `scheduled_tasks` table. Register the `ScheduledTask` model in your app's `registerModels`
+array, then create the table through the OttaORM init endpoint:
 
 ```bash
-# Generate migration (if not already created)
-pnpm ottaorm migration:create create_scheduled_tasks
-
-# Run migrations
-pnpm ottaorm migrate
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 Or create the table manually with this schema:
@@ -88,36 +85,45 @@ CREATE TABLE scheduled_tasks (
   last_error TEXT,
   run_count INTEGER NOT NULL DEFAULT 0,
   fail_count INTEGER NOT NULL DEFAULT 0,
+  app_id TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE INDEX scheduled_tasks_due_idx
+  ON scheduled_tasks (is_active, next_run_at, id);
 ```
 
 ### 1. Setup the Scheduler
 
 ```typescript
-import { createScheduler, createTaskRepository } from '@ottabase/cron';
+import { createScheduler, createTaskRepository, type TaskHandlerDefinitions } from '@ottabase/cron';
 import { ScheduledTask } from '@ottabase/ottaorm/models';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
-const scheduler = createScheduler<Env>()
-    .handler('cleanup:sessions', async ({ env }) => {
-        await env.DB.execute('DELETE FROM sessions WHERE expires < ?', [Date.now()]);
-    })
-    .handler('send:digest', async ({ env, payload }) => {
-        await sendDigestEmail(payload.userId);
-    })
-    .handler('sync:external', async ({ env }) => {
-        await syncExternalData(env);
-    });
+interface CronPayloads extends Record<string, unknown> {
+    'queue:send-digest': { userId: string };
+}
+
+const handlers = {
+    'queue:send-digest': {
+        description: 'Dispatch the daily digest job.',
+        handler: async ({ env, payload }) => {
+            await env.QUEUE.send({ type: 'send-digest', payload });
+        },
+    },
+} satisfies TaskHandlerDefinitions<Env, CronPayloads>;
+
+// Keep this registry in one app-owned module. The Worker entrypoint and admin
+// handler list should both import this exact scheduler instance.
+const scheduler = createScheduler<Env>().registerHandlers<CronPayloads>(handlers);
 
 export default {
-    async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext) {
         // Run tick every minute to check for due tasks
-        if (event.cron === '* * * * *') {
+        if (controller.cron === '* * * * *') {
             const driver = createD1Driver(env.OBCF_D1);
             const repository = createTaskRepository(ScheduledTask, driver);
-            await scheduler.tick(env, ctx, repository);
+            await scheduler.tick(env, repository);
         }
     },
 };
@@ -132,30 +138,44 @@ even when multiple workers are triggered simultaneously.
 import { ScheduledTask } from '@ottabase/ottaorm/models';
 
 // Create a scheduled task
-await ScheduledTask.create({
-    name: 'daily-cleanup',
-    description: 'Clean up expired sessions',
-    schedule: '0 0 * * *', // Daily at midnight
-    taskType: 'handler',
-    task: 'cleanup:sessions',
-    isActive: true,
-});
+await ScheduledTask.createRegistered(
+    {
+        name: 'daily-digest',
+        description: 'Dispatch the daily digest',
+        schedule: '0 0 * * *', // Daily at midnight
+        taskType: 'handler',
+        task: 'queue:send-digest',
+        payload: JSON.stringify({ userId: 'user-123' }),
+        isActive: true,
+    },
+    scheduler.getHandlers().map((handler) => handler.name),
+);
 
 // Create with payload
-await ScheduledTask.create({
-    name: 'user-digest',
-    schedule: '0 9 * * *', // Daily at 9am
-    taskType: 'handler',
-    task: 'send:digest',
-    payload: JSON.stringify({ userId: 'user-123' }),
-});
+await ScheduledTask.createRegistered(
+    {
+        name: 'user-digest',
+        schedule: '0 9 * * *', // Daily at 9am
+        taskType: 'handler',
+        task: 'queue:send-digest',
+        payload: JSON.stringify({ userId: 'user-123' }),
+    },
+    scheduler.getHandlers().map((handler) => handler.name),
+);
 ```
 
-### 3. Configure wrangler.toml
+The model rejects invalid cron expressions, non-UTC timezones, non-handler task types, unknown registered handlers, and
+malformed JSON payloads. It initializes `nextRunAt` during creation, so an active row becomes eligible without a second
+setup write.
 
-```toml
-[triggers]
-crons = ["* * * * *"]  # Every minute tick
+### 3. Configure wrangler.jsonc
+
+```jsonc
+{
+    "triggers": {
+        "crons": ["* * * * *"], // Every-minute database scheduler tick
+    },
+}
 ```
 
 ### 4. Pushing to Queue from Scheduled Tasks
@@ -229,12 +249,14 @@ const active = await ScheduledTask.active();
 const due = await ScheduledTask.due();
 const task = await ScheduledTask.findByName('daily-cleanup');
 
-// Instance methods
+// Definition helper
 await task.toggle(); // Toggle active status
-await task.markRunning();
-await task.markCompleted(nextRunAt);
-await task.markFailed('Error message', nextRunAt);
 ```
+
+Execution status is owned by the scheduler repository. It uses the model's atomic lock/complete/fail transitions with
+the exact start timestamp as a fencing token; application code should not write `lastStatus`, counters, or run
+timestamps directly. Handlers must still be idempotent because reclaiming a Worker that exceeded the lock timeout cannot
+undo side effects that Worker already performed.
 
 ### Schema
 
@@ -244,8 +266,8 @@ await task.markFailed('Error message', nextRunAt);
 | name        | text      | Task name                                                             |
 | description | text      | Optional description                                                  |
 | schedule    | text      | Cron expression                                                       |
-| taskType    | text      | "handler", "command", or "url"                                        |
-| task        | text      | Handler name to execute                                               |
+| taskType    | text      | `handler` (the only executable type)                                  |
+| task        | text      | Name from the application-owned handler registry                      |
 | payload     | text      | JSON payload                                                          |
 | isActive    | boolean   | Whether task is active                                                |
 | timezone    | text      | Reserved for future use (currently ignored, all schedules run in UTC) |
@@ -271,7 +293,7 @@ Create a DB-driven scheduler.
 ```typescript
 interface CronContext<E> {
     env: E; // Worker environment
-    event: ScheduledEvent;
+    controller: ScheduledController;
     ctx: ExecutionContext;
     cron: string; // Cron expression
     scheduledTime: Date;

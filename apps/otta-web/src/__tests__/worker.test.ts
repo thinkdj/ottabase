@@ -1,7 +1,17 @@
 import { getSession } from '@ottabase/auth/backend';
 import { Account, User } from '@ottabase/ottaorm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import worker from '../../cloudflare-worker';
+import workerHandler from '../../cloudflare-worker';
+
+const worker = {
+    fetch(request: Request, env: CloudflareEnv) {
+        const ctx = {
+            waitUntil: vi.fn(),
+            passThroughOnException: vi.fn(),
+        } as unknown as ExecutionContext;
+        return workerHandler.fetch!(request, env, ctx);
+    },
+};
 
 vi.mock('@ottabase/auth/backend', async () => {
     const actual = await vi.importActual<any>('@ottabase/auth/backend');

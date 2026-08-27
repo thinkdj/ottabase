@@ -3,23 +3,27 @@
     "version": "1.0.0",
     "description": "Minimal cron handler for Cloudflare Workers scheduled events",
     "type": "module",
-    "main": "dist/index.js",
-    "module": "dist/index.mjs",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
         }
     },
     "sideEffects": false,
     "scripts": {
         "build": "tsup src/index.ts --format cjs,esm --dts --clean",
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",

@@ -21,7 +21,7 @@ export type {
     CronHandlerOptions,
     RegisteredCronJob,
     ScheduledHandler,
-    ScheduledEvent,
+    ScheduledController,
     ExecutionContext,
 } from './types';
 
@@ -29,10 +29,14 @@ export type {
 export type {
     SchedulerContext,
     TaskHandler,
+    TaskHandlerDefinitions,
     SchedulerOptions,
     RegisteredHandler,
     ScheduledTaskRecord,
     TaskRepository,
+    TaskExecutionStatus,
+    TaskExecutionResult,
+    SchedulerTickResult,
 } from './scheduler';
 
 // Types - Parser

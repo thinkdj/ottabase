@@ -3,13 +3,14 @@
  * Builder pattern for registering and executing cron jobs
  */
 
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import type {
     CronContext,
     CronJobHandler,
     CronHandlerOptions,
     RegisteredCronJob,
     ScheduledHandler,
-    ScheduledEvent,
+    ScheduledController,
     ExecutionContext,
 } from './types';
 
@@ -39,20 +40,20 @@ export class CronHandler<E = unknown> {
      * Get the scheduled event handler for Cloudflare Workers
      */
     get handler(): ScheduledHandler<E> {
-        return async (event: ScheduledEvent, env: E, ctx: ExecutionContext): Promise<void> => {
+        return async (controller: ScheduledController, env: E, ctx: ExecutionContext): Promise<void> => {
             const context: CronContext<E> = {
                 env,
-                event,
+                controller,
                 ctx,
-                cron: event.cron,
-                scheduledTime: new Date(event.scheduledTime),
+                cron: controller.cron,
+                scheduledTime: new Date(controller.scheduledTime),
             };
 
             // Find matching jobs for this cron expression
-            const matchingJobs = this.jobs.filter((job) => job.cron === event.cron);
+            const matchingJobs = this.jobs.filter((job) => job.cron === controller.cron);
 
             if (matchingJobs.length === 0) {
-                console.warn(`[cron] No handler registered for: ${event.cron}`);
+                console.warn(`[cron] No handler registered for: ${controller.cron}`);
                 return;
             }
 
@@ -73,7 +74,8 @@ export class CronHandler<E = unknown> {
                     }
                 } catch (error) {
                     const err = error instanceof Error ? error : new Error(String(error));
-                    console.error(`[cron] Error in job "${job.name || job.cron}":`, err.message);
+                    const redacted = redactErrorForLog(err, 500);
+                    console.error(`[cron] Error in job "${job.name || job.cron}": ${redacted.message}`);
 
                     // Error hook
                     if (this.options.onError) {
