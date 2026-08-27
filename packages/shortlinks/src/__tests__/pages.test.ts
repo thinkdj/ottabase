@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderExpiredShortlinkPage, renderShortlinkInterstitialPage } from '../index.js';
+import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
 
 describe('Shortlink Page Renderers', () => {
     describe('renderExpiredShortlinkPage', () => {
@@ -307,7 +308,7 @@ describe('Shortlink Page Renderers', () => {
             const html = await response.text();
 
             // URL should be JSON-stringified in JavaScript
-            expect(html).toContain(JSON.stringify(url));
+            expect(html).toContain(sanitizeJsonForScript(url));
         });
 
         it('should handle URLs with special characters', async () => {
@@ -317,7 +318,7 @@ describe('Shortlink Page Renderers', () => {
             });
             const html = await response.text();
 
-            expect(html).toContain(JSON.stringify(url));
+            expect(html).toContain(sanitizeJsonForScript(url));
         });
     });
 });

@@ -18,7 +18,8 @@
         "drizzle-orm": "catalog:"
     },
     "dependencies": {
-        "@ottabase/ottaorm": "workspace:*"
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "drizzle-orm": "catalog:",

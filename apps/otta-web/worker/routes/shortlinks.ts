@@ -4,10 +4,9 @@ import { getSession } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
@@ -236,7 +235,12 @@ export async function handleShortlinkExplicitGo(context: ShortlinkContext): Prom
         pushShortlinkClick(env, request, shortlink.get('shortCode') ?? 'unknown', shortlink.get('fullUrl') ?? '');
         return buildRedirectResponse(shortlink);
     } catch (error) {
-        console.error('Shortlink explicit redirect error:', error);
+        console.error(
+            JSON.stringify({
+                event: 'shortlink_redirect_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
         return errorResponse('Failed to process shortlink', 500);
     }
 }
@@ -292,7 +296,7 @@ export async function handleShortlinksAnalytics(context: ShortlinkContext): Prom
     }
 
     const shortCode = url.searchParams.get('shortCode') ?? '';
-    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days') ?? '7', 10)));
+    const days = parseBoundedInteger(url.searchParams.get('days'), 7, 1, 90);
     const groupBy = url.searchParams.get('groupBy') ?? 'country';
 
     // Map shortCode-specific groupBy to generic groupBy shortcuts

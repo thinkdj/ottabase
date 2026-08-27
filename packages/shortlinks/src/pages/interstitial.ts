@@ -1,4 +1,5 @@
 import { getShortlinkPageCss } from './styles';
+import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
 
 /** Default localStorage key for theme (must match app's theme provider) */
 export const DEFAULT_THEME_STORAGE_KEY = 'ottabase.theme';
@@ -15,11 +16,28 @@ function truncateUrl(url: string, maxLength: number = 60) {
     return `${url.slice(0, maxLength - 1)}…`;
 }
 
+function escapeHtml(value: string): string {
+    return value.replace(
+        /[&<>"']/g,
+        (character) =>
+            ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[character] as string,
+    );
+}
+
 export function renderShortlinkInterstitialPage(options: InterstitialOptions): Response {
     const seconds = Math.max(1, Math.min(60, options.seconds ?? 10));
     const targetUrl = options.url;
-    const displayUrl = truncateUrl(targetUrl);
+    const displayUrl = escapeHtml(truncateUrl(targetUrl));
+    const targetUrlAttribute = escapeHtml(targetUrl);
     const themeKey = options.themeStorageKey ?? DEFAULT_THEME_STORAGE_KEY;
+    const themeKeyJson = sanitizeJsonForScript(themeKey);
+    const targetUrlJson = sanitizeJsonForScript(targetUrl);
     const css = `${getShortlinkPageCss({ maxWidth: 420 })}
 .wrap {
   padding: 32px 20px;
@@ -124,7 +142,7 @@ h1 {
     <script>
       (function () {
         try {
-          var theme = localStorage.getItem("${themeKey}");
+          var theme = localStorage.getItem(${themeKeyJson});
           if (theme === "dark" || theme === "light") {
             document.documentElement.setAttribute("data-theme", theme);
           } else if (theme === "system") {
@@ -152,10 +170,10 @@ h1 {
         <p class="lead">You will be there in a moment.</p>
         <div class="panel">
           <p class="panel-label">Destination</p>
-          <p class="dest"><a href="${targetUrl}" rel="noopener noreferrer">${displayUrl}</a></p>
+          <p class="dest"><a href="${targetUrlAttribute}" rel="noopener noreferrer">${displayUrl}</a></p>
         </div>
         <p class="timer">Opens in <span id="countdown">${seconds}</span>s.</p>
-        <a class="btn" href="${targetUrl}" rel="noopener noreferrer">Open now</a>
+        <a class="btn" href="${targetUrlAttribute}" rel="noopener noreferrer">Open now</a>
         <p class="meta hidden">Powered by Ottabase</p>
       </div>
     </div>
@@ -163,7 +181,7 @@ h1 {
       (function () {
         var remaining = ${seconds};
         var el = document.getElementById("countdown");
-        var url = ${JSON.stringify(targetUrl)};
+        var url = ${targetUrlJson};
         var tick = function () {
           remaining -= 1;
           var shown = remaining < 0 ? 0 : remaining;
@@ -185,6 +203,9 @@ h1 {
         headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',
+            'Content-Security-Policy':
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'none'",
+            'X-Content-Type-Options': 'nosniff',
         },
     });
 }

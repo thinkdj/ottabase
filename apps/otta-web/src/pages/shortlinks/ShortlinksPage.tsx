@@ -3,6 +3,7 @@ import type { PaginatedResponse } from '@/lib/api-types';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ConfirmDialog } from '@ottabase/ui-components';
+import { formatShortDate, type DateInput } from '@ottabase/utils/timezone';
 import {
     Button,
     Card,
@@ -126,27 +127,18 @@ export function ShortlinksPage() {
         }
     };
 
-    const getShortUrl = (shortCode: string) => {
-        return `${window.location.origin}/${shortCode}`;
-    };
-
     const getExplicitUrl = (shortCode: string) => {
         return `${window.location.origin}/shortlinks/go?code=${shortCode}`;
     };
 
-    const formatDate = (dateString: string | Date | null) => {
-        if (!dateString) return 'Never';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        });
+    const formatDate = (date: DateInput | null) => {
+        if (date === null) return 'Never';
+        return formatShortDate(date) ?? 'Invalid date';
     };
 
-    const isExpired = (expiryDate: string | Date | null) => {
-        if (!expiryDate) return false;
-        return new Date(expiryDate) < new Date();
+    const isExpired = (expiryDate: DateInput | null) => {
+        if (expiryDate === null) return false;
+        return new Date(expiryDate).getTime() < Date.now();
     };
 
     // Pagination handlers

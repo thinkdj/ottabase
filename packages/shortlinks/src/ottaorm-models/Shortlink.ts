@@ -2,7 +2,7 @@
 // Shortlink Model (Fat Model)
 // ============================================================
 
-import { BaseModel, ModelFields, PackageType } from '@ottabase/ottaorm';
+import { BaseModel, DomainValidationError, ModelFields, PackageType } from '@ottabase/ottaorm';
 import { renderExpiredShortlinkPage } from '../pages/expired';
 import { renderShortlinkInterstitialPage } from '../pages/interstitial';
 import { ShortlinkTypes } from '../types';
@@ -47,6 +47,48 @@ export class Shortlink extends BaseModel {
         interstitialEnabled: false,
         interstitialSeconds: 10,
     };
+
+    private static normalizeDestination(value: unknown): string {
+        const destination = typeof value === 'string' ? value.trim() : '';
+        if (!destination || new TextEncoder().encode(destination).byteLength > 2048) {
+            throw new DomainValidationError('Destination must be a URL no longer than 2048 bytes', {
+                code: 'INVALID_DESTINATION_URL',
+                fieldErrors: { fullUrl: ['Enter a valid HTTP or HTTPS URL'] },
+            });
+        }
+
+        try {
+            const parsed = new URL(destination);
+            if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error();
+            return parsed.toString();
+        } catch {
+            throw new DomainValidationError('Destination must be an absolute HTTP or HTTPS URL', {
+                code: 'INVALID_DESTINATION_URL',
+                fieldErrors: { fullUrl: ['Enter a valid HTTP or HTTPS URL'] },
+            });
+        }
+    }
+
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        return (await super.create.call(
+            this,
+            {
+                ...data,
+                fullUrl: Shortlink.normalizeDestination(data.fullUrl),
+            },
+            driver,
+        )) as InstanceType<T>;
+    }
+
+    protected static async prepareUpdateMutation(data: Record<string, any>): Promise<Record<string, any>> {
+        return Object.prototype.hasOwnProperty.call(data, 'fullUrl')
+            ? { ...data, fullUrl: Shortlink.normalizeDestination(data.fullUrl) }
+            : data;
+    }
 
     protected static fields: ModelFields = {
         id: {
