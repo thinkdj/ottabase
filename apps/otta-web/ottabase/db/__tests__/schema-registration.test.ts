@@ -8,7 +8,9 @@
 // ============================================================
 
 import { describe, expect, it } from 'vitest';
+import { getEnabledPackageTables } from '../../config.migrations';
 import { getAllSchemas, getSchemaSummary } from '../schemas-helper';
+import * as drizzleSchema from '../schema';
 
 /**
  * `collectTableSchemas` (the auto-init migrator) picks up entries whose KEY ends in
@@ -28,7 +30,7 @@ describe('ai_provider_credentials reaches auto-init', () => {
     });
 
     it('is the real Drizzle table, with the columns the resolver and the write path depend on', () => {
-        const table = (getAllSchemas() as Record<string, Record<string, unknown>>)[AI_TABLE_KEY]!;
+        const table = (getAllSchemas() as unknown as Record<string, Record<string, unknown>>)[AI_TABLE_KEY]!;
         // The tenancy tuple the AAD binds and the resolver scores on…
         for (const column of ['id', 'organizationId', 'userId', 'appId', 'provider']) {
             expect(table[column], `missing column: ${column}`).toBeDefined();
@@ -45,6 +47,22 @@ describe('ai_provider_credentials reaches auto-init', () => {
         // app otherwise hits the same support question and adds the identical columns.
         for (const column of ['lastUsedAt', 'lastSuccessAt', 'lastErrorAt', 'lastErrorCode', 'consecutiveFailures']) {
             expect(table[column], `missing column: ${column}`).toBeDefined();
+        }
+    });
+});
+
+describe('comments package schema adapters stay in lockstep', () => {
+    const tableKeys = ['commentsTable', 'commentReactionsTable'] as const;
+
+    it('exports every enabled comments table through the runtime and drizzle-kit adapters', () => {
+        const packageTables = getEnabledPackageTables() as Record<string, unknown>;
+        const runtimeTables = getAllSchemas() as Record<string, unknown>;
+        const staticTables = drizzleSchema as Record<string, unknown>;
+
+        for (const tableKey of tableKeys) {
+            expect(packageTables[tableKey], `PACKAGE_REGISTRY.${tableKey}`).toBeDefined();
+            expect(runtimeTables[tableKey], `getAllSchemas().${tableKey}`).toBe(packageTables[tableKey]);
+            expect(staticTables[tableKey], `db/schema.${tableKey}`).toBe(packageTables[tableKey]);
         }
     });
 });

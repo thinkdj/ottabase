@@ -16,7 +16,7 @@
 // ============================================================
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
-import { commentsTable } from '@ottabase/comments/schema';
+import { commentReactionsTable, commentsTable } from '@ottabase/comments/schema';
 import {
     categoriesTable,
     ottablogPluginsTable,
@@ -54,6 +54,7 @@ export { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 export {
     categoriesTable,
     commentsTable,
+    commentReactionsTable,
     ottablogPluginsTable,
     ottablogThemesTable,
     postCategoryLinksTable,

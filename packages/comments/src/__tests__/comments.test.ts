@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommentRecord, CommentStatus, NewCommentRecord, ReactionsMap } from '../index';
 import { Comment, CommentReaction, commentReactionsTable, commentsTable, DEFAULT_REACTIONS } from '../index';
+import { commentReactionsTable as schemaCommentReactionsTable, commentsTable as schemaCommentsTable } from '../schema';
 
 describe('@ottabase/comments', () => {
     describe('Comment model static properties', () => {
@@ -96,6 +97,11 @@ describe('@ottabase/comments', () => {
             expect(columnNames).toContain('emoji');
             expect(columnNames).toContain('userId');
             expect(columnNames).toContain('createdAt');
+        });
+
+        it('should expose both tables from the schema subpath', () => {
+            expect(schemaCommentsTable).toBe(commentsTable);
+            expect(schemaCommentReactionsTable).toBe(commentReactionsTable);
         });
     });
 
@@ -201,13 +207,10 @@ describe('@ottabase/comments', () => {
             instance._data = data;
             instance._saveCalls = saveCalls;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (instance as any).get = (key: string) => data[key];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (instance as any).set = (key: string, value: unknown) => {
                 data[key] = value;
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (instance as any).save = () => {
                 saveCalls.push({ ...data });
                 return Promise.resolve(instance);
@@ -290,7 +293,6 @@ describe('@ottabase/comments', () => {
         it('returns parent.depth + 1 for a reply to an existing comment', async () => {
             // Create a stub parent with depth 1
             const parentStub = Object.create(Comment.prototype);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (parentStub as any).get = (key: string) => (key === 'depth' ? 1 : undefined);
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const depth = await Comment.computeDepthForParent('parent-id');
@@ -322,7 +324,6 @@ describe('@ottabase/comments', () => {
                 organizationId: 'org-1',
                 depth: 0,
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (parentStub as any).get = (key: string) => data[key];
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const result = await Comment.validateReplyParent('parent-id', ctx);
@@ -338,7 +339,6 @@ describe('@ottabase/comments', () => {
                 organizationId: 'org-2',
                 depth: 0,
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (parentStub as any).get = (key: string) => data[key];
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const result = await Comment.validateReplyParent('parent-id', ctx);
@@ -354,7 +354,6 @@ describe('@ottabase/comments', () => {
                 organizationId: 'org-1',
                 depth: 2,
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (parentStub as any).get = (key: string) => data[key];
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const result = await Comment.validateReplyParent('parent-id', ctx);
@@ -370,7 +369,6 @@ describe('@ottabase/comments', () => {
                 organizationId: null,
                 depth: 0,
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (parentStub as any).get = (key: string) => data[key];
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const result = await Comment.validateReplyParent('parent-id', {

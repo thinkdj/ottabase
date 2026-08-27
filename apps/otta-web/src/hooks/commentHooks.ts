@@ -1,4 +1,4 @@
-import { type CommentRecord } from '@ottabase/comments';
+import { type CommentRecord, type ReactionsMap } from '@ottabase/comments';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
 /** Lightweight author info attached by the server when fetching comments */
@@ -9,8 +9,11 @@ export interface CommentUser {
     createdAt: number;
 }
 
-/** Comment record enriched with `_user` author data from the server */
-export type CommentType = CommentRecord & { _user?: CommentUser | null };
+/** Comment record enriched by GET responses with author and aggregated reaction data. */
+export type CommentType = CommentRecord & {
+    _user?: CommentUser | null;
+    reactions?: ReactionsMap;
+};
 
 export const {
     useList: useComments,

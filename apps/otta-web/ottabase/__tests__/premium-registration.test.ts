@@ -53,9 +53,9 @@ describe('premium tables reach auto-init', () => {
     });
 
     it('carry the tenancy columns every query filters on', () => {
-        const tables = getAllSchemas();
-        const endpoints = tables.webhookEndpointsTable as unknown as Record<string, unknown>;
-        const deliveries = tables.webhookDeliveriesTable as unknown as Record<string, unknown>;
+        const tables = getAllSchemas() as unknown as Record<string, unknown>;
+        const endpoints = tables.webhookEndpointsTable as Record<string, unknown>;
+        const deliveries = tables.webhookDeliveriesTable as Record<string, unknown>;
         for (const column of ['id', 'organizationId', 'appId']) {
             expect(endpoints[column], `endpoints.${column}`).toBeDefined();
             expect(deliveries[column], `deliveries.${column}`).toBeDefined();
