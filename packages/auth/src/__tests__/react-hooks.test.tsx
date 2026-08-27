@@ -36,6 +36,23 @@ function SessionControls() {
     );
 }
 
+function RefreshThenPatchProbe() {
+    const { refreshSession, updateUser, user } = useSession();
+    const timezone = typeof user?.timezone === 'string' ? user.timezone : 'unset';
+
+    const refreshThenPatch = async () => {
+        await refreshSession();
+        updateUser({ timezone: 'Asia/Kolkata' });
+    };
+
+    return (
+        <>
+            <output>{`${user?.email ?? 'anonymous'}|${timezone}`}</output>
+            <button onClick={() => void refreshThenPatch()}>refresh then patch</button>
+        </>
+    );
+}
+
 function renderWithStore(children: React.ReactNode) {
     return render(<Provider store={createStore()}>{children}</Provider>);
 }
@@ -122,6 +139,30 @@ describe('session synchronization', () => {
         });
         await Promise.resolve();
         expect(screen.getByRole('status').textContent).toBe('new@example.com');
+    });
+
+    it('merges an update made after refresh into the newly confirmed session', async () => {
+        getSession
+            .mockResolvedValueOnce({
+                state: 'authenticated',
+                session: { user: { id: 'user-1', email: 'initial@example.com' }, expires: Date.now() + 60_000 },
+            })
+            .mockResolvedValueOnce({
+                state: 'authenticated',
+                session: { user: { id: 'user-1', email: 'refreshed@example.com' }, expires: Date.now() + 60_000 },
+            });
+
+        renderWithStore(
+            <>
+                <SessionBootstrapProbe />
+                <RefreshThenPatchProbe />
+            </>,
+        );
+        await waitFor(() => expect(screen.getByRole('status').textContent).toBe('initial@example.com|unset'));
+
+        fireEvent.click(screen.getByRole('button', { name: 'refresh then patch' }));
+
+        await waitFor(() => expect(screen.getByRole('status').textContent).toBe('refreshed@example.com|Asia/Kolkata'));
     });
 
     it('retains the last confirmed session when revalidation is unavailable', async () => {

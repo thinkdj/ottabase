@@ -382,6 +382,11 @@ and malformed-response failures set `sessionError` while retaining the last conf
 handlers should call `invalidateAuthSession()`, which clears persisted auth state and notifies the root so app and
 tenant query caches can be cleared together.
 
+`updateUser(partialUser)` always merges into the atom's current confirmed session, including when it is called by an
+async handler that was created before `refreshSession()` completed. This makes the supported
+`await refreshSession(); updateUser({ clientOnlyField })` sequence safe: the local field is added without restoring a
+stale pre-refresh identity or authorization snapshot.
+
 ## Login Config Helpers (pure)
 
 The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. They use

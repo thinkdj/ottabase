@@ -237,20 +237,23 @@ function useSessionController(options?: SessionClientOptions): SessionController
 
     const updateUser = useCallback(
         (updatedUser: Partial<User>) => {
-            if (!session) return;
+            const mergeIntoCurrentSession = (currentSession: Session | null): Session | null => {
+                if (!currentSession) return currentSession;
 
-            sessionStateVersion += 1;
-            const updatedSession = {
-                ...session,
-                user: { ...session.user, ...updatedUser },
+                sessionStateVersion += 1;
+                return {
+                    ...currentSession,
+                    user: { ...currentSession.user, ...updatedUser },
+                };
             };
+
             if (rememberSessionRef.current) {
-                setPersistentSession(updatedSession);
+                setPersistentSession(mergeIntoCurrentSession);
             } else {
-                setMemorySession(updatedSession);
+                setMemorySession(mergeIntoCurrentSession);
             }
         },
-        [session, setMemorySession, setPersistentSession],
+        [setMemorySession, setPersistentSession],
     );
 
     const initializeSession = useCallback(async () => {

@@ -45,7 +45,9 @@ function isOrganizationSlugConflict(error: unknown): boolean {
     return /unique constraint failed:\s*organizations\.slug/i.test(message);
 }
 
-async function ensureBootstrapRole(env: AuthEnv, roleName: string): Promise<string> {
+type OrganizationProvisioningEnv = Pick<AuthEnv, 'OBCF_D1' | 'MULTI_TENANT_ENABLED'>;
+
+async function ensureBootstrapRole(env: Pick<AuthEnv, 'OBCF_D1'>, roleName: string): Promise<string> {
     if (!env.OBCF_D1) {
         throw new Error('OBCF_D1 is required to initialize bootstrap roles');
     }
@@ -93,7 +95,7 @@ export async function ensurePlatformOwnerRole(env: AuthEnv): Promise<string> {
 }
 
 export async function createPersonalOrganizationIfMissing(
-    env: AuthEnv,
+    env: OrganizationProvisioningEnv,
     userId: string,
     userEmail?: string | null,
     userName?: string | null,
@@ -227,7 +229,7 @@ export async function createPersonalOrganizationIfMissing(
  * explicit promotion flows.
  */
 export async function provisionPlatformOwnerOrganization(
-    env: AuthEnv,
+    env: OrganizationProvisioningEnv,
     user: { id?: string; email?: string | null; name?: string | null },
 ): Promise<string | null> {
     if (!user?.id) {
