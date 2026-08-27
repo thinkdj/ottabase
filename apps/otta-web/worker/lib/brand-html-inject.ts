@@ -11,10 +11,13 @@ import {
     buildEffectsStyleTag,
     buildInitialConfigScriptTag,
 } from '@ottabase/brand-engine';
-import { resolveConfigFromFull, resolveFullBrandConfig } from '@ottabase/brand-engine/persistence';
+import {
+    resolveConfigFromFull,
+    resolveFullBrandConfig,
+    type ResolveBrandConfigEnv,
+} from '@ottabase/brand-engine/persistence';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import type { CloudflareEnv } from '../../cloudflare-env';
 
 /**
  * Font stylesheet <link> tags for every typography-role URL (both palettes) so
@@ -39,6 +42,15 @@ export interface BrandHtmlInjectEnv {
     OBCF_KV: CloudflareEnv['OBCF_KV'];
     OBCF_R2: CloudflareEnv['OBCF_R2'];
     R2_PUBLIC_URL?: string;
+}
+
+function brandResolutionEnv(env: BrandHtmlInjectEnv): ResolveBrandConfigEnv {
+    return {
+        OBCF_D1: env.OBCF_D1 as ResolveBrandConfigEnv['OBCF_D1'],
+        OBCF_KV: env.OBCF_KV as ResolveBrandConfigEnv['OBCF_KV'],
+        OBCF_R2: env.OBCF_R2 as unknown as ResolveBrandConfigEnv['OBCF_R2'],
+        R2_PUBLIC_URL: env.R2_PUBLIC_URL,
+    };
 }
 
 /**
@@ -66,7 +78,7 @@ export async function injectBrandCriticalCSS(
 
         // Single resolution serves both the critical CSS and the hydration
         // payload — no duplicate KV reads, no version skew between the two.
-        const fullConfig = await resolveFullBrandConfig(env, { appId });
+        const fullConfig = await resolveFullBrandConfig(brandResolutionEnv(env), { appId });
         if (!fullConfig) return response;
 
         // Path-scoped themes (route token overrides applied) for first paint;

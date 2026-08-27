@@ -7,6 +7,7 @@
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { useDeleteOrganization, useOrganization, useUpdateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
+import type { OrganizationPlan, OrganizationStatus } from '@/types/rbac';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -32,6 +33,13 @@ import { useEffect, useState } from 'react';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
+interface OrganizationSettingsFormData {
+    name: string;
+    slug: string;
+    plan: OrganizationPlan;
+    status: OrganizationStatus;
+}
+
 export function OrganizationSettingsPage() {
     const { organizationId } = useParams({ from: '/admin/access/organizations/$organizationId/settings' });
     const toast = useRBACToast();
@@ -41,11 +49,11 @@ export function OrganizationSettingsPage() {
     const updateMutation = useUpdateOrganization();
     const deleteMutation = useDeleteOrganization();
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<OrganizationSettingsFormData>({
         name: '',
         slug: '',
-        plan: 'free' as 'free' | 'pro' | 'enterprise',
-        status: 'active' as 'active' | 'suspended' | 'trial',
+        plan: 'free',
+        status: 'active',
     });
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -69,12 +77,15 @@ export function OrganizationSettingsPage() {
             name: org.name,
             slug: org.slug,
             plan: org.plan,
-            status: org.status === 'deleted' ? 'suspended' : org.status,
+            status: org.status,
         });
         setHasChanges(false);
     }, [org]);
 
-    const handleChange = (field: string, value: string) => {
+    const handleChange = <Field extends keyof OrganizationSettingsFormData>(
+        field: Field,
+        value: OrganizationSettingsFormData[Field],
+    ) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
@@ -208,7 +219,7 @@ export function OrganizationSettingsPage() {
                         <Label htmlFor="plan">Plan</Label>
                         <Select
                             value={formData.plan}
-                            onValueChange={(value) => handleChange('plan', value)}
+                            onValueChange={(value: OrganizationPlan) => handleChange('plan', value)}
                             disabled={updateMutation.isPending}
                         >
                             <SelectTrigger id="plan">
@@ -227,7 +238,7 @@ export function OrganizationSettingsPage() {
                         <Label htmlFor="status">Status</Label>
                         <Select
                             value={formData.status}
-                            onValueChange={(value) => handleChange('status', value)}
+                            onValueChange={(value: OrganizationStatus) => handleChange('status', value)}
                             disabled={updateMutation.isPending}
                         >
                             <SelectTrigger id="status">
@@ -240,10 +251,10 @@ export function OrganizationSettingsPage() {
                                         Active
                                     </div>
                                 </SelectItem>
-                                <SelectItem value="trial">
+                                <SelectItem value="cancelled">
                                     <div className="flex items-center gap-2">
                                         <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
-                                        Trial
+                                        Cancelled
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="suspended">

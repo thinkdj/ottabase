@@ -27,6 +27,12 @@ export {
     organizationMembersTable,
     type NewOrganizationMemberType,
     type OrganizationMemberType,
+    type OrganizationRosterRole,
+    type OrganizationRosterStatus,
+    type RemoveRosterMembershipResult,
+    type RosterMembershipChanges,
+    type RosterMembershipExpected,
+    type UpdateRosterMembershipResult,
 } from './OrganizationMember';
 
 // RBAC models (with tenant + app scoping)

@@ -2,7 +2,8 @@
 // @ottabase/ottaorm - OrganizationMember junction table schema
 // ============================================================
 
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { organizationsTable } from './Organization.schema';
 import { usersTable } from './User.schema';
 
@@ -46,6 +47,13 @@ export const organizationMembersTable = sqliteTable(
         memberEmailUnique: uniqueIndex('organization_members_org_email_unique').on(t.organizationId, t.invitedEmail),
         userIdx: index('organization_members_user_idx').on(t.userId),
         orgIdx: index('organization_members_org_idx').on(t.organizationId),
+        roleCheck: check('organization_members_role_check', sql`${t.role} IN ('owner', 'admin', 'member')`),
+        statusCheck: check('organization_members_status_check', sql`${t.status} IN ('active', 'invited', 'suspended')`),
+        pendingInviteStatusCheck: check(
+            'organization_members_pending_invite_status_check',
+            sql`(${t.userId} IS NULL AND ${t.status} = 'invited' AND ${t.invitedEmail} IS NOT NULL)
+                OR (${t.userId} IS NOT NULL AND ${t.status} != 'invited')`,
+        ),
     }),
 );
 

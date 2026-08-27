@@ -234,20 +234,9 @@ export class Organization extends BaseModel {
         return organization;
     }
 
-    /**
-     * Update organization
-     */
-    static async update<T extends typeof BaseModel>(
-        this: T,
-        id: string,
-        data: Record<string, any>,
-        driver?: any,
-    ): Promise<InstanceType<T>> {
-        // Update updatedAt timestamp
-        data.updatedAt = Date.now();
-
-        // Call parent update method
-        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
+    /** Shared by direct updates and RLS-constrained generic CRUD updates. */
+    protected static async prepareUpdateMutation(data: Record<string, any>): Promise<Record<string, any>> {
+        return { ...data, updatedAt: Date.now() };
     }
 
     /**

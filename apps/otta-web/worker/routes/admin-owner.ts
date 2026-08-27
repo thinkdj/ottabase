@@ -1,6 +1,6 @@
 import { provisionPlatformOwnerOrganization } from '@ottabase/auth/backend';
 import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaorm/models';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { reconcileSystemRoleSessions } from '../lib/auth-utils';
@@ -114,7 +114,12 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
             name: (user.get('name') as string | null) ?? null,
         });
     } catch (error) {
-        console.error('[platform-owner] Workspace provisioning failed during promotion:', error);
+        console.error(
+            JSON.stringify({
+                event: 'platform_owner_workspace_provisioning_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
         return errorResponse('Platform owner workspace setup could not be completed. Please try again.', 500, {
             code: 'ACCOUNT_PROVISIONING_FAILED',
             exposure: 'public',

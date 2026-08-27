@@ -156,17 +156,17 @@ describe('provisionDefaultOrganizationForUser', () => {
         const user = createUser();
         mocks.brandKitFirst.mockRejectedValue(new Error('brand storage unavailable'));
 
-        await expect(
-            provisionDefaultOrganizationForUser({
-                user,
-                organizationRole: 'owner',
-                roleFallbacks: ['owner'],
-            }),
-        ).resolves.toMatchObject({
+        const result = await provisionDefaultOrganizationForUser({
+            user,
+            organizationRole: 'owner',
+            roleFallbacks: ['owner'],
+        });
+
+        expect(result).toMatchObject({
             organizationId: 'org-1',
             assignedRole: 'owner',
-            brandSetupError: 'brand storage unavailable',
         });
+        expect(result).not.toHaveProperty('brandSetupError');
 
         expect(user.assignRole).toHaveBeenCalledWith('owner-role', undefined, 'org-1');
         expect(mocks.organizationDelete).not.toHaveBeenCalled();

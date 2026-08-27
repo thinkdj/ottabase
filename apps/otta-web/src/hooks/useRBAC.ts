@@ -12,7 +12,6 @@
  * invalidation.
  */
 
-import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import type {
     AuditLogRecord,
@@ -21,7 +20,7 @@ import type {
     OrganizationRecord,
     RoleRecord,
 } from '@/types/rbac';
-import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/client';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -66,20 +65,16 @@ export function useOrganization(id: string) {
 // ============================================================================
 
 export function useCreateOrganization() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async (data: Partial<OrganizationRecord>) => {
-            const response = await api<Record<string, unknown>>('/api/ottaorm/organizations', {
+            const createdOrg = await api<OrganizationRecord>('/api/ottaorm/organizations', {
                 method: 'POST',
                 body: data,
             });
-
-            const createdOrg =
-                response && typeof response === 'object' && 'data' in response
-                    ? (response.data as OrganizationRecord | undefined)
-                    : (response as OrganizationRecord | undefined);
 
             if (!createdOrg?.id) {
                 throw new Error('Organization creation returned an invalid payload');
@@ -87,50 +82,25 @@ export function useCreateOrganization() {
 
             return createdOrg;
         },
-        onMutate: async (newOrg) => {
-            // Cancel outgoing refetches
-            await queryClient.cancelQueries({ queryKey: organizationHooks.queryKeys.lists() });
-
-            // Snapshot previous value
-            const previous = queryClient.getQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists());
-
-            // Optimistically update
-            if (previous) {
-                queryClient.setQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists(), [
-                    ...previous,
-                    { ...newOrg, id: 'temp-' + Date.now() } as OrganizationRecord,
-                ]);
-            }
-
-            return { previous };
-        },
-        onError: (err, newOrg, context) => {
-            if (context?.previous) {
-                queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previous);
-            }
-        },
         onSuccess: async () => {
-            // Replaces the optimistic temp-<timestamp> row with the canonical server list.
+            // Organization creation also provisions its owner membership server-side. Only
+            // publish the canonical list after that all-or-nothing operation succeeds.
             await queryClient.invalidateQueries({ queryKey: organizationHooks.queryKeys.lists() });
         },
     });
 }
 
 export function useUpdateOrganization() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<OrganizationRecord> }) => {
-            const response = await api<Record<string, unknown>>(`/api/ottaorm/organizations/${id}`, {
+            const updatedOrg = await api<OrganizationRecord>(`/api/ottaorm/organizations/${encodeURIComponent(id)}`, {
                 method: 'PATCH',
                 body: data,
             });
-
-            const updatedOrg =
-                response && typeof response === 'object' && 'data' in response
-                    ? (response.data as OrganizationRecord | undefined)
-                    : (response as OrganizationRecord | undefined);
 
             if (!updatedOrg?.id) {
                 throw new Error('Organization update returned an invalid payload');
@@ -180,12 +150,13 @@ export function useUpdateOrganization() {
 }
 
 export function useDeleteOrganization() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async (id: string) => {
-            await api(`/api/ottaorm/organizations/${id}`, {
+            await api(`/api/ottaorm/organizations/${encodeURIComponent(id)}`, {
                 method: 'DELETE',
             });
         },
@@ -244,6 +215,7 @@ export function useOrganizationMembers(organizationId: string, page = 1, perPage
  * member list directly in onSuccess.
  */
 export function useInviteMember() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -263,7 +235,7 @@ export function useInviteMember() {
             status?: 'active' | 'invited' | 'suspended';
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/invite`,
+                `/api/admin/organizations/${encodeURIComponent(organizationId)}/members/invite`,
                 {
                     method: 'POST',
                     body: {
@@ -286,6 +258,7 @@ export function useInviteMember() {
 }
 
 export function useUpdateMember() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -303,7 +276,7 @@ export function useUpdateMember() {
             status: 'active' | 'invited' | 'suspended';
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `/api/admin/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
                     body: {
@@ -324,6 +297,7 @@ export function useUpdateMember() {
 }
 
 export function useUpdateMemberRole() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -339,7 +313,7 @@ export function useUpdateMemberRole() {
             organizationId: string;
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `/api/admin/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
                     body: { role },
@@ -357,6 +331,7 @@ export function useUpdateMemberRole() {
 }
 
 export function useUpdateMemberStatus() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -372,7 +347,7 @@ export function useUpdateMemberStatus() {
             organizationId: string;
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `/api/admin/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
                     body: { status },
@@ -390,21 +365,32 @@ export function useUpdateMemberStatus() {
 }
 
 export function useRemoveMember() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'organization_members' },
-        mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
-            await api(`/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`, {
-                method: 'DELETE',
-            });
+        mutationFn: async ({
+            memberId,
+            organizationId,
+        }: {
+            memberId: string;
+            userId?: string;
+            organizationId: string;
+        }) => {
+            await api(
+                `/api/admin/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(memberId)}`,
+                {
+                    method: 'DELETE',
+                },
+            );
         },
         onSuccess: async (_data, { organizationId, userId }) => {
             await queryClient.invalidateQueries({
                 queryKey: ['admin-organization-members', organizationId],
             });
-            await refreshSessionAfterRbacChange(userId);
+            if (userId) await refreshSessionAfterRbacChange(userId);
         },
     });
 }
@@ -426,13 +412,14 @@ export function useCreateRole() {
 }
 
 export function useUpdateRole() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
     return useMutation({
         meta: { entity: 'roles' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<RoleRecord> }) => {
-            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${id}`, {
+            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${encodeURIComponent(id)}`, {
                 method: 'PATCH',
                 body: data,
             });
@@ -464,6 +451,7 @@ export function useUpdateRole() {
 }
 
 export function useDeleteRole() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -480,6 +468,7 @@ export function useDeleteRole() {
 }
 
 export function useTogglePermission() {
+    const api = useApiClient();
     const queryClient = useQueryClient();
     const refreshSessionAfterRbacChange = useSessionRefreshAfterRbacChange();
 
@@ -505,7 +494,7 @@ export function useTogglePermission() {
                 ? currentPermissions.filter((p) => p !== permissionId)
                 : [...currentPermissions, permissionId];
 
-            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${roleId}`, {
+            const response = await api<{ data: RoleRecord }>(`/api/admin/roles/${encodeURIComponent(roleId)}`, {
                 method: 'PATCH',
                 body: { permissions: newPermissions },
             });

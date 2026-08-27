@@ -1,5 +1,5 @@
 import { getSession } from '@ottabase/auth/backend';
-import { User } from '@ottabase/ottaorm/models';
+import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
 import { createRBACContext } from './utils';
 
@@ -32,6 +32,8 @@ export interface GetRequestContextOptions {
     cache?: RBACCache;
     /** When set, use this org for scoped permission loading (e.g. for brand routes using ?organizationId=) */
     organizationIdOverride?: string | null;
+    /** Trusted server-configured app scope. Browser headers are never an authorization source. */
+    appId?: string;
 }
 
 export const SYSTEM_ORGANIZATION_ID = 'system';
@@ -78,8 +80,8 @@ function resolveOrganizationId(request: Request, session: any, allowNullTenant: 
     return null;
 }
 
-function resolveAppId(request: Request): string {
-    return cleanValue(request.headers.get('x-app-id')) || 'web';
+function resolveAppId(env: any, configuredAppId?: string): string {
+    return cleanValue(configuredAppId ?? null) || cleanValue(env?.APP_ID ?? null) || 'web';
 }
 
 export async function getRequestContext(
@@ -96,7 +98,7 @@ export async function getRequestContext(
             sessionUser: null,
             user: null,
             organizationId: null,
-            appId: resolveAppId(request),
+            appId: resolveAppId(env, options?.appId),
             roles: [],
             permissions: [],
             systemRoles: [],
@@ -114,7 +116,7 @@ export async function getRequestContext(
             sessionUser: session.user,
             user: null,
             organizationId: null,
-            appId: resolveAppId(request),
+            appId: resolveAppId(env, options?.appId),
             roles: [],
             permissions: [],
             systemRoles: [],
@@ -127,8 +129,15 @@ export async function getRequestContext(
     }
 
     const resolvedOrg = resolveOrganizationId(request, session, allowNullTenant);
-    const organizationId = options?.organizationIdOverride !== undefined ? options.organizationIdOverride : resolvedOrg;
-    const appId = resolveAppId(request);
+    const requestedOrganizationId =
+        options?.organizationIdOverride !== undefined ? options.organizationIdOverride : resolvedOrg;
+    const organizationId =
+        requestedOrganizationId === SYSTEM_ORGANIZATION_ID ||
+        (requestedOrganizationId &&
+            (await OrganizationMember.isMember(String(session.user.id), requestedOrganizationId)))
+            ? requestedOrganizationId
+            : null;
+    const appId = resolveAppId(env, options?.appId);
     const cache = options?.cache;
 
     // Load system-scope roles (always applied)
@@ -138,17 +147,19 @@ export async function getRequestContext(
     });
 
     // Load scoped context for the requested org (if any)
-    const scopedContext = await createRBACContext(user, cache, {
-        organizationId: organizationId ?? undefined,
-        tenantId: organizationId ?? undefined,
-    });
+    const scopedContext = organizationId
+        ? await createRBACContext(user, cache, {
+              organizationId,
+              tenantId: organizationId,
+          })
+        : { roles: [], permissions: [], isAuthenticated: false };
 
     const systemRoles = systemContext.roles || [];
     const systemPermissions = systemContext.permissions || [];
     const roles = Array.from(new Set([...systemRoles, ...(scopedContext.roles || [])]));
     const permissions = Array.from(new Set([...systemPermissions, ...(scopedContext.permissions || [])]));
 
-    const finalOrganizationId = organizationId ?? (allowNullTenant ? SYSTEM_ORGANIZATION_ID : null);
+    const finalOrganizationId = organizationId;
 
     return {
         sessionUser: session.user,

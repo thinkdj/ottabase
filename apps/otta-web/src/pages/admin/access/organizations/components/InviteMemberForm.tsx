@@ -125,7 +125,7 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
     const [formData, setFormData] = useState<InviteMemberFormData>({
         userId: '',
         role: 'member',
-        status: 'invited',
+        status: 'active',
     });
 
     useEffect(() => {
@@ -138,7 +138,7 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
             setFormData({
                 userId: '',
                 role: 'member',
-                status: 'invited',
+                status: 'active',
             });
             return;
         }
@@ -147,6 +147,9 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
 
         setFormError(null);
 
+        if (!editingMember.userId) {
+            return;
+        }
         const presetUser: InvitableUserOption = {
             id: editingMember.userId,
             name: editingMember.user?.name?.trim() || editingMember.user?.email?.trim() || editingMember.userId,
@@ -347,7 +350,6 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="active">Active (Access granted)</SelectItem>
-                                <SelectItem value="invited">Invited (Pending acceptance)</SelectItem>
                                 <SelectItem value="suspended">Suspended (Access revoked)</SelectItem>
                             </SelectContent>
                         </Select>

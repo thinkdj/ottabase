@@ -22,7 +22,7 @@ export interface OrganizationRecord {
 
 export type OrganizationPlan = 'free' | 'pro' | 'enterprise';
 
-export type OrganizationStatus = 'active' | 'suspended' | 'deleted';
+export type OrganizationStatus = 'active' | 'suspended' | 'cancelled';
 
 export interface OrganizationSettings {
     features?: string[];
@@ -54,7 +54,8 @@ export interface UpdateOrganizationInput {
 
 export interface OrganizationMemberRecord {
     id: string;
-    userId: string;
+    userId: string | null;
+    invitedEmail?: string | null;
     organizationId: string;
     role: MemberRole;
     status: MemberStatus;

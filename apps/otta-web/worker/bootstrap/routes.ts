@@ -26,7 +26,6 @@ import {
     User,
 } from '@ottabase/ottaorm';
 import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
@@ -34,6 +33,8 @@ import { reconcileSystemRoleSessions } from '../lib/auth-utils';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
+import { redactErrorForLog, errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
 import {
     renderBindingsErrorPage,
     renderLockedPage,
@@ -68,6 +69,13 @@ interface BootstrapContext {
     platformState: PlatformStateResult;
 }
 
+/** Bootstrap responses carry secret-gated setup state and must never be cached. */
+function bootstrapSuccess<T>(data: T, headers?: HeadersInit): Response {
+    const responseHeaders = new Headers(headers);
+    responseHeaders.set('Cache-Control', 'no-store');
+    return jsonResponse(data, 200, { headers: responseHeaders });
+}
+
 /** Register a D1 connection for ORM model operations */
 function ensureOrmConnection(env: CloudflareEnv): void {
     if (!env.OBCF_D1) return;
@@ -77,13 +85,6 @@ function ensureOrmConnection(env: CloudflareEnv): void {
         /* ignore if no connection */
     }
     registerConnection('default', createD1Driver(env.OBCF_D1));
-}
-
-function jsonResp(data: unknown, status = 200): Response {
-    return new Response(JSON.stringify(data), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-    });
 }
 
 /**
@@ -131,10 +132,9 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
             });
         }
         if (isApiRequest) {
-            return jsonResp(
-                { error: 'Platform restricted via environment configuration', code: 'PLATFORM_LOCKED' },
-                503,
-            );
+            return errorResponse('Platform restricted via environment configuration', 503, {
+                code: 'PLATFORM_LOCKED',
+            });
         }
     }
 
@@ -159,13 +159,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         if (limited) return limited;
 
         if (isApiRequest) {
-            return jsonResp(
-                {
-                    error: 'Unauthorized: Valid bootstrap secret required in X-Bootstrap-Secret header',
-                    code: 'UNAUTHORIZED',
-                },
-                401,
-            );
+            return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
         }
         // Deny the HTML wizard anywhere that is not an explicit dev environment.
         // Comparing against the single string 'production' let `prod`, `staging`,
@@ -203,7 +197,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         return serveWizardPage(context);
     }
 
-    return jsonResp({ error: 'Not found' }, 404);
+    return errorResponse('Not found', 404);
 }
 
 /**
@@ -212,6 +206,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
  */
 export function interceptIfNotReady(request: Request, url: URL, platformState: PlatformStateResult): Response | null {
     const path = url.pathname;
+    const isApiRequest = path.startsWith('/api/') || request.headers.get('Accept')?.includes('application/json');
 
     // Always allow bootstrap routes through
     if (path.startsWith('/__bootstrap__')) return null;
@@ -226,6 +221,12 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     // probe was removed with the READY fast path (see PlatformStateResult.panic
     // in types.ts); this branch is retained for a future explicit health probe.
     if (platformState.panic) {
+        if (isApiRequest) {
+            return errorResponse('Platform temporarily unavailable', 503, {
+                code: 'PLATFORM_UNAVAILABLE',
+                headers: { 'Retry-After': '15' },
+            });
+        }
         return new Response(renderMaintenancePage(platformState), {
             status: 503,
             headers: { ...BOOTSTRAP_HTML_HEADERS, 'Retry-After': '15' },
@@ -234,6 +235,12 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
 
     // ENV locked
     if (platformState.source === 'env' && platformState.state !== 'READY') {
+        if (isApiRequest) {
+            return errorResponse('Platform restricted', 503, {
+                code: 'PLATFORM_LOCKED',
+                headers: { 'Retry-After': '60' },
+            });
+        }
         return new Response(renderLockedPage(platformState), {
             status: 503,
             headers: { ...BOOTSTRAP_HTML_HEADERS, 'Retry-After': '60' },
@@ -242,6 +249,9 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
 
     // Missing critical bindings (no D1)
     if (!platformState.bindings.d1) {
+        if (isApiRequest) {
+            return errorResponse('Database binding unavailable', 503, { code: 'MISSING_BINDING' });
+        }
         return new Response(renderBindingsErrorPage(platformState), {
             status: 503,
             headers: { ...BOOTSTRAP_HTML_HEADERS },
@@ -249,18 +259,10 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     }
 
     // UNINITIALIZED or BOOTSTRAPPING → redirect to wizard
-    const isApiRequest = path.startsWith('/api/') || request.headers.get('Accept')?.includes('application/json');
-
     if (isApiRequest) {
-        return jsonResp(
-            {
-                error: 'Platform not initialized',
-                code: 'PLATFORM_NOT_READY',
-                state: platformState.state,
-                setup_url: '/__bootstrap__',
-            },
-            503,
-        );
+        return errorResponse('Platform not initialized', 503, {
+            code: 'PLATFORM_NOT_READY',
+        });
     }
 
     // HTML request → redirect to bootstrap wizard
@@ -332,13 +334,13 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
 
     // If READY and NOT dev, return minimal info to prevent leakage
     if (isReady && !isDev) {
-        return jsonResp({
+        return bootstrapSuccess({
             state: platformState.state,
             timestamp: Date.now(),
         });
     }
 
-    return jsonResp({
+    return bootstrapSuccess({
         state: platformState.state,
         source: platformState.source,
         panic: platformState.panic,
@@ -358,18 +360,14 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
     const { env, request, url, platformState } = context;
 
     if (request.method !== 'POST') {
-        return jsonResp({ error: 'Method not allowed' }, 405);
+        return errorResponse('Method not allowed', 405);
     }
 
     if (!env.OBCF_D1) {
-        return jsonResp(
-            {
-                error: 'D1 database binding not available',
-                code: 'MISSING_BINDING',
-                hint: 'Configure OBCF_D1 in your wrangler.jsonc',
-            },
-            503,
-        );
+        return errorResponse('D1 database binding not available', 503, {
+            code: 'MISSING_BINDING',
+            hint: 'Configure OBCF_D1 in your wrangler.jsonc',
+        });
     }
 
     // Re-running init on a live platform wipes the ENTIRE KV namespace (sessions,
@@ -383,13 +381,10 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         platformState.source !== 'env' &&
         url.searchParams.get('confirm') !== 'reinit'
     ) {
-        return jsonResp(
-            {
-                success: false,
-                error: 'Platform is already READY. Re-running init clears the KV namespace and takes the platform offline. Re-send with ?confirm=reinit to proceed.',
-                code: 'ALREADY_READY',
-            },
+        return errorResponse(
+            'Platform is already READY. Re-running init clears the KV namespace and takes the platform offline. Re-send with ?confirm=reinit to proceed.',
             409,
+            { code: 'ALREADY_READY' },
         );
     }
 
@@ -407,14 +402,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         if (!allSchemas || Object.keys(allSchemas).length === 0) {
             await writeDBState(env, 'UNINITIALIZED');
             await writeKVState(env, 'UNINITIALIZED');
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'Schema collection returned no tables — check config.migrations.ts and schemas-helper.ts',
-                    code: 'SCHEMA_EMPTY',
-                },
-                500,
-            );
+            return errorResponse('Schema collection returned no tables', 500, { code: 'SCHEMA_EMPTY' });
         }
 
         // 4. Run ottaorm autoInit (creates all tables from Drizzle schemas)
@@ -443,7 +431,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         // 5. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)
         const sqlResult = await runCoreSQLMigrations(env);
 
-        return jsonResp({
+        return bootstrapSuccess({
             success: initResult.success,
             message: initResult.message,
             autoInit: initResult.details,
@@ -451,7 +439,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             kvCleared,
             timestamp: Date.now(),
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Reset state so the platform isn't stuck in BOOTSTRAPPING on failure
         try {
             await writeDBState(env, 'UNINITIALIZED');
@@ -459,7 +447,13 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         } catch {
             // State rollback is best-effort; let the main error propagate
         }
-        return jsonResp({ success: false, error: error.message, code: 'INIT_FAILED' }, 500);
+        console.error(
+            JSON.stringify({
+                event: 'bootstrap_init_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
+        return errorResponse('Bootstrap initialization failed', 500, { code: 'INIT_FAILED' });
     }
 }
 
@@ -471,11 +465,11 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
 
     if (request.method !== 'POST') {
-        return jsonResp({ error: 'Method not allowed' }, 405);
+        return errorResponse('Method not allowed', 405);
     }
 
     if (!env.OBCF_D1) {
-        return jsonResp({ error: 'D1 database binding not available' }, 503);
+        return errorResponse('D1 database binding not available', 503, { code: 'MISSING_BINDING' });
     }
 
     try {
@@ -504,13 +498,19 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
         const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
 
-        return jsonResp({
+        return bootstrapSuccess({
             success: true,
             roles: { created: roleNames, existing: existingRoles },
             timestamp: Date.now(),
         });
-    } catch (error: any) {
-        return jsonResp({ success: false, error: error.message, code: 'SEED_FAILED' }, 500);
+    } catch (error: unknown) {
+        console.error(
+            JSON.stringify({
+                event: 'bootstrap_seed_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
+        return errorResponse('Bootstrap seed failed', 500, { code: 'SEED_FAILED' });
     }
 }
 
@@ -523,18 +523,18 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
 
     if (request.method !== 'POST') {
-        return jsonResp({ error: 'Method not allowed' }, 405);
+        return errorResponse('Method not allowed', 405);
     }
 
     if (!env.OBCF_D1) {
-        return jsonResp({ error: 'D1 database binding not available' }, 503);
+        return errorResponse('D1 database binding not available', 503, { code: 'MISSING_BINDING' });
     }
 
     let body: { email?: string; password?: string; name?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResp({ error: 'Invalid JSON body' }, 400);
+        return errorResponse('Invalid JSON body', 400, { code: 'INVALID_JSON' });
     }
 
     const email = (body.email || '').trim().toLowerCase();
@@ -554,7 +554,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             'Password must be at least 8 characters and contain at least one uppercase letter and one special character.';
     }
     if (Object.keys(errors).length > 0) {
-        return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
+        return errorResponse('Validation failed', 422, {
+            code: 'VALIDATION_ERROR',
+            fieldErrors: Object.fromEntries(Object.entries(errors).map(([field, message]) => [field, [message]])),
+        });
     }
 
     // Tracks the platform owner row once created, so any failure after that point can roll it back.
@@ -578,13 +581,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 .bind(META_OWNER_CLAIMED_KEY, '1', Date.now())
                 .run();
         } catch {
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
-                    code: 'OWNER_EXISTS',
-                },
+            return errorResponse(
+                'An account already exists. The platform owner account can only be created during first-time setup.',
                 409,
+                { code: 'OWNER_EXISTS' },
             );
         }
 
@@ -595,13 +595,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const userCount = Number(countRow?.count ?? 0);
         if (userCount > 0) {
             await releaseOwnerClaim(env);
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'An account already exists. The platform owner account can only be created during first-time setup.',
-                    code: 'OWNER_EXISTS',
-                },
+            return errorResponse(
+                'An account already exists. The platform owner account can only be created during first-time setup.',
                 409,
+                { code: 'OWNER_EXISTS' },
             );
         }
 
@@ -638,14 +635,9 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             // release the claim — otherwise the userCount / OWNER_EXISTS guards above permanently
             // block a legitimate retry.
             await rollbackOwnerCreation(env, createdUserId, createdOrganizationId);
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'Failed to provision default organization for platform owner account',
-                    code: 'ORG_PROVISION_FAILED',
-                },
-                500,
-            );
+            return errorResponse('Failed to provision default organization for platform owner account', 500, {
+                code: 'ORG_PROVISION_FAILED',
+            });
         }
 
         // Claim the SYSTEM-scope platform_owner grant for this account.
@@ -653,7 +645,13 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         // personal-organization scope; without this the platform_owner slot stays unclaimed,
         // so the first person to sign in afterwards would seize global ownership via
         // bootstrapFirstUser. This is idempotent.
-        await bootstrapFirstUser(env, { id: userId, email, name: name || null });
+        // Wrangler's ambient bindings and the package's importable Workers declarations describe
+        // the same runtime objects but carry incompatible overload identities. Adapt once here.
+        await bootstrapFirstUser(env as unknown as Parameters<typeof bootstrapFirstUser>[0], {
+            id: userId,
+            email,
+            name: name || null,
+        });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
         // The bootstrap user now holds the SYSTEM-scoped 'platform_owner' grant (via
@@ -685,22 +683,23 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             timestamp: Date.now(),
         };
 
-        return new Response(JSON.stringify(responseData), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Set-Cookie': cookie,
-            },
-        });
+        return bootstrapSuccess(responseData, { 'Set-Cookie': cookie });
     } catch (error: any) {
         // Roll back any partially-created platform owner (orphan user row + held claim) so the
         // OWNER_EXISTS / userCount guards don't permanently block a legitimate retry.
         await rollbackOwnerCreation(env, createdUserId, createdOrganizationId);
 
-        if (error.message?.toLowerCase().includes('unique')) {
-            return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
+        const message = error instanceof Error ? error.message : '';
+        console.error(
+            JSON.stringify({
+                event: 'bootstrap_owner_creation_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
+        if (message.toLowerCase().includes('unique')) {
+            return errorResponse('Email already in use', 409, { code: 'EMAIL_EXISTS' });
         }
-        return jsonResp({ success: false, error: error.message, code: 'CREATE_OWNER_FAILED' }, 500);
+        return errorResponse('Failed to create owner', 500, { code: 'CREATE_OWNER_FAILED' });
     }
 }
 
@@ -749,60 +748,44 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
 
     if (request.method !== 'POST') {
-        return jsonResp({ error: 'Method not allowed' }, 405);
+        return errorResponse('Method not allowed', 405);
     }
 
     if (!env.OBCF_D1) {
-        return jsonResp({ error: 'D1 database binding not available' }, 503);
+        return errorResponse('D1 database binding not available', 503, { code: 'MISSING_BINDING' });
     }
 
     try {
         // Verify tables actually exist before marking READY
         const tableCheck = await verifyCoreTables(env);
         if (!tableCheck.ok) {
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'Core tables missing — run initialization first',
-                    missing: tableCheck.missing,
-                },
-                400,
-            );
+            return errorResponse('Core tables missing — run initialization first', 400, {
+                code: 'CORE_TABLES_MISSING',
+                metadata: { missing: tableCheck.missing },
+            });
         }
 
         // Verify at least one user exists
         const userRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(userRow?.count ?? 0);
         if (userCount === 0) {
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'No admin account found — create a platform owner account first',
-                    code: 'NO_OWNER',
-                },
-                400,
-            );
+            return errorResponse('No admin account found — create a platform owner account first', 400, {
+                code: 'NO_OWNER',
+            });
         }
 
         // Verify roles are seeded
         const roleRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
         const roleCount = Number(roleRow?.count ?? 0);
         if (roleCount === 0) {
-            return jsonResp(
-                {
-                    success: false,
-                    error: 'No roles found — run RBAC seed first',
-                    code: 'NO_ROLES',
-                },
-                400,
-            );
+            return errorResponse('No roles found — run RBAC seed first', 400, { code: 'NO_ROLES' });
         }
 
         // Mark platform as READY in both DB and KV
         await writeDBState(env, 'READY');
         await writeKVState(env, 'READY');
 
-        return jsonResp({
+        return bootstrapSuccess({
             success: true,
             state: 'READY',
             message: 'Platform is now ready.',
@@ -813,8 +796,14 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
             },
             timestamp: Date.now(),
         });
-    } catch (error: any) {
-        return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
+    } catch (error: unknown) {
+        console.error(
+            JSON.stringify({
+                event: 'bootstrap_finalize_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
+        return errorResponse('Bootstrap finalize failed', 500, { code: 'FINALIZE_FAILED' });
     }
 }
 

@@ -1,21 +1,18 @@
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog';
 import {
-    ContentValidationError,
-    Post,
-    validateBlurbText,
-    validateCrossposts,
-    validatePhotoJournalItems,
-    validatePhotoJournalNote,
-    validatePostContent,
-} from '@ottabase/ottablog';
-import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
+    executeSecureCrudRequest,
+    parseCrudRequest,
+    registerConnection,
+    type CrudResponse,
+    type PrepareAuthorizedMutation,
+} from '@ottabase/ottaorm';
 import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
 
 export interface OttaormCrudContext {
@@ -142,6 +139,105 @@ const APP_TAXONOMY_MODELS = new Set([
 
 const CRUD_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+const POST_SERVER_OWNED_FIELDS = [
+    'authorId',
+    'userId',
+    'organizationId',
+    'appId',
+    'passwordHash',
+    'publishedAt',
+    'postedAt',
+    'readingTimeMinutes',
+    'wordCount',
+    'viewCount',
+    'createdAt',
+    'updatedAt',
+] as const;
+
+function postMutationFailure(
+    error: string,
+    status: number,
+    code: string,
+    fieldErrors?: Record<string, string[]>,
+): CrudResponse {
+    return { success: false, error, code, fieldErrors, status };
+}
+
+/**
+ * Post-specific policy runs inside secure CRUD, after its RLS read-before-write. This is the only
+ * place an update may inspect password/updatedAt/publication state: probing with `Post.find()`
+ * before RLS both leaked row existence and duplicated the authorized read.
+ */
+const prepareAuthorizedPostMutation: PrepareAuthorizedMutation = async (mutation) => {
+    if (mutation.model !== 'posts') return { body: mutation.body };
+
+    const next = { ...mutation.body };
+    const current = mutation.currentData;
+    const suppliedPassword = next.password;
+    for (const field of POST_SERVER_OWNED_FIELDS) delete next[field];
+
+    const expectedUpdatedAt = next.expectedUpdatedAt;
+    delete next.expectedUpdatedAt;
+    if (mutation.method === 'PATCH' && expectedUpdatedAt !== undefined) {
+        const expectedTimestamp =
+            expectedUpdatedAt instanceof Date ? expectedUpdatedAt.getTime() : Number(expectedUpdatedAt);
+        const currentValue = current?.updatedAt;
+        const currentTimestamp = currentValue instanceof Date ? currentValue.getTime() : Number(currentValue);
+        if (!Number.isFinite(expectedTimestamp)) {
+            return postMutationFailure('expectedUpdatedAt must be a valid timestamp', 400, 'VALIDATION_ERROR', {
+                expectedUpdatedAt: ['Invalid timestamp'],
+            });
+        }
+        if (!Number.isFinite(currentTimestamp) || currentTimestamp !== expectedTimestamp) {
+            return postMutationFailure('Post was updated by another session', 409, 'CONFLICT');
+        }
+    }
+
+    const currentStatus = current?.status;
+    const effectiveStatus = next.status === undefined ? currentStatus : next.status;
+    const touchesLivePost =
+        currentStatus === 'published' ||
+        currentStatus === 'scheduled' ||
+        effectiveStatus === 'published' ||
+        effectiveStatus === 'scheduled';
+    if (
+        touchesLivePost &&
+        !mutation.context.platformAdmin &&
+        !hasGrantedPermission(mutation.context.permissions as string[] | undefined, 'posts:publish')
+    ) {
+        return postMutationFailure('Forbidden', 403, 'FORBIDDEN');
+    }
+
+    const hasPasswordInput = Object.prototype.hasOwnProperty.call(next, 'password');
+    delete next.password;
+    if (hasPasswordInput && (typeof suppliedPassword !== 'string' || suppliedPassword.trim().length === 0)) {
+        return postMutationFailure('Password must be a non-empty string', 400, 'VALIDATION_ERROR', {
+            password: ['Enter a password'],
+        });
+    }
+
+    const effectiveProtected =
+        next.isProtected === undefined ? current?.isProtected === true : next.isProtected === true;
+    if (typeof suppliedPassword === 'string' && suppliedPassword.trim() && !effectiveProtected) {
+        return postMutationFailure('A password can only be set on a protected post', 400, 'VALIDATION_ERROR', {
+            password: ['Enable password protection first'],
+        });
+    }
+    if (effectiveProtected && typeof suppliedPassword !== 'string' && !current?.passwordHash) {
+        return postMutationFailure('Password is required to protect a post', 400, 'VALIDATION_ERROR', {
+            password: ['Password is required when enabling protection'],
+        });
+    }
+    if (typeof suppliedPassword === 'string' && suppliedPassword.trim()) {
+        next.passwordHash = await hashPassword(suppliedPassword.trim());
+    } else if (next.isProtected === false) {
+        next.passwordHash = null;
+        next.passwordHint = null;
+    }
+
+    return { body: next };
+};
+
 /**
  * Methods that mutate or destroy an EXISTING organization row (i.e. everything except create).
  * PUT is included deliberately: secure CRUD treats PUT as a full update exactly like PATCH, so any
@@ -200,6 +296,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // TARGET, never the caller's own ambient/header-supplied org) — every other model uses the
     // ambient securityContext unchanged.
     let effectiveSecurityContext: typeof securityContext = securityContext;
+    let commentReactionsToDeleteId: string | null = null;
     const crudRequest = await parseCrudRequest(request, url, '/api/ottaorm');
 
     if (!crudRequest) {
@@ -327,6 +424,16 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    // Posts intentionally expose PATCH semantics only. A generic PUT cannot express the model's
+    // omitted-means-unchanged subtype contract and historically bypassed post-specific password,
+    // attribution, and publication handling.
+    if (crudRequest.model === 'posts' && crudRequest.method === 'PUT') {
+        return errorResponse('Posts do not support replacement writes', 405, {
+            code: 'METHOD_NOT_ALLOWED',
+            hint: 'Use PATCH for post updates',
+        });
+    }
+
     // App-global taxonomy writes require an authenticated content administrator — see
     // APP_TAXONOMY_MODELS. Reads (GET) fall through unchanged so the blog editor can list them.
     // taxonomy:manage is the named editorial capability; org:admin keeps passing (owners/admins).
@@ -378,21 +485,13 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         delete body.status;
     }
 
-    // Publishing is a distinct editorial capability, not implied by write access: moving a post
-    // to 'published' or 'scheduled' requires the posts:publish permission (org-scoped; a platform
-    // admin passes via *:*). Authors without it can create and edit drafts but not ship them.
-    // PUT is included deliberately — secure CRUD treats PUT as a full update like PATCH, so a
-    // POST/PATCH-only gate would leave PUT as a silent bypass.
-    //
-    // The same block also re-applies the post content validators. Those columns are model-validated
-    // on their own routes (/api/blog/blurbs, /api/blog/photo-journals) — text length caps, the
-    // 60-photo album cap, sanitized photo URLs, the body size ceiling — but they are also in
-    // Post.writable (the model's own create needs them there), so generic CRUD can write them.
-    // Without this, every cap is skippable by addressing /api/ottaorm/posts instead. Reusing the
-    // model's exported validators keeps the model the single source of truth for shape.
-    //
-    // `content` is validated for EVERY content type, not just journals: it is one column shared by
-    // articles, changelogs, and docs, and this is the only route any of them take into it.
+    // Post.prepareForDatabase runs the content validators on every write, so this route-level pass
+    // is NOT what makes the caps hold — it makes failures return a 400 naming the offending field
+    // instead of surfacing from inside the ORM. Keep both: delete this and the rules still bind,
+    // but the editor stops being able to tell the author what went wrong.
+    // Publication authorization cannot run here: it needs the RLS-authorized stored status as well
+    // as the requested status. `prepareAuthorizedPostMutation` performs that check inside secure
+    // CRUD after the row has been authorized, preventing an unscoped existence probe.
     if (
         crudRequest.model === 'posts' &&
         crudRequest.body &&
@@ -400,23 +499,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     ) {
         const body = crudRequest.body as Record<string, unknown>;
 
-        if (
-            (body.status === 'published' || body.status === 'scheduled') &&
-            !securityContext.platformAdmin &&
-            !hasGrantedPermission(securityContext.permissions as string[] | undefined, 'posts:publish')
-        ) {
-            return errorResponse('Publishing posts requires the posts:publish permission', 403, {
-                code: 'FORBIDDEN',
-            });
-        }
-
         try {
-            // `undefined` means "not in this write" and stays untouched; an explicit null clears.
-            if (body.blurbText != null) body.blurbText = validateBlurbText(body.blurbText);
-            if (body.photoNote !== undefined) body.photoNote = validatePhotoJournalNote(body.photoNote);
-            if (body.photoAlbum != null) body.photoAlbum = validatePhotoJournalItems(body.photoAlbum);
-            if (body.content != null) body.content = validatePostContent(body.content);
-            if (body.crossposts !== undefined) body.crossposts = validateCrossposts(body.crossposts);
+            // Mutated in place: `crudRequest.body` is what executes below, and the validators
+            // NORMALIZE as well as check (sanitized photo URLs, trimmed text, blank album → null).
+            Object.assign(body, validatePostWrite(body));
         } catch (error) {
             if (error instanceof ContentValidationError) {
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
@@ -430,70 +516,6 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         crudRequest.body &&
         (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
     ) {
-        if (crudRequest.method === 'PATCH' && crudRequest.id) {
-            const expectedUpdatedAt = (crudRequest.body as any).expectedUpdatedAt;
-            if (expectedUpdatedAt !== undefined) {
-                const expectedTimestamp =
-                    expectedUpdatedAt instanceof Date ? expectedUpdatedAt.getTime() : Number(expectedUpdatedAt);
-
-                if (!Number.isFinite(expectedTimestamp)) {
-                    return errorResponse('expectedUpdatedAt must be a valid timestamp', 400, {
-                        code: 'VALIDATION_ERROR',
-                        fieldErrors: { expectedUpdatedAt: ['Invalid timestamp'] },
-                    });
-                }
-
-                const existing = await Post.find(crudRequest.id);
-                if (!existing) {
-                    return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
-                }
-
-                const currentUpdatedAt = existing.get('updatedAt');
-                const currentTimestamp =
-                    currentUpdatedAt instanceof Date ? currentUpdatedAt.getTime() : Number(currentUpdatedAt);
-
-                if (!Number.isFinite(currentTimestamp) || currentTimestamp !== expectedTimestamp) {
-                    return errorResponse('Post was updated by another session', 409, {
-                        code: 'CONFLICT',
-                        metadata: {
-                            expectedUpdatedAt: expectedTimestamp,
-                            currentUpdatedAt: Number.isFinite(currentTimestamp) ? currentTimestamp : null,
-                        },
-                    });
-                }
-            }
-
-            delete (crudRequest.body as any).expectedUpdatedAt;
-        }
-
-        const isProtected = (crudRequest.body as any).isProtected;
-        const password = (crudRequest.body as any).password;
-        if (isProtected === true && typeof password !== 'string') {
-            let hasExistingPassword = false;
-            if (crudRequest.method === 'PATCH' && crudRequest.id) {
-                const existing = await Post.find(crudRequest.id);
-                hasExistingPassword = !!existing?.get('passwordHash');
-            }
-            if (!hasExistingPassword) {
-                return errorResponse('Password is required to protect a post', 400, {
-                    code: 'VALIDATION_ERROR',
-                    fieldErrors: { password: ['Password is required when enabling protection'] },
-                });
-            }
-        }
-
-        if (typeof password === 'string') {
-            const plain = password;
-            (crudRequest.body as any).passwordHash = await hashPassword(plain);
-            delete (crudRequest.body as any).password;
-        }
-
-        // Enforce author and tenancy context
-        // Note: authorId references User - use author() relationship to get author info
-        const user = session?.user;
-        (crudRequest.body as any).authorId = user?.id ?? (crudRequest.body as any).authorId ?? null;
-        (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
-
         // A null organizationId means "platform-owned" (see the posts RLS policy in
         // registry.ts) — only a platform admin may author those rows. The custom
         // policy's platformAdmin gate is READ-only (generateFilter), so without this
@@ -505,8 +527,6 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 code: 'FORBIDDEN',
             });
         }
-        (crudRequest.body as any).organizationId = resolvedOrgId;
-        (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
     }
 
     if (crudRequest.model === 'comments') {
@@ -617,7 +637,9 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 // side-effects client-side.
                 if (body.status === 'deleted') {
                     body.body = '[deleted]';
-                    await CommentReaction.deleteForComment(comment.get('id') as string);
+                    // Defer the side effect until the snapshot/RLS-guarded comment update wins.
+                    // Otherwise a stale failed PATCH can strip reactions from an active comment.
+                    commentReactionsToDeleteId = comment.get('id') as string;
                 }
             }
         }
@@ -660,7 +682,9 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // target row is gone afterwards.
     const affectedMembershipUserIds = await resolveAffectedMembershipUsers(crudRequest, securityContext);
 
-    const result = await executeSecureCrudRequest(crudRequest, effectiveSecurityContext);
+    const result = await executeSecureCrudRequest(crudRequest, effectiveSecurityContext, {
+        prepareAuthorizedMutation: prepareAuthorizedPostMutation,
+    });
 
     if (!result.success) {
         // Expected 4xx outcomes are not server errors and RLS denials already have
@@ -685,6 +709,21 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             messages: result.messages,
             fieldErrors: result.fieldErrors,
         });
+    }
+
+    if (commentReactionsToDeleteId) {
+        try {
+            await CommentReaction.deleteForComment(commentReactionsToDeleteId);
+        } catch (error) {
+            console.error(
+                JSON.stringify({
+                    event: 'comment_soft_delete_reaction_cleanup_failed',
+                    commentId: commentReactionsToDeleteId.slice(0, 128),
+                    error: redactErrorForLog(error),
+                }),
+            );
+            return errorResponse('Comment cleanup failed', 500, { code: 'COMMENT_CLEANUP_FAILED' });
+        }
     }
 
     if (affectedMembershipUserIds.length > 0) {

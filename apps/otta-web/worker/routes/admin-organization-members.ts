@@ -1,9 +1,10 @@
-import { Organization, OrganizationMember, User, UserRole } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { sendTemplatedEmail } from '@ottabase/email';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import { isEmail } from '@ottabase/utils/string';
+import { sanitizeBlockHtml, sanitizeInlineHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
+import { isEmail, stripHtml } from '@ottabase/utils/string';
 import { requireAdminAccess, type AdminContext } from '../lib/admin-guard';
 import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
 import { normalizeEmail } from '../lib/utils';
@@ -30,66 +31,38 @@ function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspe
     return status === 'active' || status === 'invited' || status === 'suspended';
 }
 
-function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boolean {
-    return (
-        (body.role !== undefined && body.role !== 'owner') || (body.status !== undefined && body.status !== 'active')
+export function buildOrganizationInviteEmailContent(params: {
+    organizationName: string;
+    destinationUrl: string;
+    alreadyHasAccount: boolean;
+}): { subject: string; header: string; body: string } {
+    const organizationNameText = stripHtml(sanitizeInlineHtml(params.organizationName))
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+        .slice(0, 200);
+    const displayName = organizationNameText || 'your organization';
+    const organizationNameHtml = displayName.replace(
+        /[&<>"']/g,
+        (character) =>
+            ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[character] as string,
     );
-}
+    const destinationUrl = sanitizeUrl(params.destinationUrl);
+    const action = params.alreadyHasAccount ? 'Sign in' : 'Create your account';
+    const lead = params.alreadyHasAccount
+        ? `You've been added to <strong>${organizationNameHtml}</strong>. Sign in to get started.`
+        : `You've been invited to join <strong>${organizationNameHtml}</strong>. Create an account with this email address to accept.`;
 
-/** Roster tiers, highest authority first. Used to detect a DEMOTION (never an elevation). */
-const ROSTER_ROLE_TIER: Record<string, number> = { owner: 3, admin: 2, member: 1 };
-
-function isDemotion(previousRole: unknown, nextRole: string): boolean {
-    const before = ROSTER_ROLE_TIER[String(previousRole)] ?? 0;
-    const after = ROSTER_ROLE_TIER[nextRole] ?? 0;
-    return before > after;
-}
-
-/**
- * Revoke the user's org-scoped RBAC grants for this organization, FAILING CLOSED.
- *
- * Membership (`organization_members.role`) and authorization (`user_roles`) are SEPARATE sources:
- * provisioning an org owner writes both, but a roster edit only rewrites the membership row. So a
- * demoted or removed member would otherwise keep the org-scoped grant carrying their old
- * permissions (media:*, comments:moderate, audit:read, org:admin, taxonomy writes ...) — and the
- * profile-version bump would simply reload it. Re-adding a removed user would reactivate it.
- *
- * Returns an error Response when revocation fails, so callers can ABORT. This must never be
- * best-effort: unlike cache invalidation (which self-heals at TTL), a failed revocation leaves
- * privilege live indefinitely, and acknowledging the downgrade anyway would report success while
- * the user still holds owner/admin authority. Callers run this BEFORE mutating the roster, so a
- * failure leaves membership untouched (D1 has no cross-table transaction — ordering plus failing
- * closed is how this stays all-or-nothing).
- *
- * Deliberately one-directional: roster edits only ever REVOKE authority here. Promotion/invite does
- * NOT auto-grant an RBAC role, because implicitly conferring broad org permissions from a roster
- * change would over-grant; elevation stays an explicit RBAC operation.
- */
-async function revokeOrgScopedGrantsOrError(
-    userId: string,
-    organizationId: string,
-    action: 'demotion' | 'removal',
-): Promise<Response | null> {
-    try {
-        await UserRole.revokeAllForOrganization(userId, organizationId);
-        return null;
-    } catch (err) {
-        console.error('[org-members] Grant revocation failed; aborting roster change', {
-            userId,
-            organizationId,
-            action,
-            err,
-        });
-        return errorResponse(
-            `Could not revoke the member's existing role grants, so the ${action} was not applied. ` +
-                'Membership is unchanged — retry.',
-            500,
-            {
-                code: 'ORG_GRANT_REVOKE_FAILED',
-                details: err instanceof Error ? err.message : 'Unknown error',
-            },
-        );
-    }
+    return {
+        subject: `You've been invited to join ${displayName}`,
+        header: `Join ${displayName}`,
+        body: sanitizeBlockHtml(`<p>${lead}</p><p><a href="${destinationUrl}">${action}</a></p>`),
+    };
 }
 
 /**
@@ -118,16 +91,6 @@ async function assertRosterAccess(auth: AdminContext, organizationId: string): P
     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
 }
 
-/** Escape a string for safe interpolation into an HTML email body. */
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
 export async function handleAdminOrganizationMembersList(
     context: ApiRouteContext,
     organizationId: string,
@@ -151,10 +114,7 @@ export async function handleAdminOrganizationMembersList(
         ]);
 
         return paginatedJsonResponse({
-            data: members.map((member) => ({
-                id: `${member.userId}-${member.organizationId}`,
-                ...member,
-            })),
+            data: members,
             total,
             page,
             perPage,
@@ -181,32 +141,38 @@ async function sendOrgInviteEmail(
         if (!mailer) return;
 
         const organization = await Organization.find(params.organizationId);
-        const orgName = escapeHtml((organization?.get('name') as string | undefined) ?? 'the organization');
+        const orgName = (organization?.get('name') as string | undefined) ?? 'the organization';
 
         registerAppEmailTemplates();
 
         const destinationUrl = new URL(context.env.AUTH_URL || context.request.url);
         destinationUrl.pathname = params.alreadyHasAccount ? '/login' : '/register';
         destinationUrl.searchParams.set('email', params.toEmail);
+        const content = buildOrganizationInviteEmailContent({
+            organizationName: orgName,
+            destinationUrl: destinationUrl.toString(),
+            alreadyHasAccount: params.alreadyHasAccount,
+        });
 
         await sendTemplatedEmail(mailer, {
             from,
             to: params.toEmail,
             template: 'minimalist',
-            subject: `You've been invited to join ${orgName}`,
+            subject: content.subject,
             variables: {
-                subject: `You've been invited to join ${orgName}`,
-                header: `Join ${orgName}`,
-                body: params.alreadyHasAccount
-                    ? `<p>You've been added to <strong>${orgName}</strong>. Sign in to get started.</p>
-<p><a href="${destinationUrl.toString()}">Sign in</a></p>`
-                    : `<p>You've been invited to join <strong>${orgName}</strong>. Create an account with this email address to accept.</p>
-<p><a href="${destinationUrl.toString()}">Create your account</a></p>`,
+                subject: content.subject,
+                header: content.header,
+                body: content.body,
                 footer: '',
             },
         });
     } catch (error) {
-        console.warn('Failed to send organization invite email:', error);
+        console.warn(
+            JSON.stringify({
+                event: 'organization_invite_email_failed',
+                error: redactErrorForLog(error),
+            }),
+        );
     }
 }
 
@@ -276,6 +242,22 @@ export async function handleAdminOrganizationInviteMember(
     const userJson = user?.toJson();
     const resolvedUserId = userJson?.id as string | undefined;
     const resolvedEmail = email ?? (userJson?.email as string | undefined);
+
+    // An email-only invite is not an active principal yet. Allowing a caller to mark a row with
+    // no userId active (or suspended) creates a phantom member and can corrupt owner guarantees.
+    // Activation is performed by activatePendingInvites only after the account is authoritative.
+    if (!resolvedUserId && body.status !== undefined && body.status !== 'invited') {
+        return errorResponse('Email-only memberships must remain invited until the user signs in', 400, {
+            code: 'VALIDATION_ERROR',
+            fieldErrors: { status: ['Email-only memberships must use invited status'] },
+        });
+    }
+    if (resolvedUserId && body.status === 'invited') {
+        return errorResponse('Existing users must be added as active or suspended', 400, {
+            code: 'VALIDATION_ERROR',
+            fieldErrors: { status: ['Pending invites are only valid for email-only memberships'] },
+        });
+    }
 
     // Check by userId AND by email so a still-pending email invite for this person (row with
     // userId: null) is found even when this request resolved a userId (e.g. they've since
@@ -392,45 +374,72 @@ export async function handleAdminOrganizationUpdateMember(
         return errorResponse('Only an owner can grant or modify owner-level membership', 403, { code: 'FORBIDDEN' });
     }
 
-    if (updateMovesAwayFromActiveOwnerState(body)) {
-        const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);
-        if (isLastActiveOwner) {
+    const existing = existingMember.toJson() as { role?: unknown; status?: unknown };
+    if (!isValidRole(existing.role) || !isValidStatus(existing.status)) {
+        return errorResponse('Membership has an invalid persisted role or status', 500, {
+            code: 'INVALID_MEMBERSHIP_STATE',
+        });
+    }
+
+    try {
+        // The model owns the cross-table invariant: any demotion revokes org-scoped user_roles in
+        // the SAME D1 batch as the guarded roster update. The expected snapshot closes stale-write
+        // races, and the SQL predicate prevents two concurrent requests from removing both owners.
+        const expected = { role: existing.role, status: existing.status };
+        const result =
+            body.role !== undefined
+                ? await OrganizationMember.updateRosterMembership(
+                      userId,
+                      organizationId,
+                      { role: body.role, ...(body.status !== undefined ? { status: body.status } : {}) },
+                      expected,
+                  )
+                : body.status !== undefined
+                  ? await OrganizationMember.updateRosterMembership(
+                        userId,
+                        organizationId,
+                        { status: body.status },
+                        expected,
+                    )
+                  : null;
+
+        if (!result) {
+            return errorResponse('Nothing to update', 400, { code: 'VALIDATION_ERROR' });
+        }
+
+        if (result.status === 'updated') {
+            // Role/status changed (incl. suspension) — revocation must not wait out the
+            // membership-cache TTL.
+            await invalidateMembershipCache(context.env.OBCF_KV, userId);
+            // Refresh the mutable session snapshot on the next request.
+            await bumpProfileVersion(context.env, userId);
+            return jsonResponse({ data: result.member });
+        }
+
+        if (result.status === 'not_found') {
+            return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+        }
+        if (result.status === 'last_active_owner') {
             return errorResponse('Cannot change role or status for the last active owner', 409, {
                 code: 'LAST_ACTIVE_OWNER_GUARD',
             });
         }
-    }
-
-    const previousRole = (existingMember.toJson() as { role?: string }).role;
-
-    // A DEMOTION must actually remove authority: updateRole only rewrites the roster row, so
-    // without this the user keeps the org-scoped user_roles grant from their previous tier and the
-    // profile-version bump below simply reloads it — "demoted" in the UI, unchanged in effect.
-    // Revoke FIRST and abort on failure, so we never report a successful demotion while the old
-    // owner/admin grant may still be live. On failure the roster is untouched, so a retry is clean.
-    if (body.role !== undefined && isDemotion(previousRole, body.role)) {
-        const revokeFailed = await revokeOrgScopedGrantsOrError(userId, organizationId, 'demotion');
-        if (revokeFailed) return revokeFailed;
-    }
-
-    try {
-        if (body.role !== undefined) {
-            await OrganizationMember.updateRole(userId, organizationId, body.role);
-        }
-        if (body.status !== undefined) {
-            await OrganizationMember.updateStatus(userId, organizationId, body.status);
+        if (result.status === 'stale') {
+            return errorResponse('Membership changed while it was being updated; reload and retry', 409, {
+                code: 'MEMBERSHIP_CHANGED',
+            });
         }
 
-        // Role/status changed (incl. suspension) — revocation must not wait out the
-        // membership-cache TTL.
-        await invalidateMembershipCache(context.env.OBCF_KV, userId);
-        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
-        // refresh their live session so it isn't served the stale snapshot until the JWT expires.
-        await bumpProfileVersion(context.env, userId);
-
-        const updated = await OrganizationMember.first({ userId, organizationId });
-        return jsonResponse({ data: updated?.toJson() ?? existingMember.toJson() });
+        return errorResponse('Membership update was not applied', 409, { code: 'MEMBERSHIP_CHANGED' });
     } catch (err) {
+        console.error(
+            JSON.stringify({
+                event: 'organization_member_update_failed',
+                organizationId: organizationId.slice(0, 128),
+                userId: userId.slice(0, 128),
+                error: redactErrorForLog(err),
+            }),
+        );
         return errorResponse('Failed to update member', 500, {
             code: 'ORG_MEMBER_UPDATE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',
@@ -441,7 +450,7 @@ export async function handleAdminOrganizationUpdateMember(
 export async function handleAdminOrganizationRemoveMember(
     context: ApiRouteContext,
     organizationId: string,
-    userId: string,
+    memberId: string,
 ): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
@@ -449,7 +458,7 @@ export async function handleAdminOrganizationRemoveMember(
     const denied = await assertRosterAccess(auth, organizationId);
     if (denied) return denied;
 
-    const existingMember = await OrganizationMember.first({ userId, organizationId });
+    const existingMember = await OrganizationMember.first({ id: memberId, organizationId });
     if (!existingMember) {
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
@@ -464,25 +473,53 @@ export async function handleAdminOrganizationRemoveMember(
         return errorResponse('Only an owner can remove an owner', 403, { code: 'FORBIDDEN' });
     }
 
-    const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);
-    if (isLastActiveOwner) {
-        return errorResponse('Cannot remove the last active owner from this organization', 409, {
-            code: 'LAST_ACTIVE_OWNER_GUARD',
+    const existing = existingMember.toJson() as { role?: unknown; status?: unknown; userId?: unknown };
+    if (!isValidRole(existing.role) || !isValidStatus(existing.status)) {
+        return errorResponse('Membership has an invalid persisted role or status', 500, {
+            code: 'INVALID_MEMBERSHIP_STATE',
         });
     }
 
-    // Removal must also drop the org-scoped RBAC grants. They are otherwise merely dormant (a
-    // non-member resolves to no memberships, so RLS denies) — but re-adding the person later, even
-    // as a plain member, would silently reactivate their old owner/admin permissions. Revoke FIRST
-    // and abort on failure so removal is never reported successful with grants still attached.
-    const revokeFailed = await revokeOrgScopedGrantsOrError(userId, organizationId, 'removal');
-    if (revokeFailed) return revokeFailed;
-
     try {
-        const removed = await OrganizationMember.removeMember(userId, organizationId);
-        if (!removed) {
-            return errorResponse('Failed to remove member', 500, {
-                code: 'ORG_MEMBER_REMOVE_FAILED',
+        if (existing.userId === null || existing.userId === undefined) {
+            if (existing.status !== 'invited') {
+                return errorResponse('Membership has an invalid persisted identity', 500, {
+                    code: 'INVALID_MEMBERSHIP_STATE',
+                });
+            }
+            const cancelled = await OrganizationMember.cancelPendingInvite(memberId, organizationId, existing.role);
+            if (!cancelled) {
+                return errorResponse('Invite changed while it was being cancelled; reload and retry', 409, {
+                    code: 'MEMBERSHIP_CHANGED',
+                });
+            }
+            return jsonResponse({ data: { id: memberId, organizationId, removed: true } });
+        }
+        if (typeof existing.userId !== 'string' || existing.userId.length === 0) {
+            return errorResponse('Membership has an invalid persisted identity', 500, {
+                code: 'INVALID_MEMBERSHIP_STATE',
+            });
+        }
+        const userId = existing.userId;
+
+        // Grant revocation and guarded membership deletion are one D1 transaction in the model.
+        // Matching the expected snapshot makes a concurrent hierarchy change fail closed.
+        const result = await OrganizationMember.removeRosterMembership(userId, organizationId, {
+            role: existing.role,
+            status: existing.status,
+        });
+
+        if (result.status === 'not_found') {
+            return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+        }
+        if (result.status === 'last_active_owner') {
+            return errorResponse('Cannot remove the last active owner from this organization', 409, {
+                code: 'LAST_ACTIVE_OWNER_GUARD',
+            });
+        }
+        if (result.status === 'stale') {
+            return errorResponse('Membership changed while it was being removed; reload and retry', 409, {
+                code: 'MEMBERSHIP_CHANGED',
             });
         }
 
@@ -494,6 +531,14 @@ export async function handleAdminOrganizationRemoveMember(
 
         return jsonResponse({ data: { userId, organizationId, removed: true } });
     } catch (err) {
+        console.error(
+            JSON.stringify({
+                event: 'organization_member_remove_failed',
+                organizationId: organizationId.slice(0, 128),
+                memberId: memberId.slice(0, 128),
+                error: redactErrorForLog(err),
+            }),
+        );
         return errorResponse('Failed to remove member', 500, {
             code: 'ORG_MEMBER_REMOVE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',

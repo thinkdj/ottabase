@@ -1,5 +1,5 @@
-import { createModelHooks } from '@ottabase/ottaorm/client';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { createModelHooks, OttaQueryProvider } from '@ottabase/ottaorm/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,10 +7,6 @@ import type { OrganizationRecord } from '@/types/rbac';
 
 const mocks = vi.hoisted(() => ({
     api: vi.fn(),
-}));
-
-vi.mock('@/lib/api', () => ({
-    api: mocks.api,
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -24,9 +20,20 @@ import { useCreateOrganization, useDeleteOrganization, useUpdateOrganization } f
 // (though not the same reference as) the ones the hooks under test invalidate.
 const organizationQueryKeys = createModelHooks<OrganizationRecord>({ entityName: 'organizations' }).queryKeys;
 
-function createWrapper(queryClient: QueryClient) {
+function createWrapper() {
     return function Wrapper({ children }: { children: ReactNode }) {
-        return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+        return (
+            <OttaQueryProvider
+                apiClient={mocks.api}
+                visibilityScope={{
+                    appId: 'test-app',
+                    organizationId: 'test-org',
+                    principalId: 'test-user',
+                }}
+            >
+                {children}
+            </OttaQueryProvider>
+        );
     };
 }
 
@@ -37,38 +44,34 @@ function createWrapper(queryClient: QueryClient) {
  * onSuccess invalidation instead of relying on that removed mechanism.
  */
 describe('useRBAC organization mutations — post-success cache reconciliation', () => {
-    let queryClient: QueryClient;
-
     beforeEach(() => {
         mocks.api.mockReset();
-        queryClient = new QueryClient({
-            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-        });
     });
 
     it('useCreateOrganization invalidates the organization list on success', async () => {
-        mocks.api.mockResolvedValueOnce({ data: { id: 'org-real', name: 'Acme' } });
-        queryClient.setQueryData(organizationQueryKeys.lists(), []);
-
+        mocks.api.mockResolvedValueOnce({ id: 'org-real', name: 'Acme' });
         const { result } = renderHook(() => ({ queryClient: useQueryClient(), mutation: useCreateOrganization() }), {
-            wrapper: createWrapper(queryClient),
+            wrapper: createWrapper(),
         });
+        result.current.queryClient.setQueryData(organizationQueryKeys.lists(), []);
 
         await result.current.mutation.mutateAsync({ name: 'Acme' });
 
-        // Without this invalidation the optimistic temp-<timestamp> row from onMutate
-        // would never be reconciled with the server's real id.
+        // Creation is not shown optimistically because the server must provision the
+        // owner membership before the tenant is usable.
         expect(result.current.queryClient.getQueryState(organizationQueryKeys.lists())?.isInvalidated).toBe(true);
     });
 
     it('useUpdateOrganization invalidates the detail (by canonical id) and list caches on success', async () => {
-        mocks.api.mockResolvedValueOnce({ data: { id: 'org-1', name: 'Acme Renamed' } });
-        queryClient.setQueryData(organizationQueryKeys.detail('org-1'), { id: 'org-1', name: 'Acme' });
-        queryClient.setQueryData(organizationQueryKeys.lists(), [{ id: 'org-1', name: 'Acme' }]);
-
+        mocks.api.mockResolvedValueOnce({ id: 'org-1', name: 'Acme Renamed' });
         const { result } = renderHook(() => ({ queryClient: useQueryClient(), mutation: useUpdateOrganization() }), {
-            wrapper: createWrapper(queryClient),
+            wrapper: createWrapper(),
         });
+        result.current.queryClient.setQueryData(organizationQueryKeys.detail('org-1'), {
+            id: 'org-1',
+            name: 'Acme',
+        });
+        result.current.queryClient.setQueryData(organizationQueryKeys.lists(), [{ id: 'org-1', name: 'Acme' }]);
 
         await result.current.mutation.mutateAsync({ id: 'org-1', data: { name: 'Acme Renamed' } });
 
@@ -80,12 +83,14 @@ describe('useRBAC organization mutations — post-success cache reconciliation',
 
     it('useDeleteOrganization removes the deleted detail entry and invalidates the list on success', async () => {
         mocks.api.mockResolvedValueOnce(undefined);
-        queryClient.setQueryData(organizationQueryKeys.detail('org-1'), { id: 'org-1', name: 'Acme' });
-        queryClient.setQueryData(organizationQueryKeys.lists(), [{ id: 'org-1', name: 'Acme' }]);
-
         const { result } = renderHook(() => ({ queryClient: useQueryClient(), mutation: useDeleteOrganization() }), {
-            wrapper: createWrapper(queryClient),
+            wrapper: createWrapper(),
         });
+        result.current.queryClient.setQueryData(organizationQueryKeys.detail('org-1'), {
+            id: 'org-1',
+            name: 'Acme',
+        });
+        result.current.queryClient.setQueryData(organizationQueryKeys.lists(), [{ id: 'org-1', name: 'Acme' }]);
 
         await result.current.mutation.mutateAsync('org-1');
 

@@ -1,6 +1,7 @@
 import { DEFAULT_ROUTE_MAPPINGS } from '@ottabase/brand-engine';
 import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence';
 import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { makeSlug } from '@ottabase/utils/url';
 
 type ProvisionRoleName = 'owner' | 'admin' | 'member' | 'viewer';
@@ -8,6 +9,15 @@ type UserLike = {
     get: (key: string) => unknown;
     assignRole: (roleId: string, assignedBy?: string, organizationId?: string) => Promise<void>;
 };
+
+function logProvisioningFailure(event: string, error: unknown): void {
+    console.error(
+        JSON.stringify({
+            event,
+            error: redactErrorForLog(error),
+        }),
+    );
+}
 
 /**
  * Ensure brand defaults exist for the given app.
@@ -73,7 +83,6 @@ export async function provisionDefaultOrganizationForUser(params: {
     organizationId: string;
     organizationRole: 'owner' | 'member';
     assignedRole: string;
-    brandSetupError?: string;
 }> {
     const {
         user,
@@ -164,7 +173,7 @@ export async function provisionDefaultOrganizationForUser(params: {
             try {
                 await Organization.delete(organizationId);
             } catch (rollbackErr) {
-                console.error('[user-provisioning] Failed to roll back orphaned organization:', rollbackErr);
+                logProvisioningFailure('user_provisioning_orphaned_organization_rollback_failed', rollbackErr);
             }
             throw err;
         }
@@ -202,10 +211,7 @@ export async function provisionDefaultOrganizationForUser(params: {
             try {
                 await Organization.delete(createdOrganizationId);
             } catch (rollbackError) {
-                console.error(
-                    '[user-provisioning] Failed to roll back organization after role setup failed:',
-                    rollbackError,
-                );
+                logProvisioningFailure('user_provisioning_role_setup_organization_rollback_failed', rollbackError);
             }
         }
         throw error;
@@ -214,18 +220,15 @@ export async function provisionDefaultOrganizationForUser(params: {
     // Brand defaults are optional presentation data. Seed them only after all required
     // tenant and RBAC facts exist, and never turn a successful security boundary into
     // a failed registration because presentation setup is temporarily unavailable.
-    let brandSetupError: string | undefined;
     try {
         await ensureAppBrandDefaults(fallbackBrandName, appId ?? null);
     } catch (brandError) {
-        brandSetupError = brandError instanceof Error ? brandError.message : String(brandError);
-        console.error('[user-provisioning] Default brand setup failed:', brandError);
+        logProvisioningFailure('user_provisioning_default_brand_setup_failed', brandError);
     }
 
     return {
         organizationId,
         organizationRole: resolvedOrganizationRole,
         assignedRole,
-        brandSetupError,
     };
 }

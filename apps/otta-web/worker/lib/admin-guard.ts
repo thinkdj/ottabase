@@ -2,6 +2,7 @@ import type { RBACContext } from '@ottabase/rbac';
 import { assertAdmin, assertBrandEditAccess, SYSTEM_ORGANIZATION_ID } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import type { ApiRouteContext } from '../routes/router';
 import { getAuthOptions } from './auth-utils';
 import { initDbConnection } from './db-utils';
@@ -15,17 +16,6 @@ export interface AdminContext {
 }
 
 type AdminScope = 'system' | 'organization' | 'either';
-
-function cleanValue(value: string | null): string | null {
-    if (!value) return null;
-    const trimmed = value.trim();
-    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
-    return trimmed;
-}
-
-function deriveAppId(request: Request): string {
-    return cleanValue(request.headers.get('x-app-id')) || 'web';
-}
 
 export async function requireAdminAccess(
     context: ApiRouteContext,
@@ -48,6 +38,7 @@ export async function requireAdminAccess(
         getAuthOptions,
         allowNullTenant: options?.allowNullTenant,
         organizationIdOverride: options?.scope === 'system' ? SYSTEM_ORGANIZATION_ID : undefined,
+        appId: getOttabaseConfig(env).appId,
     });
 
     const result = assertAdmin(reqCtx, {
@@ -72,7 +63,7 @@ export async function requireAdminAccess(
     return {
         user: result.user,
         organizationId: (result.organizationId || SYSTEM_ORGANIZATION_ID) as string,
-        appId: deriveAppId(request),
+        appId: reqCtx.appId,
         rbac,
         session: reqCtx.session,
     };
@@ -98,6 +89,7 @@ export async function requireBrandEditAccess(
         getAuthOptions,
         allowNullTenant,
         organizationIdOverride: organizationId ?? undefined,
+        appId: getOttabaseConfig(env).appId,
     });
     const resolvedOrg = reqCtx.organizationId;
     const orgForBrand = organizationId ?? (resolvedOrg === SYSTEM_ORGANIZATION_ID ? null : resolvedOrg);
@@ -124,7 +116,7 @@ export async function requireBrandEditAccess(
     return {
         user: result.user,
         organizationId: result.organizationId,
-        appId: appId || deriveAppId(request),
+        appId: appId || reqCtx.appId,
         rbac,
         session: reqCtx.session,
     };

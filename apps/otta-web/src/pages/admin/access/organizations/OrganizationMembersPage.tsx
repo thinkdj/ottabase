@@ -45,7 +45,7 @@ export function OrganizationMembersPage() {
     const setOrganizationId = useSetAtom(organizationIdAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
-    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{ memberId: string; userId?: string } | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const {
         data: response,
@@ -91,16 +91,15 @@ export function OrganizationMembersPage() {
         setIsDialogOpen(true);
     };
 
-    const handleDelete = async (userId: string) => {
-        setDeleteDialog(userId);
+    const handleDelete = async (member: OrganizationMemberRecord) => {
+        setDeleteDialog({ memberId: member.id, userId: member.userId ?? undefined });
     };
 
     const handleConfirmDelete = async () => {
         if (!deleteDialog) return;
 
-        const userId = deleteDialog;
         removeMutation.mutate(
-            { userId, organizationId },
+            { ...deleteDialog, organizationId },
             {
                 onSuccess: () => {
                     toast.rbac.memberRemoved();
@@ -145,9 +144,11 @@ export function OrganizationMembersPage() {
     const handleSubmit = async (data: InviteMemberFormData) => {
         try {
             if (editingMember) {
+                const memberUserId = editingMember.userId;
+                if (!memberUserId) return;
                 await updateMemberMutation.mutateAsync({
                     organizationId,
-                    userId: editingMember.userId,
+                    userId: memberUserId,
                     role: data.role,
                     status: data.status ?? editingMember.status,
                 });
@@ -284,7 +285,7 @@ export function OrganizationMembersPage() {
                                                 <Select
                                                     value={member.role}
                                                     onValueChange={(value: MemberRole) =>
-                                                        handleQuickRoleChange(member.userId, value)
+                                                        member.userId && handleQuickRoleChange(member.userId, value)
                                                     }
                                                     disabled={
                                                         isPending ||
@@ -306,7 +307,7 @@ export function OrganizationMembersPage() {
                                                 <Select
                                                     value={member.status}
                                                     onValueChange={(value: 'active' | 'invited' | 'suspended') =>
-                                                        handleQuickStatusChange(member.userId, value)
+                                                        member.userId && handleQuickStatusChange(member.userId, value)
                                                     }
                                                     disabled={
                                                         isPending ||
@@ -357,13 +358,9 @@ export function OrganizationMembersPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="text-muted-foreground hover:text-destructive"
-                                                        onClick={() => handleDelete(member.userId)}
-                                                        disabled={isPending || removeMutation.isPending}
-                                                        title={
-                                                            isPending
-                                                                ? 'This invite is pending signup and cannot be removed yet'
-                                                                : undefined
-                                                        }
+                                                        onClick={() => handleDelete(member)}
+                                                        disabled={removeMutation.isPending}
+                                                        title={isPending ? 'Cancel pending invite' : undefined}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>

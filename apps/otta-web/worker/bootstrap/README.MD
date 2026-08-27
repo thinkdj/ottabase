@@ -28,6 +28,11 @@ deployments get the "setup token required" page instead of the wizard, and `/api
 already `READY` it refuses with `409 ALREADY_READY` unless called with `?confirm=reinit`; the wizard never sends that,
 so a re-init is deliberate and curl-only.
 
+All API failures use the framework `errorResponse()` contract. Client errors may include `fieldErrors` or safe
+`metadata`; 5xx bodies remain opaque and carry only a stable code/request ID. Successful bootstrap responses and all
+errors set `Cache-Control: no-store` because the payloads are secret-gated setup state. The owner-success response adds
+`Set-Cookie` without weakening that cache policy.
+
 ```bash
 SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/otta-web/.env.local | cut -d= -f2)
 curl -s -X POST http://localhost:3004/__bootstrap__/api/init -H "X-Bootstrap-Secret: $SECRET"

@@ -9,6 +9,7 @@ import { useCreateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { slugFromName } from '@/lib/slug';
 import { organizationIdAtom } from '@/ottabase/state/appState';
+import type { OrganizationPlan } from '@/types/rbac';
 import {
     Button,
     Card,
@@ -32,22 +33,29 @@ import { useState } from 'react';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
+interface OrganizationRegistrationFormData {
+    name: string;
+    slug: string;
+    plan: OrganizationPlan;
+    status: 'active';
+}
+
 export function OrganizationRegistrationPage() {
     const navigate = useNavigate();
     const toast = useRBACToast();
     const createMutation = useCreateOrganization();
     const setOrganizationId = useSetAtom(organizationIdAtom);
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<OrganizationRegistrationFormData>({
         name: '',
         slug: '',
-        plan: 'free' as 'free' | 'pro' | 'enterprise',
-        status: 'active' as 'active' | 'suspended' | 'deleted',
+        plan: 'free',
+        status: 'active',
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const handleChange = (field: string, value: string) => {
+    const handleTextChange = (field: 'name' | 'slug', value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
 
         // Clear error
@@ -143,7 +151,7 @@ export function OrganizationRegistrationPage() {
                                 id="name"
                                 placeholder="Acme Inc"
                                 value={formData.name}
-                                onChange={(e) => handleChange('name', e.target.value)}
+                                onChange={(e) => handleTextChange('name', e.target.value)}
                                 onBlur={handleNameBlur}
                                 disabled={createMutation.isPending}
                                 className={errors.name ? 'border-destructive' : ''}
@@ -161,7 +169,7 @@ export function OrganizationRegistrationPage() {
                                 id="slug"
                                 placeholder="acme-inc"
                                 value={formData.slug}
-                                onChange={(e) => handleChange('slug', e.target.value)}
+                                onChange={(e) => handleTextChange('slug', e.target.value)}
                                 disabled={createMutation.isPending}
                                 className={errors.slug ? 'border-destructive' : ''}
                             />
@@ -178,7 +186,9 @@ export function OrganizationRegistrationPage() {
                             <Label htmlFor="plan">Plan</Label>
                             <Select
                                 value={formData.plan}
-                                onValueChange={(value) => handleChange('plan', value)}
+                                onValueChange={(plan: OrganizationPlan) =>
+                                    setFormData((previous) => ({ ...previous, plan }))
+                                }
                                 disabled={createMutation.isPending}
                             >
                                 <SelectTrigger id="plan">

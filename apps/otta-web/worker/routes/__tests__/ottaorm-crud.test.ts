@@ -53,6 +53,27 @@ function createContext() {
     } as any;
 }
 
+function installAuthorizedPostExecution(
+    executeSecureCrudRequest: { mockImplementation: (implementation: (...args: any[]) => unknown) => void },
+    currentData?: Record<string, unknown>,
+) {
+    const captured: { body?: Record<string, unknown> } = {};
+    executeSecureCrudRequest.mockImplementation(async (request: any, context: any, hooks: any) => {
+        const prepared = await hooks.prepareAuthorizedMutation({
+            method: request.method,
+            model: request.model,
+            id: request.id,
+            body: request.body,
+            currentData,
+            context,
+        });
+        if ('success' in prepared) return prepared;
+        captured.body = prepared.body;
+        return { success: true, data: { id: request.id ?? 'post-1', ...prepared.body }, status: 200 };
+    });
+    return captured;
+}
+
 describe('handleOttaormCrud (posts concurrency)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -68,19 +89,17 @@ describe('handleOttaormCrud (posts concurrency)', () => {
             id: 'post-1',
             body: { expectedUpdatedAt: 1000 },
         });
-        (Post.find as any).mockResolvedValue({
-            get: (key: string) => (key === 'updatedAt' ? 2000 : null),
-        });
+        installAuthorizedPostExecution(executeSecureCrudRequest as any, { id: 'post-1', updatedAt: 2000 });
 
         const response = await handleOttaormCrud(createContext());
 
         expect(response.status).toBe(409);
-        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+        expect(executeSecureCrudRequest as any).toHaveBeenCalledOnce();
+        expect(Post.find).not.toHaveBeenCalled();
     });
 
     it('removes expectedUpdatedAt before executing the update', async () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
-        const { Post } = await import('@ottabase/ottablog');
 
         (parseCrudRequest as any).mockResolvedValue({
             model: 'posts',
@@ -88,20 +107,16 @@ describe('handleOttaormCrud (posts concurrency)', () => {
             id: 'post-1',
             body: { expectedUpdatedAt: 1000, title: 'Next title' },
         });
-        (Post.find as any).mockResolvedValue({
-            get: (key: string) => (key === 'updatedAt' ? 1000 : null),
-        });
-        (executeSecureCrudRequest as any).mockResolvedValue({
-            success: true,
-            data: { id: 'post-1' },
-            status: 200,
+        const captured = installAuthorizedPostExecution(executeSecureCrudRequest as any, {
+            id: 'post-1',
+            updatedAt: 1000,
+            status: 'draft',
         });
 
         const response = await handleOttaormCrud(createContext());
-        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
 
         expect(response.status).toBe(200);
-        expect(call.body.expectedUpdatedAt).toBeUndefined();
+        expect(captured.body?.expectedUpdatedAt).toBeUndefined();
     });
 
     it('blocks organization_members CRUD and requires admin endpoints', async () => {
@@ -225,10 +240,10 @@ describe('handleOttaormCrud (posts null-org authoring guard)', () => {
         (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
 
         const response = await handleOttaormCrud(createContext());
-        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
+        const call = (executeSecureCrudRequest as any).mock.calls[0];
 
         expect(response.status).toBe(200);
-        expect(call.body.organizationId).toBeNull();
+        expect(call[1].organizationId).toBeNull();
     });
 
     it('stamps the active org unchanged for a normal member (unaffected by the null-org guard)', async () => {
@@ -242,10 +257,126 @@ describe('handleOttaormCrud (posts null-org authoring guard)', () => {
         (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
 
         const response = await handleOttaormCrud(createContext());
-        const call = (executeSecureCrudRequest as any).mock.calls[0][0];
+        const call = (executeSecureCrudRequest as any).mock.calls[0];
 
         expect(response.status).toBe(200);
-        expect(call.body.organizationId).toBe('org-1');
+        expect(call[1].organizationId).toBe('org-1');
+    });
+});
+
+describe('handleOttaormCrud (authorized post mutation policy)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('requires publish permission when editing or leaving an already-live state', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { title: 'Changed without mentioning status' },
+        });
+        installAuthorizedPostExecution(executeSecureCrudRequest as any, {
+            id: 'post-1',
+            status: 'published',
+            updatedAt: 1000,
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(403);
+        expect(((await response.json()) as any).code).toBe('FORBIDDEN');
+    });
+
+    it('requires publish permission for a draft-to-scheduled transition', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { status: 'scheduled', publishAt: Date.now() + 60_000 },
+        });
+        installAuthorizedPostExecution(executeSecureCrudRequest as any, {
+            id: 'post-1',
+            status: 'draft',
+            updatedAt: 1000,
+        });
+
+        expect((await handleOttaormCrud(createContext())).status).toBe(403);
+    });
+
+    it('strips server-owned fields and preserves stored attribution for an authorized editor', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            userId: 'manager-1',
+            permissions: ['posts:publish', 'posts:manage'],
+        });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: {
+                title: 'Manager edit',
+                authorId: 'attacker',
+                userId: 'attacker',
+                organizationId: 'org-other',
+                appId: 'other-app',
+                publishedAt: 1,
+                postedAt: 1,
+                wordCount: 999_999,
+            },
+        });
+        const captured = installAuthorizedPostExecution(executeSecureCrudRequest as any, {
+            id: 'post-1',
+            status: 'published',
+            authorId: 'original-author',
+            userId: 'original-author',
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            updatedAt: 1000,
+        });
+
+        expect((await handleOttaormCrud(createContext())).status).toBe(200);
+        expect(captured.body).toEqual({ title: 'Manager edit' });
+    });
+
+    it('uses the authorized hidden snapshot for password protection', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PATCH',
+            id: 'post-1',
+            body: { isProtected: true },
+        });
+        installAuthorizedPostExecution(executeSecureCrudRequest as any, {
+            id: 'post-1',
+            status: 'draft',
+            passwordHash: null,
+            updatedAt: 1000,
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(400);
+        expect(((await response.json()) as any).fieldErrors.password).toEqual([
+            'Password is required when enabling protection',
+        ]);
+    });
+
+    it('rejects PUT before secure CRUD because posts use PATCH semantics', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'posts',
+            method: 'PUT',
+            id: 'post-1',
+            body: { title: 'Replacement' },
+        });
+
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(405);
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
     });
 });
 

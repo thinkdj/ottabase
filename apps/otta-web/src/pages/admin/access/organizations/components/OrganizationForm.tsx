@@ -1,6 +1,5 @@
 import { slugFromName } from '@/lib/slug';
-import type { OrganizationPlan, OrganizationSettings, OrganizationStatus } from '@/types/rbac';
-import type { Organization } from '@ottabase/ottaorm';
+import type { OrganizationPlan, OrganizationRecord, OrganizationSettings, OrganizationStatus } from '@/types/rbac';
 import {
     Button,
     Input,
@@ -14,7 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 
 export interface OrganizationFormProps {
-    organization?: Organization | null;
+    organization?: OrganizationRecord | null;
     onSubmit: (data: OrganizationFormData) => Promise<void>;
     onCancel: () => void;
 }
@@ -44,8 +43,8 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
             setFormData({
                 name: organization.name || '',
                 slug: organization.slug || '',
-                plan: (organization.plan as 'free' | 'pro' | 'enterprise') || 'free',
-                status: (organization.status as 'active' | 'suspended' | 'deleted') || 'active',
+                plan: organization.plan || 'free',
+                status: organization.status || 'active',
                 settings: typeof organization.settings === 'object' ? organization.settings : {},
                 metadata: typeof organization.metadata === 'object' ? organization.metadata : {},
             });
@@ -116,9 +115,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <Label htmlFor="plan">Plan*</Label>
                     <Select
                         value={formData.plan}
-                        onValueChange={(value: 'free' | 'pro' | 'enterprise') =>
-                            setFormData({ ...formData, plan: value })
-                        }
+                        onValueChange={(value: OrganizationPlan) => setFormData({ ...formData, plan: value })}
                     >
                         <SelectTrigger id="plan">
                             <SelectValue placeholder="Select plan" />
@@ -136,9 +133,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <Label htmlFor="status">Status*</Label>
                     <Select
                         value={formData.status}
-                        onValueChange={(value: 'active' | 'suspended' | 'deleted') =>
-                            setFormData({ ...formData, status: value })
-                        }
+                        onValueChange={(value: OrganizationStatus) => setFormData({ ...formData, status: value })}
                     >
                         <SelectTrigger id="status">
                             <SelectValue placeholder="Select status" />
@@ -146,7 +141,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                         <SelectContent>
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="suspended">Suspended</SelectItem>
-                            <SelectItem value="deleted">Deleted</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

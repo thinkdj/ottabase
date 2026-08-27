@@ -3,7 +3,6 @@
 // v2: All scoped by appId only – no organizationId.
 // ---------------------------------------------------------------------------
 
-import type { AdminContext, ApiRouteContext } from '@ottabase/api/types';
 import {
     handleCloneBrandKit,
     handleCreateBrandKit,
@@ -32,8 +31,9 @@ import {
     handleUpdateMenuItem,
     handleUploadBrandKitLogo,
 } from '@ottabase/brand-engine/handlers';
-import { requireBrandEditAccess } from '../lib/admin-guard';
+import { requireBrandEditAccess, type AdminContext } from '../lib/admin-guard';
 import { brandEnv, getAppId } from '../lib/brand-utils';
+import type { ApiRouteContext } from './router';
 
 function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string } | undefined {
     const u = guard.user;
@@ -47,7 +47,7 @@ function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string
 export async function handleBrandApi(context: ApiRouteContext): Promise<Response | null> {
     const { route, request, url, env, method } = context;
     const envBrand = brandEnv(env);
-    const appId = getAppId(url, request);
+    const appId = getAppId(context.env);
 
     // GET /api/brand - path required (client passes ?path=/current/path)
     if (route === '/api/brand' && method === 'GET') {

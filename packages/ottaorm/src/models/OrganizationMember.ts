@@ -2,8 +2,11 @@
 // @ottabase/ottaorm - OrganizationMember model
 // ============================================================
 
-import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
-import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { and, desc, eq, exists, isNull, ne, or, sql } from 'drizzle-orm';
+import { alias, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import type { DbDriver } from '@ottabase/db/drizzle';
+import { BaseModel, type ModelFields, type PackageType, type UpdateMutationContext } from '../base/BaseModel';
+import { DomainValidationError } from '../validation';
 import { organizationsTable } from './Organization.schema';
 import {
     organizationMembersTable,
@@ -11,6 +14,74 @@ import {
     type OrganizationMemberType,
 } from './OrganizationMember.schema';
 import { usersTable } from './User.schema';
+import { userRolesTable } from './UserRole.schema';
+
+export type OrganizationRosterRole = 'owner' | 'admin' | 'member';
+export type OrganizationRosterStatus = 'active' | 'invited' | 'suspended';
+
+export type RosterMembershipChanges =
+    | { role: OrganizationRosterRole; status?: OrganizationRosterStatus }
+    | { role?: OrganizationRosterRole; status: OrganizationRosterStatus };
+
+export interface RosterMembershipExpected {
+    role: OrganizationRosterRole;
+    status: OrganizationRosterStatus;
+}
+
+export type UpdateRosterMembershipResult =
+    | { status: 'updated'; member: OrganizationMemberType }
+    | { status: 'not_found' | 'last_active_owner' | 'stale' };
+
+export type RemoveRosterMembershipResult =
+    | { status: 'removed' }
+    | { status: 'not_found' | 'last_active_owner' | 'stale' };
+
+const ROSTER_ROLE_TIER: Record<OrganizationRosterRole, number> = { owner: 3, admin: 2, member: 1 };
+
+type RosterPredicateColumns = {
+    id: AnySQLiteColumn;
+    userId: AnySQLiteColumn;
+    organizationId: AnySQLiteColumn;
+    role: AnySQLiteColumn;
+    status: AnySQLiteColumn;
+};
+
+function isOrganizationRosterRole(value: unknown): value is OrganizationRosterRole {
+    return value === 'owner' || value === 'admin' || value === 'member';
+}
+
+function isOrganizationRosterStatus(value: unknown): value is OrganizationRosterStatus {
+    return value === 'active' || value === 'invited' || value === 'suspended';
+}
+
+function assertMembershipState(data: Record<string, unknown>): void {
+    const role = data.role ?? 'member';
+    const status = data.status ?? 'active';
+    const fieldErrors: Record<string, string> = {};
+
+    if (!isOrganizationRosterRole(role)) fieldErrors.role = 'Role must be owner, admin, or member';
+    if (!isOrganizationRosterStatus(status)) fieldErrors.status = 'Status must be active, invited, or suspended';
+
+    const hasUser = typeof data.userId === 'string' ? data.userId.trim().length > 0 : data.userId != null;
+    if (!hasUser) {
+        if (status !== 'invited' && fieldErrors.status === undefined) {
+            fieldErrors.status = 'A membership without a user must remain invited';
+        }
+        if (typeof data.invitedEmail !== 'string' || data.invitedEmail.trim().length === 0) {
+            fieldErrors.invitedEmail = 'An invited email is required when no user is linked';
+        }
+    } else if (status === 'invited' && fieldErrors.status === undefined) {
+        fieldErrors.status = 'A linked user must be active or suspended; pending invites are email-only';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+        throw new DomainValidationError('Invalid organization membership', {
+            code: 'INVALID_ORGANIZATION_MEMBERSHIP',
+            fieldErrors,
+            status: 422,
+        });
+    }
+}
 
 /**
  * OrganizationMember model
@@ -127,6 +198,13 @@ export class OrganizationMember extends BaseModel {
             tableConfig: {
                 visible: true,
             },
+            validation: {
+                rules: 'required|in:active,invited,suspended',
+                messages: {
+                    required: 'Status is required',
+                    in: 'Invalid status',
+                },
+            },
         },
         invitedBy: {
             type: 'string',
@@ -170,10 +248,49 @@ export class OrganizationMember extends BaseModel {
         },
     };
 
+    /** Enforce cross-field membership identity/lifecycle rules for direct and generic CRUD creates. */
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>> {
+        assertMembershipState(data);
+        return (await super.create.call(this, data, driver)) as InstanceType<T>;
+    }
+
+    /** Enforce the same rules against the effective row for direct and RLS-constrained updates. */
+    protected static async prepareUpdateMutation(
+        data: Record<string, any>,
+        context: UpdateMutationContext,
+    ): Promise<Record<string, any>> {
+        if (data.role !== undefined && !isOrganizationRosterRole(data.role)) {
+            assertMembershipState({ role: data.role, status: 'active', userId: 'validation-only' });
+        }
+        if (data.status !== undefined && !isOrganizationRosterStatus(data.status)) {
+            assertMembershipState({ role: 'member', status: data.status, userId: 'validation-only' });
+        }
+
+        let currentData = context.currentData;
+        if (!currentData) {
+            const current = await this.find(context.id, context.driver);
+            if (!current) return data;
+            currentData = {
+                userId: current.get('userId'),
+                invitedEmail: current.get('invitedEmail'),
+                role: current.get('role'),
+                status: current.get('status'),
+            };
+        }
+
+        assertMembershipState({ ...currentData, ...data });
+        return data;
+    }
+
     /**
      * Add a user to an organization
      */
     static async addMember(data: NewOrganizationMemberType): Promise<OrganizationMemberType> {
+        assertMembershipState(data);
         const db = this.getDriver().getDb();
 
         const [member] = await db
@@ -243,80 +360,330 @@ export class OrganizationMember extends BaseModel {
         return rows.length;
     }
 
+    private static assertRosterMutationInput(
+        userId: string,
+        organizationId: string,
+        expected: RosterMembershipExpected,
+        changes?: RosterMembershipChanges,
+    ): void {
+        if (!userId || !organizationId) throw new TypeError('Roster mutation requires userId and organizationId');
+        if (!isOrganizationRosterRole(expected.role) || !isOrganizationRosterStatus(expected.status)) {
+            throw new TypeError('Roster mutation requires a valid expected role and status');
+        }
+        if (changes) {
+            if (changes.role === undefined && changes.status === undefined) {
+                throw new TypeError('Roster update requires role and/or status');
+            }
+            if (changes.role !== undefined && !isOrganizationRosterRole(changes.role)) {
+                throw new TypeError('Roster update has an invalid role');
+            }
+            if (changes.status !== undefined && !isOrganizationRosterStatus(changes.status)) {
+                throw new TypeError('Roster update has an invalid status');
+            }
+        }
+    }
+
     /**
-     * Remove a user from an organization
+     * Build the optimistic roster predicate. When a mutation would move an active owner out of
+     * that state, the predicate also requires another active owner in the same organization.
+     * The target/peer aliases let the identical predicate live inside the user_roles DELETE.
      */
-    static async removeMember(userId: string, organizationId: string): Promise<boolean> {
-        const db = this.getDriver().getDb();
+    private static rosterMutationPredicate(
+        db: any,
+        target: RosterPredicateColumns,
+        otherOwner: RosterPredicateColumns,
+        userId: string,
+        organizationId: string,
+        expected: RosterMembershipExpected,
+        protectLastActiveOwner: boolean,
+    ) {
+        const conditions = [
+            eq(target.userId, userId),
+            eq(target.organizationId, organizationId),
+            eq(target.role, expected.role),
+            eq(target.status, expected.status),
+        ];
 
-        await db
-            .delete(organizationMembersTable)
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
+        if (protectLastActiveOwner) {
+            conditions.push(
+                or(
+                    ne(target.role, 'owner'),
+                    ne(target.status, 'active'),
+                    exists(
+                        db
+                            .select({ id: otherOwner.id })
+                            .from(otherOwner)
+                            .where(
+                                and(
+                                    eq(otherOwner.organizationId, organizationId),
+                                    eq(otherOwner.role, 'owner'),
+                                    eq(otherOwner.status, 'active'),
+                                    ne(otherOwner.id, target.id),
+                                ),
+                            ),
+                    ),
+                )!,
             );
+        }
 
-        const [remaining] = await db
-            .select({ count: sql<number>`count(*)` })
+        return and(...conditions)!;
+    }
+
+    private static rosterClassificationQuery(db: any, userId: string, organizationId: string) {
+        const otherOwner = alias(organizationMembersTable, 'roster_classification_other_owner');
+        return db
+            .select({
+                role: organizationMembersTable.role,
+                status: organizationMembersTable.status,
+                hasOtherActiveOwner: exists(
+                    db
+                        .select({ id: otherOwner.id })
+                        .from(otherOwner)
+                        .where(
+                            and(
+                                eq(otherOwner.organizationId, organizationId),
+                                eq(otherOwner.role, 'owner'),
+                                eq(otherOwner.status, 'active'),
+                                ne(otherOwner.id, organizationMembersTable.id),
+                            ),
+                        ),
+                ),
+            })
             .from(organizationMembersTable)
             .where(
                 and(
                     eq(organizationMembersTable.userId, userId),
                     eq(organizationMembersTable.organizationId, organizationId),
                 ),
-            );
+            )
+            .limit(1);
+    }
 
-        return Number(remaining?.count ?? 0) === 0;
+    private static classifyRosterMutationFailure(
+        rows: Array<{ role: unknown; status: unknown; hasOtherActiveOwner: unknown }>,
+        expected: RosterMembershipExpected,
+        protectLastActiveOwner: boolean,
+    ): 'not_found' | 'last_active_owner' | 'stale' {
+        const current = rows[0];
+        if (!current) return 'not_found';
+        if (current.role !== expected.role || current.status !== expected.status) return 'stale';
+        if (
+            protectLastActiveOwner &&
+            current.role === 'owner' &&
+            current.status === 'active' &&
+            !Boolean(current.hasOtherActiveOwner)
+        ) {
+            return 'last_active_owner';
+        }
+        return 'stale';
     }
 
     /**
-     * Update member role in organization
+     * Atomically update a roster membership. A role demotion revokes every org-scoped RBAC
+     * grant in the same D1 batch; promotion and status-only suspension never mint/revoke grants.
+     * Both statements carry the same expected role/status and last-active-owner predicate.
      */
-    static async updateRole(
+    static async updateRosterMembership(
         userId: string,
         organizationId: string,
-        role: 'owner' | 'admin' | 'member',
-    ): Promise<OrganizationMemberType | undefined> {
+        changes: RosterMembershipChanges,
+        expected: RosterMembershipExpected,
+    ): Promise<UpdateRosterMembershipResult> {
+        this.assertRosterMutationInput(userId, organizationId, expected, changes);
         const db = this.getDriver().getDb();
+        if (typeof db.batch !== 'function') {
+            throw new Error('Atomic roster updates require Drizzle D1 batch support');
+        }
 
-        const [updated] = await db
+        const nextRole = changes.role ?? expected.role;
+        const nextStatus = changes.status ?? expected.status;
+        const protectLastActiveOwner =
+            expected.role === 'owner' &&
+            expected.status === 'active' &&
+            (nextRole !== 'owner' || nextStatus !== 'active');
+        const revokeGrants =
+            changes.role !== undefined && ROSTER_ROLE_TIER[changes.role] < ROSTER_ROLE_TIER[expected.role];
+        const now = Date.now();
+        const values: Record<string, unknown> = { updatedAt: now };
+        if (changes.role !== undefined) values.role = changes.role;
+        if (changes.status !== undefined) {
+            values.status = changes.status;
+            if (changes.status === 'active') {
+                values.joinedAt = sql`COALESCE(${organizationMembersTable.joinedAt}, ${now})`;
+            }
+        }
+
+        const updateOtherOwner = alias(organizationMembersTable, 'roster_update_other_owner');
+        const membershipUpdate = db
             .update(organizationMembersTable)
-            .set({ role })
+            .set(values)
             .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
+                this.rosterMutationPredicate(
+                    db,
+                    organizationMembersTable,
+                    updateOtherOwner,
+                    userId,
+                    organizationId,
+                    expected,
+                    protectLastActiveOwner,
                 ),
             )
             .returning();
+        const classification = this.rosterClassificationQuery(db, userId, organizationId);
 
-        return updated;
+        let batchResults: unknown[];
+        let membershipResultIndex: number;
+        let classificationResultIndex: number;
+        if (revokeGrants) {
+            const guardedMember = alias(organizationMembersTable, 'roster_grant_member');
+            const grantOtherOwner = alias(organizationMembersTable, 'roster_grant_other_owner');
+            const grantDelete = db
+                .delete(userRolesTable)
+                .where(
+                    and(
+                        eq(userRolesTable.userId, userId),
+                        eq(userRolesTable.organizationId, organizationId),
+                        exists(
+                            db
+                                .select({ id: guardedMember.id })
+                                .from(guardedMember)
+                                .where(
+                                    this.rosterMutationPredicate(
+                                        db,
+                                        guardedMember,
+                                        grantOtherOwner,
+                                        userId,
+                                        organizationId,
+                                        expected,
+                                        protectLastActiveOwner,
+                                    ),
+                                ),
+                        ),
+                    ),
+                )
+                .returning({ roleId: userRolesTable.roleId });
+            batchResults = (await db.batch([grantDelete, membershipUpdate, classification])) as unknown[];
+            membershipResultIndex = 1;
+            classificationResultIndex = 2;
+        } else {
+            batchResults = (await db.batch([membershipUpdate, classification])) as unknown[];
+            membershipResultIndex = 0;
+            classificationResultIndex = 1;
+        }
+
+        const updated = (batchResults[membershipResultIndex] as OrganizationMemberType[] | undefined)?.[0];
+        if (updated) return { status: 'updated', member: updated };
+        const failure = this.classifyRosterMutationFailure(
+            (batchResults[classificationResultIndex] ?? []) as Array<{
+                role: unknown;
+                status: unknown;
+                hasOtherActiveOwner: unknown;
+            }>,
+            expected,
+            protectLastActiveOwner,
+        );
+        return { status: failure };
     }
 
     /**
-     * Update member status
+     * Atomically remove a roster membership and all org-scoped RBAC grants. The grant DELETE and
+     * membership DELETE share the optimistic and last-active-owner predicates, so neither can
+     * succeed alone when the caller's snapshot is stale or the target is the final active owner.
      */
-    static async updateStatus(
+    static async removeRosterMembership(
         userId: string,
         organizationId: string,
-        status: 'active' | 'invited' | 'suspended',
-    ): Promise<OrganizationMemberType | undefined> {
+        expected: RosterMembershipExpected,
+    ): Promise<RemoveRosterMembershipResult> {
+        this.assertRosterMutationInput(userId, organizationId, expected);
         const db = this.getDriver().getDb();
+        if (typeof db.batch !== 'function') {
+            throw new Error('Atomic roster removal requires Drizzle D1 batch support');
+        }
 
-        const [updated] = await db
-            .update(organizationMembersTable)
-            .set({ status })
+        const membershipOtherOwner = alias(organizationMembersTable, 'roster_remove_other_owner');
+        const membershipDelete = db
+            .delete(organizationMembersTable)
             .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
+                this.rosterMutationPredicate(
+                    db,
+                    organizationMembersTable,
+                    membershipOtherOwner,
+                    userId,
+                    organizationId,
+                    expected,
+                    true,
                 ),
             )
-            .returning();
+            .returning({ id: organizationMembersTable.id });
 
-        return updated;
+        const guardedMember = alias(organizationMembersTable, 'roster_remove_grant_member');
+        const grantOtherOwner = alias(organizationMembersTable, 'roster_remove_grant_other_owner');
+        const grantDelete = db
+            .delete(userRolesTable)
+            .where(
+                and(
+                    eq(userRolesTable.userId, userId),
+                    eq(userRolesTable.organizationId, organizationId),
+                    exists(
+                        db
+                            .select({ id: guardedMember.id })
+                            .from(guardedMember)
+                            .where(
+                                this.rosterMutationPredicate(
+                                    db,
+                                    guardedMember,
+                                    grantOtherOwner,
+                                    userId,
+                                    organizationId,
+                                    expected,
+                                    true,
+                                ),
+                            ),
+                    ),
+                ),
+            )
+            .returning({ roleId: userRolesTable.roleId });
+        const classification = this.rosterClassificationQuery(db, userId, organizationId);
+        const batchResults = (await db.batch([grantDelete, membershipDelete, classification])) as unknown[];
+
+        const removed = (batchResults[1] as Array<{ id: string }> | undefined)?.[0];
+        if (removed) return { status: 'removed' };
+        const failure = this.classifyRosterMutationFailure(
+            (batchResults[2] ?? []) as Array<{
+                role: unknown;
+                status: unknown;
+                hasOtherActiveOwner: unknown;
+            }>,
+            expected,
+            true,
+        );
+        return { status: failure };
+    }
+
+    /** Cancel a userless pending invite by its stable membership id. */
+    static async cancelPendingInvite(
+        id: string,
+        organizationId: string,
+        expectedRole: OrganizationRosterRole,
+    ): Promise<boolean> {
+        if (!id || !organizationId || !isOrganizationRosterRole(expectedRole)) {
+            throw new TypeError('Pending invite cancellation requires id, organizationId, and expected role');
+        }
+        const rows = await this.getDriver()
+            .getDb()
+            .delete(organizationMembersTable)
+            .where(
+                and(
+                    eq(organizationMembersTable.id, id),
+                    eq(organizationMembersTable.organizationId, organizationId),
+                    isNull(organizationMembersTable.userId),
+                    eq(organizationMembersTable.status, 'invited'),
+                    eq(organizationMembersTable.role, expectedRole),
+                ),
+            )
+            .returning({ id: organizationMembersTable.id });
+        return rows.length === 1;
     }
 
     /**

@@ -198,7 +198,10 @@ export function OrganizationsPage() {
                                                     className="gap-2 text-muted-foreground hover:text-foreground"
                                                     asChild
                                                 >
-                                                    <Link to={`/admin/access/organizations/${org.id}/members`}>
+                                                    <Link
+                                                        to="/admin/access/organizations/$organizationId/members"
+                                                        params={{ organizationId: org.id }}
+                                                    >
                                                         <Users className="h-4 w-4" />
                                                         View Members
                                                     </Link>
@@ -244,7 +247,7 @@ export function OrganizationsPage() {
                     </DialogHeader>
                     <OrganizationForm
                         key={formKey}
-                        organization={editingOrg as any}
+                        organization={editingOrg}
                         onSubmit={handleSubmit}
                         onCancel={() => setIsDialogOpen(false)}
                     />

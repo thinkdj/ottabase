@@ -12,11 +12,10 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
 import { OrganizationMember, User, VerificationToken } from '@ottabase/ottaorm/models';
-import { errorResponse } from '@ottabase/utils/http-errors';
+import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { isValidUrl } from '@ottabase/utils/url';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
 import { registerAppEmailTemplates } from '../../src/email/templates';
@@ -36,6 +35,15 @@ export interface AuthRouteContext {
     env: CloudflareEnv;
     url: URL;
     withAuthCors: (response: Response) => Response;
+}
+
+function logAuthFailure(event: string, error: unknown): void {
+    console.error(
+        JSON.stringify({
+            event,
+            error: redactErrorForLog(error),
+        }),
+    );
 }
 
 export function handleAuthConfig(context: AuthRouteContext): Response {
@@ -339,7 +347,7 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     try {
         await revokeAllUserSessions(String(user.get('id')), env as any, getAuthOptions(env));
     } catch (error) {
-        console.error('Failed to revoke sessions after password reset:', error);
+        logAuthFailure('auth_password_reset_session_revocation_failed', error);
         return withAuthCors(
             errorResponse('Password was reset but existing sessions could not be revoked. Please try again.', 500, {
                 code: 'REVOCATION_FAILED',
@@ -445,7 +453,7 @@ export async function handlePasswordChange(context: AuthRouteContext): Promise<R
     try {
         await revokeAllUserSessions(userId, env as any, getAuthOptions(env));
     } catch (error) {
-        console.error('Failed to revoke sessions after password change:', error);
+        logAuthFailure('auth_password_change_session_revocation_failed', error);
         return withAuthCors(
             errorResponse(
                 'Password was changed but existing sessions could not be revoked. Please sign in again.',
@@ -704,9 +712,9 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             try {
                 await User.delete(newUserId);
             } catch (rollbackError) {
-                console.error('Failed to roll back user after organization provisioning failed:', rollbackError);
+                logAuthFailure('auth_registration_user_rollback_failed', rollbackError);
             }
-            console.error('Failed to initialize the registration organization or roles:', error);
+            logAuthFailure('auth_registration_workspace_provisioning_failed', error);
             return withAuthCors(
                 errorResponse('Account workspace setup could not be completed. Please try again.', 500, {
                     code: 'ACCOUNT_PROVISIONING_FAILED',
@@ -811,7 +819,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         if (typeof message === 'string' && message.toLowerCase().includes('unique')) {
             return withAuthCors(errorResponse('Email already in use', 409, { code: 'EMAIL_EXISTS' }));
         }
-        console.error('Registration error:', error);
+        logAuthFailure('auth_registration_failed', error);
         return withAuthCors(errorResponse('Registration failed', 500, { code: 'REGISTRATION_FAILED' }));
     }
 }
