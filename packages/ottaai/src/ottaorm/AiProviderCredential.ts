@@ -1,18 +1,20 @@
 // ============================================================
 // @ottabase/ottaai — AiProviderCredential model (write path lives HERE)
 // ============================================================
-// OTTAORM HAS NO LIFECYCLE HOOKS. There is no beforeCreate/afterSave/registerHook
-// anywhere in it. The ONLY pre-persist point is overriding the model's static
-// `create`/`update`, preserving the generic signature (the optional driver
-// parameter MUST pass through) and calling `super.X.call(this, …)`.
-//
-// An implementer will hunt for hooks, not find them, and reach for a route
-// handler — a bug waiting for the second write path, because generic auto-CRUD
-// calls the model statics directly.
+// OttaORM's shared `prepareUpdateMutation` hook is the update pre-persist point.
+// Keeping normalization there makes direct updates and RLS-constrained generic
+// CRUD use the SAME encryption and tenancy rules. Create still owns its earlier
+// pre-persist work and passes the optional driver through to BaseModel.
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
+import {
+    BaseModel,
+    ConcurrentMutationError,
+    type ModelFields,
+    type PackageType,
+    type UpdateMutationContext,
+} from '@ottabase/ottaorm';
 import { eq, sql } from 'drizzle-orm';
 import { encryptSecret, isEnvelope, type Keyring } from '../crypto';
 import { AI_ERROR_CODES, AiProvisioningError } from '../errors';
@@ -183,7 +185,7 @@ export class AiProviderCredential extends BaseModel {
      * • Server-set tenancy fields MUST appear in the CREATE list even though they are
      *   non-editable, or they silently fail to persist and every credential is created
      *   unscoped.
-     * • Tenancy is ABSENT from the update list — and the model's own `update` override
+     * • Tenancy is ABSENT from the update list — and the model's own update hook
      *   rejects it too, because a policy declaring `contextFields` adds those fields to
      *   the writable set on BOTH create and update, overriding this list.
      * • `isActive` is ABSENT from BOTH. Activation has exactly one mutation
@@ -345,15 +347,13 @@ export class AiProviderCredential extends BaseModel {
         return created;
     }
 
-    static async update<T extends typeof BaseModel>(
-        this: T,
-        id: string | number,
+    protected static override async prepareUpdateMutation(
         data: Record<string, any>,
-        driver?: DbDriver,
-    ): Promise<InstanceType<T>> {
+        mutation: UpdateMutationContext,
+    ): Promise<Record<string, any>> {
         const ctx = requireWriteContext();
         const Self = AiProviderCredential;
-        const rowId = String(id);
+        const rowId = String(mutation.id);
 
         for (const field of SERVER_OWNED_FIELDS) delete data[field];
 
@@ -370,7 +370,9 @@ export class AiProviderCredential extends BaseModel {
         // `isActive` likewise: rank-only, one dedicated mutation.
         delete data.isActive;
 
-        const existing = await Self.find(rowId);
+        const existing = mutation.currentData
+            ? new Self({ entity: Self.entity, data: mutation.currentData as Record<string, any> })
+            : await Self.find(rowId, mutation.driver);
         if (!existing) {
             throw new AiProvisioningError('Credential not found.', AI_ERROR_CODES.VALIDATION);
         }
@@ -426,9 +428,12 @@ export class AiProviderCredential extends BaseModel {
             currentCiphertext: current.secret.kind === 'inline' ? current.secret.ciphertext : null,
         });
 
-        if ('model' in data) Self.rejectModelMismatch(ctx, provider, data.model);
+        if ('provider' in data || 'model' in data) {
+            const effectiveModel = 'model' in data ? data.model : current.model;
+            Self.rejectModelMismatch(ctx, provider, effectiveModel);
+        }
 
-        return (await super.update.call(this, rowId, data, driver)) as InstanceType<T>;
+        return data;
     }
 
     // -----------------------------------------------------------------------
@@ -700,7 +705,7 @@ export class AiProviderCredential extends BaseModel {
         const record = await this.find(id);
         if (!record) return false;
         const row = (record as AiProviderCredential).toRecord();
-        await super.update.call(this, id, { isActive: true });
+        await this.persistPreparedUpdate(id, { isActive: true });
         await this.deactivateSiblings(id, {
             organizationId: row.organizationId,
             userId: row.userId,
@@ -723,7 +728,7 @@ export class AiProviderCredential extends BaseModel {
                 const id = String(sibling.get('id'));
                 if (id === keepId) continue;
                 if (sibling.get('isActive') === false) continue;
-                await super.update.call(this, id, { isActive: false });
+                await this.persistPreparedUpdate(id, { isActive: false });
             }
         } catch {
             // Non-fatal: the primary write already succeeded, and `isActive` only RANKS.
@@ -737,10 +742,10 @@ export class AiProviderCredential extends BaseModel {
     /**
      * Replace a row's ciphertext with an equivalent wrap under a new master key.
      *
-     * Deliberately bypasses the tenant write rules via `super.update` — this is a RE-WRAP
+     * Deliberately bypasses the tenant write hook via `persistPreparedUpdate` — this is a RE-WRAP
      * of an existing ciphertext, not a tenant edit: plaintext, hint and AAD tuple are all
-     * unchanged. It re-reads the row inside the write and refuses when the key id has moved
-     * under it, so a concurrent tenant edit is never clobbered.
+     * unchanged. The key id and inline-secret state are predicates on the UPDATE itself,
+     * so a concurrent tenant edit is never clobbered.
      */
     static async rewrapSecret(
         id: string,
@@ -753,12 +758,26 @@ export class AiProviderCredential extends BaseModel {
         if (record.keyId !== expect.keyId) return false;
         if (record.secret.kind !== 'inline') return false;
 
-        await super.update.call(this, id, {
-            secretCiphertext: next.ciphertext,
-            keyId: next.keyId,
-            formatVersion: next.formatVersion,
-        });
-        return true;
+        try {
+            await this.persistPreparedUpdate(
+                id,
+                {
+                    secretCiphertext: next.ciphertext,
+                    keyId: next.keyId,
+                    formatVersion: next.formatVersion,
+                },
+                {
+                    guard: {
+                        where: { secretKind: 'inline' },
+                        expected: { keyId: expect.keyId },
+                    },
+                },
+            );
+            return true;
+        } catch (error) {
+            if (error instanceof ConcurrentMutationError) return false;
+            throw error;
+        }
     }
 
     // -----------------------------------------------------------------------

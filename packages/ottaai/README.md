@@ -150,6 +150,13 @@ initRLS();
 registerPolicy(createCredentialPolicy({ strategy: 'user-then-org' }));
 ```
 
+Model registration makes the table resolvable; it does not itself authorize an HTTP surface. Prefer the package's
+credential handlers below, which own permission checks, tenancy stamping, and secret-column filter/sort denial. If a
+host deliberately allow-lists this model in its secure generic CRUD route, updates still pass through the model's
+`prepareUpdateMutation` hook. That hook consumes OttaORM's already RLS-authorized complete snapshot, preserves immutable
+tenancy and secret AAD, and returns the encrypted mutation to the same atomic RLS-constrained write. Direct model
+updates use the same hook and load their own current row.
+
 ### 4. Compose the instance (per request)
 
 ```ts
@@ -432,7 +439,7 @@ The suite runs in `node` (Web Crypto fidelity for the envelope tests) with one f
 | `crypto.test.ts`             | AAD row-binding, sniffer false-positives (a plaintext key stored unencrypted), hint encoding         |
 | `pure.test.ts`               | every cell of the score matrix, the conflict/app-scope tables, the merge rows, all three guard terms |
 | `resolver.test.ts`           | every stage and reason of the state machine, fail-closed decrypt, dry-run vs force-platform          |
-| `model-write-path.test.ts`   | the four secret rules **through the real model statics**, and a credential at each scope rung        |
+| `model-write-path.test.ts`   | the four secret rules through direct and RLS-constrained model writes, plus every scope rung         |
 | `review-regressions.test.ts` | defects found by adversarial review — wrong cost attribution, inert dials, lost metering             |
 | `gateway-wire.test.ts`       | the literal URL, headers, body and SSE framing per provider — see below                              |
 | `gateway-smoke.test.ts`      | **opt-in**: a real call to a real gateway. Skipped unless `OTTAAI_SMOKE_*` is set                    |

@@ -32,6 +32,7 @@ import { createTestKeyring } from '../testing';
 interface Recorded {
     inserts: Array<Record<string, unknown>>;
     updates: Array<Record<string, unknown>>;
+    selects: number;
 }
 
 function createStubDriver(rows: Array<Record<string, unknown>>, recorded: Recorded) {
@@ -64,6 +65,7 @@ function createStubDriver(rows: Array<Record<string, unknown>>, recorded: Record
             };
         },
         select() {
+            recorded.selects += 1;
             return {
                 from() {
                     const result = {
@@ -106,7 +108,7 @@ let recorded: Recorded;
 
 beforeEach(() => {
     rows = [];
-    recorded = { inserts: [], updates: [] };
+    recorded = { inserts: [], updates: [], selects: 0 };
     clearConnection('default');
     registerConnection('default', createStubDriver(rows, recorded) as never);
     resetCredentialWrites();
@@ -310,6 +312,7 @@ describe('update', () => {
         const created = recorded.inserts[0]!;
         recorded.inserts.length = 0;
         recorded.updates.length = 0;
+        recorded.selects = 0;
         return created;
     }
 
@@ -350,6 +353,27 @@ describe('update', () => {
         expect(recorded.updates.at(-1)).toMatchObject({ provider: 'anthropic', secretKind: 'inline' });
     });
 
+    it('refuses a provider change that would retain a model routed to the old provider', async () => {
+        const created = await seed({ model: 'openai/gpt-4o' });
+
+        await expect(
+            AiProviderCredential.update(String(created.id), {
+                provider: 'anthropic',
+                secret: 'sk-ant-zyxwvutsrqponml',
+            }),
+        ).rejects.toMatchObject({ code: AI_ERROR_CODES.VALIDATION });
+
+        await AiProviderCredential.update(String(created.id), {
+            provider: 'anthropic',
+            model: 'anthropic/claude-sonnet-4-5',
+            secret: 'sk-ant-zyxwvutsrqponml',
+        });
+        expect(recorded.updates.at(-1)).toMatchObject({
+            provider: 'anthropic',
+            model: 'anthropic/claude-sonnet-4-5',
+        });
+    });
+
     it('TENANCY IS IMMUTABLE — rejected inside the model, where no RLS contextFields can re-enable it', async () => {
         const created = await seed();
         await AiProviderCredential.update(String(created.id), {
@@ -378,6 +402,27 @@ describe('update', () => {
         // Without this, an internal re-save would wrap ciphertext in ciphertext and the next
         // decrypt would return the inner envelope string as the "API key".
         expect(recorded.updates[0]!.secretCiphertext).toBe(envelope);
+    });
+
+    it('uses the RLS-authorized snapshot in constrained CRUD without an unscoped re-read', async () => {
+        const created = await seed();
+
+        await AiProviderCredential.updateConstrained(
+            String(created.id),
+            { label: 'Authorized rename', secret: '' },
+            {
+                where: { userId: created.userId, organizationId: created.organizationId, appId: created.appId },
+                expected: { updatedAt: created.updatedAt },
+            },
+            created,
+        );
+
+        expect(recorded.selects).toBe(0);
+        expect(recorded.updates[0]).toMatchObject({ label: 'Authorized rename' });
+        expect(recorded.updates[0]).not.toHaveProperty('secretCiphertext');
+        expect(recorded.updates[0]).not.toHaveProperty('organizationId');
+        expect(recorded.updates[0]).not.toHaveProperty('userId');
+        expect(recorded.updates[0]).not.toHaveProperty('appId');
     });
 });
 
