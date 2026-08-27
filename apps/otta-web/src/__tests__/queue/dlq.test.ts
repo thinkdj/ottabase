@@ -1,15 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 // Mock types for testing
 interface MockKVNamespace {
-    get: ReturnType<typeof vi.fn>;
-    put: ReturnType<typeof vi.fn>;
-    delete: ReturnType<typeof vi.fn>;
-    list: ReturnType<typeof vi.fn>;
+    get: Mock<(key: string) => Promise<string | null>>;
+    put: Mock<(key: string, value: string, options: { expirationTtl?: number }) => Promise<void>>;
+    delete: Mock<(key: string) => Promise<void>>;
+    list: Mock<
+        (options: { prefix: string; limit: number }) => Promise<{
+            keys: Array<{ name: string }>;
+            list_complete?: boolean;
+            cursor?: string;
+        }>
+    >;
 }
 
 interface MockQueue {
-    send: ReturnType<typeof vi.fn>;
+    send: Mock<(message: { type: string; payload: unknown }) => Promise<unknown>>;
 }
 
 // Simplified DLQ functions for testing (mirrors the actual implementation)
@@ -37,7 +44,7 @@ async function storeDLQJob(
         id: jobId,
         type: job.type,
         payload: job.payload,
-        error: error.message,
+        error: redactErrorForLog(error, 500).message,
         failedAt: Date.now(),
         attempts: job.meta?.attempts || 1,
     };
@@ -146,6 +153,19 @@ describe('Dead Letter Queue (DLQ)', () => {
             const [key] = mockKV.put.mock.calls[0];
             expect(key).toMatch(/^queue:dlq:\d+:dlq-\d+$/);
         });
+
+        it('redacts secrets before persisting an error for operators', async () => {
+            await storeDLQJob(
+                mockKV,
+                { type: 'task', payload: {}, meta: { id: 'job-secret' } },
+                new Error('provider rejected token=super-secret'),
+            );
+
+            const [, value] = mockKV.put.mock.calls[0];
+            const stored = JSON.parse(value) as DLQJob;
+            expect(stored.error).toContain('token=[REDACTED]');
+            expect(stored.error).not.toContain('super-secret');
+        });
     });
 
     describe('getDLQJobs', () => {
@@ -164,7 +184,7 @@ describe('Dead Letter Queue (DLQ)', () => {
                 type: 'send-email',
                 payload: { to: 'test@example.com' },
                 error: 'Connection timeout',
-                failedAt: '2024-01-01T00:00:00Z',
+                failedAt: Date.parse('2024-01-01T00:00:00Z'),
                 attempts: 3,
             };
 
@@ -235,7 +255,7 @@ describe('Dead Letter Queue (DLQ)', () => {
                 type: 'process-order',
                 payload: { orderId: 123 },
                 error: 'Database timeout',
-                failedAt: '2024-01-01T00:00:00Z',
+                failedAt: Date.parse('2024-01-01T00:00:00Z'),
                 attempts: 2,
             };
 

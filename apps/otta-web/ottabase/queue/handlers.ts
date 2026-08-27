@@ -19,7 +19,6 @@ import { globalKey } from '@ottabase/cf/cache-keys';
 import type { Mailer } from '@ottabase/email';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
 import type { JobHandler } from '@ottabase/queue';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { resolveAppMailer } from '../../worker/lib/email-provider';
 
 async function getMailer(env: CloudflareEnv): Promise<{ mailer: Mailer | null; from: string }> {
@@ -92,7 +91,7 @@ export const processOrderHandler: JobHandler<ProcessOrderPayload, CloudflareEnv>
     };
 
     if (ctx.env.OBCF_KV) {
-        await ctx.env.OBCF_KV.put(globalKey('order', orderId, 'status'), JSON.stringify(status), {
+        await ctx.env.OBCF_KV.put(globalKey('order', String(orderId), 'status'), JSON.stringify(status), {
             expirationTtl: 86400 * 30,
         });
     }

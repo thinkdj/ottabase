@@ -29,7 +29,7 @@ const mailer = createResendMailer({ apiKey: env.EMAIL_RESEND_API_KEY });
 
 ### App-level Templates
 
-Apps can define templates under app/email/templates and register them at runtime.
+Apps can define templates under `src/email/templates` and register them at runtime.
 
 Example (Vite app):
 

@@ -8,7 +8,7 @@
 import { globalKey } from '@ottabase/cf/cache-keys';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createQueueHandler, createRegistry, dispatch, type QueuedJob } from '@ottabase/queue';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import {
     batchTaskHandler,
     generateReportHandler,
@@ -150,7 +150,7 @@ async function storeProcessedJob(env: CloudflareEnv, job: ProcessedJob): Promise
 /**
  * Store job in Dead Letter Queue (after max retries exhausted)
  */
-async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, error: Error): Promise<void> {
+async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, safeError: string): Promise<void> {
     if (!env.OBCF_KV) return;
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
@@ -161,10 +161,10 @@ async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, error: Error): Pr
         id: jobId,
         type: job.type,
         payload: job.payload,
-        error: error.message,
+        error: safeError,
         failedAt: Date.now(),
         attempts: job.meta?.attempts || 1,
-        originalMeta: job.meta,
+        originalMeta: job.meta ? { ...job.meta } : undefined,
     };
 
     await kv.put(key, JSON.stringify(dlqJob), { expirationTtl: DLQ_TTL });
@@ -503,7 +503,15 @@ export function createAppQueueHandler() {
             const duration = startTime ? Date.now() - startTime : undefined;
             jobStartTimes.delete(jobId);
 
-            console.error(`[Queue] Job failed permanently: ${job.type}`, error.message);
+            const safeError = redactErrorForLog(error, 500).message;
+            console.error(
+                JSON.stringify({
+                    event: 'queue_job_failed_permanently',
+                    jobType: job.type,
+                    jobId,
+                    error: safeError,
+                }),
+            );
 
             if (env) {
                 // Update stats
@@ -522,12 +530,12 @@ export function createAppQueueHandler() {
                     status: 'failed',
                     processedAt: Date.now(),
                     duration,
-                    error: error.message,
+                    error: safeError,
                     attempts: job.meta?.attempts || 1,
                 });
 
                 // Store in Dead Letter Queue for retry capability
-                await storeDLQJob(env, job, error);
+                await storeDLQJob(env, job, safeError);
             }
         },
     });

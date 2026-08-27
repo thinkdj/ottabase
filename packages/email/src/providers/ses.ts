@@ -150,13 +150,17 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
                     body: payloadString,
                 });
 
-                const json = await response.json().catch(() => null);
+                const json: unknown = await response.json().catch(() => null);
+                const data = json && typeof json === 'object' ? (json as Record<string, unknown>) : null;
 
                 if (!response.ok) {
                     return {
                         provider,
                         success: false,
-                        error: json?.message || json?.__type || `SES request failed (${response.status})`,
+                        error:
+                            (typeof data?.message === 'string' && data.message) ||
+                            (typeof data?.__type === 'string' && data.__type) ||
+                            `SES request failed (${response.status})`,
                         raw: json,
                     };
                 }
@@ -164,7 +168,7 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
                 return {
                     provider,
                     success: true,
-                    id: json?.MessageId,
+                    id: typeof data?.MessageId === 'string' ? data.MessageId : undefined,
                     raw: json,
                 };
             } catch (error) {

@@ -62,13 +62,16 @@ export function createResendMailer(options: ResendMailerOptions): Mailer {
                     body: JSON.stringify(payload),
                 });
 
-                const json = await response.json().catch(() => null);
+                const json: unknown = await response.json().catch(() => null);
+                const data = json && typeof json === 'object' ? (json as Record<string, unknown>) : null;
 
                 if (!response.ok) {
                     return {
                         provider,
                         success: false,
-                        error: json?.message || `Resend request failed (${response.status})`,
+                        error:
+                            (typeof data?.message === 'string' && data.message) ||
+                            `Resend request failed (${response.status})`,
                         raw: json,
                     };
                 }
@@ -76,7 +79,7 @@ export function createResendMailer(options: ResendMailerOptions): Mailer {
                 return {
                     provider,
                     success: true,
-                    id: json?.id,
+                    id: typeof data?.id === 'string' ? data.id : undefined,
                     raw: json,
                 };
             } catch (error) {
