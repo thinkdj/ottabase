@@ -1,33 +1,27 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
-    "globalEnv": ["PATH"],
     "globalPassThroughEnv": ["PATH"],
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
             "inputs": ["$TURBO_DEFAULT$", ".env*"],
-            "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-            "env": ["PATH"]
+            "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
         },
         "dev": {
             "cache": false,
             "persistent": true
         },
-        "lint": {
-            "dependsOn": ["^build"],
-            "env": ["PATH"]
-        },
+        "lint": {},
         "type-check": {
             "dependsOn": ["^build"],
-            "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"],
-            "env": ["PATH"]
+            "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"]
         },
         "test": {
             "dependsOn": ["^build"],
             "inputs": ["$TURBO_DEFAULT$", "jest.config.*", "vitest.config.*", "vitest.setup.*", "coverage/**"],
             "outputs": [],
-            "env": ["NODE_ENV=test", "PATH"]
+            "env": ["NODE_ENV=test"]
         },
         "clean": {
             "cache": false
