@@ -56,9 +56,6 @@ jobs:
             - name: Run CI (Lint, Type-Check, Build, Test)
               run: pnpm run ci:check
 
-            - name: Dependency audit (high severity and above)
-              run: pnpm audit --audit-level=high
-
     # Validate Cloudflare configuration
     validate-cloudflare:
         name: Validate Cloudflare Config

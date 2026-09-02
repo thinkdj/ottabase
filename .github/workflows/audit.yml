@@ -1,0 +1,38 @@
+name: Dependency Audit
+
+# Advisories against upstream packages should not block unrelated PRs, so the audit runs on a
+# schedule, on demand, and only on PRs that actually change the lockfile.
+on:
+    schedule:
+        - cron: "0 3 * * 1" # Mondays 03:00 UTC
+    workflow_dispatch:
+    pull_request:
+        paths:
+            - pnpm-lock.yaml
+
+permissions:
+    contents: read
+
+jobs:
+    audit:
+        name: pnpm audit (high severity and above)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: 10.27.0
+
+            - name: Setup Node.js 24
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24"
+
+            # Reads pnpm-lock.yaml only; no install needed.
+            - name: Dependency audit
+              run: pnpm audit --audit-level=high
