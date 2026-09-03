@@ -1,0 +1,10 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "types": ["@cloudflare/workers-types"],
+        "noEmit": true
+    },
+    "include": ["worker/**/*.ts", "__tests__/**/*.ts", "cloudflare-env.d.ts"]
+}

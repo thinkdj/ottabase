@@ -15,6 +15,13 @@ on:
 permissions:
     contents: read
 
+# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
+env:
+    TURBO_API: ${{ secrets.TURBO_API }}
+    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+    TURBO_TEAM: ottabase
+    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+
 # Prevent overlapping production deploys: queue rather than cancel a mid-flight deploy
 concurrency:
     group: production-deploy-${{ github.ref }}
@@ -46,6 +53,7 @@ jobs:
         if: needs.check-skip-deploy.outputs.skip_deploy != 'true'
         name: Build Packages
         uses: ./.github/workflows/build-packages.yml
+        secrets: inherit # TURBO_* must reach the reusable workflow, else it builds with no remote cache
 
     # Prepare deployment matrix based on target apps and code changes
     prepare-deployment:

@@ -1,0 +1,34 @@
+{
+    "name": "@ottabase/otta-cache",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Self-hosted Turborepo remote cache (v8 API) on Cloudflare Workers + R2",
+    "type": "module",
+    "scripts": {
+        "build": "wrangler deploy --dry-run --outdir dist",
+        "dev": "wrangler dev --port 8787",
+        "deploy": "wrangler deploy --env production",
+        "clean": "rimraf dist .wrangler",
+        "lint": "eslint worker __tests__",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "wrangler": "wrangler"
+    },
+    "dependencies": {
+        "@ottabase/utils": "workspace:*"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+        "wrangler": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "apps/otta-cache"
+    },
+    "license": "MIT"
+}

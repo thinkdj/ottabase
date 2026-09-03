@@ -1,0 +1,57 @@
+{
+    // Turborepo remote cache worker. See README.md and docs/CLOUDFLARE_DEPLOY.md.
+    //
+    // No secret placeholders here: bucket names are not secrets. The only secret is
+    // TURBO_CACHE_TOKENS, set once with `wrangler secret put TURBO_CACHE_TOKENS --env production`.
+    // PR previews are excluded via cloudflare-config.json previewDeployable=false, so there is no env.preview.
+
+    "$schema": "node_modules/wrangler/config-schema.json",
+
+    "name": "otta-cache",
+    "main": "worker/index.ts",
+    "compatibility_date": "2024-12-30",
+    "compatibility_flags": ["nodejs_compat"],
+
+    "observability": {
+        "enabled": true,
+        "logs": {
+            "enabled": true,
+        },
+    },
+
+    // Upload cap in MiB, checked against Content-Length before the body is read.
+    // 100 is the Workers free-plan request body limit; raise to match the account plan.
+    "vars": {
+        "MAX_ARTIFACT_MB": "100",
+    },
+
+    "r2_buckets": [
+        {
+            "binding": "CACHE_R2",
+            "bucket_name": "ottabase-turbo-cache", // wrangler r2 bucket create ottabase-turbo-cache
+            "preview_bucket_name": "ottabase-turbo-cache-preview", // wrangler r2 bucket create ottabase-turbo-cache-preview
+        },
+    ],
+
+    "env": {
+        "production": {
+            "vars": {
+                "MAX_ARTIFACT_MB": "100",
+                // Reject PUTs without x-artifact-tag. turbo always sends it when turbo.json has signature: true.
+                "REQUIRE_SIGNED_UPLOADS": "1",
+            },
+            "r2_buckets": [
+                {
+                    "binding": "CACHE_R2",
+                    "bucket_name": "ottabase-turbo-cache",
+                },
+            ],
+            "observability": {
+                "enabled": true,
+                "logs": {
+                    "enabled": true,
+                },
+            },
+        },
+    },
+}

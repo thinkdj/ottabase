@@ -1,0 +1,2 @@
+# Copy to .dev.vars (gitignored) for `pnpm dev`. Token below is "dev-token"; its sha256 is stored, never the token.
+TURBO_CACHE_TOKENS={"local-rw":{"sha256":"c91cbbedf8c712e8e2b7517ddeca8fe4fde839ebd8339e0b2001363002b37712","teams":["*"],"write":true}}

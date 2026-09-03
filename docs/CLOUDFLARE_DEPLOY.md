@@ -235,6 +235,15 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 3. Apply database migrations
 4. Deploy to Cloudflare Workers
 
+### Turborepo Remote Cache
+
+`apps/otta-cache` is a self-hosted Turborepo remote cache (Workers + R2). Every workflow exports `TURBO_API`,
+`TURBO_TOKEN`, `TURBO_TEAM` and `TURBO_REMOTE_CACHE_SIGNATURE_KEY`; when the secrets are absent (fork PRs) turbo
+silently runs local-only. One-time setup, token format, rotation, and local use are in
+[`apps/otta-cache/README.md`](../apps/otta-cache/README.md). Required GitHub Secrets: `TURBO_API`
+(`https://otta-cache-production.<subdomain>.workers.dev`), `TURBO_TOKEN` (a read-write token),
+`TURBO_REMOTE_CACHE_SIGNATURE_KEY` (any 32+ byte random string). Add `otta-cache` to `APPS_TO_DEPLOY`.
+
 ### Important Files
 
 - `.github/workflows/deploy.yml` - CI/CD workflow (auto-detects placeholders in wrangler.jsonc and substitutes from

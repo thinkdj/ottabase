@@ -19,6 +19,13 @@ concurrency:
 permissions:
     contents: read
 
+# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
+env:
+    TURBO_API: ${{ secrets.TURBO_API }}
+    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+    TURBO_TEAM: ottabase
+    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+
 jobs:
     # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview
     check-preview-requested:
@@ -61,6 +68,7 @@ jobs:
         needs: check-preview-requested
         if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
         uses: ./.github/workflows/build-packages.yml
+        secrets: inherit # TURBO_* must reach the reusable workflow, else it builds with no remote cache
 
     # Prepare deployment matrix for preview environments (runs only when preview is requested)
     prepare-deployment:
@@ -164,6 +172,11 @@ jobs:
                     DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
                     if [ "$DEPLOYABLE" == "false" ]; then
                       echo "⏭️  Skipping ${APP_FOLDER}: deployable=false"
+                      continue
+                    fi
+                    PREVIEW_DEPLOYABLE=$(echo "$CONFIG" | jq -r '.previewDeployable // true')
+                    if [ "$PREVIEW_DEPLOYABLE" == "false" ]; then
+                      echo "⏭️  Skipping ${APP_FOLDER}: previewDeployable=false"
                       continue
                     fi
 

@@ -21,6 +21,13 @@ on:
 permissions:
     contents: read
 
+# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
+env:
+    TURBO_API: ${{ secrets.TURBO_API }}
+    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+    TURBO_TEAM: ottabase
+    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+
 jobs:
     build-packages:
         runs-on: ubuntu-latest

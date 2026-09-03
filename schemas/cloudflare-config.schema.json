@@ -9,6 +9,11 @@
             "description": "Whether this app should be deployed to Cloudflare",
             "default": true
         },
+        "previewDeployable": {
+            "type": "boolean",
+            "description": "Whether pr-preview.yml deploys a per-PR copy of this app. deploy.yml ignores it.",
+            "default": true
+        },
         "appType": {
             "type": "string",
             "enum": ["vite", "nextjs", "react", "remix", "custom"],

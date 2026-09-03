@@ -2,6 +2,10 @@
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
     "globalPassThroughEnv": ["PATH"],
+    // Self-hosted remote cache (apps/otta-cache). apiUrl/team/token come from TURBO_API / TURBO_TEAM / TURBO_TOKEN
+    // env vars (CI secrets or a developer's shell), never from this file, so forks work untouched.
+    // signature: artifacts are HMAC-signed with TURBO_REMOTE_CACHE_SIGNATURE_KEY; production rejects unsigned uploads.
+    "remoteCache": { "signature": true },
     "tasks": {
         "build": {
             "dependsOn": ["^build"],

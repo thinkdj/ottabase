@@ -1,0 +1,17 @@
+{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "deployable": true,
+    "previewDeployable": false,
+    "appType": "custom",
+    "workerName": "otta-cache",
+    "buildCommand": "build",
+    "workerBuildCommand": "",
+    "outputDirectory": "dist",
+    "verifyPaths": ["dist/index.js"],
+    "wranglerConfig": "wrangler.jsonc",
+    "wranglerEnv": "production",
+    "healthCheckPath": "/health",
+    "requiresSecrets": [],
+    "requiresPreviewSecrets": [],
+    "$comment": "previewDeployable=false: a build cache has no per-PR semantics; PRs use the production cache via TURBO_API. TURBO_CACHE_TOKENS is a wrangler secret set once by hand (see README)."
+}
