@@ -46,7 +46,6 @@ jobs:
               with:
                   path: |
                       .turbo
-                      **/node_modules/.cache/turbo
                   # Key on lockfile + turbo config so cache is reused across commits that don't touch deps
                   key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json') }}-${{ github.sha }}
                   restore-keys: |

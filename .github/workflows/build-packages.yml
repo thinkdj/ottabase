@@ -71,8 +71,6 @@ jobs:
               with:
                   path: |
                       packages/*/dist
-                      packages/*/build
-                      packages/*/.turbo
                       .turbo
                   key: ${{ steps.cache-info.outputs.cache-key }}
                   restore-keys: |
@@ -98,8 +96,6 @@ jobs:
               with:
                   path: |
                       packages/*/dist
-                      packages/*/build
-                      packages/*/.turbo
                       .turbo
                   key: ${{ steps.cache-info.outputs.cache-key }}
 
