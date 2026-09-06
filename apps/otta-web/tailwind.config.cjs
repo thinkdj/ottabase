@@ -27,6 +27,11 @@ module.exports = {
         '../../packages/cf-pdf/src/**/*.{js,ts,jsx,tsx}',
         // One narrow glob covers every Premium Package; adding one needs no Tailwind config edit.
         '../../packages/premium*/src/**/*.{js,ts,jsx,tsx}',
+        // ottalayout returns Tailwind class names as dynamic strings from utility functions
+        // (densityPadding, containerPaddingClass, contentWidthClass, sidebarWidthClass).
+        // Without this entry those classes are invisible to Tailwind's static scanner and
+        // will be purged in production builds unless they happen to appear elsewhere.
+        '../../packages/ottalayout/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {

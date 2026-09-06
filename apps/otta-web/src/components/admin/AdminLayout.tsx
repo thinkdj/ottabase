@@ -71,7 +71,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     }, [groups, pathname]);
 
     return (
-        <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+        <div className="flex flex-col gap-4 md:flex-row md:gap-6 md:pt-0">
             <aside className="w-full md:w-60 md:shrink-0">
                 <nav className="flex flex-col gap-4 md:sticky md:top-20">
                     <div className="px-0.5">
