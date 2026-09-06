@@ -48,6 +48,8 @@ Workers.
 
 - Docs: [Quick Start](./QUICKSTART.md), [README](./README.md), [Architecture](./ARCHITECTURE.md),
   [Changelog](./CHANGELOG.md), [Releases](./docs/RELEASES.md)
+- Build infrastructure: [Self-hosted Turborepo remote cache](./apps/otta-cache/README.md),
+  [Cloudflare deployment](./docs/CLOUDFLARE_DEPLOY.md)
 - Project health: [Contributing](./.github/CONTRIBUTING.md), [Code of Conduct](./.github/CODE_OF_CONDUCT.md),
   [Security](./.github/SECURITY.md), [Support](./.github/SUPPORT.md), [Maintainers](./.github/MAINTAINERS.md)
 - Demo: demo.ottabase.com
@@ -106,7 +108,8 @@ Workers.
 ottabase/
 ├── apps/
 │   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
-│   └── otta-landing/ # Next.js + OpenNext (homepage/landing)
+│   ├── otta-landing/   # Next.js + OpenNext (homepage/landing)
+│   └── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
 │   ├── ottarouter/        # Cloudflare Workers router (order-free precedence, middleware)

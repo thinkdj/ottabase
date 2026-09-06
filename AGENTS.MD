@@ -14,6 +14,10 @@ The typical Ottabase user is a solo founder or a small team who wants to open th
 
 Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Workers deployment.
 
+The repo also includes `apps/otta-cache`, an optional self-hosted Turborepo remote-cache Worker backed by R2. It is
+build/deployment infrastructure outside the product runtime: it does not use OttaORM, D1, KV, sessions, or RBAC. See
+[`apps/otta-cache/README.md`](apps/otta-cache/README.md) for setup, tokens, deployment, and local usage.
+
 ## AI Guidelines (MUST FOLLOW)
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
