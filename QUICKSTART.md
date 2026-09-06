@@ -397,7 +397,7 @@ No JavaScript in source. All packages must have `tsconfig.json` and export `.d.t
 
 | Issue                               | Solution                                                                                          |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Port 3003/3004 already in use**   | Kill the process: `lsof -ti:3003 \| xargs kill -9` (macOS/Linux) or Task Manager (Windows)        |
+| **Port 3003/3004 already in use**   | `pnpm dev:kill` (all apps) or `pnpm dev:kill --app=<name>`; works on macOS/Linux/Windows          |
 | **`pnpm` not found**                | Run `corepack enable pnpm` and restart terminal                                                   |
 | **Build fails with native modules** | Delete `node_modules/` and `.pnpm-store/`, then `pnpm install` again                              |
 | **Bootstrap API returns 401**       | Check `BOOTSTRAP_OWNER_SECRET` in `.env.local` matches the curl header value                      |
@@ -440,7 +440,9 @@ pnpm commands cf             # Filter by name, description or group
 pnpm dev                     # Start Vite + Wrangler
 pnpm dev:full                # Install + build + test + start dev
 pnpm dev:be                 # Wrangler only (3004)
-pnpm dev:kill               # Free ports 3003/3004
+pnpm dev:kill               # Free every dev port declared by apps/*
+pnpm dev:kill --app=otta-web   # One app only (pnpm dev:kill:web is the shortcut)
+pnpm dev:kill --ports=3103,3104 # Explicit ports
 
 # Building
 pnpm build:pkg              # Build shared packages (required first)

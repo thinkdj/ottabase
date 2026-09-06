@@ -49,6 +49,7 @@
         "dev:be": "pnpm --filter @ottabase/otta-web dev:worker",
         "dev:landing": "pnpm otta dev otta-landing",
         "dev:kill": "node packages/scripts/bin/kill-ports.cjs",
+        "dev:kill:web": "node packages/scripts/bin/kill-ports.cjs --app=otta-web",
         "dev:ui": "turbo dev --filter=@ottabase/otta-web --filter=@ottabase/ui-*",
         "dev:pkg": "turbo dev --filter=@ottabase/*",
         "dev:full": "pnpm i && pnpm build:pkg && pnpm test && pnpm dev",

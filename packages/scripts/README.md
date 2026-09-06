@@ -174,6 +174,25 @@ abort the run. Everything else still gets deleted; the locked path is listed by 
 `EBUSY`), and the command exits non-zero so a script chaining on it can tell a partial clean from a complete one. Stop
 whatever has the path open and re-run the command.
 
+## Port Cleanup CLI
+
+### `pnpm dev:kill`
+
+Frees stuck dev-server ports. Ports are discovered from every `apps/*/package.json#ottabase.start` block (each process
+`url`/`readyUrl` and the `worker` url), so there is no port list to maintain: a new app is covered as soon as it
+declares its start config.
+
+```bash
+pnpm dev:kill                     # every port declared by every app
+pnpm dev:kill --app=otta-web      # one app (dir name, package name, or unscoped tail)
+pnpm dev:kill:web                 # shortcut for the line above
+pnpm dev:kill --ports=3103,3104   # explicit ports, no app lookup
+```
+
+Only TCP sockets in `LISTENING` state on the exact port are killed. Windows parses `netstat -ano -p tcp` by column (so
+port 3103 never matches 31030 or a connected client); POSIX uses `lsof -iTCP:<port> -sTCP:LISTEN`. An unknown `--app`
+exits non-zero and lists the known apps.
+
 ## Installation
 
 This package is pre-installed in the monorepo. For apps within the monorepo:

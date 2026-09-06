@@ -71,7 +71,12 @@ const COMMAND_REGISTRY: CommandDoc[] = [
     { name: 'dev:fe', group: 'Development', desc: 'Vite dev server only (3003)' },
     { name: 'dev:be', group: 'Development', desc: 'Wrangler worker only (3004)' },
     { name: 'dev:landing', group: 'Development', desc: 'Dev server for the otta-landing app' },
-    { name: 'dev:kill', group: 'Development', desc: 'Kill stuck processes on ports 3003/3004' },
+    {
+        name: 'dev:kill',
+        group: 'Development',
+        desc: 'Free every dev port declared by apps/* (--app=<name> or --ports=a,b to narrow)',
+    },
+    { name: 'dev:kill:web', group: 'Development', desc: 'Free only otta-web ports (3003/3004)' },
     { name: 'dev:ui', group: 'Development', desc: 'Watch otta-web plus every ui-* package' },
     { name: 'dev:pkg', group: 'Development', desc: 'Watch every @ottabase/* package' },
     { name: 'dev:full', group: 'Development', desc: 'Install, build packages, test, then start dev' },

@@ -45,6 +45,10 @@ Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Wor
 - **Cloudflare binding parity**: when bindings change, keep `wrangler.jsonc` and `cloudflare-env.d.ts` in sync.
 - **Error response consistency**: for API failures, use `errorResponse(...)` from `@ottabase/utils/http-errors`
   (lint-enforced — see "Enforced by Lint").
+- **Every app declares its dev ports in `package.json#ottabase.start`**: that block is the single source of truth for
+  dev URLs/ports. `otta start` launches from it and `pnpm dev:kill` (`--app=<name>`) frees ports from it. Never keep a
+  parallel port list anywhere else; an app without the block cannot be started or cleaned up by the tooling. Format:
+  see `packages/cli/README.md` "App lifecycle contract".
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,

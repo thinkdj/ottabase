@@ -77,7 +77,9 @@ app in the repo. `pnpm dev` is the short alias for `pnpm otta start`.
 ### App lifecycle contract
 
 Framework details stay in each app package. `package.json#ottabase.start.development.processes` declares the scripts
-that form one supervised development session:
+that form one supervised development session. This block is also the only place dev ports live: `pnpm dev:kill`
+(`--app=<name>` for one app) reads every `url`/`readyUrl` here to know what to free, so every app must declare it, even
+a single-worker app like `otta-cache`.
 
 ```json
 {
