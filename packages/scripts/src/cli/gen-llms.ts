@@ -64,28 +64,53 @@ export function extractTitle(md: string, fallback: string): string {
 }
 
 /** First meaningful paragraph, collapsed to a single ≤200-char line. Skips headings,
- *  badge/image lines, blockquote markers, code fences, and HTML so the one-liner is clean. */
+ *  badge/image lines, code fences, and HTML. Accumulates a paragraph (or blockquote) across
+ *  wrapped physical lines — prettier's `proseWrap: always` hard-wraps prose, so a paragraph
+ *  is usually several lines and reading only the first would truncate the summary mid-sentence. */
 export function extractSummary(md: string): string {
     const lines = stripNonProse(md).split('\n');
     let inFence = false;
+    const collected: string[] = [];
+    let mode: 'none' | 'para' | 'quote' = 'none';
     for (const raw of lines) {
         const line = raw.trim();
         if (line.startsWith('```') || line.startsWith('~~~')) {
+            if (collected.length) break; // fence ends an in-progress paragraph
             inFence = !inFence;
             continue;
         }
-        if (inFence || !line) continue;
-        if (line.startsWith('#')) continue; // heading
-        if (/^[>|]/.test(line)) {
-            const quoted = line.replace(/^>\s?/, '').trim();
-            if (quoted) return clampLine(quoted);
+        if (inFence) continue;
+        if (!line) {
+            if (collected.length) break; // blank line ends the paragraph once started
             continue;
         }
-        if (/^!\[/.test(line) || /^\[!\[/.test(line)) continue; // badge / image line
-        if (/^</.test(line)) continue; // raw HTML
-        if (/^[-*]\s/.test(line) || /^\d+\.\s/.test(line)) continue; // list item
-        return clampLine(line);
+        if (/^>/.test(line)) {
+            if (mode === 'para') break; // a quote can't extend a plain paragraph
+            const quoted = line.replace(/^>\s?/, '').trim();
+            if (quoted) {
+                collected.push(quoted);
+                mode = 'quote';
+            }
+            continue;
+        }
+        if (mode === 'quote') break; // non-quote line ends a blockquote
+        // Structural / non-prose line starts: skip while searching, stop once a paragraph began.
+        if (
+            line.startsWith('#') || // heading
+            /^!\[/.test(line) ||
+            /^\[!\[/.test(line) || // badge / image
+            /^</.test(line) || // raw HTML
+            /^[-*]\s/.test(line) ||
+            /^\d+\.\s/.test(line) || // list item
+            /^\|/.test(line) // table row
+        ) {
+            if (collected.length) break;
+            continue;
+        }
+        collected.push(line);
+        mode = 'para';
     }
+    if (collected.length) return clampLine(collected.join(' '));
     return '';
 }
 

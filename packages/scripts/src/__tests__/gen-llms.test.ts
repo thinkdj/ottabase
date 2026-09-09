@@ -39,6 +39,13 @@ describe('extractSummary', () => {
         const md = '# Title\n\n```ts\nconst x = 1;\n```\n\nThe actual summary.';
         expect(extractSummary(md)).toBe('The actual summary.');
     });
+    it('joins a paragraph wrapped across multiple physical lines (prettier proseWrap: always)', () => {
+        const md =
+            '# T\n\nOttabase is opinionated on purpose. Most subsystems allow more\nthan one approach, but there is always one canonical path.';
+        expect(extractSummary(md)).toBe(
+            'Ottabase is opinionated on purpose. Most subsystems allow more than one approach, but there is always one canonical path.',
+        );
+    });
     it('clamps very long lines at a word boundary with an ellipsis', () => {
         const long = `# T\n\n${'word '.repeat(80).trim()}`;
         const out = extractSummary(long);
