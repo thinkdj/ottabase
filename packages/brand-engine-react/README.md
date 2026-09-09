@@ -132,6 +132,19 @@ import { BrandPathSync } from '@ottabase/brand-engine-react';
 <BrandPathSync pathname={serverSidePathname} />;
 ```
 
+## Accessibility, SSR & performance
+
+- **SSR (the headline feature)** — the edge resolves the brand config once and injects both the critical CSS (light
+  **and** dark) and a JSON hydration payload; `BrandProvider` reuses it via `initialConfig` and **skips the mount
+  fetch**, so there is no flash of an unstyled or wrong-branded UI. The edge-painted CSS and the client-re-derived CSS
+  are kept byte-identical on purpose (a tested parity contract) — the client apply is a no-op when they match. Don't
+  `window.location.reload()` to apply a theme.
+- **Performance** — tokens become CSS custom properties written into a single `<style>` block, not per-element inline
+  styles; generated selectors use `:where()` (zero specificity) so mode/scope switches retint without regenerating
+  rules. Per-kit custom CSS injection is debounced and front-run at the edge to avoid a late repaint.
+- **Accessibility** — motion is tokenized and zeroed under `prefers-reduced-motion`, and the focus ring is a token
+  (`--focus-ring-*`), so respectful defaults flow from the theme rather than each component.
+
 ## Architecture
 
 ```

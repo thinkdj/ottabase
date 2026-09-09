@@ -260,6 +260,19 @@ const config = defineModelConfig({
 | `hidden`      | Hidden input                    |
 | `readonly`    | Read-only display               |
 
+## Accessibility, SSR & performance
+
+- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
+  every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
+  `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
+- **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
+  (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see
+  [Server-side validation](#server-side-validation)). No special hydration handling is required.
+- **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
+  builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in
+  `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
+  ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
+
 ## Exports
 
 `@ottabase/forms` (headless — no rendered UI in its import graph):

@@ -321,6 +321,18 @@ the conversion automatically.
 When rows are selected and `bulkActions` are provided, the toolbar switches from showing the search input to showing the
 bulk action buttons + selection count. Clearing the selection restores the search input.
 
+## Accessibility, SSR & performance
+
+- **Accessibility** — renders a semantic `<table>`; selected rows expose `data-state="selected"` and the loading overlay
+  sets `aria-busy` so assistive tech is told the grid is updating. Row actions and the selection checkbox column are
+  keyboard-operable.
+- **SSR** — client-rendered. For large datasets use the server-side path (`useServerTable` / OttaORM integration): sort,
+  filter, and pagination happen in the API, so the browser never sorts or filters a big result set. Pair with OttaORM
+  `deferred` columns to keep list payloads small.
+- **Performance** — the headless `useDataTable` hook separates table state from rendering (usable without the
+  `DataTable` component). Server-side mode is the scaling story; the client-side path is for modest datasets. Pagination
+  is 1-indexed and page size is explicit, so you control how many rows render.
+
 ## Dependencies
 
 - **@tanstack/react-table** v8 — headless table core (real dependency; the pure hooks use its runtime, so it is never

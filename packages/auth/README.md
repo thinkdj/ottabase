@@ -467,6 +467,19 @@ insecure default is used with a warning. An unset or unknown `ENVIRONMENT` is tr
 that forgets `AUTH_SECRET` throws instead of silently signing every token with a publicly-known constant. (Deploy with
 the production wrangler environment, e.g. `wrangler deploy --env production`, so dev vars never reach production.)
 
+## Accessibility, SSR & performance
+
+- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so
+  labels, focus, and error semantics come from there.
+- **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
+  `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
+  flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to
+  avoid FOUC), there is **no edge-injected session yet** — gate on `isAuthenticated` and render a stable loading state
+  rather than assuming the first paint is correct.
+- **Performance** — session reads prefer the mutable KV registry snapshot over re-hitting D1; a per-user
+  `profile:version` bump is what forces a re-read (see [Session Model](#session-model)), so a profile edit reflects on
+  the next request without re-issuing the cookie. Password hashing is PBKDF2 via Web Crypto (no native deps, edge-safe).
+
 ## Architecture
 
 ```
