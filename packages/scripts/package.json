@@ -18,6 +18,7 @@
         "cloudflare-login": "bin/cloudflare-login.cjs",
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
+        "gen-llms": "bin/gen-llms.cjs",
         "clean-cache": "bin/clean-cache.cjs",
         "clean-d1": "bin/clean-d1.mjs",
         "clean-kv": "bin/clean-kv.mjs",
@@ -31,11 +32,12 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts src/cli/gen-llms.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts src/cli/env-secrets.ts src/cli/help.ts src/cli/gen-llms.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
         "otta-help": "node bin/help.cjs",
+        "gen-llms": "node bin/gen-llms.cjs",
         "env-secrets": "node bin/env-secrets.cjs",
         "clean-d1": "node bin/clean-d1.mjs",
         "clean-kv": "node bin/clean-kv.mjs",

@@ -130,6 +130,11 @@ const COMMAND_REGISTRY: CommandDoc[] = [
     // Docs
     { name: 'storybook', group: 'Docs', desc: 'Start Storybook on port 6006' },
     { name: 'storybook:build', group: 'Docs', desc: 'Build static Storybook output' },
+    {
+        name: 'docs:llms',
+        group: 'Docs',
+        desc: 'Regenerate root llms.txt + llms-full.txt from the repo docs (run per release)',
+    },
 
     // Repo
     // `pnpm help` is a pnpm builtin and never reaches this script, so `commands` exists

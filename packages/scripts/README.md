@@ -193,6 +193,31 @@ Only TCP sockets in `LISTENING` state on the exact port are killed. Windows pars
 port 3103 never matches 31030 or a connected client); POSIX uses `lsof -iTCP:<port> -sTCP:LISTEN`. An unknown `--app`
 exits non-zero and lists the known apps.
 
+## Docs CLI
+
+### `pnpm docs:llms`
+
+Regenerates the AI-native documentation index from the repo's Markdown — the machine-optimized counterpart to the human
+docs (Ottabase design principle #25). Writes two files to the **repo root**:
+
+- `llms.txt` — the [llmstxt.org](https://llmstxt.org) index: an H1, a one-line project summary, then **Start here**,
+  **Guides**, and **Packages** sections of links with a one-line description each (short context for an agent).
+- `llms-full.txt` — every indexed doc concatenated under its path header (full context).
+
+```bash
+pnpm docs:llms              # regenerate both files
+```
+
+Sources are `README.md` / `QUICKSTART.md` / `ARCHITECTURE.md` / `AGENTS.MD`, every `docs/*.md`, and every package
+`README.md`. Titles come from each doc's first `# H1` and descriptions from its first real paragraph, so the index can
+never drift from the docs it points at. **Run it on every release** (and after adding or renaming a package README) and
+commit the regenerated files.
+
+They live at the repo root — not in an app's `public/` — because they describe the framework/monorepo, and `otta-web` is
+a template whose `public/` ships into every scaffolded app's dist. To serve them publicly, copy `llms.txt` /
+`llms-full.txt` into the docs/homepage site's `public/`. The builders are pure and unit-tested in
+`src/__tests__/gen-llms.test.ts`.
+
 ## Installation
 
 This package is pre-installed in the monorepo. For apps within the monorepo:

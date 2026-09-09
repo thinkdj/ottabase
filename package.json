@@ -84,6 +84,7 @@
         "lint-staged": "lint-staged",
         "storybook": "storybook dev -p 6006",
         "storybook:build": "storybook build",
+        "docs:llms": "node packages/scripts/bin/gen-llms.cjs",
         "cf:login": "node packages/scripts/bin/cloudflare-login.cjs",
         "cf:setup": "node packages/scripts/bin/cloudflare-setup.cjs",
         "cf:validate": "node packages/scripts/bin/cloudflare-validate.cjs",
