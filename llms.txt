@@ -20,6 +20,7 @@
 - [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo.
 - [Premium Packages](docs/PREMIUM_PACKAGES.md): How to install, build, license and operate commercial add-ons in an Ottabase app.
 - [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-02-03 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
+- [Recommended · Supported · Possible](docs/RECOMMENDED_SUPPORTED_POSSIBLE.md): Ottabase is opinionated on purpose ("prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always one canonical path. This table names…
 - [Referral system](docs/REFERRAL_SYSTEM.md): Documentation for inbound referral tracking, first-touch attribution, and signup conversion in the Ottabase monorepo.
 - [Releases](docs/RELEASES.md)
 - [Testing Guide - Ottabase Monorepo](docs/TESTING.md): This document describes the comprehensive automated testing setup for the Ottabase monorepo using Vitest, with support
