@@ -10,7 +10,11 @@ wrangler.preview.jsonc
 .wrangler/
 
 # AI coding agent local settings (IDE-specific, not for repo)
-.claude/
+# Ignore everything under .claude/ EXCEPT shared, checked-in agent assets
+# (skills/ and commands/ are repo knowledge per AGENTS.MD; settings.local.json + launch.json stay local).
+.claude/*
+!.claude/skills/
+!.claude/commands/
 
 # Force-ignore .gitignore files
 # Add this to your local files that need not be committed (Eg: google-oauth.gitignore.json)
