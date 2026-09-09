@@ -3696,8 +3696,8 @@ const nextPageUrl = response.pagination.next;
 
 # Blog-Only Public Surface
 
-Status: design exploration; not implemented
-Prepared: 2026-08-14
+Status: design exploration; not implemented  
+Prepared: 2026-08-14  
 Purpose: preserve the full architectural context for implementing an optional blog-only Ottabase deployment/public
 surface (`publicSurface: 'app' | 'blog'`), so the decision does not have to be re-derived.
 
@@ -7410,39 +7410,46 @@ For issues or questions:
 
 # Recommended · Supported · Possible
 
-Ottabase is opinionated on purpose ("prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always **one canonical path**. This table names it, so a codebase doesn't fragment across equally-valid-looking options.
+Ottabase is opinionated on purpose (design principle #29: "prefer one obvious Ottabase way"). Most subsystems allow more
+than one approach, but there is always **one canonical path**. This table names it, so a codebase doesn't fragment
+across equally-valid-looking options.
 
 Read the columns as:
 
 - **Recommended** — the default. Reach for this unless you have a specific reason not to.
 - **Supported** — a legitimate escape hatch for cases the default doesn't cover. Fine when warranted.
-- **Possible** — the framework won't stop you, but you're on your own; expect to give up conveniences (caching, tenant scoping, type-safety) the default provides. Some rows have **nothing** here because the wrong path is lint-banned.
+- **Possible** — the framework won't stop you, but you're on your own; expect to give up conveniences (caching, tenant
+  scoping, type-safety) the default provides. Some rows have **nothing** here because the wrong path is lint-banned.
 
-| Subsystem | Recommended | Supported | Possible |
-| --- | --- | --- | --- |
-| **Data model** | Fat `BaseModel` (`@ottabase/ottaorm`); logic as model methods | Model + custom methods for domain logic | Raw Drizzle / SQL — only for a measured perf need |
-| **CRUD API** | Generic route via registered model (`/api/ottaorm/{entity}`) | Custom route in `config.routes.ts` for non-CRUD needs | Hand-rolled endpoint — avoid |
-| **CRUD UI** | `createModelConfig(Model)` + `<ModelCrud>` (`@ottabase/forms/react`) | `<DataTable>` / `useDataTable` primitives | Build the table by hand |
-| **Forms** | `createModelConfig` → `<ModelForm>` (model-driven) | `ui-shadcn` `Form`/`FormField` (react-hook-form) for custom forms | Native `<form>` + `FormData` |
-| **Client data fetching** | Query/mutation hooks (`createModelHooks`, `useApiQuery`, `useApiMutation`) | `queryClient.fetchQuery` for imperative reads | ~~Raw `fetch()`~~ — **lint-banned** in `apps/*/src/**` |
-| **API error responses** | `errorResponse(...)` / `jsonResponse(...)` (`@ottabase/utils/http-errors`) | — | ~~`new Response(JSON.stringify(...))`~~ — **lint-banned** on the server |
-| **Env access (edge)** | `getOttabaseConfig(env)` | — | ~~`process.env`~~ — **lint-banned** in edge code |
-| **Styling / components** | `@ottabase/ui-shadcn` (static Tailwind + design tokens) | `@ottabase/ui-mantine` (Mantine) where its ergonomics help | One-off CSS / inline styles that bypass tokens — avoid for repeated UI |
-| **Theming** | Brand Engine design tokens → CSS variables | Component slot overrides (`data-slot`, `BrandComponentsProvider`) | Per-route `tokenOverridesJson` for a localized override |
-| **State** | Jotai (`@ottabase/state`) | Local component state | (No competing global-state lib — don't add one) |
-| **Auth** | In-house `@ottabase/auth` (`getSession` / `useSession`) | Generic OAuth2/OIDC + magic links via the same package | (No Auth.js/NextAuth — deliberately removed) |
-| **RBAC / authz** | Server guard (`hasPermission` / `withRBAC`) as the boundary; browser gate as a UX hint | App `ProtectedRoute` for route gating | (Never gate on a role *name* — permission + scope only) |
-| **Uploads** | `useFileUpload` / `uploadFile` → `/api/upload` | `uploadFileToR2` / `uploadFileToCloudflareImages` on the server | Raw R2 via `@ottabase/cf` when genuinely off-path |
-| **Background work** | `dispatch(queue, type, payload)` (`@ottabase/queue`) | `createDispatcher` with priority queues / chaining | Raw `QueueAdapter` / binding via `dispatcher.getAdapter()` |
-| **Database access** | `@ottabase/db/drizzle-d1` + OttaORM | Drizzle query builder for a specific hot path | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code |
-| **KV cache keys** | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …) | `withCache` read-through wrapper | Hand-formatted key strings — collision risk, avoid |
-| **Package deps** | `workspace:*` (internal) / `catalog:` (shared external) | `peerDependency` for a shared package's framework dep | Package-local version of a shared dep — avoid |
+| Subsystem                | Recommended                                                                            | Supported                                                         | Possible                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Data model**           | Fat `BaseModel` (`@ottabase/ottaorm`); logic as model methods                          | Model + custom methods for domain logic                           | Raw Drizzle / SQL — only for a measured perf need                       |
+| **CRUD API**             | Generic route via registered model (`/api/ottaorm/{entity}`)                           | Custom route in `config.routes.ts` for non-CRUD needs             | Hand-rolled endpoint — avoid                                            |
+| **CRUD UI**              | `createModelConfig(Model)` + `<ModelCrud>` (`@ottabase/forms/react`)                   | `<DataTable>` / `useDataTable` primitives                         | Build the table by hand                                                 |
+| **Forms**                | `createModelConfig` → `<ModelForm>` (model-driven)                                     | `ui-shadcn` `Form`/`FormField` (react-hook-form) for custom forms | Native `<form>` + `FormData`                                            |
+| **Client data fetching** | Query/mutation hooks (`createModelHooks`, `useApiQuery`, `useApiMutation`)             | `queryClient.fetchQuery` for imperative reads                     | ~~Raw `fetch()`~~ — **lint-banned** in `apps/*/src/**`                  |
+| **API error responses**  | `errorResponse(...)` / `jsonResponse(...)` (`@ottabase/utils/http-errors`)             | —                                                                 | ~~`new Response(JSON.stringify(...))`~~ — **lint-banned** on the server |
+| **Env access (edge)**    | `getOttabaseConfig(env)`                                                               | —                                                                 | ~~`process.env`~~ — **lint-banned** in edge code                        |
+| **Styling / components** | `@ottabase/ui-shadcn` (static Tailwind + design tokens)                                | `@ottabase/ui-mantine` (Mantine) where its ergonomics help        | One-off CSS / inline styles that bypass tokens — avoid for repeated UI  |
+| **Theming**              | Brand Engine design tokens → CSS variables                                             | Component slot overrides (`data-slot`, `BrandComponentsProvider`) | Per-route `tokenOverridesJson` for a localized override                 |
+| **State**                | Jotai (`@ottabase/state`)                                                              | Local component state                                             | (No competing global-state lib — don't add one)                         |
+| **Auth**                 | In-house `@ottabase/auth` (`getSession` / `useSession`)                                | Generic OAuth2/OIDC + magic links via the same package            | (No Auth.js/NextAuth — deliberately removed)                            |
+| **RBAC / authz**         | Server guard (`hasPermission` / `withRBAC`) as the boundary; browser gate as a UX hint | App `ProtectedRoute` for route gating                             | (Never gate on a role _name_ — permission + scope only)                 |
+| **Uploads**              | `useFileUpload` / `uploadFile` → `/api/upload`                                         | `uploadFileToR2` / `uploadFileToCloudflareImages` on the server   | Raw R2 via `@ottabase/cf` when genuinely off-path                       |
+| **Background work**      | `dispatch(queue, type, payload)` (`@ottabase/queue`)                                   | `createDispatcher` with priority queues / chaining                | Raw `QueueAdapter` / binding via `dispatcher.getAdapter()`              |
+| **Database access**      | `@ottabase/db/drizzle-d1` + OttaORM                                                    | Drizzle query builder for a specific hot path                     | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code                  |
+| **KV cache keys**        | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …)                            | `withCache` read-through wrapper                                  | Hand-formatted key strings — collision risk, avoid                      |
+| **Package deps**         | `workspace:*` (internal) / `catalog:` (shared external)                                | `peerDependency` for a shared package's framework dep             | Package-local version of a shared dep — avoid                           |
 
 ## Notes
 
-- **Lint is the enforcer, not just docs.** The `~~struck-through~~` "Possible" cells are actual ESLint errors (see `eslint.config.mjs` and `AGENTS.MD` → "Enforced by Lint"). If a rule looks wrong for your case, that's a discussion — not an `eslint-disable`.
-- **The escape hatch is a feature, not a failure.** Dropping to a lower row is expected occasionally; the goal is that the *default* is obvious and the *deviation* is deliberate and visible in review.
-- When two supported approaches have meaningfully different costs, the framework should say so (principle #13) — prefer static CSS/reusable classes over per-element runtime styling for repeated UI.
+- **Lint is the enforcer, not just docs.** The `~~struck-through~~` "Possible" cells are actual ESLint errors (see
+  `eslint.config.mjs` and `AGENTS.MD` → "Enforced by Lint"). If a rule looks wrong for your case, that's a discussion —
+  not an `eslint-disable`.
+- **The escape hatch is a feature, not a failure.** Dropping to a lower row is expected occasionally; the goal is that
+  the _default_ is obvious and the _deviation_ is deliberate and visible in review.
+- When two supported approaches have meaningfully different costs, the framework should say so (principle #13) — prefer
+  static CSS/reusable classes over per-element runtime styling for repeated UI.
 
 
 ---
@@ -8952,8 +8959,8 @@ For issues or questions:
 
 ---
 
-**Package**: `@ottabase/utils/timezone`
-**Version**: 1.0.0
+**Package**: `@ottabase/utils/timezone`  
+**Version**: 1.0.0  
 **License**: MIT
 
 
@@ -10830,9 +10837,16 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so labels, focus, and error semantics come from there.
-- **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**, `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to avoid FOUC), there is **no edge-injected session yet** — gate on `isAuthenticated` and render a stable loading state rather than assuming the first paint is correct.
-- **Performance** — session reads prefer the mutable KV registry snapshot over re-hitting D1; a per-user `profile:version` bump is what forces a re-read (see [Session Model](#session-model)), so a profile edit reflects on the next request without re-issuing the cookie. Password hashing is PBKDF2 via Web Crypto (no native deps, edge-safe).
+- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so
+  labels, focus, and error semantics come from there.
+- **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
+  `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
+  flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to
+  avoid FOUC), there is **no edge-injected session yet** — gate on `isAuthenticated` and render a stable loading state
+  rather than assuming the first paint is correct.
+- **Performance** — session reads prefer the mutable KV registry snapshot over re-hitting D1; a per-user
+  `profile:version` bump is what forces a re-read (see [Session Model](#session-model)), so a profile edit reflects on
+  the next request without re-issuing the cookie. Password hashing is PBKDF2 via Web Crypto (no native deps, edge-safe).
 
 ## Architecture
 
@@ -11325,9 +11339,16 @@ import { BrandPathSync } from '@ottabase/brand-engine-react';
 
 ## Accessibility, SSR & performance
 
-- **SSR (the headline feature)** — the edge resolves the brand config once and injects both the critical CSS (light **and** dark) and a JSON hydration payload; `BrandProvider` reuses it via `initialConfig` and **skips the mount fetch**, so there is no flash of an unstyled or wrong-branded UI. The edge-painted CSS and the client-re-derived CSS are kept byte-identical on purpose (a tested parity contract) — the client apply is a no-op when they match. Don't `window.location.reload()` to apply a theme.
-- **Performance** — tokens become CSS custom properties written into a single `<style>` block, not per-element inline styles; generated selectors use `:where()` (zero specificity) so mode/scope switches retint without regenerating rules. Per-kit custom CSS injection is debounced and front-run at the edge to avoid a late repaint.
-- **Accessibility** — motion is tokenized and zeroed under `prefers-reduced-motion`, and the focus ring is a token (`--focus-ring-*`), so respectful defaults flow from the theme rather than each component.
+- **SSR (the headline feature)** — the edge resolves the brand config once and injects both the critical CSS (light
+  **and** dark) and a JSON hydration payload; `BrandProvider` reuses it via `initialConfig` and **skips the mount
+  fetch**, so there is no flash of an unstyled or wrong-branded UI. The edge-painted CSS and the client-re-derived CSS
+  are kept byte-identical on purpose (a tested parity contract) — the client apply is a no-op when they match. Don't
+  `window.location.reload()` to apply a theme.
+- **Performance** — tokens become CSS custom properties written into a single `<style>` block, not per-element inline
+  styles; generated selectors use `:where()` (zero specificity) so mode/scope switches retint without regenerating
+  rules. Per-kit custom CSS injection is debounced and front-run at the edge to avoid a late repaint.
+- **Accessibility** — motion is tokenized and zeroed under `prefers-reduced-motion`, and the focus ring is a token
+  (`--focus-ring-*`), so respectful defaults flow from the theme rather than each component.
 
 ## Architecture
 
@@ -13909,9 +13930,16 @@ const config = defineModelConfig({
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed): every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
-- **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see [Server-side validation](#server-side-validation)). No special hydration handling is required.
-- **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
+- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
+  every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
+  `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
+- **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
+  (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see
+  [Server-side validation](#server-side-validation)). No special hydration handling is required.
+- **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
+  builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in
+  `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
+  ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
 ## Exports
 
@@ -24586,9 +24614,15 @@ bulk action buttons + selection count. Clearing the selection restores the searc
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — renders a semantic `<table>`; selected rows expose `data-state="selected"` and the loading overlay sets `aria-busy` so assistive tech is told the grid is updating. Row actions and the selection checkbox column are keyboard-operable.
-- **SSR** — client-rendered. For large datasets use the server-side path (`useServerTable` / OttaORM integration): sort, filter, and pagination happen in the API, so the browser never sorts or filters a big result set. Pair with OttaORM `deferred` columns to keep list payloads small.
-- **Performance** — the headless `useDataTable` hook separates table state from rendering (usable without the `DataTable` component). Server-side mode is the scaling story; the client-side path is for modest datasets. Pagination is 1-indexed and page size is explicit, so you control how many rows render.
+- **Accessibility** — renders a semantic `<table>`; selected rows expose `data-state="selected"` and the loading overlay
+  sets `aria-busy` so assistive tech is told the grid is updating. Row actions and the selection checkbox column are
+  keyboard-operable.
+- **SSR** — client-rendered. For large datasets use the server-side path (`useServerTable` / OttaORM integration): sort,
+  filter, and pagination happen in the API, so the browser never sorts or filters a big result set. Pair with OttaORM
+  `deferred` columns to keep list payloads small.
+- **Performance** — the headless `useDataTable` hook separates table state from rendering (usable without the
+  `DataTable` component). Server-side mode is the scaling story; the client-side path is for modest datasets. Pagination
+  is 1-indexed and page size is explicit, so you control how many rows render.
 
 ## Dependencies
 
