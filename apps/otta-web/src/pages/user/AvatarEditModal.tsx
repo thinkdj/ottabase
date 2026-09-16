@@ -1,6 +1,6 @@
 /**
  * Avatar Edit Modal
- * Shows cropper directly – user picks or changes image via the cropper's built-in "Choose image" button.
+ * Shows cropper directly – drop or click the empty stage, or Replace on the photo.
  * Supports pre-loading the current avatar (URL, base64, or blob).
  */
 

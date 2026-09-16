@@ -11,20 +11,16 @@ describe('Cropper', () => {
         const el = document.createElement('div');
         document.body.appendChild(el);
         const c = new Cropper(el, { aspectRatio: 1 });
-        // Hidden file input should exist
         const input = el.querySelector('input[type="file"]') as HTMLInputElement;
         expect(input).toBeTruthy();
-        // Styled upload button should exist with "Choose image" text
-        const btn = el.querySelector('button[title="Choose image"]');
-        expect(btn).toBeTruthy();
-        expect(btn?.textContent).toContain('Choose image');
-        // Filename label should show default text
-        const nameLabel = el.querySelector('#cropper-file-name');
-        expect(nameLabel).toBeTruthy();
-        expect(nameLabel?.textContent).toBe('No file selected');
-        expect(el.querySelector('.ottacropper-empty-state')?.textContent).toContain('Start with an image');
+        const empty = el.querySelector('.ottacropper-empty-state') as HTMLButtonElement;
+        expect(empty).toBeTruthy();
+        expect(empty.textContent).toContain('Drop a photo');
+        expect(empty.title).toBe('Choose image');
+        expect(el.querySelector('.ottacropper-filename')).toBeTruthy();
         expect(el.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Image crop adjustments');
         expect(el.querySelector('canvas')).toBeTruthy();
+        expect(el.querySelector('.ottacropper-zoom-range')).toBeTruthy();
         c.destroy();
         document.body.removeChild(el);
     });
@@ -142,14 +138,14 @@ describe('Cropper', () => {
         document.body.removeChild(el);
     });
 
-    it('updates upload button label to Replace image after an image loads', () => {
+    it('updates empty state to stage overlay after an image loads', () => {
         const el = document.createElement('div');
         document.body.appendChild(el);
         const c = new Cropper(el);
 
-        const chooseBtn = el.querySelector('button[title="Choose image"]') as HTMLButtonElement | null;
-        expect(chooseBtn).toBeTruthy();
-        expect(chooseBtn?.textContent).toContain('Choose image');
+        const empty = el.querySelector('.ottacropper-empty-state') as HTMLButtonElement | null;
+        expect(empty).toBeTruthy();
+        expect(empty?.textContent).toContain('Drop a photo');
 
         c.loadFromUrl('https://example.com/avatar.png');
         (c as any).render = () => undefined;
@@ -158,13 +154,26 @@ describe('Cropper', () => {
         Object.defineProperty(img, 'naturalHeight', { value: 200, configurable: true });
         img.onload?.(new Event('load'));
 
-        const replaceBtn = el.querySelector('button[title="Replace image"]') as HTMLButtonElement | null;
-        expect(replaceBtn).toBeTruthy();
-        expect(replaceBtn?.textContent).toContain('Replace image');
         expect(el.querySelector('.ottacropper-empty-state--hidden')).toBeTruthy();
+        expect(el.querySelector('.ottacropper-viewport--visible')).toBeTruthy();
+        expect(el.querySelector('.ottacropper-toolbar--visible')).toBeTruthy();
+        const replaceBtn = el.querySelector('.ottacropper-replace-btn') as HTMLButtonElement | null;
+        expect(replaceBtn).toBeTruthy();
+        expect(replaceBtn?.textContent).toContain('Replace');
+        expect(el.querySelector('.ottacropper-filename')?.textContent).toBe('avatar.png');
 
         c.destroy();
         document.body.removeChild(el);
+    });
+
+    it('rejects non-image files with an error hint', () => {
+        const el = document.createElement('div');
+        const c = new Cropper(el);
+        const file = new File(['nope'], 'notes.txt', { type: 'text/plain' });
+        c.loadFromFile(file);
+        expect(el.querySelector('.ottacropper-empty-state--error')).toBeTruthy();
+        expect(el.querySelector('.ottacropper-empty-state')?.textContent).toContain('Use a PNG or JPEG');
+        c.destroy();
     });
 
     it('accepts onImageLoad callback option', () => {

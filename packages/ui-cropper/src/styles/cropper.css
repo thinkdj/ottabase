@@ -18,10 +18,11 @@
     --cr-accent: hsl(var(--accent, 210 40% 96.1%));
     --cr-accent-fg: hsl(var(--accent-foreground, 222.2 47.4% 11.2%));
     --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    --cr-destructive: hsl(var(--destructive, 0 84% 60%));
 
     /* Sizing & spacing */
     --cr-radius: var(--radius, 0.5rem);
-    --cr-btn-size: 2.25rem;
+    --cr-btn-size: 2rem;
 
     /* Typography */
     --cr-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
@@ -36,15 +37,20 @@
     flex-direction: column;
     align-items: stretch;
     width: 100%;
-    gap: 1rem;
-    padding: 1rem;
-    border: 1px solid color-mix(in srgb, var(--cr-border) 70%, transparent);
-    border-radius: calc(var(--cr-radius) + 0.25rem);
-    background: var(--cr-bg);
+    gap: 0.75rem;
+    padding: 0;
+    border: none;
+    background: transparent;
     font-family: var(--cr-font);
     font-size: var(--cr-font-size);
     color: var(--cr-fg);
     box-sizing: border-box;
+    outline: none;
+}
+
+.ottacropper:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+    border-radius: calc(var(--cr-radius) + 0.15rem);
 }
 
 .ottacropper *,
@@ -53,8 +59,14 @@
     box-sizing: border-box;
 }
 
+.ottacropper--dragover .ottacropper-empty-state,
+.ottacropper--dragover .ottacropper-viewport {
+    border-color: var(--cr-primary);
+    background-color: color-mix(in srgb, var(--cr-primary) 8%, var(--cr-muted));
+}
+
 /* ---------------------------------------------------------------------------
- * File input row — upload button + filename
+ * Hidden file input
  * --------------------------------------------------------------------------- */
 
 .ottacropper-file-input {
@@ -66,97 +78,78 @@
     border: 0;
 }
 
-.ottacropper-file-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.625rem;
-    min-width: 0;
-}
-
-.ottacropper-upload-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 2.25rem;
-    padding: 0.5rem 0.75rem;
-    font-family: var(--cr-font);
-    font-size: var(--cr-font-size-sm);
-    font-weight: 500;
-    line-height: 1.25rem;
-    border-radius: var(--cr-radius);
-    border: 1px solid var(--cr-primary);
-    background: var(--cr-primary);
-    color: var(--cr-primary-fg);
-    cursor: pointer;
-    transition:
-        background var(--cr-transition),
-        border-color var(--cr-transition),
-        box-shadow var(--cr-transition);
-}
-
-.ottacropper-upload-btn:hover {
-    filter: brightness(0.94);
-}
-
-.ottacropper-upload-btn:focus-visible {
-    outline: none;
-    border-color: var(--cr-ring);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
-}
-
-.ottacropper-upload-btn svg {
-    flex-shrink: 0;
-}
-
-.ottacropper-filename {
-    font-size: var(--cr-font-size-sm);
-    color: var(--cr-muted-fg);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: min(16rem, 48vw);
-    text-align: right;
-}
+/* ---------------------------------------------------------------------------
+ * Empty state — the drop zone is the control
+ * --------------------------------------------------------------------------- */
 
 .ottacropper-empty-state {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    min-height: 9rem;
-    padding: 1.25rem;
-    border: 1px dashed var(--cr-border);
-    border-radius: var(--cr-radius);
-    background: color-mix(in srgb, var(--cr-muted) 55%, transparent);
+    width: 100%;
+    min-height: 14rem;
+    padding: 1.75rem 1.25rem;
+    border: 1px dashed color-mix(in srgb, var(--cr-border) 90%, var(--cr-fg));
+    border-radius: calc(var(--cr-radius) + 0.15rem);
+    background: color-mix(in srgb, var(--cr-muted) 70%, transparent);
     color: var(--cr-muted-fg);
-    text-align: left;
+    text-align: center;
+    cursor: pointer;
+    font-family: inherit;
+    transition:
+        border-color var(--cr-transition),
+        background var(--cr-transition),
+        color var(--cr-transition);
+}
+
+.ottacropper-empty-state:hover {
+    border-color: var(--cr-fg);
+    background: color-mix(in srgb, var(--cr-muted) 90%, var(--cr-bg));
+    color: var(--cr-fg);
+}
+
+.ottacropper-empty-state:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
 }
 
 .ottacropper-empty-state--hidden {
     display: none;
 }
 
+.ottacropper-empty-state--error {
+    border-color: var(--cr-destructive);
+    color: var(--cr-destructive);
+}
+
 .ottacropper-empty-state svg {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
     flex: 0 0 auto;
+    opacity: 0.7;
+}
+
+.ottacropper-empty-state:hover svg {
+    opacity: 1;
 }
 
 .ottacropper-empty-state div {
     display: grid;
-    gap: 0.125rem;
+    gap: 0.2rem;
 }
 
 .ottacropper-empty-state strong {
     color: var(--cr-fg);
-    font-size: var(--cr-font-size-sm);
-    font-weight: 500;
+    font-size: 0.9375rem;
+    font-weight: 550;
+    letter-spacing: -0.01em;
 }
 
 .ottacropper-empty-state span {
     font-size: var(--cr-font-size-sm);
-    line-height: 1.25rem;
+    line-height: 1.3;
 }
 
 /* ---------------------------------------------------------------------------
@@ -167,15 +160,16 @@
     position: relative;
     overflow: hidden;
     align-self: center;
+    width: auto;
     max-width: 100%;
     border: 1px solid var(--cr-border);
-    border-radius: var(--cr-radius);
-    background-color: var(--cr-muted);
+    border-radius: calc(var(--cr-radius) + 0.15rem);
+    background-color: color-mix(in srgb, var(--cr-fg) 6%, var(--cr-muted));
     background-image:
-        linear-gradient(45deg, color-mix(in srgb, var(--cr-bg) 72%, transparent) 25%, transparent 25%),
-        linear-gradient(-45deg, color-mix(in srgb, var(--cr-bg) 72%, transparent) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 72%, transparent) 75%),
-        linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 72%, transparent) 75%);
+        linear-gradient(45deg, color-mix(in srgb, var(--cr-bg) 55%, transparent) 25%, transparent 25%),
+        linear-gradient(-45deg, color-mix(in srgb, var(--cr-bg) 55%, transparent) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 55%, transparent) 75%),
+        linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 55%, transparent) 75%);
     background-position:
         0 0,
         0 0.5rem,
@@ -183,6 +177,8 @@
         -0.5rem 0;
     background-size: 1rem 1rem;
     display: none;
+    touch-action: none;
+    user-select: none;
 }
 
 .ottacropper-viewport--visible {
@@ -193,12 +189,76 @@
     display: block;
     max-width: 100%;
     height: auto;
-    cursor: move;
+    cursor: grab;
     border-radius: inherit;
 }
 
+.ottacropper-stage-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    pointer-events: none;
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--cr-fg) 45%, transparent), transparent);
+}
+
+.ottacropper-filename {
+    min-width: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ottacropper-replace-btn {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    min-height: 1.625rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: calc(var(--cr-radius) * 0.7);
+    background: color-mix(in srgb, #000 42%, transparent);
+    color: #fff;
+    font-family: var(--cr-font);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition:
+        background var(--cr-transition),
+        border-color var(--cr-transition);
+}
+
+.ottacropper-replace-btn:hover {
+    background: color-mix(in srgb, #000 58%, transparent);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.ottacropper-replace-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 45%, transparent);
+}
+
+.ottacropper-replace-btn svg {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
 /* ---------------------------------------------------------------------------
- * Toolbar — zoom / flip / rotate icon buttons
+ * Toolbar — presets, zoom, transforms
  * --------------------------------------------------------------------------- */
 
 .ottacropper-toolbar {
@@ -206,23 +266,96 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    gap: 0.5rem;
+    gap: 0.5rem 0.75rem;
     flex-wrap: wrap;
-    padding-top: 0.75rem;
-    border-top: 1px solid color-mix(in srgb, var(--cr-border) 70%, transparent);
 }
 
 .ottacropper-toolbar--visible {
     display: flex;
 }
 
-.ottacropper-btn-group {
+.ottacropper-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.ottacropper-zoom,
+.ottacropper-btn-group,
+.ottacropper-presets {
     display: inline-flex;
     align-items: center;
     gap: 0.125rem;
     padding: 0.1875rem;
     border-radius: var(--cr-radius);
-    background: color-mix(in srgb, var(--cr-muted) 72%, transparent);
+    background: color-mix(in srgb, var(--cr-muted) 80%, transparent);
+}
+
+.ottacropper-presets {
+    display: none;
+}
+
+.ottacropper-presets--visible {
+    display: inline-flex;
+}
+
+.ottacropper-zoom-range {
+    width: 5.5rem;
+    height: 1.25rem;
+    margin: 0 0.15rem;
+    padding: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.ottacropper-zoom-range:focus-visible {
+    outline: none;
+}
+
+.ottacropper-zoom-range::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cr-fg) 18%, var(--cr-border));
+}
+
+.ottacropper-zoom-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-top: -0.3125rem;
+    border-radius: 50%;
+    border: 2px solid var(--cr-bg);
+    background: var(--cr-fg);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 18%, transparent);
+    cursor: grab;
+}
+
+.ottacropper-zoom-range::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cr-fg) 18%, var(--cr-border));
+}
+
+.ottacropper-zoom-range::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    border: 2px solid var(--cr-bg);
+    background: var(--cr-fg);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 18%, transparent);
+    cursor: grab;
+}
+
+.ottacropper-zoom-value {
+    min-width: 2.4rem;
+    padding: 0 0.15rem;
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--cr-muted-fg);
+    text-align: right;
 }
 
 .ottacropper-btn {
@@ -261,29 +394,12 @@
 }
 
 .ottacropper-btn svg {
-    width: 1.125rem;
-    height: 1.125rem;
-}
-
-/* ---------------------------------------------------------------------------
- * Aspect presets — segmented control
- * --------------------------------------------------------------------------- */
-
-.ottacropper-presets {
-    display: none;
-    align-items: center;
-    gap: 0.125rem;
-    padding: 0.1875rem;
-    border-radius: var(--cr-radius);
-    background: color-mix(in srgb, var(--cr-muted) 72%, transparent);
-}
-
-.ottacropper-presets--visible {
-    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
 }
 
 .ottacropper-preset {
-    padding: 0.3125rem 0.75rem;
+    padding: 0.3125rem 0.7rem;
     border: none;
     border-radius: calc(var(--cr-radius) * 0.6);
     background: transparent;
@@ -314,24 +430,40 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Reduced motion
+ * --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .ottacropper,
+    .ottacropper * {
+        transition: none !important;
+    }
+}
+
+/* ---------------------------------------------------------------------------
  * Responsive layout
  * --------------------------------------------------------------------------- */
 
 @media (max-width: 32rem) {
-    .ottacropper-file-row,
-    .ottacropper-toolbar {
+    .ottacropper-toolbar,
+    .ottacropper-tools {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .ottacropper-upload-btn,
+    .ottacropper-zoom,
     .ottacropper-btn-group,
     .ottacropper-presets {
         justify-content: center;
+        width: 100%;
     }
 
-    .ottacropper-filename {
-        max-width: none;
-        text-align: left;
+    .ottacropper-zoom-range {
+        flex: 1;
+        width: auto;
+    }
+
+    .ottacropper-tools {
+        margin-left: 0;
     }
 }

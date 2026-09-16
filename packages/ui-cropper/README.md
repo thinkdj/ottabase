@@ -5,18 +5,19 @@ PNG/JPEG. Zero React. ~3–4 KB gzipped.
 
 ## Features
 
+- **Drop to start** - Empty state is the control: drop a PNG/JPEG or click to browse
+- **Stage overlay** - Filename and Replace sit on the photo, not in a second toolbar row
+- **Zoom you can see** - Slider plus percent, still with +/- and mouse wheel
+- **Pointer capture** - Drag and resize keep going if the pointer leaves the canvas
+- **Keyboard** - Arrows nudge the crop (Shift for 10px), `+`/`-` zoom, `R` rotates
 - **Theme-aware editor surface** - Uses the host shadcn/tailwind tokens directly, so app-controlled light and dark modes
   stay in sync
 - **Smooth interactions** - Slick transitions inspired by react-advanced-cropper
-- **Zoom support** - Mouse wheel zoom, programmatic zoom, smooth scaling
 - **Resize handles** - Drag corner and edge handles to resize crop area
 - **Visual feedback** - Rule of thirds grid, resize handles, smooth animations
 - **Smart rotation** - Rotate 90° with smooth animated transitions, crop adjusts automatically
-- **Perfect rotation handling** - Drag and resize work correctly in all rotation states (0°, 90°, 180°, 270°)
 - **Flexible aspect ratios** - Freeform, square, landscape, portrait, or custom ratios
 - **Shape support** - Rectangular or circular crop viewfinder
-- **Intuitive drag** - Drag to reposition, cursor changes for different actions
-- **Replace-friendly upload** - Upload button changes from "Choose image" to "Replace image" after first load
 
 ## Usage
 
@@ -39,10 +40,11 @@ const cropper = new Cropper(container, {
 });
 
 // User interactions:
-// - Drag crop area to move
+// - Drop or click the empty stage to load a PNG/JPEG
+// - Drag crop area to move; double-click to reset
 // - Drag corner/edge handles to resize
-// - Mouse wheel to zoom
-// - Use zoom/flip/rotate buttons
+// - Wheel, slider, or +/- to zoom
+// - Flip/rotate from the toolbar; arrows nudge when focused
 
 const blob = await cropper.getBlob('image/jpeg', 0.92);
 // upload blob...
@@ -92,21 +94,24 @@ cropper.destroy();
 
 ## Interactions
 
-### Mouse/Touch
+### Pointer / keyboard
 
-- **Drag crop area** - Click and drag inside the crop box to reposition (works for both rect and circle)
+- **Drop or click the empty stage** - Load a PNG or JPEG. After load, **Replace** sits on the photo.
+- **Drag crop area** - Pointer-down inside the crop box to reposition (works for both rect and circle). Capture keeps
+  the drag alive if you leave the canvas.
 - **Resize crop** - Drag corner handles (nw, ne, sw, se) or edge handles (n, e, s, w)
     - Rectangle crops: Resize with aspect ratio constraints (or freeform if `aspectRatio: null`)
     - Circle crops: Always maintain 1:1 aspect ratio to keep circular shape
-- **Zoom** - Use mouse wheel to zoom in/out (respects min/max zoom)
+- **Zoom** - Wheel, the toolbar slider, or +/-. The percent label tracks the current level.
+- **Reset crop** - Double-click the stage
+- **Keyboard** (cropper focused): arrows nudge, Shift+arrows by 10px, `+`/`-` zoom, `R` rotate
 - **Cursor feedback** - Cursor changes to indicate available actions
 
-### Buttons
+### Toolbar
 
-- **Zoom +/-** - Zoom in/out by 0.2x increments
+- **Aspect presets** - Quick aspect ratio selection (Freeform, 1:1, 4:3, 16:9)
 - **Flip H/V** - Flip image horizontally or vertically
 - **Rotate** - Rotate 90° clockwise
-- **Aspect presets** - Quick aspect ratio selection (Freeform, 1:1, 4:3, 16:9)
 
 ## Advanced Examples
 
@@ -239,9 +244,10 @@ which prevents a light application surface from rendering as dark when the opera
 
 ## Interface Design
 
-The cropper owns one complete editing surface: an upload row and empty state before an image is selected, a neutral
-checkerboard stage while editing, and a compact toolbar for aspect ratio and transforms. Consumers should mount it in a
-plain container; avoid adding a second card, dashed border, or padding around the root element.
+The cropper owns one complete editing surface: a drop-or-click empty stage before an image is selected, a checkerboard
+stage with an overlay Replace control while editing, and a compact toolbar for aspect ratio, zoom, and transforms.
+Consumers should mount it in a plain container; avoid adding a second card, dashed border, or padding around the root
+element.
 
 ## Technical Details
 

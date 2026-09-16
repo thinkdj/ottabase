@@ -127,7 +127,7 @@ export function CropperDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Image Cropper"
-                description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drag to move, resize handles, mouse wheel zoom. Zero React dependency. ~3–4 KB gzipped."
+                description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drop or click to load, drag to move, resize with handles. Zero React dependency."
             />
 
             <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
@@ -135,8 +135,8 @@ export function CropperDemoPage() {
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Cropper</CardTitle>
                         <CardDescription>
-                            Select PNG/JPEG, drag to move, resize with handles, zoom with wheel or buttons, flip/rotate
-                            with smooth transitions
+                            Drop or click to load a PNG/JPEG. Drag to move, resize with handles, zoom with the slider or
+                            wheel. Flip and rotate from the toolbar.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

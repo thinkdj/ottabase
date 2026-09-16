@@ -24,6 +24,8 @@ const SVG_UPLOAD =
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
 
 export class Cropper {
+    private static nextId = 0;
+    private readonly instanceId = `ottacropper-${++Cropper.nextId}`;
     private container: HTMLElement;
     private options: {
         aspectRatio: number | null;
@@ -43,13 +45,17 @@ export class Cropper {
     private canvas: HTMLCanvasElement | null = null;
     private wrap: HTMLDivElement | null = null;
     private fileInput: HTMLInputElement | null = null;
-    private uploadBtn: HTMLButtonElement | null = null;
-    private uploadBtnLabel: HTMLSpanElement | null = null;
-    private emptyState: HTMLDivElement | null = null;
+    private emptyState: HTMLButtonElement | null = null;
+    private emptyHint: HTMLSpanElement | null = null;
+    private filenameEl: HTMLSpanElement | null = null;
+    private replaceBtn: HTMLButtonElement | null = null;
+    private zoomRange: HTMLInputElement | null = null;
+    private zoomValue: HTMLSpanElement | null = null;
     private flipHButton: HTMLButtonElement | null = null;
     private flipVButton: HTMLButtonElement | null = null;
     private hasLoadedImage = false;
     private presetsVisible = true;
+    private dragDepth = 0;
     // Crop in rotated/visible coordinates (what user sees on screen)
     private crop = { x: 0, y: 0, w: 0, h: 0 };
     private flipH = false;
@@ -66,6 +72,17 @@ export class Cropper {
         startY: number;
         startCrop: { x: number; y: number; w: number; h: number };
     } = { active: false, corner: null, startX: 0, startY: 0, startCrop: { x: 0, y: 0, w: 0, h: 0 } };
+
+    private boundPointerDown = (e: PointerEvent) => this.handlePointerDown(e);
+    private boundPointerMove = (e: PointerEvent) => this.handlePointerMove(e);
+    private boundPointerUp = (e: PointerEvent) => this.handlePointerUp(e);
+    private boundWheel = (e: WheelEvent) => this.handleWheel(e);
+    private boundDblClick = (e: MouseEvent) => this.handleDblClick(e);
+    private boundKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
+    private boundDragOver = (e: DragEvent) => this.handleDragOver(e);
+    private boundDragEnter = (e: DragEvent) => this.handleDragEnter(e);
+    private boundDragLeave = (e: DragEvent) => this.handleDragLeave(e);
+    private boundDrop = (e: DragEvent) => this.handleDrop(e);
 
     constructor(container: HTMLElement, options: CropperOptions = {}) {
         this.container = container;
@@ -91,81 +108,74 @@ export class Cropper {
     private mount() {
         this.container.innerHTML = '';
         this.container.classList.add('ottacropper');
+        this.container.dataset.slot = 'cropper';
+        this.container.tabIndex = 0;
+        this.container.setAttribute('role', 'group');
+        this.container.setAttribute('aria-label', 'Image cropper');
 
-        // Hidden file input + styled upload button + filename label
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = this.options.accept;
         input.className = 'ottacropper-file-input';
-        input.id = 'cropper-file-input';
+        input.id = `${this.instanceId}-file`;
         input.setAttribute('aria-label', 'Select an image to crop');
+        input.onchange = () => this.loadFile(input.files?.[0]);
         this.fileInput = input;
 
-        const fileNameLabel = document.createElement('span');
-        fileNameLabel.id = 'cropper-file-name';
-        fileNameLabel.className = 'ottacropper-filename';
-        fileNameLabel.setAttribute('aria-live', 'polite');
-        fileNameLabel.textContent = 'No file selected';
-
-        input.onchange = () => {
-            const file = input.files?.[0];
-            if (file) fileNameLabel.textContent = file.name;
-            this.loadFile(file);
-        };
-
-        const uploadBtn = document.createElement('button');
-        uploadBtn.type = 'button';
-        uploadBtn.title = 'Choose image';
-        uploadBtn.className = 'ottacropper-upload-btn';
-        const uploadLabel = document.createElement('span');
-        uploadLabel.textContent = 'Choose image';
-        uploadBtn.innerHTML = SVG_UPLOAD;
-        uploadBtn.appendChild(uploadLabel);
-        this.uploadBtn = uploadBtn;
-        this.uploadBtnLabel = uploadLabel;
-        uploadBtn.onclick = () => {
-            // Reset value so selecting the same file again still triggers onChange.
-            input.value = '';
-            input.click();
-        };
-
-        // Row wrapper for button + filename
-        const fileRow = document.createElement('div');
-        fileRow.className = 'ottacropper-file-row';
-        fileRow.appendChild(uploadBtn);
-        fileRow.appendChild(fileNameLabel);
-
-        this.container.appendChild(input);
-        this.container.appendChild(fileRow);
-
-        const emptyState = document.createElement('div');
+        const emptyState = document.createElement('button');
+        emptyState.type = 'button';
         emptyState.className = 'ottacropper-empty-state';
-        emptyState.innerHTML = `${SVG_UPLOAD}<div><strong>Start with an image</strong><span>PNG or JPEG, then drag the frame to set your crop.</span></div>`;
+        emptyState.dataset.slot = 'cropper-empty';
+        emptyState.title = 'Choose image';
+        emptyState.setAttribute('aria-label', 'Drop a photo or click to choose');
+        const emptyHint = document.createElement('span');
+        emptyHint.textContent = 'PNG or JPEG · click to browse';
+        emptyState.innerHTML = `${SVG_UPLOAD}<div><strong>Drop a photo</strong></div>`;
+        emptyState.querySelector('div')?.appendChild(emptyHint);
+        this.emptyHint = emptyHint;
+        emptyState.onclick = () => this.openFilePicker();
         this.emptyState = emptyState;
-        this.container.appendChild(emptyState);
 
         this.wrap = document.createElement('div');
-        // Transparent bg for compatibility and aesthetics (circle crop shows through; rect works fine too)
         this.wrap.className = 'ottacropper-viewport';
-        this.wrap.id = 'cropper-wrap';
+        this.wrap.id = `${this.instanceId}-stage`;
+        this.wrap.dataset.slot = 'cropper-stage';
+        this.wrap.title = 'Drag to reposition. Double-click to reset the crop.';
 
         this.canvas = document.createElement('canvas');
         this.canvas.className = 'ottacropper-canvas';
         this.wrap.appendChild(this.canvas);
 
-        this.container.appendChild(this.wrap);
+        const overlay = document.createElement('div');
+        overlay.className = 'ottacropper-stage-bar';
+        const filename = document.createElement('span');
+        filename.className = 'ottacropper-filename';
+        filename.setAttribute('aria-live', 'polite');
+        filename.textContent = '';
+        this.filenameEl = filename;
+        const replaceBtn = document.createElement('button');
+        replaceBtn.type = 'button';
+        replaceBtn.className = 'ottacropper-replace-btn';
+        replaceBtn.title = 'Replace image';
+        replaceBtn.setAttribute('aria-label', 'Replace image');
+        replaceBtn.innerHTML = `${SVG_UPLOAD}<span>Replace</span>`;
+        replaceBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.openFilePicker();
+        };
+        this.replaceBtn = replaceBtn;
+        overlay.appendChild(filename);
+        overlay.appendChild(replaceBtn);
+        this.wrap.appendChild(overlay);
 
-        // Controls
         const ctrl = document.createElement('div');
         ctrl.className = 'ottacropper-toolbar';
-        ctrl.id = 'cropper-toolbar';
+        ctrl.id = `${this.instanceId}-toolbar`;
+        ctrl.dataset.slot = 'cropper-toolbar';
         ctrl.setAttribute('role', 'toolbar');
         ctrl.setAttribute('aria-label', 'Image crop adjustments');
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'ottacropper-btn-group';
-        btnGroup.setAttribute('role', 'group');
-        btnGroup.setAttribute('aria-label', 'Image transforms');
-        const addBtn = (icon: string, title: string, fn: () => void, toggle = false) => {
+
+        const addBtn = (parent: HTMLElement, icon: string, title: string, fn: () => void, toggle = false) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.title = title;
@@ -174,14 +184,14 @@ export class Cropper {
             b.className = 'ottacropper-btn';
             b.innerHTML = icon;
             b.onclick = fn;
-            btnGroup.appendChild(b);
+            parent.appendChild(b);
             return b;
         };
-        // Aspect presets (hidden until image loaded)
+
         if (this.options.aspectPresets && this.options.aspectPresets.length > 0) {
             const presetsEl = document.createElement('div');
             presetsEl.className = 'ottacropper-presets';
-            presetsEl.id = 'cropper-presets';
+            presetsEl.id = `${this.instanceId}-presets`;
             presetsEl.setAttribute('role', 'group');
             presetsEl.setAttribute('aria-label', 'Crop aspect ratio');
             for (const { label, value } of this.options.aspectPresets) {
@@ -196,19 +206,85 @@ export class Cropper {
             }
             ctrl.appendChild(presetsEl);
         }
-        addBtn(SVG_ZOOM_IN, 'Zoom in', () => this.zoomIn());
-        addBtn(SVG_ZOOM_OUT, 'Zoom out', () => this.zoomOut());
-        this.flipHButton = addBtn(SVG_FLIP_H, 'Flip horizontal', () => this.flipHorizontal(), true);
-        this.flipVButton = addBtn(SVG_FLIP_V, 'Flip vertical', () => this.flipVertical(), true);
-        addBtn(SVG_ROTATE, 'Rotate 90°', () => this.rotate());
-        ctrl.appendChild(btnGroup);
-        this.container.appendChild(ctrl);
 
-        this.wrap.onmousedown = (e) => this.onMouseDown(e);
-        this.wrap.onmousemove = (e) => this.onMouseMove(e);
-        this.wrap.onmouseup = () => this.onMouseUp();
-        this.wrap.onmouseleave = () => this.onMouseUp();
-        this.wrap.onwheel = (e) => this.onWheel(e);
+        const tools = document.createElement('div');
+        tools.className = 'ottacropper-tools';
+
+        const zoom = document.createElement('div');
+        zoom.className = 'ottacropper-zoom';
+        zoom.setAttribute('role', 'group');
+        zoom.setAttribute('aria-label', 'Zoom');
+        addBtn(zoom, SVG_ZOOM_OUT, 'Zoom out', () => this.zoomOut());
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.className = 'ottacropper-zoom-range';
+        range.min = String(this.options.minZoom);
+        range.max = String(this.options.maxZoom);
+        range.step = '0.05';
+        range.value = String(this.zoom);
+        range.setAttribute('aria-label', 'Zoom level');
+        range.oninput = () => this.setZoom(Number(range.value));
+        this.zoomRange = range;
+        zoom.appendChild(range);
+        const zoomValue = document.createElement('span');
+        zoomValue.className = 'ottacropper-zoom-value';
+        zoomValue.setAttribute('aria-live', 'polite');
+        this.zoomValue = zoomValue;
+        zoom.appendChild(zoomValue);
+        addBtn(zoom, SVG_ZOOM_IN, 'Zoom in', () => this.zoomIn());
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'ottacropper-btn-group';
+        btnGroup.setAttribute('role', 'group');
+        btnGroup.setAttribute('aria-label', 'Image transforms');
+        this.flipHButton = addBtn(btnGroup, SVG_FLIP_H, 'Flip horizontal', () => this.flipHorizontal(), true);
+        this.flipVButton = addBtn(btnGroup, SVG_FLIP_V, 'Flip vertical', () => this.flipVertical(), true);
+        addBtn(btnGroup, SVG_ROTATE, 'Rotate 90°', () => this.rotate());
+
+        tools.appendChild(zoom);
+        tools.appendChild(btnGroup);
+        ctrl.appendChild(tools);
+
+        this.container.appendChild(input);
+        this.container.appendChild(emptyState);
+        this.container.appendChild(this.wrap);
+        this.container.appendChild(ctrl);
+        this.updateZoomUi();
+
+        this.wrap.addEventListener('pointerdown', this.boundPointerDown);
+        this.wrap.addEventListener('pointermove', this.boundPointerMove);
+        this.wrap.addEventListener('pointerup', this.boundPointerUp);
+        this.wrap.addEventListener('pointercancel', this.boundPointerUp);
+        this.wrap.addEventListener('wheel', this.boundWheel, { passive: false });
+        this.wrap.addEventListener('dblclick', this.boundDblClick);
+        this.container.addEventListener('keydown', this.boundKeyDown);
+        this.container.addEventListener('dragenter', this.boundDragEnter);
+        this.container.addEventListener('dragover', this.boundDragOver);
+        this.container.addEventListener('dragleave', this.boundDragLeave);
+        this.container.addEventListener('drop', this.boundDrop);
+    }
+
+    private openFilePicker() {
+        if (!this.fileInput) return;
+        // Reset value so selecting the same file again still triggers onChange.
+        this.fileInput.value = '';
+        this.fileInput.click();
+    }
+
+    private setFilename(text: string) {
+        if (this.filenameEl) this.filenameEl.textContent = text;
+        if (this.filenameEl) this.filenameEl.title = text;
+    }
+
+    private setEmptyHint(text: string, isError = false) {
+        if (!this.emptyHint || !this.emptyState) return;
+        this.emptyHint.textContent = text;
+        this.emptyState.classList.toggle('ottacropper-empty-state--error', isError);
+    }
+
+    private updateZoomUi() {
+        if (this.zoomRange) this.zoomRange.value = String(this.zoom);
+        if (this.zoomValue) this.zoomValue.textContent = `${Math.round(this.zoom * 100)}%`;
     }
 
     /** Public API: load image from File (e.g. after user selects from file input) */
@@ -226,7 +302,6 @@ export class Cropper {
         }
         this.img.onload = () => {
             this.hasLoadedImage = true;
-            this.updateUploadButtonLabel();
             this.rotation = 0;
             this.zoom = this.options.zoom;
             this.flipH = false;
@@ -235,21 +310,17 @@ export class Cropper {
             this.initCrop();
             this.revealLoadedUi();
             this.updatePresetActive();
+            this.updateZoomUi();
             this.render();
             this.options.onImageLoad?.();
-            // Update filename label if present
-            const nameLabel = this.container.querySelector<HTMLElement>('#cropper-file-name');
-            if (nameLabel) {
-                if (url.startsWith('data:')) {
-                    nameLabel.textContent = 'Image loaded';
-                } else {
-                    // Extract filename from URL path
-                    try {
-                        const pathname = new URL(url).pathname;
-                        nameLabel.textContent = pathname.split('/').pop() || 'Image loaded';
-                    } catch {
-                        nameLabel.textContent = 'Image loaded';
-                    }
+            if (url.startsWith('data:')) {
+                this.setFilename('Image loaded');
+            } else {
+                try {
+                    const pathname = new URL(url).pathname;
+                    this.setFilename(pathname.split('/').pop() || 'Image loaded');
+                } catch {
+                    this.setFilename('Image loaded');
                 }
             }
         };
@@ -260,13 +331,18 @@ export class Cropper {
     }
 
     private loadFile(file: File | undefined) {
-        if (!file || !file.type.match(/^image\/(png|jpeg|jpg)$/)) return;
+        if (!file) return;
+        if (!file.type.match(/^image\/(png|jpeg|jpg)$/)) {
+            this.setEmptyHint('Use a PNG or JPEG', true);
+            return;
+        }
+        this.setEmptyHint('PNG or JPEG · click to browse', false);
+        this.setFilename(file.name);
         const url = URL.createObjectURL(file);
         this.img = new Image();
         this.img.onload = () => {
             URL.revokeObjectURL(url);
             this.hasLoadedImage = true;
-            this.updateUploadButtonLabel();
             this.rotation = 0; // Reset rotation on new image
             this.zoom = this.options.zoom; // Reset zoom
             this.flipH = false;
@@ -275,6 +351,7 @@ export class Cropper {
             this.initCrop();
             this.revealLoadedUi();
             this.updatePresetActive();
+            this.updateZoomUi();
             this.render();
             this.options.onImageLoad?.();
         };
@@ -285,18 +362,14 @@ export class Cropper {
     private revealLoadedUi() {
         this.emptyState?.classList.add('ottacropper-empty-state--hidden');
         this.wrap?.classList.add('ottacropper-viewport--visible');
-        this.container.querySelector<HTMLElement>('#cropper-toolbar')?.classList.add('ottacropper-toolbar--visible');
+        this.container
+            .querySelector<HTMLElement>(`#${this.instanceId}-toolbar`)
+            ?.classList.add('ottacropper-toolbar--visible');
         if (this.presetsVisible) {
             this.container
-                .querySelector<HTMLElement>('#cropper-presets')
+                .querySelector<HTMLElement>(`#${this.instanceId}-presets`)
                 ?.classList.add('ottacropper-presets--visible');
         }
-    }
-
-    private updateUploadButtonLabel() {
-        const nextLabel = this.hasLoadedImage ? 'Replace image' : 'Choose image';
-        if (this.uploadBtn) this.uploadBtn.title = nextLabel;
-        if (this.uploadBtnLabel) this.uploadBtnLabel.textContent = nextLabel;
     }
 
     private resetTransformControls() {
@@ -507,8 +580,8 @@ export class Cropper {
     }
 
     private getResizeHandleAtPoint(mx: number, my: number, ox: number, oy: number, ow: number, oh: number) {
-        const handleSize = 10;
-        const tolerance = 5;
+        const handleSize = 14;
+        const tolerance = 8;
 
         const handles: Array<{ corner: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w'; x: number; y: number }> = [
             { corner: 'nw', x: ox, y: oy },
@@ -530,8 +603,8 @@ export class Cropper {
         return null;
     }
 
-    /** Get mouse position in canvas coordinates */
-    private getCanvasCoords(e: MouseEvent): { x: number; y: number } | null {
+    /** Get pointer position in canvas coordinates */
+    private getCanvasCoords(e: { clientX: number; clientY: number }): { x: number; y: number } | null {
         if (!this.canvas) return null;
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
@@ -542,12 +615,16 @@ export class Cropper {
         };
     }
 
-    private onMouseDown(e: MouseEvent) {
+    private handlePointerDown(e: PointerEvent) {
         if (!this.img || !this.canvas || !this.wrap) return;
-        if (!this.wrap.contains(e.target as Node)) return;
+        if (e.button !== 0) return;
+        if ((e.target as HTMLElement).closest('button, input')) return;
 
         const coords = this.getCanvasCoords(e);
         if (!coords) return;
+
+        this.wrap.setPointerCapture?.(e.pointerId);
+        this.container.focus({ preventScroll: true });
 
         const scale = this.displayScale * this.zoom;
         const ox = this.crop.x * scale;
@@ -555,7 +632,6 @@ export class Cropper {
         const ow = this.crop.w * scale;
         const oh = this.crop.h * scale;
 
-        // Check if clicking on resize handle (for both rect and circle)
         const handle = this.getResizeHandleAtPoint(coords.x, coords.y, ox, oy, ow, oh);
         if (handle) {
             this.resizeHandle = {
@@ -566,10 +642,10 @@ export class Cropper {
                 startCrop: { ...this.crop },
             };
             this.canvas.style.cursor = this.getCursorForHandle(handle);
+            e.preventDefault();
             return;
         }
 
-        // Check if clicking inside crop area for drag
         if (coords.x >= ox && coords.x <= ox + ow && coords.y >= oy && coords.y <= oy + oh) {
             this.drag = {
                 active: true,
@@ -578,6 +654,8 @@ export class Cropper {
                 startCropX: this.crop.x,
                 startCropY: this.crop.y,
             };
+            this.canvas.style.cursor = 'grabbing';
+            e.preventDefault();
         }
     }
 
@@ -595,7 +673,7 @@ export class Cropper {
         return cursors[handle] || 'default';
     }
 
-    private onMouseMove(e: MouseEvent) {
+    private handlePointerMove(e: PointerEvent) {
         if (!this.img || !this.canvas) return;
 
         const coords = this.getCanvasCoords(e);
@@ -603,18 +681,15 @@ export class Cropper {
 
         const scale = this.displayScale * this.zoom;
 
-        // Handle resize
         if (this.resizeHandle.active && this.resizeHandle.corner) {
             this.handleResize(e);
             return;
         }
 
-        // Handle drag
         if (this.drag.active) {
             const dx = e.clientX - this.drag.startX;
             const dy = e.clientY - this.drag.startY;
 
-            // Convert screen delta to crop space (accounting for scale only, rotation is already in crop space)
             const rect = this.canvas.getBoundingClientRect();
             const screenScaleX = this.canvas.width / rect.width;
             const screenScaleY = this.canvas.height / rect.height;
@@ -629,28 +704,25 @@ export class Cropper {
             return;
         }
 
-        // Update cursor for hover over handles
         const ox = this.crop.x * scale;
         const oy = this.crop.y * scale;
         const ow = this.crop.w * scale;
         const oh = this.crop.h * scale;
 
-        // Check handles for both rect and circle
         const handle = this.getResizeHandleAtPoint(coords.x, coords.y, ox, oy, ow, oh);
         if (handle) {
             this.canvas.style.cursor = this.getCursorForHandle(handle);
             return;
         }
 
-        // Check if hovering over crop area
         if (coords.x >= ox && coords.x <= ox + ow && coords.y >= oy && coords.y <= oy + oh) {
-            this.canvas.style.cursor = 'move';
+            this.canvas.style.cursor = 'grab';
         } else {
             this.canvas.style.cursor = 'default';
         }
     }
 
-    private handleResize(e: MouseEvent) {
+    private handleResize(e: { clientX: number; clientY: number }) {
         if (!this.resizeHandle.corner || !this.canvas) return;
 
         const dx = e.clientX - this.resizeHandle.startX;
@@ -736,19 +808,100 @@ export class Cropper {
         this.render();
     }
 
-    private onMouseUp() {
+    private handlePointerUp(e: PointerEvent) {
+        if (this.wrap?.hasPointerCapture?.(e.pointerId)) {
+            this.wrap.releasePointerCapture(e.pointerId);
+        }
         this.drag.active = false;
         this.resizeHandle.active = false;
         this.resizeHandle.corner = null;
         if (this.canvas) {
-            this.canvas.style.cursor = 'move';
+            this.canvas.style.cursor = 'grab';
         }
     }
 
-    private onWheel(e: WheelEvent) {
+    private handleWheel(e: WheelEvent) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
         this.setZoom(this.zoom + delta);
+    }
+
+    private handleDblClick(e: MouseEvent) {
+        if ((e.target as HTMLElement).closest('button, input')) return;
+        if (!this.img) return;
+        this.initCrop();
+        this.render();
+    }
+
+    private handleKeyDown(e: KeyboardEvent) {
+        if (!this.hasLoadedImage || !this.img) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input[type="range"]')) return;
+
+        const step = e.shiftKey ? 10 : 1;
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            this.nudgeCrop(-step, 0);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            this.nudgeCrop(step, 0);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.nudgeCrop(0, -step);
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            this.nudgeCrop(0, step);
+        } else if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            this.zoomIn();
+        } else if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            this.zoomOut();
+        } else if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            this.rotate();
+        }
+    }
+
+    private nudgeCrop(dx: number, dy: number) {
+        const { w, h } = this.getRotatedImageDims();
+        this.crop.x = Math.max(0, Math.min(w - this.crop.w, this.crop.x + dx));
+        this.crop.y = Math.max(0, Math.min(h - this.crop.h, this.crop.y + dy));
+        this.render();
+    }
+
+    private handleDragEnter(e: DragEvent) {
+        if (!this.hasFiles(e)) return;
+        e.preventDefault();
+        this.dragDepth += 1;
+        this.container.classList.add('ottacropper--dragover');
+    }
+
+    private handleDragOver(e: DragEvent) {
+        if (!this.hasFiles(e)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    }
+
+    private handleDragLeave(e: DragEvent) {
+        if (!this.hasFiles(e) && this.dragDepth === 0) return;
+        e.preventDefault();
+        this.dragDepth = Math.max(0, this.dragDepth - 1);
+        if (this.dragDepth === 0) {
+            this.container.classList.remove('ottacropper--dragover');
+        }
+    }
+
+    private handleDrop(e: DragEvent) {
+        e.preventDefault();
+        this.dragDepth = 0;
+        this.container.classList.remove('ottacropper--dragover');
+        const file = e.dataTransfer?.files?.[0];
+        this.loadFile(file);
+    }
+
+    private hasFiles(e: DragEvent): boolean {
+        return Array.from(e.dataTransfer?.types ?? []).includes('Files');
     }
 
     /** Flip horizontally */
@@ -813,9 +966,13 @@ export class Cropper {
             }
         }
 
-        if (Math.abs(newZoom - this.zoom) < 0.01) return;
+        if (Math.abs(newZoom - this.zoom) < 0.01) {
+            this.updateZoomUi();
+            return;
+        }
         this.animateTransform(() => {
             this.zoom = newZoom;
+            this.updateZoomUi();
             this.render();
         });
     }
@@ -865,7 +1022,7 @@ export class Cropper {
     /** Show or hide aspect preset buttons */
     setPresetsVisible(visible: boolean) {
         this.presetsVisible = visible;
-        const el = this.container.querySelector<HTMLElement>('#cropper-presets');
+        const el = this.container.querySelector<HTMLElement>(`#${this.instanceId}-presets`);
         el?.classList.toggle('ottacropper-presets--visible', visible && this.hasLoadedImage);
     }
 
@@ -970,16 +1127,34 @@ export class Cropper {
 
     /** Remove DOM and cleanup */
     destroy() {
+        this.container.removeEventListener('keydown', this.boundKeyDown);
+        this.container.removeEventListener('dragenter', this.boundDragEnter);
+        this.container.removeEventListener('dragover', this.boundDragOver);
+        this.container.removeEventListener('dragleave', this.boundDragLeave);
+        this.container.removeEventListener('drop', this.boundDrop);
+        this.wrap?.removeEventListener('pointerdown', this.boundPointerDown);
+        this.wrap?.removeEventListener('pointermove', this.boundPointerMove);
+        this.wrap?.removeEventListener('pointerup', this.boundPointerUp);
+        this.wrap?.removeEventListener('pointercancel', this.boundPointerUp);
+        this.wrap?.removeEventListener('wheel', this.boundWheel);
+        this.wrap?.removeEventListener('dblclick', this.boundDblClick);
         this.img = null;
         this.canvas = null;
         this.wrap = null;
         this.fileInput = null;
-        this.uploadBtn = null;
-        this.uploadBtnLabel = null;
         this.emptyState = null;
+        this.emptyHint = null;
+        this.filenameEl = null;
+        this.replaceBtn = null;
+        this.zoomRange = null;
+        this.zoomValue = null;
         this.flipHButton = null;
         this.flipVButton = null;
         this.hasLoadedImage = false;
+        this.container.classList.remove('ottacropper', 'ottacropper--dragover');
+        this.container.removeAttribute('role');
+        this.container.removeAttribute('aria-label');
+        this.container.removeAttribute('tabindex');
         this.container.innerHTML = '';
     }
 }
