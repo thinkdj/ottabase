@@ -34,6 +34,8 @@ vi.mock('@ottabase/ui-shadcn', () => {
     }>({ open: false });
 
     return {
+        cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
+        buttonVariants: () => '',
         AlertDialog: ({ open, onOpenChange, children }: any) => (
             <AlertDialogContext.Provider value={{ open, onOpenChange }}>{children}</AlertDialogContext.Provider>
         ),
@@ -42,11 +44,18 @@ vi.mock('@ottabase/ui-shadcn', () => {
                 {children}
             </button>
         ),
-        AlertDialogCancel: ({ children, ...props }: any) => {
+        AlertDialogCancel: ({ children, onClick, ...props }: any) => {
             const dialog = React.useContext(AlertDialogContext);
 
             return (
-                <button type="button" onClick={() => dialog.onOpenChange?.(false)} {...props}>
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        onClick?.(event);
+                        dialog.onOpenChange?.(false);
+                    }}
+                    {...props}
+                >
                     {children}
                 </button>
             );

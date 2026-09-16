@@ -59,7 +59,7 @@ describe('handleAdminOrganizationInviteMember', () => {
                 request: new Request('http://localhost/api/admin/organizations/org-1/members/invite', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ userId: 'user-2', role: 'member', status: 'invited' }),
+                    body: JSON.stringify({ userId: 'user-2', role: 'member', status: 'active' }),
                 }),
                 env: {},
             } as any,
@@ -72,7 +72,7 @@ describe('handleAdminOrganizationInviteMember', () => {
                 userId: 'user-2',
                 organizationId: 'org-1',
                 role: 'member',
-                status: 'invited',
+                status: 'active',
                 invitedBy: 'admin-1',
                 invitedAt: expect.any(Number),
             }),
@@ -95,7 +95,7 @@ describe('handleAdminOrganizationInviteMember', () => {
                 request: new Request('http://localhost/api/admin/organizations/org-1/members/invite', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ userId: 'user-2', role: 'member', status: 'invited' }),
+                    body: JSON.stringify({ userId: 'user-2', role: 'member', status: 'active' }),
                 }),
                 env: {},
             } as any,
@@ -218,7 +218,7 @@ describe('handleAdminOrganizationInviteMember', () => {
             session: {},
         });
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         vi.spyOn(OrganizationMember, 'updateRosterMembership').mockResolvedValue({ status: 'stale' });
 
@@ -251,6 +251,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         vi.spyOn(OrganizationMember, 'countOrganizationMembers').mockResolvedValue(1);
         vi.spyOn(OrganizationMember, 'getOrganizationMembers').mockResolvedValue([
             {
+                id: 'user-2-org-1',
                 userId: 'user-2',
                 organizationId: 'org-1',
                 role: 'member',
@@ -306,7 +307,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
 
         vi.spyOn(OrganizationMember, 'first').mockResolvedValueOnce({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         const removeSpy = vi
             .spyOn(OrganizationMember, 'removeRosterMembership')
@@ -340,7 +341,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
 
         vi.spyOn(OrganizationMember, 'first').mockResolvedValueOnce({
-            toJson: () => ({ role: 'owner', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'owner', status: 'active' }),
         } as any);
         vi.spyOn(OrganizationMember, 'hasRole').mockResolvedValue(true);
         const removeSpy = vi
@@ -373,7 +374,7 @@ describe('handleAdminOrganizationInviteMember', () => {
             session: {},
         });
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         vi.spyOn(OrganizationMember, 'removeRosterMembership').mockResolvedValue({ status: 'stale' });
 
@@ -588,7 +589,7 @@ describe('atomic roster and org-scoped grant mutations', () => {
 
     it('delegates promotion without a separate route-level grant operation', async () => {
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         const updateSpy = vi.spyOn(OrganizationMember, 'updateRosterMembership').mockResolvedValue({
             status: 'updated',
@@ -603,7 +604,7 @@ describe('atomic roster and org-scoped grant mutations', () => {
 
     it('delegates member removal and grant revocation to one atomic model mutation', async () => {
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         const removeSpy = vi
             .spyOn(OrganizationMember, 'removeRosterMembership')
@@ -645,7 +646,7 @@ describe('atomic roster and org-scoped grant mutations', () => {
 
     it('returns a generic removal failure when the atomic model mutation rejects', async () => {
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
-            toJson: () => ({ role: 'member', status: 'active' }),
+            toJson: () => ({ userId: 'user-2', role: 'member', status: 'active' }),
         } as any);
         vi.spyOn(OrganizationMember, 'removeRosterMembership').mockRejectedValue(new Error('token=raw-secret-token'));
         const logSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);

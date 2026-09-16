@@ -22,6 +22,7 @@ const HERO_SUBLINE = 'font-normal text-black dark:text-white text-3xl sm:text-4x
 const FALLBACK_PRIMARY = '221 83% 53%';
 const FALLBACK_RING = '262 83% 58%';
 const FALLBACK_FOREGROUND = '222 47% 11%';
+const FALLBACK_CARD = '0 0% 100%';
 
 /** Resolve a Brand Engine HSL token for a WebGL material. */
 function getThemeColor(three: typeof import('three'), element: HTMLElement, token: string, fallback: string) {
@@ -55,6 +56,8 @@ function HeroScene() {
 
                 let renderer: THREE.WebGLRenderer;
                 try {
+                    // Opaque buffer: Firefox composites translucent WebGL (alpha: true +
+                    // premultipliedAlpha) as a dark gray smear instead of the tinted globe.
                     renderer = new THREE.WebGLRenderer({
                         alpha: true,
                         antialias: true,
@@ -69,11 +72,13 @@ function HeroScene() {
                 const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
                 camera.position.set(0, 0.1, 10);
 
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-                renderer.setClearColor(0x000000, 0);
+                const canvas = renderer.domElement;
+                canvas.style.display = 'block';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.pointerEvents = 'none';
                 renderer.outputColorSpace = THREE.SRGBColorSpace;
-                renderer.domElement.style.pointerEvents = 'none';
-                host.replaceChildren(renderer.domElement);
+                host.replaceChildren(canvas);
 
                 const network = new THREE.Group();
                 network.position.set(1.9, 0.1, 0);
@@ -158,12 +163,14 @@ function HeroScene() {
                     const primary = getThemeColor(THREE, host, '--primary', FALLBACK_PRIMARY);
                     const ring = getThemeColor(THREE, host, '--ring', FALLBACK_RING);
                     const foreground = getThemeColor(THREE, host, '--foreground', FALLBACK_FOREGROUND);
+                    const card = getThemeColor(THREE, host, '--card', FALLBACK_CARD);
                     primaryMaterial.color.copy(primary);
                     coreMaterial.color.copy(primary);
                     ringMaterial.color.copy(ring);
                     satelliteMaterial.color.copy(ring);
                     dustMaterial.color.copy(foreground);
                     interactionMaterial.color.copy(primary);
+                    renderer.setClearColor(card, 1);
                 };
                 updateColors();
 
@@ -172,6 +179,8 @@ function HeroScene() {
                     if (!width || !height) return;
                     camera.aspect = width / height;
                     camera.updateProjectionMatrix();
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+                    // CSS already fills the host; false keeps the drawing buffer on device pixels.
                     renderer.setSize(width, height, false);
                 };
                 resize();
@@ -313,7 +322,13 @@ function HeroScene() {
         };
     }, []);
 
-    return <div ref={hostRef} aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-90" />;
+    return (
+        <div
+            ref={hostRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-90"
+        />
+    );
 }
 
 export function OttabaseHero({ appName }: OttabaseHeroProps) {
@@ -323,8 +338,8 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
             className="relative isolate overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-2xl shadow-primary/5"
         >
             <HeroScene />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(108deg,hsl(var(--card))_0%,hsl(var(--card)/0.96)_42%,hsl(var(--card)/0.28)_75%,hsl(var(--card)/0.8)_100%)] dark:bg-[linear-gradient(108deg,hsl(var(--card))_0%,hsl(var(--card)/0.92)_42%,hsl(var(--card)/0.25)_75%,hsl(var(--card)/0.78)_100%)]" />
-            <div className="pointer-events-none absolute -right-28 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-primary/20 blur-[110px]" />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-[linear-gradient(108deg,hsl(var(--card))_0%,hsl(var(--card)/0.96)_42%,hsl(var(--card)/0.28)_75%,hsl(var(--card)/0.8)_100%)] dark:bg-[linear-gradient(108deg,hsl(var(--card))_0%,hsl(var(--card)/0.92)_42%,hsl(var(--card)/0.25)_75%,hsl(var(--card)/0.78)_100%)]" />
+            <div className="pointer-events-none absolute -right-28 top-1/2 h-80 w-80 -translate-y-1/2 overflow-hidden rounded-full bg-primary/20 blur-[110px]" />
 
             <div className="relative z-10 flex min-h-[40rem] flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:min-h-[42rem] lg:px-14 lg:py-14">
                 <div className="max-w-2xl">

@@ -81,6 +81,8 @@ vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
 }));
 vi.mock('@ottabase/ui-shadcn', () => ({
+    cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
+    buttonVariants: () => '',
     AlertDialog: ({ children }: any) => <div data-testid="alert-dialog">{children}</div>,
     AlertDialogAction: ({ children, onClick, ...props }: any) => (
         <button data-testid="alert-dialog-action" onClick={onClick} {...props}>

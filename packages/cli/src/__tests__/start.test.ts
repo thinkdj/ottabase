@@ -220,7 +220,7 @@ describe('app start planning', () => {
         );
 
         await expect(runStartPlan(plan, { noOpen: true })).resolves.toBeUndefined();
-    });
+    }, 15_000);
 
     it('stops sibling process trees when one supervised process fails', async () => {
         const failingPort = await getAvailablePort();

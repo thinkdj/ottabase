@@ -9,6 +9,7 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     ScheduledTask: {
         createRegistered: vi.fn(),
         find: vi.fn(),
+        findForApp: vi.fn(),
         delete: vi.fn(),
     },
 }));
@@ -88,7 +89,7 @@ describe('admin Cron routes', () => {
 
     it('manual run returns the task persisted by the real executor', async () => {
         vi.mocked(runAppCronTask).mockResolvedValue({ taskId: 'task-1', status: 'completed' });
-        vi.mocked(ScheduledTask.find).mockResolvedValue({
+        vi.mocked(ScheduledTask.findForApp).mockResolvedValue({
             toJson: () => ({ id: 'task-1', lastStatus: 'success' }),
         } as never);
 
@@ -108,7 +109,7 @@ describe('admin Cron routes', () => {
 
         expect(response.status).toBe(409);
         expect(body.code).toBe('CRON_TASK_RUNNING');
-        expect(ScheduledTask.find).not.toHaveBeenCalled();
+        expect(ScheduledTask.findForApp).not.toHaveBeenCalled();
     });
 
     it('keeps a handler failure opaque to the client', async () => {

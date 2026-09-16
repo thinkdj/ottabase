@@ -92,6 +92,16 @@ vi.mock('@ottabase/ui-shadcn', () => {
     const Div = ({ children }: any) => <div>{children}</div>;
 
     return {
+        cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
+        buttonVariants: () => '',
+        AlertDialog: ({ children }: any) => <>{children}</>,
+        AlertDialogAction: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+        AlertDialogCancel: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+        AlertDialogContent: ({ children }: any) => <div>{children}</div>,
+        AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
+        AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
+        AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
+        AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
         Button,
         Card: Div,
         CardContent: Div,
