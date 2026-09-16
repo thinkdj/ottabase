@@ -16,6 +16,9 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Versioning** - Full version history tracking with retention policies
 - **Series Support** - Group related posts into ordered series
 - **Multi-App Ready** - Built-in appId support for multi-tenant databases
+- **Original Date** - Fuzzy "originally written" date via OttaDate (e.g. "Late May 2010") — distinct from publish date
+- **Date Archives** - Filter posts by year/month via `?year=2026&month=8` query params
+- **Social Sharing** - One-button share popover (copy link, X, Facebook, LinkedIn, Email, Web Share API)
 - **Analytics Ready** - Reading time, word count, view counting
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
 - **RSS & Sitemap** - Built-in XML feed and sitemap generation
@@ -32,6 +35,9 @@ pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 
 # Only needed if you render posts (i.e. import from @ottabase/ottablog/renderer)
 pnpm add @ottabase/ottarenderer @ottabase/medialibrary
+
+# Only needed if you import the standalone ShareButton
+pnpm add @ottabase/ui-shadcn lucide-react
 ```
 
 ## Module Entry Points
@@ -43,6 +49,7 @@ dependency — install it only if you render). Importing the pure root loads zer
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
 | `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
 | `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
+| `@ottabase/ottablog/share`    | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui-shadcn` and `lucide-react` peers.                                                                                                                                                                                                                                                                                | No                    |
 | `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
 | `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
 

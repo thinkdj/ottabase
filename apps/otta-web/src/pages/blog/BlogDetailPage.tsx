@@ -20,6 +20,7 @@ import {
     type PhotoJournalItem,
 } from '@ottabase/ottablog';
 import { BlogRenderer } from '@ottabase/ottablog/renderer';
+import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
@@ -65,6 +66,15 @@ interface BlogPost {
     categories?: { id: string; name: string; slug: string }[];
     categoryName?: string | null;
     viewCount?: number;
+    originalDate?: {
+        timestamp: number;
+        resolution: string;
+        part?: string;
+        approximate?: boolean;
+        earliest: number;
+        latest: number;
+        label: string;
+    } | null;
 }
 
 interface BlogSeries {
@@ -432,6 +442,7 @@ export function BlogDetailPage() {
         seriesOrder: displayPost.seriesOrder,
         seriesTitle: series?.title || null,
         seriesTotalParts: seriesPosts.length > 0 ? seriesPosts.length : null,
+        originalDate: displayPost.originalDate,
         isProtected: displayPost.isProtected,
         passwordHint: displayPost.passwordHint,
     };
@@ -472,7 +483,7 @@ export function BlogDetailPage() {
                 author={displayPost.author?.name || undefined}
             />
 
-            {/* Back link + Edit (author only) */}
+            {/* Back link + Share + Edit (author only) */}
             <div className="mb-6 flex items-center justify-between gap-4">
                 <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
                     <Link to="/blog">
@@ -480,18 +491,32 @@ export function BlogDetailPage() {
                         Back to Blog
                     </Link>
                 </Button>
-                {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
-                    // /studio is the editorial surface gated on posts:update — the author of this
-                    // post holds it. /admin/content/blog additionally requires org:admin, which an
-                    // author does not have, so it would send them to a privilege fallback instead.
-                    <Button variant="outline" size="sm" asChild>
-                        <Link to="/studio/$postId/edit" params={{ postId: displayPost.id }}>
-                            <Pencil className="mr-1.5 h-4 w-4" />
-                            Edit
-                        </Link>
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    <ShareButton
+                        url={typeof window !== 'undefined' ? window.location.href : ''}
+                        title={displayPost.title}
+                        description={displayPost.excerpt ?? undefined}
+                    />
+                    {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
+                        // /studio is the editorial surface gated on posts:update — the author of this
+                        // post holds it. /admin/content/blog additionally requires org:admin, which an
+                        // author does not have, so it would send them to a privilege fallback instead.
+                        <Button variant="outline" size="sm" asChild>
+                            <Link to="/studio/$postId/edit" params={{ postId: displayPost.id }}>
+                                <Pencil className="mr-1.5 h-4 w-4" />
+                                Edit
+                            </Link>
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            {/* Original date — when the content was originally written (diary, republished essay, etc.) */}
+            {displayPost.originalDate && (
+                <p className="mb-4 text-sm text-muted-foreground">
+                    Originally written: {displayPost.originalDate.label}
+                </p>
+            )}
 
             {/* Lock screen for password-protected posts */}
             {isLocked && (

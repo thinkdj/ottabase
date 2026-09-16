@@ -93,6 +93,23 @@ interface BlogListResponse {
     pagination: { page: number; perPage: number; total: number; totalPages: number };
 }
 
+function PublishedDateLink({ publishedAt }: { publishedAt: string }) {
+    const date = new Date(publishedAt);
+    if (Number.isNaN(date.getTime())) return <span>{formatDate(publishedAt)}</span>;
+
+    return (
+        <Link
+            to="/blog/archive/$year/$month"
+            params={{ year: String(date.getUTCFullYear()), month: String(date.getUTCMonth() + 1) }}
+            className="flex items-center gap-1 hover:text-foreground"
+            aria-label={`View posts from ${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`}
+        >
+            <Calendar className="h-3 w-3" />
+            {formatDate(publishedAt, { timeZone: 'UTC' })}
+        </Link>
+    );
+}
+
 const blogSeriesHooks = createModelHooks<BlogSeries>({
     entityName: 'series',
 });
@@ -353,203 +370,197 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
-        <Link
-            to="/blog/$slug"
-            params={{ slug: post.slug }}
-            className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-            <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
-                {heroUrl !== '#' && (
-                    <div className="relative h-48 overflow-hidden">
-                        <img
-                            src={heroUrl}
-                            alt={post.heroImage?.alt || post.title}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover"
-                        />
-                        <div className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {post.contentType === 'photo' ? `Featured · ${photoCount} frames` : 'Featured'}
-                        </div>
+        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
+            {heroUrl !== '#' && (
+                <div className="relative h-48 overflow-hidden">
+                    <img
+                        src={heroUrl}
+                        alt={post.heroImage?.alt || post.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                        {post.contentType === 'photo' ? `Featured · ${photoCount} frames` : 'Featured'}
                     </div>
+                </div>
+            )}
+            <CardContent className="p-6">
+                {post.contentType !== 'blog' && (
+                    <span className="mb-2 inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                        {contentTypeLabel(post.contentType)}
+                    </span>
                 )}
-                <CardContent className="p-6">
-                    {post.contentType !== 'blog' && (
-                        <span className="mb-2 inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {contentTypeLabel(post.contentType)}
-                        </span>
-                    )}
-                    <h3 className="mb-2 flex items-center gap-2 font-serif text-xl font-semibold leading-snug tracking-[-0.02em] line-clamp-2">
+                <h3 className="mb-2 flex items-center gap-2 font-serif text-xl font-semibold leading-snug tracking-[-0.02em] line-clamp-2">
+                    <Link
+                        to="/blog/$slug"
+                        params={{ slug: post.slug }}
+                        className="hover:underline focus-visible:outline-none"
+                    >
                         {post.title}
                         {post.isProtected && (
                             <Lock className="h-4 w-4 text-muted-foreground shrink-0" aria-label="Password protected" />
                         )}
-                    </h3>
-                    {post.excerpt && (
-                        <p className="mb-4 text-sm leading-relaxed text-muted-foreground line-clamp-3">
-                            {post.excerpt}
-                        </p>
-                    )}
-                    {post.tags && post.tags.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-1.5">
-                            {post.tags.map((tag) => (
-                                <Badge
-                                    key={tag.id}
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                                >
-                                    <Tag className="h-2.5 w-2.5 mr-1" />
-                                    {tag.name}
-                                </Badge>
-                            ))}
-                        </div>
-                    )}
-                    {post.categories && post.categories.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-1.5">
-                            {post.categories.map((cat) => (
-                                <Badge
-                                    key={cat.id}
-                                    variant="secondary"
-                                    className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                                >
-                                    {cat.name}
-                                </Badge>
-                            ))}
-                        </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        {post.author?.name && (
-                            <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {post.author.name}
-                            </span>
-                        )}
-                        {post.publishedAt && (
-                            <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(post.publishedAt)}
-                            </span>
-                        )}
-                        {post.contentType === 'photo' ? (
-                            <span className="flex items-center gap-1">{photoCount} photographs</span>
-                        ) : post.readingTimeMinutes ? (
-                            <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {post.readingTimeMinutes} min
-                            </span>
-                        ) : null}
+                    </Link>
+                </h3>
+                {post.excerpt && (
+                    <p className="mb-4 text-sm leading-relaxed text-muted-foreground line-clamp-3">{post.excerpt}</p>
+                )}
+                {post.tags && post.tags.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                        {post.tags.map((tag) => (
+                            <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                            >
+                                <Tag className="h-2.5 w-2.5 mr-1" />
+                                {tag.name}
+                            </Badge>
+                        ))}
                     </div>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                        {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                </CardContent>
-            </Card>
-        </Link>
+                )}
+                {post.categories && post.categories.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                        {post.categories.map((cat) => (
+                            <Badge
+                                key={cat.id}
+                                variant="secondary"
+                                className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                            >
+                                {cat.name}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    {post.author?.name && (
+                        <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {post.author.name}
+                        </span>
+                    )}
+                    {post.publishedAt && <PublishedDateLink publishedAt={post.publishedAt} />}
+                    {post.contentType === 'photo' ? (
+                        <span className="flex items-center gap-1">{photoCount} photographs</span>
+                    ) : post.readingTimeMinutes ? (
+                        <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {post.readingTimeMinutes} min
+                        </span>
+                    ) : null}
+                </div>
+                <Link
+                    to="/blog/$slug"
+                    params={{ slug: post.slug }}
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+            </CardContent>
+        </Card>
     );
 }
 
 function PostCard({ post }: { post: BlogPost }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
-        <Link
-            to="/blog/$slug"
-            params={{ slug: post.slug }}
-            className="group block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-            <Card className="h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
-                {heroUrl !== '#' && (
-                    // Print-edge frame, matching the photo journal's tiles and the article hero:
-                    // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
-                    // a pale photo still has an edge, and the same slow lift on hover.
-                    <div className="relative aspect-[16/9] overflow-hidden bg-muted/40">
-                        <img
-                            src={heroUrl}
-                            alt={post.heroImage?.alt || post.title}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
-                        />
-                        <span
-                            className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
-                            aria-hidden="true"
-                        />
-                    </div>
+        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
+            {heroUrl !== '#' && (
+                // Print-edge frame, matching the photo journal's tiles and the article hero:
+                // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
+                // a pale photo still has an edge, and the same slow lift on hover.
+                <div className="relative aspect-[16/9] overflow-hidden bg-muted/40">
+                    <img
+                        src={heroUrl}
+                        alt={post.heroImage?.alt || post.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+                    />
+                    <span
+                        className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
+                        aria-hidden="true"
+                    />
+                </div>
+            )}
+            <CardContent className="p-5">
+                {post.contentType !== 'blog' && (
+                    <span className="mb-2 inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                        {contentTypeLabel(post.contentType)}
+                    </span>
                 )}
-                <CardContent className="p-5">
-                    {post.contentType !== 'blog' && (
-                        <span className="mb-2 inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                            {contentTypeLabel(post.contentType)}
-                        </span>
-                    )}
-                    {/* Serif, like the article masthead it opens — a list of articles should look
+                {/* Serif, like the article masthead it opens — a list of articles should look
                         like a contents page, not a row of app tiles. */}
-                    <h3 className="mb-2 flex items-center gap-2 font-serif text-lg font-semibold leading-snug tracking-[-0.015em] line-clamp-2">
+                <h3 className="mb-2 flex items-center gap-2 font-serif text-lg font-semibold leading-snug tracking-[-0.015em] line-clamp-2">
+                    <Link
+                        to="/blog/$slug"
+                        params={{ slug: post.slug }}
+                        className="hover:underline focus-visible:outline-none"
+                    >
                         {post.title}
                         {post.isProtected && (
                             <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Password protected" />
                         )}
-                    </h3>
-                    {post.excerpt && (
-                        <p className="mb-3 text-sm leading-relaxed text-muted-foreground line-clamp-2">
-                            {post.excerpt}
-                        </p>
-                    )}
-                    {post.tags && post.tags.length > 0 && (
-                        <div className="mb-2 flex flex-wrap gap-1.5">
-                            {post.tags.slice(0, 3).map((tag) => (
-                                <Badge
-                                    key={tag.id}
-                                    variant="outline"
-                                    className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                                >
-                                    {tag.name}
-                                </Badge>
-                            ))}
-                            {post.tags.length > 3 && (
-                                <span className="text-[0.6875rem] text-muted-foreground">+{post.tags.length - 3}</span>
-                            )}
-                        </div>
-                    )}
-                    {post.categories && post.categories.length > 0 && (
-                        <div className="mb-2 flex flex-wrap gap-1.5">
-                            {post.categories.slice(0, 2).map((cat) => (
-                                <Badge
-                                    key={cat.id}
-                                    variant="secondary"
-                                    className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                                >
-                                    {cat.name}
-                                </Badge>
-                            ))}
-                            {post.categories.length > 2 && (
-                                <span className="text-[0.6875rem] text-muted-foreground">
-                                    +{post.categories.length - 2}
-                                </span>
-                            )}
-                        </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        {post.publishedAt && (
-                            <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(post.publishedAt)}
-                            </span>
+                    </Link>
+                </h3>
+                {post.excerpt && (
+                    <p className="mb-3 text-sm leading-relaxed text-muted-foreground line-clamp-2">{post.excerpt}</p>
+                )}
+                {post.tags && post.tags.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {post.tags.slice(0, 3).map((tag) => (
+                            <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                            >
+                                {tag.name}
+                            </Badge>
+                        ))}
+                        {post.tags.length > 3 && (
+                            <span className="text-[0.6875rem] text-muted-foreground">+{post.tags.length - 3}</span>
                         )}
-                        {post.readingTimeMinutes && (
-                            <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {post.readingTimeMinutes} min
+                    </div>
+                )}
+                {post.categories && post.categories.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {post.categories.slice(0, 2).map((cat) => (
+                            <Badge
+                                key={cat.id}
+                                variant="secondary"
+                                className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
+                            >
+                                {cat.name}
+                            </Badge>
+                        ))}
+                        {post.categories.length > 2 && (
+                            <span className="text-[0.6875rem] text-muted-foreground">
+                                +{post.categories.length - 2}
                             </span>
                         )}
                     </div>
-                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                        Read post
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                </CardContent>
-            </Card>
-        </Link>
+                )}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    {post.publishedAt && <PublishedDateLink publishedAt={post.publishedAt} />}
+                    {post.readingTimeMinutes && (
+                        <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {post.readingTimeMinutes} min
+                        </span>
+                    )}
+                </div>
+                <Link
+                    to="/blog/$slug"
+                    params={{ slug: post.slug }}
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    Read post
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+            </CardContent>
+        </Card>
     );
 }
 

@@ -966,6 +966,40 @@ describe('createBlogHandlers', () => {
         });
     });
 
+    describe('date archive filtering', () => {
+        it('filters posts by year when ?year is provided', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            await handlers.handleBlogPostsList(ctxFor('/posts?year=2025'));
+
+            const where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
+            const range = where.publishedAt as { $gte: number; $lt: number };
+            expect(range.$gte).toBe(Date.UTC(2025, 0, 1));
+            expect(range.$lt).toBe(Date.UTC(2026, 0, 1));
+        });
+
+        it('filters posts by year+month when both are provided', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            await handlers.handleBlogPostsList(ctxFor('/posts?year=2025&month=8'));
+
+            const where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
+            const range = where.publishedAt as { $gte: number; $lt: number };
+            expect(range.$gte).toBe(Date.UTC(2025, 7, 1));
+            expect(range.$lt).toBe(Date.UTC(2025, 8, 1));
+        });
+
+        it('returns 400 for invalid year', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts?year=abc'));
+            expect(response.status).toBe(400);
+        });
+
+        it('returns 400 for invalid month', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts?year=2025&month=13'));
+            expect(response.status).toBe(400);
+        });
+    });
+
     describe('org mode', () => {
         const orgConfig = {
             ...baseConfig,

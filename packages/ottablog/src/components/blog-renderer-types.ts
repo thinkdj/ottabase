@@ -12,6 +12,7 @@ import type {
     ContentType,
     EditorJSData,
     HeroImage,
+    OriginalDate,
     PhotoJournalItem,
     PostAuthor,
     PostCrosspost,
@@ -43,6 +44,8 @@ export interface BlogPostData {
     readingTimeMinutes?: number | null;
     wordCount?: number | null;
     isFeatured?: boolean;
+    /** When this content was originally written (fuzzy date) — distinct from publishedAt */
+    originalDate?: OriginalDate | null;
     publishedAt?: Date | string | number | null;
     createdAt?: Date | string | number | null;
     // Series info

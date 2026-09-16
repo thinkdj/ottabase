@@ -335,6 +335,7 @@ export class Post extends BaseModel {
         photoAlbum: 'json' as const,
         heroImage: 'json' as const,
         seoMeta: 'json' as const,
+        originalDate: 'json' as const,
         meta: 'json' as const,
         privateNotes: 'json' as const,
         footnotes: 'json' as const,
@@ -396,6 +397,7 @@ export class Post extends BaseModel {
             'seriesOrder',
             'heroImage',
             'seoMeta',
+            'originalDate',
             'meta',
             'privateNotes',
             'footnotes',
@@ -426,6 +428,7 @@ export class Post extends BaseModel {
             'seriesOrder',
             'heroImage',
             'seoMeta',
+            'originalDate',
             'meta',
             'privateNotes',
             'footnotes',
@@ -714,6 +717,21 @@ export class Post extends BaseModel {
             uiConfig: {
                 label: 'SEO Metadata',
                 description: 'SEO and social media metadata',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'json',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        originalDate: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Originally Written',
+                description: 'When the content was originally created — supports fuzzy dates like "Late May 2010"',
             },
             formConfig: {
                 visible: true,

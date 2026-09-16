@@ -96,6 +96,28 @@ export interface PostAuthor {
 }
 
 /**
+ * When the content was originally written — an OttaDate FuzzyDateTime stored as JSON.
+ * Distinct from publishedAt (when it appeared on the blog). Supports fuzzy precision:
+ * "Late May 2010", "Summer 1998", "Sometime in the 1990s".
+ */
+export interface OriginalDate {
+    /** UTC unix seconds — start of the core window */
+    timestamp: number;
+    /** Precision: 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' */
+    resolution: string;
+    /** Part-of-period refinement: 'early' | 'mid' | 'late' | 'spring' | etc. */
+    part?: string;
+    /** "~ish" — the boundary is soft */
+    approximate?: boolean;
+    /** Inclusive window start (UTC unix seconds) */
+    earliest: number;
+    /** Inclusive window end (UTC unix seconds) */
+    latest: number;
+    /** Pre-rendered human-readable label, e.g. "Late May 2010" */
+    label: string;
+}
+
+/**
  * EditorJS output data structure
  * This is what OttaEditor saves
  */

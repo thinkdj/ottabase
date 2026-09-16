@@ -90,6 +90,7 @@ export type {
     ContentType,
     EditorJSData,
     HeroImage,
+    OriginalDate,
     PhotoJournalItem,
     PostAuthor,
     PostCrosspost,

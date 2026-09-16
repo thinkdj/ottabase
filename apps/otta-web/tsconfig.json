@@ -55,6 +55,7 @@
             "@ottabase/docs/react": ["../../packages/docs/src/react.ts"],
             "@ottabase/medialibrary/react": ["../../packages/medialibrary/src/react.ts"],
             "@ottabase/ottablog/renderer": ["../../packages/ottablog/src/renderer.ts"],
+            "@ottabase/ottablog/share": ["../../packages/ottablog/src/components/ShareButton.tsx"],
             "@ottabase/ottamenu/render": ["../../packages/ottamenu/src/render/index.tsx"],
             "@ottabase/premium": ["../../packages/premium/src/index.ts"],
             "@ottabase/premium/server": ["../../packages/premium/src/server/index.ts"],

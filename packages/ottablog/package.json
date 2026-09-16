@@ -17,6 +17,10 @@
             "types": "./src/renderer.ts",
             "default": "./src/renderer.ts"
         },
+        "./share": {
+            "types": "./src/components/ShareButton.tsx",
+            "default": "./src/components/ShareButton.tsx"
+        },
         "./router": {
             "types": "./src/router/index.ts",
             "default": "./src/router/index.ts"
@@ -35,17 +39,25 @@
     },
     "peerDependencies": {
         "@ottabase/db": "workspace:*",
-        "drizzle-orm": "catalog:",
-        "react": "catalog:",
         "@ottabase/medialibrary": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/ottarenderer": "workspace:*"
+        "@ottabase/ottarenderer": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "drizzle-orm": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:"
     },
     "peerDependenciesMeta": {
         "@ottabase/medialibrary": {
             "optional": true
         },
         "@ottabase/ottarenderer": {
+            "optional": true
+        },
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "lucide-react": {
             "optional": true
         }
     },
@@ -57,12 +69,14 @@
     "devDependencies": {
         "@ottabase/db": "workspace:*",
         "@ottabase/medialibrary": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@testing-library/jest-dom": "catalog:",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "drizzle-orm": "catalog:",
         "eslint": "catalog:",
+        "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "rimraf": "catalog:",

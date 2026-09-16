@@ -947,6 +947,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const search = url.searchParams.get('search') || null;
         const orderBy = url.searchParams.get('orderBy') || 'publishedAt';
         const orderDirection = (url.searchParams.get('orderDirection') || 'desc') as 'asc' | 'desc';
+        // Date archive: filter posts by year (and optionally month) of publishedAt
+        const yearParam = url.searchParams.get('year') || null;
+        const monthParam = url.searchParams.get('month') || null;
         const organizationId = await resolveTenant(context);
 
         const where: Record<string, unknown> = { status: 'published' };
@@ -959,6 +962,21 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             where.contentType = { $ne: 'changelog' };
         }
         if (seriesId) where.seriesId = seriesId;
+
+        // Date archive filtering: publishedAt range for year/month
+        if (yearParam) {
+            const year = parseBoundedInteger(yearParam, 0, 1970, 2100);
+            if (year === 0) {
+                return errorResponse('year must be a number between 1970 and 2100', 400, { code: 'VALIDATION_ERROR' });
+            }
+            const month = monthParam ? parseBoundedInteger(monthParam, 0, 1, 12) : 0;
+            if (monthParam && month === 0) {
+                return errorResponse('month must be a number between 1 and 12', 400, { code: 'VALIDATION_ERROR' });
+            }
+            const rangeStart = month > 0 ? new Date(Date.UTC(year, month - 1, 1)) : new Date(Date.UTC(year, 0, 1));
+            const rangeEnd = month > 0 ? new Date(Date.UTC(year, month, 1)) : new Date(Date.UTC(year + 1, 0, 1));
+            where.publishedAt = { $gte: rangeStart.getTime(), $lt: rangeEnd.getTime() };
+        }
 
         // Tag-based filtering: find post IDs that have this tag, then filter
         let tagFilterPostIds: string[] | null = null;

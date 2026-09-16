@@ -61,6 +61,10 @@ export default defineConfig({
             '@ottabase/docs/react': path.resolve(__dirname, '../../packages/docs/src/react.ts'),
             '@ottabase/medialibrary/react': path.resolve(__dirname, '../../packages/medialibrary/src/react.ts'),
             '@ottabase/ottablog/renderer': path.resolve(__dirname, '../../packages/ottablog/src/renderer.ts'),
+            '@ottabase/ottablog/share': path.resolve(
+                __dirname,
+                '../../packages/ottablog/src/components/ShareButton.tsx',
+            ),
             '@ottabase/ottamenu/render': path.resolve(__dirname, '../../packages/ottamenu/src/render/index.tsx'),
             // Premium Packages (ottabase/config.premium.ts) — subpaths before the bare specifier.
             '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),

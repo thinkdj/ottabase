@@ -84,6 +84,19 @@ export const postsTable = sqliteTable(
             noFollow?: boolean;
         }>(),
 
+        // When the content was originally written — a fuzzy date with OttaDate resolution.
+        // Distinct from publishedAt (when it appeared on the blog). Use case: a diary entry
+        // from "Late May 2010" published yesterday. Stores an @ottabase/ottadate FuzzyDateTime.
+        originalDate: text('original_date', { mode: 'json' }).$type<{
+            timestamp: number;
+            resolution: string;
+            part?: string;
+            approximate?: boolean;
+            earliest: number;
+            latest: number;
+            label: string;
+        }>(),
+
         // Custom meta as JSON - free-form key/value pairs for user-defined metadata.
         // Not used by the blog engine itself; available for theme/plugin/custom rendering.
         meta: text('meta', { mode: 'json' }).$type<Record<string, unknown>>(),
