@@ -88,6 +88,23 @@ function harness(options: Partial<Parameters<typeof createAiProvisioning>[0]> = 
 beforeEach(() => resetFixtureCounter());
 
 describe('composition — boot tier THROWS', () => {
+    it('allows platform-only inference with no tenant credential keyring', async () => {
+        const ai = createAiProvisioning<AiTenancyTuple>({
+            store: createMemoryStore(),
+            transport: createMockTransport(),
+            platform: PLATFORM,
+            tasks: [{ key: 'chat' }],
+            contextFrom: (tuple) => tuple,
+            strategy: 'user',
+            byokEnabled: false,
+            quota: () => true,
+        });
+
+        expect(ai.keyring).toBeNull();
+        expect(ai.byokEnabled).toBe(false);
+        expect((await ai.resolve(ai.contextFrom(CONTEXT), 'chat')).source).toBe('platform');
+    });
+
     it('requires verifyMembership and authorize whenever the strategy has an org dimension', () => {
         expect(() =>
             createAiProvisioning({

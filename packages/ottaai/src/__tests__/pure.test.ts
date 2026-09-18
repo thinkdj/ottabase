@@ -222,6 +222,40 @@ describe('verdicts and selection', () => {
         );
     });
 
+    it('checks the effective override before ranking credentials', () => {
+        const result = selectCredential({
+            candidates: [
+                credentialFixture({ id: 'anthropic-user', provider: 'anthropic', userId: 'user-1' }),
+                credentialFixture({ id: 'openai-org', provider: 'openai', userId: null, organizationId: 'org-a' }),
+            ],
+            context,
+            strategy: 'user-then-org',
+            appScope: 'strict',
+            registry,
+            task,
+            modelOverride: 'openai/gpt-4o-mini',
+        });
+
+        expect(result.winner?.id).toBe('openai-org');
+        expect(result.assessed.find((candidate) => candidate.record.id === 'anthropic-user')?.verdict).toBe(
+            'MODEL_PROVIDER_MISMATCH',
+        );
+    });
+
+    it('does not let a chat override bypass an embedding capability requirement', () => {
+        const embeddingTask = resolveTaskDefaults({ key: 'embed', requiredCapabilities: ['embedding'] });
+        const result = evaluateEligibility({
+            record: credentialFixture({ provider: 'openai', model: 'text-embedding-3-small' }),
+            context,
+            registry,
+            task: embeddingTask,
+            appScope: 'strict',
+            modelOverride: 'openai/gpt-4o-mini',
+        });
+
+        expect(result.verdict).toBe('CAPABILITY_UNMET');
+    });
+
     it('aggregates stage-4a by the highest-precedence verdict PRESENT, not by "all"', () => {
         const result = selectCredential({
             candidates: [
@@ -307,6 +341,20 @@ describe('merge — the rows a naive implementation gets wrong', () => {
         expect(merged.secret).toBeNull();
         expect(merged.alias).toBeNull();
         expect(merged.provenance.source).toBe('byok');
+    });
+
+    it('a tenant credential never inherits Unified Billing, which is platform-only', () => {
+        const merged = mergeConfig({
+            platform: { ...platform, providerKey: undefined, billing: 'unified', apiToken: 'cf-api-token' },
+            registry,
+            credential: credentialFixture({ secret: { kind: 'alias', alias: 'tenant-openai' } }),
+            tenantSecret: null,
+            model: 'gpt-4o-mini',
+            taskKey: 't',
+            context,
+        });
+        expect(merged.billing).toBeUndefined();
+        expect(merged.alias).toBe('tenant-openai');
     });
 
     it('everything else inherits, including the injected fetch', () => {

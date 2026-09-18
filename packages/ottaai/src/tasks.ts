@@ -150,6 +150,22 @@ export function resolveTaskDefaults(task: AiTaskPolicy): ResolvedTaskPolicy {
     };
 }
 
+/**
+ * Apply the instance dials once and expose the result to both runtime composition and
+ * operator surfaces. Keeping this here prevents an admin page from describing the declared
+ * policy while the resolver executes a rewritten/intersected one.
+ */
+export function resolveEffectiveTaskPolicy(
+    declared: AiTaskPolicy,
+    input: { appMode: AiMode; byokEnabled: boolean },
+): ResolvedTaskPolicy & { mode: AiMode } {
+    const rewritten: AiTaskPolicy = input.byokEnabled
+        ? declared
+        : { ...declared, mode: 'platform', gate: declared.gate === 'required' ? 'soft' : declared.gate };
+    const resolved = resolveTaskDefaults(rewritten);
+    return { ...resolved, mode: intersectModes(input.appMode, resolved.mode) };
+}
+
 // ---------------------------------------------------------------------------
 // The gate predicate — ONE function, three call sites
 // ---------------------------------------------------------------------------

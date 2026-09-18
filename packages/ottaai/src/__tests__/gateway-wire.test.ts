@@ -60,7 +60,7 @@ function configFor(overrides: Partial<MergedTransportConfig> = {}): MergedTransp
         alias: null,
         accountId: ACCOUNT,
         gateway: GATEWAY,
-        gatewayToken: undefined,
+        gatewayToken: 'cf-token',
         transportConfig: {},
         provenance: {
             source: 'byok',
@@ -153,6 +153,71 @@ describe('provider URLs are the documented ones, and they are NOT uniform', () =
 // ---------------------------------------------------------------------------
 
 describe('auth and provider-mandated headers', () => {
+    it('requires authenticated Gateway access and an explicit billing source', () => {
+        const transport = createGatewayTransport();
+        expect(transport.isComplete(configFor({ gatewayToken: undefined }))).toBe(false);
+        expect(transport.isComplete(configFor())).toBe(true);
+        expect(transport.isComplete(configFor({ gatewayToken: 'cf-token', secret: null, billing: undefined }))).toBe(
+            false,
+        );
+        expect(
+            transport.isComplete(
+                configFor({ gatewayToken: undefined, apiToken: 'cf-api-token', secret: null, billing: 'unified' }),
+            ),
+        ).toBe(true);
+        expect(
+            transport.isComplete(
+                configFor({
+                    provider: 'workers-ai',
+                    model: 'llama-3.1-8b-instruct',
+                    gatewayToken: undefined,
+                    apiToken: 'cf-api-token',
+                    secret: null,
+                    billing: 'unified',
+                }),
+            ),
+        ).toBe(false);
+        expect(transport.isComplete(configFor({ provider: 'anthropic', model: 'openai/gpt-4o-mini' }))).toBe(false);
+    });
+
+    it('uses Cloudflare REST API authentication for Unified Billing', async () => {
+        const captured = await callOnce({
+            secret: null,
+            gatewayToken: undefined,
+            apiToken: 'cf-api-token',
+            billing: 'unified',
+        });
+        expect(captured.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai/v1/chat/completions`);
+        expect(captured.headers.authorization).toBe('Bearer cf-api-token');
+        expect(captured.headers['cf-aig-gateway-id']).toBe(GATEWAY);
+        expect(captured.headers['cf-aig-authorization']).toBeUndefined();
+        expect(captured.body.model).toBe('openai/gpt-4o-mini');
+    });
+
+    it('maps registry ids to Cloudflare REST model ids for Unified Billing', async () => {
+        const captured = await callOnce({
+            provider: 'workers-ai',
+            model: 'workers-ai/@cf/meta/llama-3.1-8b-instruct',
+            secret: null,
+            gatewayToken: undefined,
+            apiToken: 'cf-api-token',
+            billing: 'unified',
+        });
+
+        expect(captured.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai/v1/chat/completions`);
+        expect(captured.body.model).toBe('@cf/meta/llama-3.1-8b-instruct');
+
+        const google = await callOnce({
+            provider: 'google-ai-studio',
+            model: 'google-ai-studio/gemini-2.5-flash',
+            secret: null,
+            gatewayToken: undefined,
+            apiToken: 'cf-api-token',
+            billing: 'unified',
+        });
+        expect(google.body.model).toBe('google/gemini-2.5-flash');
+    });
+
     it('sends Anthropic the REQUIRED anthropic-version header', async () => {
         // Its absence fails 100% of Anthropic calls, with a message about the header rather
         // than about the key — so it is debugged as a credential problem.
@@ -205,6 +270,17 @@ describe('auth and provider-mandated headers', () => {
         const captured = await callOnce({ secret: null, alias: 'production' });
         expect(captured.headers['cf-aig-byok-alias']).toBe('production');
         expect(captured.headers['cf-aig-provider-key']).toBeUndefined();
+        expect(captured.headers['cf-aig-no-wholesale']).toBe('true');
+    });
+
+    it('prevents every tenant BYOK request from falling through to Unified Billing', async () => {
+        const inline = await callOnce({});
+        expect(inline.headers['cf-aig-no-wholesale']).toBe('true');
+
+        const platform = await callOnce({
+            provenance: { ...configFor().provenance, source: 'platform', credentialId: null },
+        });
+        expect(platform.headers['cf-aig-no-wholesale']).toBeUndefined();
     });
 
     it('carries the operator gateway token separately from the tenant key', async () => {
@@ -213,30 +289,42 @@ describe('auth and provider-mandated headers', () => {
         expect(captured.headers.authorization).toBe('Bearer sk-tenant-key');
     });
 
-    it('does NOT let caller metadata overwrite trusted provenance', async () => {
-        // AI Gateway dynamic routing can BRANCH ON METADATA. A call site that forwarded a
-        // request body could otherwise relabel a platform call as `source: 'byok'` and take a
-        // route — and a budget — it was never entitled to, while also poisoning cost analytics.
+    it('emits only the fixed server-owned provenance envelope', async () => {
         const captured = await callOnce(
             {},
             {
                 messages: [{ role: 'user', content: 'hi' }],
-                metadata: { source: 'byok', task: 'premium', app: 'other-app', trace: 'abc-123' },
             },
         );
         const metadata = JSON.parse(captured.headers['cf-aig-metadata']!) as Record<string, string>;
-        expect(metadata).toMatchObject({ source: 'byok', task: 'assist', app: 'app-1' });
-        // Genuine caller tags still travel.
-        expect(metadata.trace).toBe('abc-123');
+        expect(metadata).toEqual({ source: 'byok', task: 'assist', app: 'app-1', user: 'user-1' });
+        expect(captured.headers['cf-aig-collect-log-payload']).toBe('false');
     });
 
-    it('reports a platform call as platform even when the caller claims otherwise', async () => {
+    it('reports platform provenance from the resolved config', async () => {
         const captured = await callOnce(
             { provenance: { ...configFor().provenance, source: 'platform', taskKey: 'assist', credentialId: null } },
-            { messages: [{ role: 'user', content: 'hi' }], metadata: { source: 'byok' } },
+            { messages: [{ role: 'user', content: 'hi' }] },
         );
         const metadata = JSON.parse(captured.headers['cf-aig-metadata']!) as Record<string, string>;
         expect(metadata.source).toBe('platform');
+    });
+
+    it('does not let operator transport headers weaken request invariants', async () => {
+        const captured = await callOnce({
+            transportConfig: {
+                headers: {
+                    Authorization: 'Bearer injected',
+                    'cf-aig-metadata': '{"source":"forged"}',
+                    'cf-aig-collect-log-payload': 'true',
+                    'Content-Type': 'text/plain',
+                },
+            },
+        });
+        expect(captured.headers.authorization).toBe('Bearer sk-tenant-key');
+        expect(captured.headers['content-type']).toBe('application/json');
+        expect(captured.headers['cf-aig-collect-log-payload']).toBe('false');
+        expect(JSON.parse(captured.headers['cf-aig-metadata']!)).toMatchObject({ source: 'byok', task: 'assist' });
     });
 });
 
@@ -426,6 +514,39 @@ describe('OpenAI embeddings', () => {
         const provider = await providerClient.embed!({ input: 'nope', model: 'text-embedding-3-small' });
         expect(provider.ok).toBe(false);
         expect(providerCaptured).toHaveLength(0);
+    });
+
+    it('uses the universal REST endpoint for Unified Billing embeddings', async () => {
+        const captured: Captured[] = [];
+        const client = makeClient({
+            secret: null,
+            gatewayToken: undefined,
+            apiToken: 'cf-api-token',
+            billing: 'unified',
+            fetch: capturingFetch(captured, {
+                success: true,
+                result: { data: [[0.1, 0.2]], usage: { input_tokens: 3 } },
+            }),
+        });
+
+        const result = await client.embed!({
+            model: 'openai/text-embedding-3-small',
+            input: 'embed me',
+            dimensions: 256,
+        });
+
+        expect(captured).toHaveLength(1);
+        expect(captured[0]!.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai/run`);
+        expect(captured[0]!.headers.authorization).toBe('Bearer cf-api-token');
+        expect(captured[0]!.headers['cf-aig-gateway-id']).toBe(GATEWAY);
+        expect(captured[0]!.body).toEqual({
+            model: 'openai/text-embedding-3-small',
+            input: { input: 'embed me', dimensions: 256 },
+        });
+        expect(result).toMatchObject({
+            ok: true,
+            result: { vectors: [[0.1, 0.2]], tokens: { input: 3 }, model: 'openai/text-embedding-3-small' },
+        });
     });
 });
 

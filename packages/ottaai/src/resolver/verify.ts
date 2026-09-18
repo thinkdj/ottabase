@@ -126,6 +126,15 @@ export async function verifyCredential(
     input: VerifyInput,
     options: VerifyOptions = {},
 ): Promise<VerifyResult> {
+    if (!instance.byokEnabled || !instance.keyring) {
+        return {
+            ok: false,
+            code: AI_ERROR_CODES.NOT_CONFIGURED,
+            message: AI_ERROR_MESSAGES.NOT_CONFIGURED,
+            provider: input.kind === 'inline' ? input.provider : '',
+            model: null,
+        };
+    }
     const limiter = options.limiter ?? defaultLimiterFor(instance);
     const actorKey = options.actorKey ?? `${context.organizationId ?? '-'}:${context.userId ?? '-'}`;
 
@@ -286,7 +295,13 @@ export async function verifyCredential(
         };
     }
 
-    const sentinels = [secret?.expose(), alias, instance.platform.providerKey, instance.platform.gatewayToken];
+    const sentinels = [
+        secret?.expose(),
+        alias,
+        instance.platform.providerKey,
+        instance.platform.gatewayToken,
+        instance.platform.apiToken,
+    ];
 
     try {
         const client = instance.transport.createClient(merged);
@@ -296,7 +311,6 @@ export async function verifyCredential(
             temperature: 0,
             skipCache: true,
             timeout: VERIFY_TIMEOUT_MS,
-            metadata: { verification: 'true', task: '__verify__' },
         });
 
         if (response.ok) {

@@ -15,14 +15,20 @@
 import { createDefaultDecryptorRegistry, decryptSecret, type DecryptorRegistry, type Keyring } from '../crypto';
 import { AI_ERROR_CODES, AiProvisioningError, type AiErrorCode } from '../errors';
 import { isDynamicModelRef, parseModelRef, qualifyModelRef } from '../model-ref';
-import { keylessMismatch, mergeConfig, selectCredential, type AssessedCandidate } from '../pure';
+import {
+    keylessMismatch,
+    mergeConfig,
+    resolvedModelCapabilitiesSatisfied,
+    selectCredential,
+    type AssessedCandidate,
+} from '../pure';
 import { createProviderRegistry, withTenantSelectionRemoved, type AiProviderRegistry } from '../registry';
 import { hasSecret, SecretValue } from '../secret';
 import {
     evaluateGate,
     intersectModes,
     modeToBits,
-    resolveTaskDefaults,
+    resolveEffectiveTaskPolicy,
     type AiTaskPolicy,
     type GateAnswer,
     type ResolvedTaskPolicy,
@@ -91,7 +97,7 @@ export type VerifyMembership = (input: { userId: string | null; organizationId: 
 
 export interface CreateAiProvisioningOptions<HostContext = unknown> {
     /** Encryption keyring. NEVER defaulted — composition fails without it. */
-    keyring: Keyring;
+    keyring?: Keyring;
     /** Optional extra/legacy envelope readers. Defaults to the v1 registry. */
     decryptors?: DecryptorRegistry;
     /** Credential storage. */
@@ -276,12 +282,13 @@ export interface AiProvisioning<HostContext = unknown> {
 
     readonly registry: AiProviderRegistry;
     readonly store: CredentialStore;
-    readonly keyring: Keyring;
+    readonly keyring: Keyring | null;
     readonly decryptors: DecryptorRegistry;
     readonly strategy: AiStrategy;
     readonly appScope: AppScope;
     /** The `allowOrgCredentials` dial, read by the route factory and by `status()`. */
     readonly orgCredentialsAllowed: boolean;
+    readonly byokEnabled: boolean;
     /**
      * Whether a PLATFORM call can actually be made under this configuration — asked of the
      * transport at composition, not inferred from `platform.providerKey`.
@@ -342,7 +349,7 @@ export function createAiProvisioning<HostContext = unknown>(
     options: CreateAiProvisioningOptions<HostContext>,
 ): AiProvisioning<HostContext> {
     // ── Boot-tier validation: THROW. Misconfiguration a developer must fix. ──────
-    if (!options.keyring) {
+    if (options.byokEnabled !== false && !options.keyring) {
         throw new AiProvisioningError(
             'createAiProvisioning requires a keyring. Credential encryption is never optional.',
             AI_ERROR_CODES.CONFIGURATION,
@@ -404,14 +411,10 @@ export function createAiProvisioning<HostContext = unknown>(
     // ── Tasks: apply the kill switch, then validate EVERY declared task eagerly ──
     const tasks = new Map<string, ResolvedTaskPolicy>();
     for (const declared of options.tasks) {
-        const rewritten: AiTaskPolicy = byokEnabled
-            ? declared
-            : { ...declared, mode: 'platform', gate: declared.gate === 'required' ? 'soft' : declared.gate };
-        const task = resolveTaskDefaults(rewritten);
+        const task = resolveEffectiveTaskPolicy(declared, { appMode, byokEnabled });
         // Throws when the static intersection is {✗,✗} — a task that can never run is a
         // BOOT ERROR, not a silent dead feature.
-        const effective = intersectModes(appMode, task.mode);
-        if (effective === 'byok' && task.degradation === 'platform-on-auth-error') {
+        if (task.mode === 'byok' && task.degradation === 'platform-on-auth-error') {
             throw new AiProvisioningError(
                 `Task "${task.key}" declares degradation 'platform-on-auth-error' under an effective 'byok' mode. ` +
                     'Degrading to the platform key is structurally impossible when the platform key may not be used.',
@@ -463,20 +466,30 @@ export function createAiProvisioning<HostContext = unknown>(
      * spend warning derived from that predicate then stays silent on exactly the deployment
      * that needed it.
      *
-     * Computed ONCE at composition by building the platform path's own merged config and
-     * asking `transport.isComplete` — the same question the resolver asks at stage 9.
+     * Computed ONCE at composition across every task's effective platform model (provider
+     * pin → task default → platform default) and asking `transport.isComplete` — the same
+     * question the resolver asks at stage 9. Using only `platform.model` misses spend through
+     * task defaults, especially on Unified Billing where a model is required up front.
      */
-    const platformRouteUsable = options.transport.isComplete(
-        mergeConfig({
-            platform: options.platform,
-            registry,
-            credential: null,
-            tenantSecret: null,
-            model: options.platform.model ?? null,
-            taskKey: '__boot__',
-            context: brandContext({ userId: null, organizationId: null, appId: null, impersonated: false }),
-        }),
-    );
+    const bootContext = brandContext({ userId: null, organizationId: null, appId: null, impersonated: false });
+    const platformRouteUsable = [...tasks.values()].some((task) => {
+        const pinned =
+            task.modelPolicy === 'task-pinned' && options.platform.provider
+                ? task.pinnedModels?.[options.platform.provider]
+                : undefined;
+        const model = pinned ?? task.defaultModel ?? options.platform.model ?? null;
+        return options.transport.isComplete(
+            mergeConfig({
+                platform: options.platform,
+                registry,
+                credential: null,
+                tenantSecret: null,
+                model,
+                taskKey: task.key,
+                context: bootContext,
+            }),
+        );
+    });
 
     options.onBoot?.({
         mode: appMode,
@@ -495,8 +508,8 @@ export function createAiProvisioning<HostContext = unknown>(
         // boot log, not from reading the transport.
         ...(unservableProviders.length > 0 ? { unservableUnderThisConfig: unservableProviders } : {}),
         tasks: [...tasks.values()].map((t) => ({ key: t.key, mode: t.mode ?? appMode, gate: t.gate })),
-        keyIds: options.keyring.keyIds(),
-        currentKeyId: options.keyring.currentKeyId,
+        keyIds: options.keyring?.keyIds() ?? [],
+        currentKeyId: options.keyring?.currentKeyId ?? null,
         platform: {
             provider: options.platform.provider ?? null,
             model: options.platform.model ?? null,
@@ -564,7 +577,8 @@ export function createAiProvisioning<HostContext = unknown>(
         credential: CredentialRecord | null;
         perCall?: string;
     }): string | null {
-        if (input.perCall) {
+        if (input.perCall?.trim()) {
+            const parsed = parseModelRef(input.perCall, registry);
             // A `dynamic/<route>` ref names an OPERATOR route — its key, its budget cap, its
             // fallback order. The write path already refuses one from a tenant credential;
             // the per-call override is a SECOND door into the same merge, and a call site
@@ -572,17 +586,18 @@ export function createAiProvisioning<HostContext = unknown>(
             // route while the resolution still reports whatever `source` it resolved.
             // Operator-chosen models reach the chain through `platform.model` and the task's
             // pinned/default models, never through this argument.
-            if (isDynamicModelRef(input.perCall)) {
+            if (parsed.dynamic) {
                 throw new AiProvisioningError(
                     'A dynamic/<route> model reference is operator-only and cannot be supplied as a per-call ' +
                         'override. Set it as the platform default model or a task pinned model instead.',
                     AI_ERROR_CODES.CONFIGURATION,
                 );
             }
-            return input.perCall;
+            return parsed.raw;
         }
-        if (input.task.modelPolicy === 'task-pinned' && input.credential) {
-            const pinned = input.task.pinnedModels?.[input.credential.provider];
+        if (input.task.modelPolicy === 'task-pinned') {
+            const provider = input.credential?.provider ?? options.platform.provider;
+            const pinned = provider ? input.task.pinnedModels?.[provider] : undefined;
             if (pinned) return pinned;
         }
         if (input.credential?.model) return input.credential.model;
@@ -686,6 +701,24 @@ export function createAiProvisioning<HostContext = unknown>(
                 });
             }
             const model = resolveModel({ task, credential: null, perCall: resolveOptions.model });
+            if (
+                !resolvedModelCapabilitiesSatisfied({
+                    registry,
+                    task,
+                    provider: options.platform.provider,
+                    model,
+                })
+            ) {
+                return finish({
+                    source: null,
+                    reason: 'CAPABILITY_UNMET',
+                    tenantReason,
+                    credential: null,
+                    client: null,
+                    model,
+                    tenantSecretPresent: false,
+                });
+            }
             const merged = mergeConfig({
                 platform: options.platform,
                 registry,
@@ -718,7 +751,11 @@ export function createAiProvisioning<HostContext = unknown>(
                       defer,
                       quota: options.quota,
                       responseCacheTtlSeconds: task.responseCacheTtlSeconds,
-                      redactionSentinels: [options.platform.providerKey, options.platform.gatewayToken],
+                      redactionSentinels: [
+                          options.platform.providerKey,
+                          options.platform.gatewayToken,
+                          options.platform.apiToken,
+                      ],
                   })
                 : null;
             return finish({
@@ -828,6 +865,8 @@ export function createAiProvisioning<HostContext = unknown>(
             appScope,
             registry,
             task,
+            modelOverride: resolveOptions.model?.trim() || undefined,
+            fallbackModel: options.platform.model ?? null,
         });
 
         const explanations: CandidateExplanation[] = selection.assessed.map((assessed: AssessedCandidate) => ({
@@ -897,7 +936,7 @@ export function createAiProvisioning<HostContext = unknown>(
             try {
                 tenantSecret = await decryptSecret({
                     envelope: winner.secret.ciphertext,
-                    keyring: options.keyring,
+                    keyring: options.keyring!,
                     registry: decryptors,
                     aad: {
                         credentialId: winner.id,
@@ -1018,6 +1057,7 @@ export function createAiProvisioning<HostContext = unknown>(
                       winner.secret.kind === 'alias' ? winner.secret.alias : null,
                       options.platform.providerKey,
                       options.platform.gatewayToken,
+                      options.platform.apiToken,
                   ],
               })
             : null;
@@ -1164,11 +1204,12 @@ export function createAiProvisioning<HostContext = unknown>(
 
         registry,
         store: options.store,
-        keyring: options.keyring,
+        keyring: options.keyring ?? null,
         decryptors,
         strategy,
         appScope,
         orgCredentialsAllowed,
+        byokEnabled,
         platformRouteUsable,
         tasks,
         platform: options.platform,

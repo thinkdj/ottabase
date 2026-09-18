@@ -12,6 +12,16 @@ per-tenant cost ceiling, and answers "can we use your data" with the tenant's ow
 > outputs still have **no representation to serialise**, so they are not supported however capable the chosen model is.
 > The registry's `capabilities` decide which credential is eligible for a task; they do not widen either call contract.
 
+> **Cloudflare Unified Billing supports chat and OpenAI embeddings in OttaAI.** Chat uses the OpenAI-compatible REST
+> endpoint; embeddings use AI Gateway's universal `/ai/run` endpoint. Other embedding providers remain refused until
+> their request and response wire contracts are verified.
+
+The transport follows Cloudflare's current
+[AI Gateway REST API](https://developers.cloudflare.com/ai-gateway/usage/rest-api/) and
+[Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) contracts. Keep those
+references beside upgrades: Cloudflare's provider catalog and endpoint availability can change independently of this
+package's registry.
+
 ## Provider support
 
 The gateway transport calls only providers it has a **verified wire contract** for — a transcribed URL, auth scheme,
@@ -53,11 +63,13 @@ cannot route under _this_ operator's configuration.
 
 ### Request metadata
 
-`cf-aig-metadata` carries `source`, `task` and `app` from the resolution's own provenance, and **trusted values are
-written last** so a caller's `options.metadata` cannot overwrite them. That matters because AI Gateway dynamic routing
-can branch on metadata: a call site that forwarded a request body could otherwise relabel a platform call as
-`source: 'byok'` and take a route — and a budget — it was never entitled to. Caller tags are still forwarded; they just
-cannot impersonate provenance.
+`cf-aig-metadata` is a fixed, server-owned envelope: `source`, `task`, `app`, `organization`, and `user` when each is
+available. Cloudflare accepts at most five metadata entries, so callers cannot append tags that silently displace tenant
+attribution or influence Dynamic Routing. Request/response payload collection is disabled by default with
+`cf-aig-collect-log-payload: false`; metrics and this fixed metadata remain available. See Cloudflare's
+[logging](https://developers.cloudflare.com/ai-gateway/observability/logging/) guidance and the
+[`cf-aig-no-wholesale` change](https://developers.cloudflare.com/changelog/post/2026-09-14-require-provider-credentials/)
+when changing retention or BYOK fallback behavior.
 
 ## Architecture (entry points)
 
@@ -104,7 +116,21 @@ but may never override `strategy`** — strategy is one half of a decision whose
 
 ## Setup
 
-### 1. Generate a master secret
+### 1. Choose platform-only or BYOK
+
+Platform-only AI (`byokEnabled: false`) does **not** need a credential keyring. Provider-native calls require an
+authenticated Gateway token plus a provider key. Cloudflare Unified Billing instead uses `billing: 'unified'` and a
+Cloudflare Workers AI Read API token through the current REST endpoint. Enable a keyring only when tenants may save
+provider credentials.
+
+Unified Billing cannot invoke `dynamic/<route>` models. Dynamic Routing remains on Cloudflare's provider-native
+OpenAI-compatible Gateway endpoint, so configure a gateway token and provider key for that use case.
+
+For BYOK deployments, set the AI Gateway's Unified Billing fallback setting to `byok_only`. OttaAI also sends
+`cf-aig-no-wholesale: true` on every provider-key or alias request so a missing/invalid tenant key cannot silently fall
+through to the operator's Cloudflare credits.
+
+### 2. Generate a master secret for BYOK
 
 ```bash
 openssl rand -base64 48
@@ -126,7 +152,7 @@ AI_CREDENTIAL_KEY_ID=k2
 Never type a master secret. `createKeyring` rejects anything below 32 bytes of decoded material, because HKDF-Extract
 over a weak secret turns one stolen database backup into an offline break of every tenant's key.
 
-### 2. Register the table
+### 3. Register the table
 
 ```ts
 // ottabase/config.migrations.ts
@@ -138,7 +164,7 @@ const PACKAGE_REGISTRY = {
 };
 ```
 
-### 3. Register the model and the policy
+### 4. Register the model and the policy
 
 ```ts
 // worker/lib/db-utils.ts
@@ -157,7 +183,7 @@ host deliberately allow-lists this model in its secure generic CRUD route, updat
 tenancy and secret AAD, and returns the encrypted mutation to the same atomic RLS-constrained write. Direct model
 updates use the same hook and load their own current row.
 
-### 4. Compose the instance (per request)
+### 5. Compose the instance (per request)
 
 ```ts
 // worker/lib/ai.ts
@@ -167,11 +193,15 @@ import { createKvVerifyLimiter } from '@ottabase/ottaai/resolver';
 import { createGatewayTransport } from '@ottabase/ottaai/transports/gateway';
 
 const ai = createAiProvisioningWithStorage({
+    // Omit the keyring and set byokEnabled: false for platform-only deployments.
     keyring: createKeyring({ keys: { k1: env.AI_CREDENTIAL_SECRET }, currentKeyId: 'k1' }),
     transport: createGatewayTransport(),
     platform: {
         accountId: env.CLOUDFLARE_ACCOUNT_ID,
         gateway: env.CFAI_GATEWAY_NAME,
+        gatewayToken: env.CFAI_GATEWAY_TOKEN,
+        apiToken: env.CFAI_API_TOKEN,
+        billing: env.OTTAAI_PLATFORM_BILLING === 'unified' ? 'unified' : undefined,
         provider: 'openai',
         providerKey: env.CFAI_OPENAI_API_KEY,
         model: 'gpt-4o-mini',
@@ -196,6 +226,10 @@ const ai = createAiProvisioningWithStorage({
     },
 });
 ```
+
+For a platform-only deployment, set `byokEnabled: false`, omit `keyring`, and use `billing: 'unified'` with a Cloudflare
+API token that has Workers AI Read permission. Provider-native Gateway billing instead requires the authenticated
+`gatewayToken` and matching platform provider key shown above.
 
 `verifyMembership` and `authorize` are **required** whenever the strategy has an org dimension; composition throws
 without them.
@@ -247,6 +281,11 @@ completely unstyled with no error:
 '../../packages/ottaai/src/**/*.{js,ts,jsx,tsx}',
 ```
 
+otta-web also ships a **platform-admin** snapshot at `/admin/infrastructure/ai` (`GET /api/admin/ai/config`). That page
+is the operator answer to "what is this deployment actually running against Cloudflare AI Gateway?" — dials, task
+policies, secret presence, unservable providers. It is not a settings form; config still lives in `ottabase.config.ts`
+and env.
+
 `allowOrgScope` is ANDed with server truth (`status.orgScopeManageable`), which carries **both** the operator's
 `allowOrgCredentials` dial and the strategy. Under `strategy: 'user'` an org-scoped row scores 0 and is permanently
 unselectable, so the option is hidden and the create handler refuses it — offering it there would produce a credential
@@ -294,10 +333,15 @@ tasks: [
 ];
 ```
 
-The shipped Gateway transport supports **OpenAI embeddings only** at `/openai/embeddings`. Other providers are refused
+The shipped Gateway transport supports **OpenAI embeddings only**: provider-key calls use `/openai/embeddings`, while
+Unified Billing calls use the universal `/ai/run` endpoint with an `openai/...` model. Other providers are refused
 locally until they have an individually verified request and response wire contract; the package never guesses at a
 provider's embedding dialect. `dimensions` is available for compatible OpenAI `text-embedding-3` models. Embeddings are
 non-streaming and report input tokens only.
+
+Model selection is server-owned in the application route: declare the model on the task (or in trusted server-side
+options). The shipped `/api/ai/complete` endpoint rejects a request-body `model`, so a browser cannot switch providers,
+escape a task capability gate, or select an unbudgeted model.
 
 Do **not** write `requireByok(...)` then `resolve(...)`. It reads better and does the whole job twice — two candidate
 fan-outs (two D1 queries each under a mixed strategy) and two envelope decryptions, per inference, on the hot path. The
@@ -445,11 +489,11 @@ The suite runs in `node` (Web Crypto fidelity for the envelope tests) with one f
 | `gateway-smoke.test.ts`      | **opt-in**: a real call to a real gateway. Skipped unless `OTTAAI_SMOKE_*` is set                    |
 | `react/…`                    | "leave blank keeps the key", the fail-closed gate, org-scope following server truth                  |
 
-`gateway-wire.test.ts` exists because of what its absence cost. The transport shipped with a green suite and four
-separate wire faults — `/openai/v1/chat/completions`, a missing `anthropic-version`, dynamic routes built as a URL
-segment, and the BYOK alias sent as `cf-aig-provider-key` instead of `cf-aig-byok-alias`. Every one is a claim about a
-**string**, and no amount of scoring, crypto or resolution testing can catch a fact that nothing asserts. When you add a
-provider, add its row there first.
+`gateway-wire.test.ts` exists because of what its absence cost. The **old implementation** shipped with a green suite
+and four separate wire faults — `/openai/v1/chat/completions`, a missing `anthropic-version`, dynamic routes built as a
+URL segment, and the BYOK alias sent as `cf-aig-provider-key` instead of `cf-aig-byok-alias`. Every one is a claim about
+a **string**, and no amount of scoring, crypto or resolution testing can catch a fact that nothing asserts. When you add
+a provider, add its row there first.
 
 `gateway-smoke.test.ts` covers what the wire tests structurally cannot: the wire tests prove we send what Cloudflare's
 docs **say**; only a real call proves Cloudflare still **accepts** it. Two surfaces make that a live risk rather than a

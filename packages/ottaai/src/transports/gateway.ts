@@ -7,9 +7,10 @@
 // gateway concept.
 //
 // A gateway buys unified logging, caching, retries, fallback routing and cost
-// analytics across providers — which is exactly why the TENANT KEY IS FORWARDED
-// PER CALL AS A HEADER rather than stored gateway-side, and why the custody
-// disclosure (see `buildCustodyDisclosure`) names the gateway as a sub-processor.
+// analytics across providers. Inline tenant keys are forwarded per call as headers;
+// the explicit alias secret kind selects a credential the operator stored in Gateway.
+// The custody disclosure (see `buildCustodyDisclosure`) names the gateway as a
+// sub-processor in either case.
 //
 // ROUTING FACTS LIVE IN `./providers`, WIRE DIALECTS IN `./wire`. Both are
 // transcribed from Cloudflare's provider docs and asserted literally by
@@ -35,7 +36,11 @@ import type {
 import { GATEWAY_PROVIDERS, gatewayAdapterFor, type GatewayProviderAdapter, type GatewayWire } from './providers';
 import { buildBody, createStreamReader, normalizeResult } from './wire';
 
+export { GATEWAY_PROVIDERS, GATEWAY_SUPPORTED_PROVIDERS, gatewayAdapterFor } from './providers';
+export type { GatewayProviderAdapter, GatewayWire } from './providers';
+
 const GATEWAY_BASE = 'https://gateway.ai.cloudflare.com/v1';
+const UNIFIED_BILLING_BASE = 'https://api.cloudflare.com/client/v4/accounts';
 
 export interface GatewayAdapterOptions {
     /**
@@ -65,6 +70,11 @@ export interface GatewayAdapterOptions {
     dynamicPath?: string;
     /** Default request timeout in ms when a call does not specify one. */
     defaultTimeoutMs?: number;
+    /**
+     * AI Gateway stores request and response payloads by default. Keep that off unless an
+     * operator explicitly needs payload debugging; metrics and fixed provenance remain.
+     */
+    collectLogPayload?: boolean;
 }
 
 /**
@@ -82,6 +92,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
     const aliasHeader = options.aliasHeader ?? 'cf-aig-byok-alias';
     const dynamicPath = options.dynamicPath ?? DEFAULT_DYNAMIC_PATH;
     const defaultTimeout = options.defaultTimeoutMs ?? 60_000;
+    const collectLogPayload = options.collectLogPayload === true;
 
     return {
         // Surfaced in `configSummary.transport` and in every emitted event. Named for the
@@ -103,10 +114,21 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
          * verdict an operator can read) beats a 200-with-empty-text at call time.
          */
         isComplete(config) {
-            if (!config.accountId || !config.gateway || !config.provider) return false;
+            if (!config.accountId?.trim() || !config.gateway?.trim()) return false;
+            if (config.billing === 'unified') {
+                if (!config.apiToken?.trim() || !config.model || isDynamicRef(config.model)) return false;
+                return unifiedBillingModelId(parseModelRef(config.model, registry), config.provider) !== null;
+            }
+            if (!config.gatewayToken?.trim() || (!config.secret && !config.alias && config.billing !== 'provider-key'))
+                return false;
             // A dynamic route owns provider selection inside the gateway, so the credential's
             // own provider is irrelevant to whether the call can be made.
             if (isDynamicRef(config.model)) return true;
+            if (!config.provider) return false;
+            if (config.model) {
+                const parsed = parseModelRef(config.model, registry);
+                if (parsed.form === 'qualified' && parsed.provider !== config.provider) return false;
+            }
             return Boolean(gatewayAdapterFor(config.provider));
         },
 
@@ -135,13 +157,19 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
         },
 
         createClient(config) {
-            return createGatewayClient(config, { registry, aliasHeader, dynamicPath, defaultTimeout });
+            return createGatewayClient(config, {
+                registry,
+                aliasHeader,
+                dynamicPath,
+                defaultTimeout,
+                collectLogPayload,
+            });
         },
     };
 }
 
 function isDynamicRef(model: string | null | undefined): boolean {
-    return typeof model === 'string' && model.startsWith(DYNAMIC_MODEL_PREFIX);
+    return typeof model === 'string' && model.trim().startsWith(DYNAMIC_MODEL_PREFIX);
 }
 
 interface ClientDeps {
@@ -149,6 +177,24 @@ interface ClientDeps {
     aliasHeader: string;
     dynamicPath: string;
     defaultTimeout: number;
+    collectLogPayload: boolean;
+}
+
+/**
+ * Cloudflare's REST API has its own model namespace. Keep that translation here rather
+ * than changing registry ids used by provider-native Gateway routes.
+ */
+function unifiedBillingModelId(parsed: ReturnType<typeof parseModelRef>, fallbackProvider?: string): string | null {
+    if (parsed.form === 'bare') {
+        if (parsed.model.startsWith('@cf/')) return parsed.model;
+        if (!fallbackProvider || fallbackProvider === 'workers-ai') return null;
+        if (fallbackProvider === 'google-ai-studio') return `google/${parsed.model}`;
+        return `${fallbackProvider}/${parsed.model}`;
+    }
+    if (parsed.form === 'dynamic') return null;
+    if (parsed.provider === 'workers-ai') return parsed.model.startsWith('@cf/') ? parsed.model : null;
+    if (parsed.provider === 'google-ai-studio') return `google/${parsed.model}`;
+    return parsed.raw;
 }
 
 /** Everything the request builder needs, or the reason it cannot be built. */
@@ -161,18 +207,45 @@ type Target =
           provider: string;
           wire: GatewayWire;
           adapter: GatewayProviderAdapter | null;
+          unifiedBilling: boolean;
       }
     | { ok: false; message: string };
 
 function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): RawAiClient {
     const doFetch = config.fetch ?? fetch;
-    const sentinels = [config.secret?.expose(), config.alias, config.gatewayToken];
+    const sentinels = [config.secret?.expose(), config.alias, config.gatewayToken, config.apiToken];
 
     /** Resolve the target URL, the wire dialect, and where the model id belongs. */
     function target(perCallModel: string | undefined, stream: boolean): Target {
         const ref = perCallModel ?? config.model ?? null;
 
-        if (ref && ref.startsWith(DYNAMIC_MODEL_PREFIX)) {
+        if (config.billing === 'unified') {
+            if (!config.apiToken?.trim() || !ref || isDynamicRef(ref)) {
+                return {
+                    ok: false,
+                    message: 'Unified Billing requires a non-dynamic OpenAI-compatible model reference.',
+                };
+            }
+            const parsed = parseModelRef(ref, deps.registry);
+            const modelId = unifiedBillingModelId(parsed, config.provider);
+            if (!modelId) {
+                return {
+                    ok: false,
+                    message: 'Workers AI Unified Billing models must use an @cf/... model id.',
+                };
+            }
+            return {
+                ok: true,
+                url: `${UNIFIED_BILLING_BASE}/${config.accountId}/ai/v1/chat/completions`,
+                modelId,
+                provider: parsed.provider || config.provider || 'cloudflare',
+                wire: 'openai',
+                adapter: null,
+                unifiedBilling: true,
+            };
+        }
+
+        if (ref && isDynamicRef(ref)) {
             // A DYNAMIC ROUTE IS A MODEL VALUE, NOT A PATH.
             //
             // Cloudflare routes `dynamic/<route>` through the OpenAI-compatible endpoint with
@@ -180,6 +253,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             // instead 404s at the gateway — and because the route name is operator config,
             // that failure looks like a gateway outage rather than a client bug.
             const route = ref
+                .trim()
                 .slice(DYNAMIC_MODEL_PREFIX.length)
                 .split('/')
                 .filter((segment) => segment.length > 0 && segment !== '.' && segment !== '..')
@@ -189,9 +263,10 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 ok: true,
                 url: `${GATEWAY_BASE}/${config.accountId}/${config.gateway}/${deps.dynamicPath}`,
                 modelId: `${DYNAMIC_MODEL_PREFIX}${route}`,
-                provider: config.provider,
+                provider: config.provider || 'dynamic',
                 wire: 'openai',
                 adapter: null,
+                unifiedBilling: false,
             };
         }
 
@@ -239,24 +314,17 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             provider,
             wire: adapter.wire,
             adapter,
+            unifiedBilling: false,
         };
     }
 
     /**
-     * Embeddings deliberately start with OpenAI only. Cloudflare documents OpenAI's provider
-     * base as a replacement for OpenAI's `/v1` base, so `/embeddings` is a verified route;
-     * other providers need their own request/response contracts before they are enabled.
+     * Embeddings deliberately start with OpenAI only. Provider-key calls use OpenAI's
+     * provider-native route. Unified Billing uses Cloudflare's documented universal
+     * `/ai/run` envelope, which supports embedding models without inventing an
+     * undocumented third-party `/ai/v1/embeddings` contract.
      */
     function embeddingTarget(perCallModel: string | undefined): Target {
-        if (config.provider !== 'openai') {
-            return {
-                ok: false,
-                message:
-                    `This deployment's AI Gateway transport has no verified embedding wire contract for provider ` +
-                    `"${config.provider}". OpenAI is the only shipped embedding provider.`,
-            };
-        }
-
         const ref = perCallModel ?? config.model;
         if (!ref || isDynamicRef(ref)) {
             return {
@@ -266,21 +334,49 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         }
 
         const parsed = parseModelRef(ref, deps.registry);
-        if (parsed.form === 'qualified' && parsed.provider !== config.provider) {
+        const provider = parsed.form === 'qualified' ? parsed.provider : config.provider;
+        if (provider !== 'openai') {
             return {
                 ok: false,
                 message:
-                    `Model "${parsed.raw}" targets provider "${parsed.provider}" but this credential is for ` +
-                    `"${config.provider}". A model reference may not change the provider â€” save a credential for ` +
-                    `"${parsed.provider}" instead.`,
+                    `This deployment's AI Gateway transport has no verified embedding wire contract for provider ` +
+                    `"${provider}". OpenAI is the only shipped embedding provider.`,
             };
         }
 
-        const capabilities = deps.registry.capabilitiesFor(config.provider, parsed.model);
+        const capabilities = deps.registry.capabilitiesFor(provider, parsed.model);
         if (capabilities && !capabilities.includes('embedding')) {
             return {
                 ok: false,
                 message: `Model "${parsed.model}" is not registered as an embedding model for OpenAI.`,
+            };
+        }
+
+        if (config.billing === 'unified') {
+            if (!config.apiToken?.trim()) {
+                return { ok: false, message: 'Unified Billing embeddings require a Cloudflare API token.' };
+            }
+            const modelId = unifiedBillingModelId(parsed, config.provider);
+            if (!modelId) {
+                return { ok: false, message: 'Unified Billing requires a provider-qualified embedding model.' };
+            }
+            return {
+                ok: true,
+                url: `${UNIFIED_BILLING_BASE}/${config.accountId}/ai/run`,
+                modelId,
+                provider,
+                wire: 'openai',
+                adapter: null,
+                unifiedBilling: true,
+            };
+        }
+
+        if (config.provider !== 'openai') {
+            return {
+                ok: false,
+                message:
+                    `This deployment's provider-native embedding route is configured for "${config.provider}", ` +
+                    'not OpenAI.',
             };
         }
 
@@ -289,18 +385,28 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             ok: true,
             url: `${GATEWAY_BASE}/${config.accountId}/${config.gateway}/${adapter.slug}/embeddings`,
             modelId: parsed.model,
-            provider: config.provider,
+            provider,
             wire: adapter.wire,
             adapter,
+            unifiedBilling: false,
         };
     }
 
-    function buildHeaders(adapter: GatewayProviderAdapter | null, options: AiCallOptions | AiEmbedOptions): Headers {
+    function buildHeaders(target: Extract<Target, { ok: true }>, options: AiCallOptions | AiEmbedOptions): Headers {
+        const adapter = target.adapter;
         const headers = new Headers({ 'Content-Type': 'application/json' });
 
         // Provider-mandated headers (Anthropic's API version, for example) go on FIRST so an
         // operator header bag can still override them if a provider ever moves.
         for (const [key, value] of Object.entries(adapter?.staticHeaders ?? {})) headers.set(key, value);
+
+        // Operator-only transport headers may tune a provider, but authentication,
+        // provenance, cache controls and payload privacy are applied afterwards as invariants.
+        const extraHeaders = config.transportConfig?.headers;
+        if (extraHeaders && typeof extraHeaders === 'object') {
+            for (const [key, value] of Object.entries(extraHeaders as Record<string, string>)) headers.set(key, value);
+        }
+        headers.set('Content-Type', 'application/json');
 
         // Provider auth — EXACTLY ONE of key / alias is ever present (the merge is
         // subtractive on secrets; a credential supplies the complete provider
@@ -309,7 +415,10 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         // A KEY IN A URL IS A KEY IN A LOG. Query-string credentials land in access logs,
         // proxy logs, browser referrers and error reports; a header does not. Every provider
         // in the table authenticates by header, Google AI Studio included.
-        if (config.secret) {
+        if (target.unifiedBilling) {
+            headers.set('Authorization', `Bearer ${config.apiToken!.trim()}`);
+            headers.set('cf-aig-gateway-id', config.gateway!.trim());
+        } else if (config.secret) {
             if (adapter) {
                 headers.set(adapter.auth.header, `${adapter.auth.prefix}${config.secret.expose()}`);
             } else {
@@ -321,37 +430,35 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             headers.set(deps.aliasHeader, config.alias);
         }
 
+        // A tenant BYOK request must fail closed if a stored alias is missing or invalid.
+        // Without this, Cloudflare may fall through to Unified Billing and charge the
+        // operator. The gateway-level `byok_only` setting should also be enabled.
+        if (!target.unifiedBilling && (config.provenance.source === 'byok' || config.billing === 'provider-key')) {
+            headers.set('cf-aig-no-wholesale', 'true');
+        }
+
         // Gateway auth is the OPERATOR'S credential and is orthogonal to the tenant's.
-        if (config.gatewayToken) headers.set('cf-aig-authorization', `Bearer ${config.gatewayToken}`);
+        if (!target.unifiedBilling) {
+            const gatewayToken = config.gatewayToken?.trim();
+            if (gatewayToken) headers.set('cf-aig-authorization', `Bearer ${gatewayToken}`);
+        }
 
         if (options.skipCache) headers.set('cf-aig-skip-cache', 'true');
         else if (options.cacheTtlSeconds !== undefined)
             headers.set('cf-aig-cache-ttl', String(options.cacheTtlSeconds));
 
-        // Provenance travels as request metadata so a gateway route can branch on it —
-        // e.g. give BYOK tenants a better model with no code change in any consumer.
-        //
-        // TRUSTED VALUES ARE WRITTEN LAST. Spreading the caller's bag last let it overwrite
-        // `source`, `task` and `app` — and because AI Gateway's dynamic routing can BRANCH ON
-        // METADATA, a call site that forwarded a request body could relabel a platform call
-        // as `source: 'byok'` and take a route (and a budget) it was never entitled to. It
-        // also poisons cost analytics, which is the quieter half of the same bug.
-        //
-        // Caller tags are still forwarded — they just cannot impersonate provenance.
+        // Provenance is a fixed server-owned five-field envelope. Cloudflare accepts at most
+        // five metadata entries; accepting caller tags would silently displace attribution and
+        // could influence a dynamic route's policy.
         const metadata: Record<string, string> = {
-            ...(options.metadata ?? {}),
             source: config.provenance.source,
             task: config.provenance.taskKey,
             ...(config.provenance.appId ? { app: config.provenance.appId } : {}),
+            ...(config.provenance.organizationId ? { organization: config.provenance.organizationId } : {}),
+            ...(config.provenance.userId ? { user: config.provenance.userId } : {}),
         };
         headers.set('cf-aig-metadata', JSON.stringify(metadata));
-
-        // Operator-only transport bag. Tenant-writable keys are already filtered out by
-        // the merge; this loop only ever sees operator values.
-        const extraHeaders = config.transportConfig?.headers;
-        if (extraHeaders && typeof extraHeaders === 'object') {
-            for (const [k, v] of Object.entries(extraHeaders as Record<string, string>)) headers.set(k, v);
-        }
+        headers.set('cf-aig-collect-log-payload', String(deps.collectLogPayload));
 
         return headers;
     }
@@ -403,7 +510,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         try {
             const response = await doFetch(resolved.url, {
                 method: 'POST',
-                headers: buildHeaders(resolved.adapter, options),
+                headers: buildHeaders(resolved, options),
                 body: JSON.stringify(buildBody({ wire: resolved.wire, model: resolved.modelId, options, stream })),
                 signal: controller.signal,
             });
@@ -446,10 +553,15 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         }
     }
 
-    async function issueEmbedding(
-        options: AiEmbedOptions,
-    ): Promise<
-        | { ok: true; response: Response; provider: string; modelId: string; done: () => void }
+    async function issueEmbedding(options: AiEmbedOptions): Promise<
+        | {
+              ok: true;
+              response: Response;
+              provider: string;
+              modelId: string;
+              unifiedBilling: boolean;
+              done: () => void;
+          }
         | { ok: false; error: AiCallError }
     > {
         const resolved = embeddingTarget(options.model);
@@ -484,12 +596,22 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         try {
             const response = await doFetch(resolved.url, {
                 method: 'POST',
-                headers: buildHeaders(resolved.adapter, options),
-                body: JSON.stringify({
-                    model: resolved.modelId,
-                    input: Array.isArray(options.input) ? options.input : options.input,
-                    ...(options.dimensions !== undefined ? { dimensions: options.dimensions } : {}),
-                }),
+                headers: buildHeaders(resolved, options),
+                body: JSON.stringify(
+                    resolved.unifiedBilling
+                        ? {
+                              model: resolved.modelId,
+                              input: {
+                                  input: options.input,
+                                  ...(options.dimensions !== undefined ? { dimensions: options.dimensions } : {}),
+                              },
+                          }
+                        : {
+                              model: resolved.modelId,
+                              input: options.input,
+                              ...(options.dimensions !== undefined ? { dimensions: options.dimensions } : {}),
+                          },
+                ),
                 signal: controller.signal,
             });
             if (!response.ok) {
@@ -504,7 +626,14 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                     },
                 };
             }
-            return { ok: true, response, provider: resolved.provider, modelId: resolved.modelId, done };
+            return {
+                ok: true,
+                response,
+                provider: resolved.provider,
+                modelId: resolved.modelId,
+                unifiedBilling: resolved.unifiedBilling,
+                done,
+            };
         } catch (thrown) {
             done();
             const aborted = (thrown as { name?: string })?.name === 'AbortError';
@@ -573,14 +702,23 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 issued.done();
             }
 
-            const data = payload.data;
+            // `/ai/run` uses Cloudflare's `{ result, success }` envelope; provider-native
+            // OpenAI returns its payload directly. Cloudflare embedding models return
+            // `number[][]`, while OpenAI-compatible responses return `{ embedding }[]`.
+            const unwrapped =
+                issued.unifiedBilling && payload.result && typeof payload.result === 'object'
+                    ? (payload.result as Record<string, unknown>)
+                    : payload;
+            const data = unwrapped.data;
             if (!Array.isArray(data)) {
                 return {
                     ok: false,
                     error: { retryable: false, message: 'Provider returned no embedding vectors.' },
                 };
             }
-            const vectors = data.map((item) => (item as { embedding?: unknown }).embedding);
+            const vectors = data.map((item) =>
+                Array.isArray(item) ? item : (item as { embedding?: unknown }).embedding,
+            );
             if (
                 !vectors.every((vector) => Array.isArray(vector) && vector.every((value) => typeof value === 'number'))
             ) {
@@ -589,11 +727,16 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                     error: { retryable: false, message: 'Provider returned an invalid embedding vector.' },
                 };
             }
-            const usage = payload.usage as { prompt_tokens?: unknown } | undefined;
+            const usage = unwrapped.usage as { prompt_tokens?: unknown; input_tokens?: unknown } | undefined;
             const result: AiEmbeddingResult = {
                 vectors: vectors as number[][],
-                tokens: typeof usage?.prompt_tokens === 'number' ? { input: usage.prompt_tokens } : null,
-                model: typeof payload.model === 'string' ? payload.model : issued.modelId,
+                tokens:
+                    typeof usage?.prompt_tokens === 'number'
+                        ? { input: usage.prompt_tokens }
+                        : typeof usage?.input_tokens === 'number'
+                          ? { input: usage.input_tokens }
+                          : null,
+                model: typeof unwrapped.model === 'string' ? unwrapped.model : issued.modelId,
                 provider: issued.provider,
                 raw: payload,
             };

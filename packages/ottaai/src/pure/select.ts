@@ -15,6 +15,8 @@ export interface SelectionInput {
     appScope: AppScope;
     registry: AiProviderRegistry;
     task: ResolvedTaskPolicy;
+    modelOverride?: string;
+    fallbackModel?: string | null;
 }
 
 export interface AssessedCandidate {
@@ -46,6 +48,7 @@ export interface SelectionResult {
 const AGGREGATE_PRECEDENCE: Array<{ verdict: CredentialVerdict; reason: ResolutionReason }> = [
     { verdict: 'DISABLED', reason: 'ALL_DISABLED' },
     { verdict: 'SOFT_DELETED', reason: 'ALL_DISABLED' },
+    { verdict: 'MODEL_PROVIDER_MISMATCH', reason: 'MODEL_PROVIDER_MISMATCH' },
     { verdict: 'CAPABILITY_UNMET', reason: 'CAPABILITY_UNMET' },
     { verdict: 'PROVIDER_UNREGISTERED', reason: 'PROVIDER_UNREGISTERED' },
     { verdict: 'APP_MISMATCH', reason: 'APP_MISMATCH' },
@@ -82,6 +85,8 @@ export function selectCredential(input: SelectionInput): SelectionResult {
             registry: input.registry,
             task: input.task,
             appScope: input.appScope,
+            modelOverride: input.modelOverride,
+            fallbackModel: input.fallbackModel,
         });
 
         if (verdict !== 'ELIGIBLE') {

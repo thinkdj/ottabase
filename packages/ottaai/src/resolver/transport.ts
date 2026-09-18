@@ -88,8 +88,6 @@ export interface AiCallOptions {
     skipCache?: boolean;
     /** Response cache TTL in seconds. Ignored for BYOK-sourced calls. */
     cacheTtlSeconds?: number;
-    /** Non-secret tags forwarded to the transport's own logging. */
-    metadata?: Record<string, string>;
 }
 
 /**
@@ -113,8 +111,6 @@ export interface AiEmbedOptions {
     skipCache?: boolean;
     /** Response cache TTL in seconds. Ignored for BYOK-sourced calls. */
     cacheTtlSeconds?: number;
-    /** Non-secret tags forwarded to the transport's own logging. */
-    metadata?: Record<string, string>;
 }
 
 /** The raw client an adapter produces. The core wraps this in its instrumented decorator. */

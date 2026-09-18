@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '../crypto';
 import { createProviderRegistry } from '../registry';
 import { createAiProvisioning, verifyCredential, type AiProvisioning } from '../resolver';
+import { createGatewayTransport } from '../transports/gateway';
 import { resolveTaskDefaults } from '../tasks';
 import { capabilitiesSatisfied, selectCredential } from '../pure';
 import type { AiTenancyTuple, CredentialRecord, PlatformAiConfig } from '../types';
@@ -218,6 +219,60 @@ describe('task-pinned eligibility filters unpinnable providers even with no requ
             task,
         });
         expect(result.winner?.id).toBe('b');
+    });
+});
+
+describe('platform resolution uses the effective task model contract', () => {
+    it('detects Unified Billing spend when the usable model comes from the task default', async () => {
+        const ai = createAiProvisioning<AiTenancyTuple>({
+            store: createMemoryStore(),
+            transport: createGatewayTransport(),
+            platform: {
+                accountId: 'acct',
+                gateway: 'gw',
+                apiToken: 'cf-api-token',
+                billing: 'unified',
+                provider: 'openai',
+            },
+            tasks: [{ key: 'chat', defaultModel: 'openai/gpt-4o-mini' }],
+            contextFrom: (tuple) => tuple,
+            strategy: 'user',
+            byokEnabled: false,
+            quota: () => true,
+        });
+
+        expect(ai.platformRouteUsable).toBe(true);
+        const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
+        expect(resolution.source).toBe('platform');
+        expect(resolution.client).not.toBeNull();
+    });
+
+    it('uses the platform provider pin instead of silently falling back to platform.model', async () => {
+        const { ai, transport } = harness({
+            byokEnabled: false,
+            tasks: [
+                {
+                    key: 'chat',
+                    modelPolicy: 'task-pinned',
+                    pinnedModels: { openai: 'gpt-4o' },
+                },
+            ],
+        });
+
+        const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
+        expect(resolution.source).toBe('platform');
+        expect(transport.configs.at(-1)?.model).toBe('openai/gpt-4o');
+    });
+
+    it('fails closed when the platform model cannot satisfy required capabilities', async () => {
+        const { ai } = harness({
+            byokEnabled: false,
+            tasks: [{ key: 'chat', requiredCapabilities: ['embedding'] }],
+        });
+
+        const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
+        expect(resolution.client).toBeNull();
+        expect(resolution.reason).toBe('CAPABILITY_UNMET');
     });
 });
 

@@ -99,6 +99,10 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
         accountId: platform.accountId,
         gateway: platform.gateway,
         gatewayToken: platform.gatewayToken,
+        apiToken: platform.apiToken,
+        // Unified Billing is a platform-paid REST route. A tenant credential must always
+        // take the provider-native Gateway path so its key/alias is never ignored.
+        billing: credential ? undefined : platform.providerKey ? 'provider-key' : platform.billing,
         fetch: platform.fetch,
         defaults: platform.defaults,
         transportConfig,

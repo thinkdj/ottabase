@@ -204,6 +204,7 @@ export type CredentialVerdict =
     | 'SOFT_DELETED'
     | 'APP_MISMATCH'
     | 'NOT_IN_SCOPE'
+    | 'MODEL_PROVIDER_MISMATCH'
     | 'CAPABILITY_UNMET'
     | 'PROVIDER_UNREGISTERED';
 
@@ -217,6 +218,7 @@ export type ResolutionReason =
     | 'NO_TENANT_CONTEXT'
     | 'NO_CREDENTIAL'
     | 'ALL_DISABLED'
+    | 'MODEL_PROVIDER_MISMATCH'
     | 'CAPABILITY_UNMET'
     | 'PROVIDER_UNREGISTERED'
     | 'APP_MISMATCH'
@@ -255,6 +257,8 @@ export interface PlatformAiConfig {
     gateway?: string;
     /** Gateway authentication token (`cf-aig-authorization`), when the gateway is authenticated. */
     gatewayToken?: string;
+    /** Cloudflare API token with Workers AI Read, required for Unified Billing REST calls. */
+    apiToken?: string;
     /**
      * The provider whose key `providerKey` belongs to. DECLARED, never inferred from the
      * key's prefix — inference is a guess that goes stale.
@@ -266,7 +270,13 @@ export interface PlatformAiConfig {
      * it is what routes a call to gateway-billed inference.
      */
     providerKey?: string;
-    /** Platform default model. `dynamic/<route>` is recommended (see model-ref.ts). */
+    /**
+     * How a keyless platform request is paid for. A gateway path alone does not prove that
+     * it may bill the account: `unified` is an explicit operator opt-in after enabling
+     * Cloudflare AI Gateway Unified Billing. `provider-key` is inferred from `providerKey`.
+     */
+    billing?: 'provider-key' | 'unified';
+    /** Platform default model. `dynamic/<route>` requires provider-native Gateway authentication. */
     model?: string;
     /** Injected fetch — lets resolver tests run with no network. Inherited by tenant clients. */
     fetch?: typeof fetch;
@@ -294,6 +304,8 @@ export interface MergedTransportConfig {
     accountId?: string;
     gateway?: string;
     gatewayToken?: string;
+    apiToken?: string;
+    billing?: 'provider-key' | 'unified';
     fetch?: typeof fetch;
     defaults?: Record<string, unknown>;
     transportConfig: Record<string, unknown>;

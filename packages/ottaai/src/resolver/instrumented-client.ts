@@ -247,7 +247,6 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const call: AiCallOptions = {
                 ...options,
                 cacheTtlSeconds: resolveCacheTtl(options),
-                metadata: { ...(options.metadata ?? {}), byok: String(deps.source === 'byok'), task: deps.taskKey },
             };
 
             let response;
@@ -350,7 +349,6 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const call: AiEmbedOptions = {
                 ...options,
                 cacheTtlSeconds: resolveCacheTtl(options),
-                metadata: { ...(options.metadata ?? {}), byok: String(deps.source === 'byok'), task: deps.taskKey },
             };
 
             let response;
@@ -455,7 +453,6 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const call: AiCallOptions = {
                 ...options,
                 cacheTtlSeconds: resolveCacheTtl(options),
-                metadata: { ...(options.metadata ?? {}), byok: String(deps.source === 'byok'), task: deps.taskKey },
             };
 
             let tokens: AiCallResult['tokens'] = null;

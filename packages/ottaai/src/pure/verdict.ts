@@ -17,6 +17,10 @@ export interface EligibilityInput {
     registry: AiProviderRegistry;
     task: ResolvedTaskPolicy;
     appScope: AppScope;
+    /** Effective per-call override. It outranks task and credential models. */
+    modelOverride?: string;
+    /** Last rung of the model chain, used when neither task nor credential supplies one. */
+    fallbackModel?: string | null;
 }
 
 export interface EligibilityResult {
@@ -116,16 +120,15 @@ export function capabilitiesSatisfied(input: EligibilityInput): boolean {
     // pin in the model chain onto the credential's OWN model — which is exactly the
     // shadowing the eligibility filter exists to prevent, and the pinnable credential that
     // could have served the task is never even considered.
-    if (input.task.modelPolicy === 'task-pinned') {
+    if (!input.modelOverride?.trim() && input.task.modelPolicy === 'task-pinned') {
         const pinned = input.task.pinnedModels?.[record.provider];
         if (!pinned) return false;
-        if (!required || required.length === 0) return true;
-        return modelHasCapabilities(input, record.provider, pinned, required);
     }
 
     if (!required || required.length === 0) return true;
 
-    const parsed = record.model ? parseModelRef(record.model, input.registry) : null;
+    const model = effectiveCandidateModel(input);
+    const parsed = model ? parseModelRef(model, input.registry) : null;
     // A dynamic route's model is decided inside the gateway; the package cannot inspect it.
     // Treat it as unknown and defer to `unknownModelPolicy`.
     if (parsed?.dynamic) return input.task.unknownModelPolicy === 'allow';
@@ -134,6 +137,40 @@ export function capabilitiesSatisfied(input: EligibilityInput): boolean {
     const modelId = parsed?.form === 'qualified' ? parsed.model : (parsed?.model ?? null);
 
     return modelHasCapabilities(input, provider, modelId, required);
+}
+
+/** Validate an already-resolved platform model against a task's capability contract. */
+export function resolvedModelCapabilitiesSatisfied(input: {
+    registry: AiProviderRegistry;
+    task: ResolvedTaskPolicy;
+    provider: string | null | undefined;
+    model: string | null;
+}): boolean {
+    const required = input.task.requiredCapabilities;
+    if (!required || required.length === 0) return true;
+    if (!input.model) return false;
+    const parsed = parseModelRef(input.model, input.registry);
+    if (parsed.dynamic) return input.task.unknownModelPolicy === 'allow';
+    const provider = parsed.form === 'qualified' ? parsed.provider : input.provider;
+    if (!provider) return false;
+    const capabilities = input.registry.capabilitiesFor(provider, parsed.model);
+    if (capabilities === null) return input.task.unknownModelPolicy === 'allow';
+    return required.every((capability) => capabilities.includes(capability));
+}
+
+function effectiveCandidateModel(input: EligibilityInput): string | null {
+    if (input.modelOverride?.trim()) return input.modelOverride;
+    if (input.task.modelPolicy === 'task-pinned') {
+        return input.task.pinnedModels?.[input.record.provider] ?? null;
+    }
+    return input.record.model ?? input.task.defaultModel ?? input.fallbackModel ?? null;
+}
+
+function effectiveModelProviderMismatch(input: EligibilityInput): boolean {
+    const model = effectiveCandidateModel(input);
+    if (!model) return false;
+    const parsed = parseModelRef(model, input.registry);
+    return parsed.form === 'qualified' && parsed.provider !== input.record.provider;
 }
 
 function modelHasCapabilities(
@@ -161,6 +198,7 @@ function modelHasCapabilities(
 const VERDICT_PRECEDENCE: CredentialVerdict[] = [
     'DISABLED',
     'SOFT_DELETED',
+    'MODEL_PROVIDER_MISMATCH',
     'CAPABILITY_UNMET',
     'PROVIDER_UNREGISTERED',
     'APP_MISMATCH',
@@ -183,7 +221,8 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     const user = dimensionMatch(record.userId, context.userId);
     if (org.conflict || user.conflict) verdicts.push('NOT_IN_SCOPE');
 
-    if (!capabilitiesSatisfied(input)) verdicts.push('CAPABILITY_UNMET');
+    if (effectiveModelProviderMismatch(input)) verdicts.push('MODEL_PROVIDER_MISMATCH');
+    else if (!capabilitiesSatisfied(input)) verdicts.push('CAPABILITY_UNMET');
 
     if (verdicts.length === 0) {
         return { verdict: 'ELIGIBLE', allVerdicts: ['ELIGIBLE'] };

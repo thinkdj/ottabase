@@ -72,12 +72,14 @@ export function createAiProvisioningWithStorage<HostContext = unknown>(
 
     // Install the write context BEFORE the core is built, so a boot-time failure surfaces
     // as a configuration error rather than as a write that silently stores plaintext.
-    configureCredentialWrites({
-        keyring: options.keyring,
-        registry,
-        validateAlias: options.validateAlias,
-        onWarning: options.onWarning,
-    });
+    if (options.byokEnabled !== false) {
+        configureCredentialWrites({
+            keyring: options.keyring!,
+            registry,
+            validateAlias: options.validateAlias,
+            onWarning: options.onWarning,
+        });
+    }
 
     const core = createAiProvisioning<HostContext>({ ...options, store, registry });
 
