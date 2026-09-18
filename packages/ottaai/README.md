@@ -22,6 +22,13 @@ The transport follows Cloudflare's current
 references beside upgrades: Cloudflare's provider catalog and endpoint availability can change independently of this
 package's registry.
 
+### Workers fetch binding
+
+When no custom `fetch` implementation is supplied, the gateway transport invokes the Cloudflare Workers global through
+`globalThis.fetch(...)`. This preserves the host method's receiver; capturing `fetch` as a bare function can raise
+`Illegal invocation` at runtime. The receiver behavior is covered by the Worker-binding regression test in
+`src/__tests__/gateway-wire.test.ts`.
+
 ## Provider support
 
 The gateway transport calls only providers it has a **verified wire contract** for — a transcribed URL, auth scheme,

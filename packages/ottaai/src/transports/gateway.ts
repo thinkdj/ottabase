@@ -212,7 +212,10 @@ type Target =
     | { ok: false; message: string };
 
 function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): RawAiClient {
-    const doFetch = config.fetch ?? fetch;
+    // Cloudflare Workers' global fetch is a host method. Keep its receiver when
+    // the client captures it for later calls; invoking a detached reference
+    // throws `Illegal invocation` in the Worker runtime.
+    const doFetch = config.fetch ?? ((...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args));
     const sentinels = [config.secret?.expose(), config.alias, config.gatewayToken, config.apiToken];
 
     /** Resolve the target URL, the wire dialect, and where the model id belongs. */

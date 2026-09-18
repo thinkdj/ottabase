@@ -20,7 +20,7 @@
 // here rather than a tenant's inference.
 // ============================================================
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createProviderRegistry, withTenantSelectionRemoved } from '../registry';
 import { SecretValue } from '../secret';
 import type { MergedTransportConfig } from '../types';
@@ -90,6 +90,26 @@ function makeClient(overrides: Partial<MergedTransportConfig>) {
     const transport = createGatewayTransport({ registry: createProviderRegistry() });
     return transport.createClient(configFor(overrides));
 }
+
+describe('Worker global fetch binding', () => {
+    it("preserves fetch's receiver when no custom fetch is injected", async () => {
+        const captured: Captured[] = [];
+        const workerFetch = function (this: typeof globalThis, input: RequestInfo | URL, init?: RequestInit) {
+            if (this !== globalThis) throw new TypeError('Illegal invocation');
+            return capturingFetch(captured)(String(input), init ?? {});
+        } as typeof fetch;
+
+        vi.stubGlobal('fetch', workerFetch);
+        try {
+            const result = await makeClient({}).complete({ messages: [{ role: 'user', content: 'hi' }] });
+
+            expect(result.ok).toBe(true);
+            expect(captured).toHaveLength(1);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
 
 // ---------------------------------------------------------------------------
 // URLs — one per supported provider, quoted from the Cloudflare docs
