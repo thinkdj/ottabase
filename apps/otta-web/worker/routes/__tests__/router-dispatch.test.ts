@@ -20,6 +20,10 @@ const { handlerMock } = vi.hoisted(() => ({
     handlerMock: (name: string) => vi.fn(async () => new Response(name)),
 }));
 
+vi.mock('../admin-ai', () => ({
+    handleAdminAiConfig: handlerMock('handleAdminAiConfig'),
+}));
+
 vi.mock('../admin-cron', () => ({
     handleAdminCronCreate: handlerMock('handleAdminCronCreate'),
     handleAdminCronList: handlerMock('handleAdminCronList'),
@@ -213,6 +217,7 @@ vi.mock('@ottabase/analytics/server', () => ({
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { getOttabaseConfig } from '../../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../../ottabase/config.routes';
+import { handleAdminAiConfig } from '../admin-ai';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from '../admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -345,6 +350,7 @@ async function dispatch(method: string, path: string) {
 
 /** Every mocked route handler — used to assert "nothing was called". */
 const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
+    handleAdminAiConfig,
     handleAdminCronCreate,
     handleAdminCronList,
     handleCronTask,
@@ -866,6 +872,14 @@ describe('router dispatch parity', () => {
             const { response } = await dispatch('DELETE', '/api/admin/db/tables/us%65rs/row-1');
             expect(response).toBeNull();
             expect(handleAdminDbRowDelete).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('admin AI config', () => {
+        it('GET /api/admin/ai/config dispatches to the platform snapshot', async () => {
+            const { response } = await dispatch('GET', '/api/admin/ai/config');
+            expect(handleAdminAiConfig).toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleAdminAiConfig');
         });
     });
 

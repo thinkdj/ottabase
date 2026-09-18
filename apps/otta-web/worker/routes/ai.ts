@@ -12,7 +12,7 @@
 //     server-side gate; the call site names identity and a task key, nothing else.
 // ====================================================================
 
-import { AI_ERROR_HTTP_STATUS, AI_ERROR_MESSAGES, isDynamicModelRef } from '@ottabase/ottaai';
+import { AI_ERROR_HTTP_STATUS, AI_ERROR_MESSAGES } from '@ottabase/ottaai';
 import type { SecurityContext } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -22,7 +22,7 @@ import type { ApiRouteContext } from './router';
 /** 501 when the whole feature is dormant — actionable copy, never a 500 and never a crash. */
 function notConfigured(): Response {
     return errorResponse(
-        'AI is not configured on this deployment. Set AI_CREDENTIAL_SECRET and enable the ottaai package.',
+        'AI is not configured on this deployment. Enable the ottaai package, configure a Cloudflare AI Gateway route, and set AI_CREDENTIAL_SECRET only when BYOK is enabled.',
         501,
         { code: 'NOT_CONFIGURED', hint: 'See packages/ottaai/README.md — Setup.' },
     );
@@ -47,6 +47,21 @@ async function withInstance(
     return run(resolved.ai, resolved.security);
 }
 
+/** Tenant credential endpoints are absent in platform-only mode, while status/inference remain available. */
+async function withByokInstance(
+    context: ApiRouteContext,
+    run: (instance: AiInstance, security: SecurityContext) => Promise<Response>,
+): Promise<Response> {
+    return withInstance(context, (ai, security) => {
+        if (!ai.byokEnabled) {
+            return Promise.resolve(
+                errorResponse('Tenant AI credentials are disabled on this deployment.', 404, { code: 'NOT_FOUND' }),
+            );
+        }
+        return run(ai, security);
+    });
+}
+
 /**
  * Every INFERENCE route must gate on an authenticated session.
  *
@@ -67,17 +82,18 @@ function requireSession(security: SecurityContext): Response | null {
 // Credential management — one delegation each
 // ---------------------------------------------------------------------------
 
-export const handleAiCredentialsList = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.list(c.request));
-export const handleAiCredentialsCreate = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.create(c.request));
+export const handleAiCredentialsList = (c: ApiRouteContext) => withByokInstance(c, (ai) => ai.handlers.list(c.request));
+export const handleAiCredentialsCreate = (c: ApiRouteContext) =>
+    withByokInstance(c, (ai) => ai.handlers.create(c.request));
 export const handleAiCredentialsUpdate = (c: ApiRouteContext, id: string) =>
-    withInstance(c, (ai) => ai.handlers.update(c.request, id));
+    withByokInstance(c, (ai) => ai.handlers.update(c.request, id));
 export const handleAiCredentialsDelete = (c: ApiRouteContext, id: string) =>
-    withInstance(c, (ai) => ai.handlers.remove(c.request, id));
+    withByokInstance(c, (ai) => ai.handlers.remove(c.request, id));
 export const handleAiCredentialsActivate = (c: ApiRouteContext, id: string) =>
-    withInstance(c, (ai) => ai.handlers.activate(c.request, id));
-export const handleAiCredentialsTest = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.test(c.request));
+    withByokInstance(c, (ai) => ai.handlers.activate(c.request, id));
+export const handleAiCredentialsTest = (c: ApiRouteContext) => withByokInstance(c, (ai) => ai.handlers.test(c.request));
 export const handleAiStatus = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.status(c.request));
-export const handleAiProviders = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.providers(c.request));
+export const handleAiProviders = (c: ApiRouteContext) => withByokInstance(c, (ai) => ai.handlers.providers(c.request));
 export const handleAiExplain = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.explain(c.request));
 
 // ---------------------------------------------------------------------------
@@ -96,6 +112,7 @@ interface CompleteBody {
     task?: unknown;
     prompt?: unknown;
     system?: unknown;
+    /** Rejected when present: provider/model choice is server-owned task policy. */
     model?: unknown;
 }
 
@@ -176,33 +193,6 @@ function validateText(
         return { ok: false, message: `${field} is too long (${trimmed.length} characters; limit is ${max})` };
     }
     return { ok: true, value: trimmed };
-}
-
-/**
- * A per-call model override is a REQUEST-CONTROLLED value that beats every other rung of
- * the model chain, so it is validated here rather than trusted.
- *
- * The package refuses a `dynamic/<route>` ref from a per-call override (operator
- * namespace), but this route additionally refuses anything that is not a plain model
- * reference: a raw path segment would otherwise be interpolated into the gateway URL, and
- * `..` in it retargets the whole request while still carrying the operator's gateway token.
- */
-const SAFE_MODEL_REF = /^[A-Za-z0-9@][A-Za-z0-9._:@-]*(\/[A-Za-z0-9._:@-]+)*$/;
-
-function validateModelOverride(model: unknown): { ok: true; model?: string } | { ok: false; message: string } {
-    if (model === undefined || model === null || model === '') return { ok: true };
-    if (typeof model !== 'string') return { ok: false, message: 'model must be a string' };
-    const trimmed = model.trim();
-    if (trimmed.length > 200) return { ok: false, message: 'model reference is too long' };
-    if (trimmed.includes('..')) return { ok: false, message: 'model reference may not contain ".."' };
-    if (!SAFE_MODEL_REF.test(trimmed)) return { ok: false, message: 'model reference contains invalid characters' };
-    // The resolver refuses a dynamic ref by THROWING (programmer error at a call site).
-    // Reaching it from a request body would surface as a 500; a request-shaped refusal is a
-    // 400, so it is caught here first.
-    if (isDynamicModelRef(trimmed)) {
-        return { ok: false, message: 'dynamic/<route> model references are operator-only' };
-    }
-    return { ok: true, model: trimmed };
 }
 
 function validateEmbeddingInput(
@@ -301,9 +291,10 @@ export async function handleAiComplete(
             const prompt = promptField.value;
             const system = systemField.value;
 
-            const modelOverride = validateModelOverride(body.model);
-            if (!modelOverride.ok) {
-                return errorResponse(modelOverride.message, 400, { code: 'VALIDATION_ERROR' });
+            if (body.model !== undefined) {
+                return errorResponse('model is controlled by the declared AI task', 400, {
+                    code: 'VALIDATION_ERROR',
+                });
             }
 
             const aiContext = ai.contextFrom({ authenticated: true });
@@ -318,9 +309,7 @@ export async function handleAiComplete(
             // twice: two candidate fan-outs and two envelope decryptions per inference, on the
             // hot path. It can also disagree with itself if a credential changes between the
             // two calls, which surfaces as an allowed gate followed by NOT_CONFIGURED.
-            const { gate, resolution } = await ai.resolveWithGate(aiContext, taskKey, {
-                model: modelOverride.model,
-            });
+            const { gate, resolution } = await ai.resolveWithGate(aiContext, taskKey);
             if (!gate.allowed) {
                 return errorResponse(AI_ERROR_MESSAGES.BYOK_REQUIRED, AI_ERROR_HTTP_STATUS.BYOK_REQUIRED, {
                     code: gate.code,

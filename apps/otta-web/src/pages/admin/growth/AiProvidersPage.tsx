@@ -15,6 +15,7 @@
  */
 
 import { api } from '@/lib/api';
+import { isPlatformAdmin, useSession } from '@/lib/auth';
 import { OTTAAI_CONFIG } from '@/ottabase/config';
 import { AiProviderSettings, AiProvisioningProvider, useAiStatus } from '@ottabase/ottaai/react';
 import type { CandidateExplanation, ResolutionReason } from '@ottabase/ottaai';
@@ -29,8 +30,9 @@ import {
     NativeSelect,
     Separator,
 } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Stethoscope } from 'lucide-react';
+import { ExternalLink, Sparkles, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
 
 const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
@@ -175,6 +177,8 @@ function ResolutionInspector() {
 }
 
 export function AiProvidersPage() {
+    const { user } = useSession();
+
     return (
         <AiProvisioningProvider basePath="/api/ai" request={aiRequest}>
             <div className="max-w-3xl space-y-8">
@@ -184,13 +188,43 @@ export function AiProvidersPage() {
                         AI providers
                     </h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Bring your own provider key. Strategy{' '}
+                        Bring your own provider key. Traffic goes through Cloudflare AI Gateway. Strategy{' '}
                         <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{OTTAAI_CONFIG.strategy}</code>
                         , mode{' '}
                         <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{OTTAAI_CONFIG.mode}</code>
                         {OTTAAI_CONFIG.byokEnabled ? '' : ' — BYOK is currently switched off platform-wide'}.
                     </p>
                 </div>
+
+                <Card className={QUIET_CARD}>
+                    <CardHeader>
+                        <CardTitle className={SECTION_TITLE}>This deployment</CardTitle>
+                        <CardDescription>
+                            Calls go through Cloudflare AI Gateway. Live env, secret presence, tasks and spend guards
+                            are on the platform AI Gateway page.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                            <div className={MICRO_LABEL}>Transport</div>
+                            <p className="font-mono text-xs">cloudflare-ai-gateway</p>
+                        </div>
+                        <div>
+                            <div className={MICRO_LABEL}>App-config gateway</div>
+                            <p className="font-mono text-xs">{OTTAAI_CONFIG.gateway ?? 'set via CFAI_GATEWAY_NAME'}</p>
+                        </div>
+                        {isPlatformAdmin(user) ? (
+                            <div className="sm:col-span-2">
+                                <Button variant="outline" size="sm" className="gap-2" asChild>
+                                    <Link to="/admin/infrastructure/ai">
+                                        Open AI Gateway config
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </Link>
+                                </Button>
+                            </div>
+                        ) : null}
+                    </CardContent>
+                </Card>
 
                 <AiProviderSettings
                     // Opt in and let SERVER TRUTH decide. The component ANDs this with

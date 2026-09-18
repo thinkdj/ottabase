@@ -242,17 +242,10 @@ describe('request payload validation', () => {
         expect(outbound).toHaveLength(0);
     });
 
-    it('refuses an operator-only dynamic route from the request body', async () => {
+    it('refuses every request-controlled model override', async () => {
         const res = await handleAiComplete(post({ prompt: 'hi', model: 'dynamic/premium' }));
         expect(res.status).toBe(400);
-        expect(outbound).toHaveLength(0);
-    });
-
-    it('refuses a traversal attempt in the model override', async () => {
-        // A raw path segment would otherwise be interpolated into the gateway URL while the
-        // request still carries the operator's gateway token.
-        const res = await handleAiComplete(post({ prompt: 'hi', model: '../../evil' }));
-        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: expect.stringMatching(/controlled by the declared AI task/) });
         expect(outbound).toHaveLength(0);
     });
 });
@@ -296,11 +289,6 @@ describe('the app composes the package into a correctly addressed gateway call',
         expect(body).toMatchObject({ text: 'hello', source: 'platform', provider: 'openai' });
         expect(JSON.stringify(body)).not.toContain('sk-platform-key');
         expect(JSON.stringify(body)).not.toContain('cf-aig-token');
-    });
-
-    it('honours a per-call model override', async () => {
-        await handleAiComplete(post({ prompt: 'hi', model: 'gpt-4o' }));
-        expect(outbound[0]!.body).toMatchObject({ model: 'gpt-4o' });
     });
 });
 

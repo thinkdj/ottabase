@@ -603,6 +603,11 @@ const adminEmailRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/EmailPage'),
     'AdminEmailPage',
 );
+const adminAiGatewayRoute = makeAdminRoute(
+    '/admin/infrastructure/ai',
+    () => import('@/pages/admin/infrastructure/AiPage'),
+    'AdminAiPage',
+);
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
 
@@ -822,6 +827,7 @@ const packageRoutes = [
     { route: studioThemesRoute, pkg: 'ottablog' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
     { route: adminAiProvidersRoute, pkg: 'ottaai' as const },
+    { route: adminAiGatewayRoute, pkg: 'ottaai' as const },
 ];
 
 const routeTree = rootRoute.addChildren([

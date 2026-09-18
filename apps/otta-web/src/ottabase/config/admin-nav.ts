@@ -258,6 +258,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Mail,
             },
             {
+                title: 'AI Gateway',
+                description:
+                    'OttaAI deployment: Cloudflare AI Gateway, dials, tasks, secret presence, and spend guards.',
+                href: '/admin/infrastructure/ai',
+                icon: Sparkles,
+                requiresPackage: 'ottaai',
+            },
+            {
                 title: 'System Health',
                 description: 'View system health metrics and API status.',
                 href: '/api/health',

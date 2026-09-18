@@ -70,7 +70,7 @@ export const AI_TASKS = {
 
 export type AiTaskKey = (typeof AI_TASKS)[keyof typeof AI_TASKS];
 
-const TASK_POLICIES: AiTaskPolicy[] = [
+export const AI_TASK_POLICIES: AiTaskPolicy[] = [
     {
         key: AI_TASKS.assist,
         label: 'Assistant',
@@ -157,10 +157,10 @@ export function buildAiKeyring(env: CloudflareEnv): Keyring | null {
 // ---------------------------------------------------------------------------
 
 /** `CFAI_<PROVIDER>_API_KEY`, matching the existing Cloudflare-AI demo env convention. */
-function platformProviderKey(env: CloudflareEnv, provider: string | null): string | undefined {
+export function platformProviderKey(env: CloudflareEnv, provider: string | null): string | undefined {
     if (!provider) return undefined;
     const key = `CFAI_${provider.toUpperCase().replace(/-/g, '_')}_API_KEY`;
-    return (env as unknown as Record<string, string | undefined>)[key];
+    return (env as unknown as Record<string, string | undefined>)[key]?.trim() || undefined;
 }
 
 /**
@@ -180,7 +180,7 @@ function platformProviderKey(env: CloudflareEnv, provider: string | null): strin
  * TENANT may set belongs on the credential's own `transportConfig`, which the merge filters
  * against the registry's `destinationKeys`.
  */
-function platformTransportConfig(env: CloudflareEnv): Record<string, unknown> | undefined {
+export function platformTransportConfig(env: CloudflareEnv): Record<string, unknown> | undefined {
     const read = (key: string) => (env as unknown as Record<string, string | undefined>)[key]?.trim() || undefined;
 
     const bag: Record<string, unknown> = {};
@@ -244,40 +244,43 @@ export async function getAiProvisioning(
     const config = getOttabaseConfig(env as unknown as Record<string, unknown>);
     if (!config.packages.ottaai) return null;
 
-    const keyring = buildAiKeyring(env);
+    const feature = config.features.ottaai;
+    const keyring = feature.byokEnabled ? buildAiKeyring(env) : null;
     // A missing keyring is "not configured" — but ONLY because no credential row can exist
     // without it. Once rows exist, the resolver reports CREDENTIAL_UNREADABLE rather than
     // "not configured", so a user is never sent to re-enter a key that is already there.
-    if (!keyring) return null;
+    if (feature.byokEnabled && !keyring) return null;
 
     ensureDbConnection(env);
 
     const session = await getSession(request, env as never, getAuthOptions(env));
     const security: SecurityContext = await getSecurityContext(request, session, env);
 
-    const feature = config.features.ottaai;
-    const accountId = (env as unknown as Record<string, string | undefined>).CLOUDFLARE_ACCOUNT_ID;
-    const gateway = feature.gateway ?? (env as unknown as Record<string, string | undefined>).CFAI_GATEWAY_NAME;
+    const envVars = env as unknown as Record<string, string | undefined>;
+    const accountId = envVars.CLOUDFLARE_ACCOUNT_ID?.trim() || undefined;
+    const gateway = (feature.gateway ?? envVars.CFAI_GATEWAY_NAME)?.trim() || undefined;
     const platformProvider = feature.platformProvider;
     const platformKey = platformProviderKey(env, platformProvider);
 
     const rbacAuthorize = createRbacAuthorize(security);
 
     const ai = createAiProvisioningWithStorage<AiHostAuth>({
-        keyring,
+        keyring: keyring ?? undefined,
         transport: createGatewayTransport(),
         platform: {
             accountId,
-            gateway: gateway ?? undefined,
-            gatewayToken: (env as unknown as Record<string, string | undefined>).CFAI_GATEWAY_TOKEN,
+            gateway,
+            gatewayToken: envVars.CFAI_GATEWAY_TOKEN?.trim() || undefined,
+            apiToken: envVars.CFAI_API_TOKEN?.trim() || undefined,
             provider: platformProvider ?? undefined,
             providerKey: platformKey,
+            billing: platformKey ? 'provider-key' : (feature.platformBilling ?? undefined),
             model: feature.platformModel ?? undefined,
             // Operator-only destination values. The transport reads this to decide which
             // providers this deployment can actually route to — see `platformTransportConfig`.
             transportConfig: platformTransportConfig(env),
         },
-        tasks: TASK_POLICIES,
+        tasks: AI_TASK_POLICIES,
 
         mode: feature.mode,
         strategy: feature.strategy,

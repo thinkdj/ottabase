@@ -43,6 +43,7 @@ import {
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
 } from './admin-organization-members';
+import { handleAdminAiConfig } from './admin-ai';
 import { handleAdminPromotePlatformOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
@@ -377,6 +378,11 @@ apiRouter.delete('/api/admin/db/tables/*', (c) => {
         ? handleAdminDbRowDelete({ ...ctxOf(c), tableName }, rowId, c.url.searchParams.get('pk') || 'id')
         : null;
 });
+
+// -------------------------------------------------------
+// Admin: OttaAI / AI Gateway (platform-admin, read-only snapshot)
+// -------------------------------------------------------
+apiRouter.get('/api/admin/ai/config', h(handleAdminAiConfig));
 
 // -------------------------------------------------------
 // Admin: dev mail

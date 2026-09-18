@@ -118,6 +118,9 @@ export default defineOttabaseConfig({
             rateLimit: { perUser: 20, perOrganization: 120, perApp: 600 },
             // Platform floor. Leave null to ship BYOK-only (every gate becomes the upsell).
             platformProvider: null,
+            // Set to 'unified' only after enabling Cloudflare AI Gateway Unified Billing.
+            // A CFAI_<PROVIDER>_API_KEY takes precedence when one is supplied.
+            platformBilling: null,
             platformModel: null,
         },
 

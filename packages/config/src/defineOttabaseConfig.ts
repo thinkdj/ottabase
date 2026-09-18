@@ -77,6 +77,7 @@ const DEFAULT_OTTAAI: OttaaiFeatureConfig = {
     rateLimit: { perUser: 20, perOrganization: 120, perApp: 600 },
     gateway: null,
     platformProvider: null,
+    platformBilling: null,
     platformModel: null,
 };
 
@@ -180,6 +181,7 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         },
         gateway: input.features?.ottaai?.gateway ?? DEFAULT_OTTAAI.gateway,
         platformProvider: input.features?.ottaai?.platformProvider ?? DEFAULT_OTTAAI.platformProvider,
+        platformBilling: input.features?.ottaai?.platformBilling === 'unified' ? 'unified' : null,
         platformModel: input.features?.ottaai?.platformModel ?? DEFAULT_OTTAAI.platformModel,
     };
 

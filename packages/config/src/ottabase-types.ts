@@ -158,7 +158,9 @@ export interface OttaaiFeatureConfig {
     gateway: string | null;
     /** The provider the PLATFORM key belongs to. Declared, never inferred from a prefix. */
     platformProvider: string | null;
-    /** Platform default model. A `dynamic/<route>` ref is recommended. */
+    /** Explicit opt-in for a keyless platform route billed by Cloudflare Unified Billing. */
+    platformBilling: 'unified' | null;
+    /** Platform default model. `dynamic/<route>` requires provider-native Gateway authentication. */
     platformModel: string | null;
 }
 

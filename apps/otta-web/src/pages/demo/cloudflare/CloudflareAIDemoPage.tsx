@@ -100,7 +100,6 @@ export function CloudflareAIDemoPage() {
     const [task, setTask] = useState<string>('assist');
     const [prompt, setPrompt] = useState('What makes a good multi-tenant AI boundary?');
     const [systemPrompt, setSystemPrompt] = useState('Answer in three concise bullets.');
-    const [model, setModel] = useState('');
     const [response, setResponse] = useState<CompleteResponse | null>(null);
     const [chatError, setChatError] = useState<string | null>(null);
     const [sending, setSending] = useState(false);
@@ -149,7 +148,6 @@ export function CloudflareAIDemoPage() {
                     task,
                     prompt: prompt.trim(),
                     ...(systemPrompt.trim() ? { system: systemPrompt.trim() } : {}),
-                    ...(model.trim() ? { model: model.trim() } : {}),
                 },
             });
             setResponse(data);
@@ -158,7 +156,7 @@ export function CloudflareAIDemoPage() {
         } finally {
             setSending(false);
         }
-    }, [model, prompt, signedIn, systemPrompt, task]);
+    }, [prompt, signedIn, systemPrompt, task]);
 
     const createEmbedding = useCallback(async () => {
         if (!signedIn || embeddingInputs.length === 0) return;
@@ -344,29 +342,16 @@ export function CloudflareAIDemoPage() {
                                 />
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="ai-system">
-                                        System instruction <span className="text-muted-foreground">(optional)</span>
-                                    </Label>
-                                    <Input
-                                        id="ai-system"
-                                        value={systemPrompt}
-                                        onChange={(event) => setSystemPrompt(event.target.value)}
-                                        placeholder="Be concise…"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="ai-model">
-                                        Model override <span className="text-muted-foreground">(optional)</span>
-                                    </Label>
-                                    <Input
-                                        id="ai-model"
-                                        value={model}
-                                        onChange={(event) => setModel(event.target.value)}
-                                        placeholder="gpt-4o-mini"
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ai-system">
+                                    System instruction <span className="text-muted-foreground">(optional)</span>
+                                </Label>
+                                <Input
+                                    id="ai-system"
+                                    value={systemPrompt}
+                                    onChange={(event) => setSystemPrompt(event.target.value)}
+                                    placeholder="Be concise…"
+                                />
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">

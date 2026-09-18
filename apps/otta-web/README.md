@@ -178,12 +178,32 @@ features: chat at `POST /api/ai/complete` and embeddings at `POST /api/ai/embed`
 tenant context on the Worker, resolve an eligible personal/workspace credential before the optional platform fallback,
 and return only redacted provenance.
 
-Set `AI_CREDENTIAL_SECRET` (or a rotating `AI_CREDENTIAL_KEYRING`) to enable tenant credentials. Configure
-`CLOUDFLARE_ACCOUNT_ID`, `CFAI_GATEWAY_NAME`, and optionally `CFAI_GATEWAY_TOKEN` for AI Gateway. The platform fallback
-uses `OTTAAI_PLATFORM_PROVIDER`, `OTTAAI_PLATFORM_MODEL`, and its matching `CFAI_<PROVIDER>_API_KEY`; it also requires
-the `OBCF_KV` binding for the platform-spend limiter. The shipped embeddings route is intentionally OpenAI-only and uses
-the task-pinned `text-embedding-3-small` model. It returns vectors but does not persist them; connect a real retrieval
-feature to Vectorize deliberately rather than treating the playground as a vector store.
+Set `AI_CREDENTIAL_SECRET` (or a rotating `AI_CREDENTIAL_KEYRING`) only when tenant credentials are enabled. Configure
+`CLOUDFLARE_ACCOUNT_ID`, `CFAI_GATEWAY_NAME`, and `CFAI_GATEWAY_TOKEN` for provider-native authenticated AI Gateway
+access. The platform floor uses `OTTAAI_PLATFORM_PROVIDER`, `OTTAAI_PLATFORM_MODEL`, and its matching
+`CFAI_<PROVIDER>_API_KEY`; alternatively, enable Cloudflare Unified Billing and set `OTTAAI_PLATFORM_BILLING=unified`
+plus `CFAI_API_TOKEN` (Workers AI Read). It also requires the `OBCF_KV` binding for the platform-spend limiter. The
+shipped embeddings route is intentionally OpenAI-only and uses the task-pinned `text-embedding-3-small` model. It
+returns vectors but does not persist them; connect a real retrieval feature to Vectorize deliberately rather than
+treating the playground as a vector store.
+
+Unified Billing supports both shipped tasks: chat uses Cloudflare's OpenAI-compatible REST endpoint and the OpenAI
+embedding task uses AI Gateway's universal `/ai/run` endpoint. For BYOK deployments, configure the Gateway's Unified
+Billing fallback as `byok_only`; OttaAI additionally sends `cf-aig-no-wholesale: true` on tenant-key requests. The
+browser sends only a task and prompt; model/provider selection remains task- and server-owned. The route rejects a
+request-body `model` override so client input cannot bypass capability, tenancy, or spend policy. See Cloudflare's
+[REST API](https://developers.cloudflare.com/ai-gateway/usage/rest-api/) and
+[Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) docs when changing the
+transport contract.
+
+### Admin: AI Gateway config
+
+When `packages.ottaai` is enabled, platform admins get a read-only snapshot at `/admin/infrastructure/ai` (API:
+`GET /api/admin/ai/config`). It shows the live Cloudflare AI Gateway identity, frozen dials, task policies, provider
+wire coverage, and whether secrets are **present** — never their values. Org admins still manage workspace keys at
+`/admin/growth/ai-providers`. Editing config remains `ottabase.config.ts` + env; the dashboard exists so you do not have
+to grep either. Open the [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) dashboard from that page
+to inspect cache, logging, and rate limits on the gateway itself.
 
 ### Local dev email trap
 

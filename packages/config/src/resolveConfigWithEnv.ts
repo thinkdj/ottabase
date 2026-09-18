@@ -153,6 +153,10 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                 gateway: str(env, ENV_KEYS.OTTAAI_GATEWAY) ?? config.features.ottaai.gateway,
                 platformProvider:
                     str(env, ENV_KEYS.OTTAAI_PLATFORM_PROVIDER) ?? config.features.ottaai.platformProvider,
+                platformBilling:
+                    str(env, ENV_KEYS.OTTAAI_PLATFORM_BILLING) === 'unified'
+                        ? 'unified'
+                        : config.features.ottaai.platformBilling,
                 platformModel: str(env, ENV_KEYS.OTTAAI_PLATFORM_MODEL) ?? config.features.ottaai.platformModel,
             },
         },
