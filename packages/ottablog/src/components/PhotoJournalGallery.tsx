@@ -194,7 +194,8 @@ function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial'
             >
                 <div className="min-w-0">
                     <p className="mb-1 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                        Journal · {post.photoAlbum?.length ?? 0} {post.photoAlbum?.length === 1 ? 'frame' : 'frames'}
+                        {tone === 'linen' ? 'Journal' : 'Photo journal'} · {post.photoAlbum?.length ?? 0}{' '}
+                        {post.photoAlbum?.length === 1 ? 'frame' : 'frames'}
                     </p>
                     <h2
                         className={`truncate tracking-tight ${tone === 'linen' ? 'font-serif text-xl sm:text-2xl' : 'text-xl font-semibold sm:text-2xl'}`}
