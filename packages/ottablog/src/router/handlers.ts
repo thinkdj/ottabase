@@ -439,13 +439,25 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             if (state.themes.length === 0) {
                 await seedTolerant(() =>
                     OttablogTheme.create({
+                        themeId: 'linen',
+                        name: 'Linen',
+                        description: 'Warm paper, serif type, and a quiet personal-blog layout',
+                        version: '1.0.0',
+                        author: 'Deepak Thomas',
+                        appId,
+                        ...orgScope,
+                        isActive: true,
+                    }),
+                );
+                await seedTolerant(() =>
+                    OttablogTheme.create({
                         themeId: 'default',
                         name: 'Default',
                         description: 'Clean, modern default theme with dark mode support',
                         version: '1.0.0',
                         appId,
                         ...orgScope,
-                        isActive: true,
+                        isActive: false,
                     }),
                 );
                 await seedTolerant(() =>

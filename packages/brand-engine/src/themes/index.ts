@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Built-in themes (default, neo, crisp, funky, artisan, midnight, rose, verdant)
+// Brand Engine – Built-in themes (default/linen, neo, crisp, funky, artisan, midnight, rose, verdant)
 // Call registerBuiltInThemes() at app startup to make them available.
 // ---------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ import { PRESET_THEMES } from '../presets';
 
 const BUILTIN_THEMES: LegacyThemeConfig[] = PRESET_THEMES as LegacyThemeConfig[];
 
-/** Register all built-in themes (default, neo, crisp, funky, artisan, midnight, rose, verdant) */
+/** Register all built-in themes (default/linen, neo, crisp, funky, artisan, midnight, rose, verdant) */
 export function registerBuiltInThemes(): void {
     const brandThemes = BUILTIN_THEMES.map(fromLegacyThemeConfig);
     registerThemes(brandThemes);

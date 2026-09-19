@@ -7,7 +7,7 @@ import { Crossposts } from './Crossposts';
 export interface BlurbCardProps {
     post: BlogPostData;
     props: BlurbRendererProps;
-    tone?: 'editorial' | 'minimal';
+    tone?: 'editorial' | 'minimal' | 'linen';
 }
 
 /**
@@ -29,6 +29,7 @@ export function BlurbCard({ post, props, tone = 'editorial' }: BlurbCardProps) {
     const formatDate = props.formatDate || defaultFormatDate;
     const detail = props.variant === 'detail';
     const editorial = tone === 'editorial';
+    const linen = tone === 'linen';
 
     const hasByline = Boolean(post.publishedAt || post.author?.name || post.crossposts?.length);
 
@@ -36,11 +37,15 @@ export function BlurbCard({ post, props, tone = 'editorial' }: BlurbCardProps) {
         ? `rounded-l-sm rounded-r-2xl border border-l-2 border-border/60 border-l-primary/40 bg-card transition-colors duration-normal hover:border-l-primary ${
               detail ? 'px-6 py-8 sm:px-9 sm:py-10' : 'px-5 py-5 sm:px-6'
           }`
-        : `last:border-b-0 ${detail ? 'py-10' : 'border-b border-border/60 py-6'}`;
+        : linen
+          ? `${detail ? 'py-4' : 'py-6'}`
+          : `last:border-b-0 ${detail ? 'py-10' : 'border-b border-border/60 py-6'}`;
 
     const text = editorial
         ? `${detail ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} leading-relaxed text-foreground`
-        : `${detail ? 'text-2xl sm:text-3xl' : 'text-lg'} font-light leading-relaxed text-foreground`;
+        : linen
+          ? `${detail ? 'font-serif text-xl leading-[1.55] sm:text-[1.35rem]' : 'font-serif text-lg leading-relaxed'} text-foreground`
+          : `${detail ? 'text-2xl sm:text-3xl' : 'text-lg'} font-light leading-relaxed text-foreground`;
 
     return (
         <div className={shell}>
@@ -48,7 +53,11 @@ export function BlurbCard({ post, props, tone = 'editorial' }: BlurbCardProps) {
             {hasByline && (
                 <div
                     className={`mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ${
-                        editorial ? 'border-t border-border/40' : ''
+                        editorial
+                            ? 'border-t border-border/40'
+                            : linen
+                              ? 'font-sans text-[0.75rem] font-normal normal-case tracking-normal'
+                              : ''
                     }`}
                 >
                     {post.publishedAt && (

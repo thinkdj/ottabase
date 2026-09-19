@@ -333,3 +333,12 @@
     font-weight: 500;
     color: hsl(var(--muted-foreground));
 }
+
+/* Linen personal-blog list items */
+.blog-card-linen {
+    padding-bottom: 0.25rem;
+}
+
+.blog-post-linen {
+    font-family: 'Source Serif 4', 'Newsreader', Georgia, serif;
+}

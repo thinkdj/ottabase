@@ -79,11 +79,10 @@ export function ShareButton({ url, title, description }: ShareButtonProps) {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-1.5 text-muted-foreground"
+                    className="h-8 w-8 px-0 text-muted-foreground"
                     aria-label="Share this post"
                 >
                     <Share2 className="h-4 w-4" />
-                    Share
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

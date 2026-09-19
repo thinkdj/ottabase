@@ -8,10 +8,17 @@ import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+    ArchiveMasthead,
+    BlogBackLink,
+    BlogEmpty,
+    BlogListSkeleton,
+    BlogMeasure,
+    BlogNotFound,
+    TextPager,
+} from './blogUi';
 
 const MONTH_NAMES = [
     'January',
@@ -92,120 +99,79 @@ export function BlogDateArchivePage() {
 
     if (isLoading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
-                <span className="sr-only">Loading archive...</span>
-                <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
-                <div className="space-y-2">
-                    <div className="h-3 w-24 animate-pulse rounded-full bg-muted/40" />
-                    <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/40" />
-                </div>
-                <div className="space-y-4">
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                </div>
-            </div>
+            <BlogMeasure className="space-y-8">
+                <BlogListSkeleton />
+            </BlogMeasure>
         );
     }
 
     if (!year || invalidMonth) {
         return (
-            <div className="mx-auto max-w-md rounded-xl bg-muted/40 px-6 py-12 text-center">
-                <h1 className="text-lg font-semibold tracking-tight">Invalid Date</h1>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {invalidMonth ? 'The month must be between 1 and 12.' : 'The archive date is not valid.'}
-                </p>
-                <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
-                    <Link to="/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Blog
-                    </Link>
-                </Button>
-            </div>
+            <BlogNotFound
+                title="Invalid date"
+                body={invalidMonth ? 'The month must be between 1 and 12.' : 'The archive date is not valid.'}
+            />
         );
     }
 
     return (
-        <div className={theme.config?.classes?.archiveContainer || 'max-w-4xl mx-auto px-4 py-8 space-y-8'}>
-            <SEOHead title={`Archive: ${title}`} description={`Blog posts from ${title}`} />
+        <BlogMeasure className={theme.config?.classes?.archiveContainer || 'space-y-10'}>
+            <SEOHead title={title} description={`Writing from ${title}`} />
 
-            {/* Back link */}
-            <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                <Link to="/blog">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Blog
-                </Link>
-            </Button>
+            <BlogBackLink />
 
-            {/* Archive header */}
-            <div className="space-y-1.5">
-                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Archive
-                </p>
-                <h1 className={theme.config?.classes?.archiveTitle || 'text-3xl font-bold tracking-tight'}>{title}</h1>
-                <p className="pt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {pagination ? pagination.total : posts.length}{' '}
-                    {(pagination?.total ?? posts.length) === 1 ? 'post' : 'posts'} from {title}
-                </p>
-            </div>
+            <ArchiveMasthead
+                kicker="Archive"
+                title={title}
+                countLabel={`${pagination ? pagination.total : posts.length} ${
+                    (pagination?.total ?? posts.length) === 1 ? 'piece' : 'pieces'
+                }`}
+            />
 
-            {/* Month navigation */}
             {month && year && (
-                <div className="flex items-center gap-2">
+                <nav className="flex flex-wrap items-baseline gap-x-5 gap-y-2 text-[0.8125rem] text-muted-foreground">
                     {prevParams ? (
-                        <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                            <Link to="/blog/archive/$year/$month" params={prevParams}>
-                                <ChevronLeft className="h-4 w-4" />
-                                Previous month
-                            </Link>
-                        </Button>
+                        <Link to="/blog/archive/$year/$month" params={prevParams} className="hover:text-foreground">
+                            ← Previous
+                        </Link>
                     ) : (
                         <span />
                     )}
-                    <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                        <Link to="/blog/archive/$year" params={{ year: String(year) }}>
-                            View all of {year}
-                        </Link>
-                    </Button>
+                    <Link to="/blog/archive/$year" params={{ year: String(year) }} className="hover:text-foreground">
+                        All of {year}
+                    </Link>
                     {nextParams && (
-                        <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                            <Link to="/blog/archive/$year/$month" params={nextParams}>
-                                Next month
-                                <ChevronRight className="h-4 w-4" />
-                            </Link>
-                        </Button>
+                        <Link to="/blog/archive/$year/$month" params={nextParams} className="hover:text-foreground">
+                            Next →
+                        </Link>
                     )}
-                </div>
+                </nav>
             )}
 
-            {/* Posts list */}
             {posts.length === 0 ? (
-                <div className="rounded-xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts found from {title}.</p>
-                </div>
+                <BlogEmpty>Nothing from {title}.</BlogEmpty>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {posts.map((post) => (
                         <Link
                             key={post.id}
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
-                            className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="group block outline-none focus-visible:underline"
                         >
                             {renderCard ? (
                                 renderCard(post, {
                                     post,
-                                    showHeroImage: true,
+                                    showHeroImage: false,
                                     showExcerpt: true,
                                     showMetadata: true,
                                     formatDate,
                                 })
                             ) : (
-                                <article className="rounded-xl bg-muted/40 p-5 transition-colors duration-normal group-hover:bg-muted/70">
-                                    <h2 className="text-[0.9375rem] font-semibold">{post.title}</h2>
+                                <article>
+                                    <h2 className="font-serif text-xl tracking-tight">{post.title}</h2>
                                     {post.excerpt && (
-                                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                        <p className="mt-1 text-[0.9375rem] leading-relaxed text-muted-foreground">
                                             {post.excerpt}
                                         </p>
                                     )}
@@ -216,35 +182,15 @@ export function BlogDateArchivePage() {
                 </div>
             )}
 
-            {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                    </Button>
-                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Page {currentPage} of {pagination.totalPages}
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={() => setCurrentPage((p) => p + 1)}
-                        disabled={currentPage >= pagination.totalPages}
-                    >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                </div>
+                <TextPager
+                    page={currentPage}
+                    totalPages={pagination.totalPages}
+                    onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setCurrentPage((p) => p + 1)}
+                />
             )}
-        </div>
+        </BlogMeasure>
     );
 }
 

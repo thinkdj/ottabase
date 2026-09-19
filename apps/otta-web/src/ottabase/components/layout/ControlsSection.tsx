@@ -1,9 +1,7 @@
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
-import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
@@ -46,10 +44,6 @@ export function ControlsSection() {
     return (
         <div className="flex items-center gap-1">
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
-            {/* Language is the least urgent control — it yields first on narrow headers */}
-            <span className="hidden sm:inline-flex">
-                <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
-            </span>
             {isAuthenticated && <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />}
         </div>
     );

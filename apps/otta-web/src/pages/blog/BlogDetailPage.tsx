@@ -23,10 +23,11 @@ import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
+import { Avatar, AvatarFallback, AvatarImage, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
+import { Loader2, Lock, Pencil } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
+import { BlogBackLink, BlogListSkeleton, BlogMeasure, BlogNotFound } from './blogUi';
 
 interface BlogPost {
     id: string;
@@ -137,40 +138,42 @@ const CommentNode = memo(function CommentNode({
     const [replyText, setReplyText] = useState('');
     const isReplying = replyingToId === comment.id;
     const children = commentsByParent.get(comment.id) ?? [];
-    // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
-    const indentClass = depth === 0 ? 'py-4' : 'ml-1 border-l border-border/60 pl-4 pt-4';
+    // Nested replies indent with a quiet thread line instead of boxed nesting
+    const indentClass = depth === 0 ? 'py-5' : 'ml-1 border-l border-border/50 pl-4 pt-5';
 
     return (
         <div className={indentClass}>
             <div className="flex gap-3">
-                <Avatar className="h-8 w-8 ring-1 ring-border">
+                <Avatar className="h-8 w-8">
                     <AvatarImage src={comment._user?.image || undefined} />
                     <AvatarFallback className="text-xs font-medium">{getInitials(comment._user?.name)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-baseline gap-2 text-sm">
                         <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
-                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <span className="text-[0.75rem] text-muted-foreground">
                             {formatShortDate(comment.createdAt)}
                         </span>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{comment.body}</p>
+                    <p className="mt-1.5 font-serif text-[0.975rem] leading-relaxed whitespace-pre-wrap text-foreground">
+                        {comment.body}
+                    </p>
                     {canReply && depth < 3 && (
                         <button
                             type="button"
-                            className="mt-2 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
+                            className="mt-2 text-[0.75rem] text-muted-foreground transition-colors duration-normal hover:text-foreground"
                             onClick={() => onToggleReply(comment.id)}
                         >
-                            {isReplying ? 'Cancel reply' : 'Reply'}
+                            {isReplying ? 'Cancel' : 'Reply'}
                         </button>
                     )}
                     {isReplying && (
-                        <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3">
+                        <div className="mt-3 space-y-2">
                             <Textarea
-                                placeholder="Write a reply..."
+                                placeholder="Write a reply…"
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
-                                className="min-h-20 bg-background text-sm"
+                                className="min-h-20 border-border/60 bg-transparent text-sm shadow-none"
                             />
                             <div className="flex justify-end">
                                 <Button
@@ -333,36 +336,19 @@ export function BlogDetailPage() {
     // Loading state — pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
         return (
-            <div className="space-y-8" aria-busy="true">
-                <span className="sr-only">Loading post…</span>
-                <div className="h-4 w-28 animate-pulse rounded-lg bg-muted/40" />
-                <div className="h-10 w-3/4 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-4 w-48 animate-pulse rounded-lg bg-muted/40" />
-                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-                <div className="space-y-3">
-                    <div className="h-4 animate-pulse rounded-lg bg-muted/40" />
-                    <div className="h-4 w-5/6 animate-pulse rounded-lg bg-muted/40" />
-                    <div className="h-4 w-2/3 animate-pulse rounded-lg bg-muted/40" />
-                </div>
-            </div>
+            <BlogMeasure>
+                <BlogListSkeleton rows={5} />
+            </BlogMeasure>
         );
     }
 
     // Not found
     if (!post) {
         return (
-            <div className="text-center py-16">
-                <h1 className="text-2xl font-bold tracking-tight mb-4">Post Not Found</h1>
-                <p className="text-muted-foreground mb-6">
-                    The post you're looking for doesn't exist or has been removed.
-                </p>
-                <Button asChild>
-                    <Link to="/blog">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Blog
-                    </Link>
-                </Button>
-            </div>
+            <BlogNotFound
+                title="This page is gone"
+                body="The post you're looking for doesn't exist, or it hasn't been published."
+            />
         );
     }
 
@@ -467,7 +453,7 @@ export function BlogDetailPage() {
     const ogImage = displayPost.seoMeta?.ogImage || displayPost.heroImage?.url;
 
     return (
-        <div>
+        <BlogMeasure>
             {/* SEO Meta Tags */}
             <SEOHead
                 title={seoTitle}
@@ -484,14 +470,9 @@ export function BlogDetailPage() {
             />
 
             {/* Back link + Share + Edit (author only) */}
-            <div className="mb-6 flex items-center justify-between gap-4">
-                <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
-                    <Link to="/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Blog
-                    </Link>
-                </Button>
-                <div className="flex items-center gap-2">
+            <div className="mb-10 flex items-center justify-between gap-4">
+                <BlogBackLink />
+                <div className="flex items-center gap-3">
                     <ShareButton
                         url={typeof window !== 'undefined' ? window.location.href : ''}
                         title={displayPost.title}
@@ -501,9 +482,9 @@ export function BlogDetailPage() {
                         // /studio is the editorial surface gated on posts:update — the author of this
                         // post holds it. /admin/content/blog additionally requires org:admin, which an
                         // author does not have, so it would send them to a privilege fallback instead.
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-muted-foreground" asChild>
                             <Link to="/studio/$postId/edit" params={{ postId: displayPost.id }}>
-                                <Pencil className="mr-1.5 h-4 w-4" />
+                                <Pencil className="h-3.5 w-3.5" />
                                 Edit
                             </Link>
                         </Button>
@@ -513,40 +494,45 @@ export function BlogDetailPage() {
 
             {/* Original date — when the content was originally written (diary, republished essay, etc.) */}
             {displayPost.originalDate && (
-                <p className="mb-4 text-sm text-muted-foreground">
-                    Originally written: {displayPost.originalDate.label}
+                <p className="mb-6 text-[0.8125rem] text-muted-foreground">
+                    Originally written {displayPost.originalDate.label}
                 </p>
             )}
 
             {/* Lock screen for password-protected posts */}
             {isLocked && (
-                <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                    <div className="rounded-full bg-muted/40 p-6 mb-6">
-                        <Lock className="h-16 w-16 text-muted-foreground" aria-hidden />
-                    </div>
-                    <h1 className="text-3xl font-bold tracking-tight mb-2">{displayPost.title}</h1>
+                <div className="flex flex-col py-16">
+                    <Lock className="mb-6 h-5 w-5 text-muted-foreground" aria-hidden />
+                    <h1 className="font-serif text-3xl tracking-[-0.03em]">{displayPost.title}</h1>
                     {displayPost.excerpt && (
-                        <p className="text-muted-foreground leading-relaxed max-w-lg mb-6">{displayPost.excerpt}</p>
+                        <p className="mt-4 max-w-lg font-serif text-lg leading-relaxed text-muted-foreground">
+                            {displayPost.excerpt}
+                        </p>
                     )}
                     {displayPost.passwordHint && (
-                        <p className="text-sm text-muted-foreground mb-4">Hint: {displayPost.passwordHint}</p>
+                        <p className="mt-4 text-[0.8125rem] text-muted-foreground">Hint: {displayPost.passwordHint}</p>
                     )}
-                    <form onSubmit={handleUnlock} className="w-full max-w-sm space-y-4">
+                    <form onSubmit={handleUnlock} className="mt-8 w-full max-w-sm space-y-4">
                         <Input
                             type="password"
-                            placeholder="Enter password"
+                            placeholder="Password"
                             value={password}
                             onChange={(e) => {
                                 setPassword(e.target.value);
                                 setUnlockError(null);
                             }}
-                            className="bg-background"
+                            className="border-0 border-b border-border/70 bg-transparent px-0 shadow-none focus-visible:ring-0"
                             autoComplete="current-password"
                             disabled={isUnlocking}
                         />
                         {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
-                        <Button type="submit" className="w-full" disabled={isUnlocking || !password.trim()}>
-                            {isUnlocking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock with password'}
+                        <Button
+                            type="submit"
+                            variant="ghost"
+                            className="-ml-3"
+                            disabled={isUnlocking || !password.trim()}
+                        >
+                            {isUnlocking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock'}
                         </Button>
                     </form>
                 </div>
@@ -569,139 +555,113 @@ export function BlogDetailPage() {
                             renderSeriesNav={(_post) => {
                                 if (!series || seriesPosts.length <= 1) return null;
                                 return (
-                                    <div className="mt-4 pt-4 border-t border-border/60">
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            {prevPost && (
-                                                <Link
-                                                    to="/blog/$slug"
-                                                    params={{ slug: prevPost.slug }}
-                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                >
-                                                    <ArrowLeft className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
-                                                    <div className="min-w-0">
-                                                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
-                                                            Previous
-                                                        </div>
-                                                        <div className="text-sm font-medium truncate">
-                                                            {prevPost.title}
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            )}
-                                            {nextPost && (
-                                                <Link
-                                                    to="/blog/$slug"
-                                                    params={{ slug: nextPost.slug }}
-                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
-                                                >
-                                                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
-                                                    <div className="min-w-0">
-                                                        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
-                                                            Next
-                                                        </div>
-                                                        <div className="text-sm font-medium truncate">
-                                                            {nextPost.title}
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            )}
-                                        </div>
+                                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                        {prevPost && (
+                                            <Link
+                                                to="/blog/$slug"
+                                                params={{ slug: prevPost.slug }}
+                                                className="group min-w-0 text-[0.8125rem] text-muted-foreground outline-none hover:text-foreground"
+                                            >
+                                                <span className="block text-[0.75rem]">Previous</span>
+                                                <span className="mt-1 block truncate font-serif text-base text-foreground underline-offset-4 group-hover:underline">
+                                                    {prevPost.title}
+                                                </span>
+                                            </Link>
+                                        )}
+                                        {nextPost && (
+                                            <Link
+                                                to="/blog/$slug"
+                                                params={{ slug: nextPost.slug }}
+                                                className="group min-w-0 text-[0.8125rem] text-muted-foreground outline-none hover:text-foreground sm:text-right"
+                                            >
+                                                <span className="block text-[0.75rem]">Next</span>
+                                                <span className="mt-1 block truncate font-serif text-base text-foreground underline-offset-4 group-hover:underline">
+                                                    {nextPost.title}
+                                                </span>
+                                            </Link>
+                                        )}
                                     </div>
                                 );
                             }}
                         />
                     </MediaLightboxProvider>
 
-                    {/* Tags */}
-                    {displayPost.tags && displayPost.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-8">
-                            <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
-                            {displayPost.tags.map((tag) => (
-                                <Link key={tag.id} to="/blog/tag/$slug" params={{ slug: tag.slug }}>
-                                    <Badge
-                                        variant="outline"
-                                        className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
-                                    >
-                                        {tag.name}
-                                    </Badge>
+                    {(displayPost.tags && displayPost.tags.length > 0) ||
+                    (displayPost.categories && displayPost.categories.length > 0) ? (
+                        <div className="mt-10 flex flex-wrap gap-x-4 gap-y-2 text-[0.8125rem] text-muted-foreground">
+                            {displayPost.tags?.map((tag) => (
+                                <Link
+                                    key={tag.id}
+                                    to="/blog/tag/$slug"
+                                    params={{ slug: tag.slug }}
+                                    className="hover:text-foreground"
+                                >
+                                    #{tag.name}
+                                </Link>
+                            ))}
+                            {displayPost.categories?.map((cat) => (
+                                <Link
+                                    key={cat.id}
+                                    to="/blog/category/$slug"
+                                    params={{ slug: cat.slug }}
+                                    className="hover:text-foreground"
+                                >
+                                    {cat.name}
                                 </Link>
                             ))}
                         </div>
-                    )}
-
-                    {/* Categories */}
-                    {displayPost.categories && displayPost.categories.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-4">
-                            <FolderTree className="h-4 w-4 text-muted-foreground mt-0.5" />
-                            {displayPost.categories.map((cat) => (
-                                <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
-                                    <Badge
-                                        variant="outline"
-                                        className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
-                                    >
-                                        {cat.name}
-                                    </Badge>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
+                    ) : null}
 
                     {allowComments && (
-                        <section className="mt-12 border-t border-border/60 pt-8">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-[0.9375rem] font-semibold">Comments</h2>
-                                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {comments.length} comment{comments.length !== 1 ? 's' : ''}
+                        <section className="mt-16 border-t border-border/70 pt-10">
+                            <div className="flex items-baseline justify-between gap-4">
+                                <h2 className="font-serif text-xl tracking-tight">Comments</h2>
+                                <span className="text-[0.75rem] tabular-nums text-muted-foreground">
+                                    {comments.length}
                                 </span>
                             </div>
 
-                            {commentError && (
-                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                                    {commentError}
-                                </div>
-                            )}
+                            {commentError && <p className="mt-4 text-sm text-destructive">{commentError}</p>}
 
                             {!user?.id && (
-                                <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                                    <Link
-                                        to="/login"
-                                        className="underline underline-offset-4 transition-colors duration-normal hover:text-foreground"
-                                    >
+                                <p className="mt-5 text-sm text-muted-foreground">
+                                    <Link to="/login" className="underline underline-offset-4 hover:text-foreground">
                                         Sign in
                                     </Link>{' '}
-                                    to join the discussion.
-                                </div>
+                                    to leave a note.
+                                </p>
                             )}
 
-                            <div className="mt-4 space-y-2 rounded-xl bg-muted/40 p-4">
+                            <div className="mt-6 space-y-3">
                                 <Textarea
-                                    placeholder="Write a comment..."
+                                    placeholder="Write a comment…"
                                     value={commentDraft}
                                     onChange={(e) => setCommentDraft(e.target.value)}
-                                    className="min-h-24 bg-background text-sm"
+                                    className="min-h-24 border-border/60 bg-transparent text-sm shadow-none"
                                     disabled={!user?.id}
                                 />
                                 <div className="flex justify-end">
                                     <Button
                                         size="sm"
+                                        variant="ghost"
                                         onClick={handleSubmitComment}
                                         disabled={!commentDraft.trim() || !user?.id || createComment.isPending}
                                     >
                                         {createComment.isPending ? (
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         ) : null}
-                                        Post comment
+                                        Post
                                     </Button>
                                 </div>
                             </div>
 
                             {commentsError && (
-                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <p className="mt-4 text-sm text-destructive">
                                     {commentsError.message || 'Failed to load comments.'}
-                                </div>
+                                </p>
                             )}
 
-                            <div className="mt-4">
+                            <div className="mt-6">
                                 {isLoadingComments ? (
                                     <div className="space-y-4 py-4">
                                         {[1, 2, 3].map((i) => (
@@ -715,9 +675,7 @@ export function BlogDetailPage() {
                                         ))}
                                     </div>
                                 ) : comments.length === 0 ? (
-                                    <p className="rounded-xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-                                        No comments yet. Be the first to comment.
-                                    </p>
+                                    <p className="py-6 text-sm text-muted-foreground">No comments yet.</p>
                                 ) : (
                                     <div>
                                         {(commentsByParent.get(null) ?? []).map((comment) => (
@@ -743,43 +701,35 @@ export function BlogDetailPage() {
 
             {/* Series Navigation - All posts */}
             {series && seriesPosts.length > 1 && (
-                <nav className="border-t border-border/60 pt-8 mt-12">
-                    <h2 className="text-[0.9375rem] font-semibold mb-4">More in this series</h2>
-                    <details className="mt-6">
-                        <summary className="cursor-pointer text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground">
-                            View all {seriesPosts.length} posts in this series
-                        </summary>
-                        <ol className="mt-4 space-y-2 list-decimal list-inside">
-                            {seriesPosts.map((p) => (
-                                <li key={p.id} className={p.id === displayPost.id ? 'font-medium' : ''}>
-                                    {p.id === displayPost.id ? (
-                                        <span>{p.title} (current)</span>
-                                    ) : (
-                                        <Link
-                                            to="/blog/$slug"
-                                            params={{ slug: p.slug }}
-                                            className="text-muted-foreground transition-colors duration-normal hover:text-foreground"
-                                        >
-                                            {p.title}
-                                        </Link>
-                                    )}
-                                </li>
-                            ))}
-                        </ol>
-                    </details>
+                <nav className="mt-16 border-t border-border/70 pt-10">
+                    <h2 className="font-serif text-xl tracking-tight">This series</h2>
+                    <ol className="mt-5 space-y-2">
+                        {seriesPosts.map((p, index) => (
+                            <li key={p.id} className="flex gap-4 text-[0.975rem]">
+                                <span className="w-6 shrink-0 tabular-nums text-muted-foreground">
+                                    {String(index + 1).padStart(2, '0')}
+                                </span>
+                                {p.id === displayPost.id ? (
+                                    <span className="font-medium">{p.title}</span>
+                                ) : (
+                                    <Link
+                                        to="/blog/$slug"
+                                        params={{ slug: p.slug }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                    >
+                                        {p.title}
+                                    </Link>
+                                )}
+                            </li>
+                        ))}
+                    </ol>
                 </nav>
             )}
 
-            {/* Back to blog */}
-            <div className="border-t border-border/60 pt-8 mt-12">
-                <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
-                    <Link to="/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to all posts
-                    </Link>
-                </Button>
+            <div className="mt-16 border-t border-border/70 pt-8">
+                <BlogBackLink label="All writing" />
             </div>
-        </div>
+        </BlogMeasure>
     );
 }
 

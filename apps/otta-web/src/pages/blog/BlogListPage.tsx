@@ -1,53 +1,32 @@
 /**
  * Public Blog List Page
  *
- * Displays published blog posts with filtering and pagination.
- * Uses public API so protected posts only return excerpt (no full body).
+ * A personal writing index: date, title, excerpt. Home uses the same list
+ * with a short intro instead of a page title.
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
-import {
-    CONTENT_TYPES,
-    contentTypeLabel,
-    formatDate,
-    type ContentType,
-    type PhotoJournalItem,
-} from '@ottabase/ottablog';
+import { CONTENT_TYPES, formatDate, type ContentType, type PhotoJournalItem } from '@ottabase/ottablog';
 import { BlurbRenderer, PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import {
-    Badge,
-    Button,
-    Card,
-    CardContent,
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-    Input,
-    NativeSelect,
-    NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input } from '@ottabase/ui-shadcn';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link } from '@tanstack/react-router';
+import { Plus } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { groupPostsByYear, partitionBlogTimeline } from './blogTimeline';
 import {
-    ArrowRight,
-    Calendar,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Lock,
-    Plus,
-    Search,
-    Tag,
-    User,
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { partitionBlogTimeline } from './blogTimeline';
+    BlogEmpty,
+    BlogListSkeleton,
+    BlogMeasure,
+    FilterLink,
+    TextPager,
+    YearHeading,
+    publicKindLabel,
+} from './blogUi';
+import { BLOG_SITE } from './site';
 
 interface BlogPostTag {
     id: string;
@@ -66,7 +45,6 @@ interface BlogPost {
     contentType: ContentType;
     status: string;
     heroImage: { url: string; alt?: string } | null;
-    // Author from User relationship
     authorId?: string | null;
     author?: PostAuthor | null;
     readingTimeMinutes: number | null;
@@ -85,7 +63,6 @@ interface BlogSeries {
     id: string;
     title: string;
     slug: string;
-    isComplete: boolean;
 }
 
 interface BlogListResponse {
@@ -93,34 +70,21 @@ interface BlogListResponse {
     pagination: { page: number; perPage: number; total: number; totalPages: number };
 }
 
-function PublishedDateLink({ publishedAt }: { publishedAt: string }) {
-    const date = new Date(publishedAt);
-    if (Number.isNaN(date.getTime())) return <span>{formatDate(publishedAt)}</span>;
-
-    return (
-        <Link
-            to="/blog/archive/$year/$month"
-            params={{ year: String(date.getUTCFullYear()), month: String(date.getUTCMonth() + 1) }}
-            className="flex items-center gap-1 hover:text-foreground"
-            aria-label={`View posts from ${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`}
-        >
-            <Calendar className="h-3 w-3" />
-            {formatDate(publishedAt, { timeZone: 'UTC' })}
-        </Link>
-    );
-}
-
 const blogSeriesHooks = createModelHooks<BlogSeries>({
     entityName: 'series',
 });
 
-const POSTS_PER_PAGE = 12;
+const POSTS_PER_PAGE = 20;
 
-export function BlogListPage() {
+const TYPE_FILTERS: Array<{ value: ContentType | ''; label: string }> = [
+    { value: '', label: 'All' },
+    { value: 'blog', label: 'Essays' },
+    { value: 'blurb', label: 'Notes' },
+    { value: 'photo', label: 'Journals' },
+];
+
+export function BlogListPage({ variant = 'index' }: { variant?: 'home' | 'index' }) {
     const { user } = useSession();
-    // Editorial CTAs are for people who can actually write: /studio is gated on posts:update, and
-    // every write is re-checked server-side. "Signed in" is not a content permission — showing the
-    // buttons to every visitor with an account just walks them into a privilege fallback.
     const canWrite = hasGrantedPermission(user?.permissions, 'posts:update');
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -128,8 +92,8 @@ export function BlogListPage() {
     const [seriesFilter, setSeriesFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isHome = variant === 'home';
 
-    // Debounce search input (300ms)
     useEffect(() => {
         debounceRef.current = setTimeout(() => {
             setDebouncedSearch(search);
@@ -140,7 +104,6 @@ export function BlogListPage() {
         };
     }, [search]);
 
-    // Build query params for the public blog API
     const blogListParams = new URLSearchParams();
     blogListParams.set('page', String(currentPage));
     blogListParams.set('perPage', String(POSTS_PER_PAGE));
@@ -148,9 +111,6 @@ export function BlogListPage() {
     if (seriesFilter) blogListParams.set('seriesId', seriesFilter);
     if (debouncedSearch) blogListParams.set('search', debouncedSearch);
 
-    // useApiQuery with entity:'posts' namespaces the key as ['posts', 'list', { ... }].
-    // Any mutation on the posts entity (admin create/update/delete) auto-busts this cache
-    // via the global mutation observer in OttaQueryProvider — no manual coordination needed.
     const { data: listResponse, isLoading } = useApiQuery<BlogListResponse>({
         entity: 'posts',
         queryKey: ['list', { page: currentPage, contentType, seriesFilter, search: debouncedSearch }],
@@ -158,53 +118,53 @@ export function BlogListPage() {
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
 
-    // Fetch series for filter dropdown
     const { data: seriesData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
 
     const posts = listResponse?.data ?? [];
     const pagination = listResponse?.pagination ?? { page: 1, perPage: POSTS_PER_PAGE, total: 0, totalPages: 1 };
     const series = seriesData || [];
 
-    // Reset to page 1 when filters change
-    const handleFilterChange = (callback: () => void) => {
-        callback();
-        setCurrentPage(1);
-    };
-
-    // Blurbs remain chronological; highlight-capable articles and photo journals can enter the featured rail.
     const { featuredPosts, timelinePosts } = partitionBlogTimeline(posts);
+    const yearGroups = useMemo(() => groupPostsByYear(timelinePosts), [timelinePosts]);
+
+    const seoTitle = isHome ? BLOG_SITE.name : 'Writing';
+    const seoDescription = isHome ? BLOG_SITE.about : 'Essays, notes, and photo journals.';
 
     return (
-        // One measure for the whole page, matching the detail view: the default theme's container
-        // is `max-w-3xl mx-auto`, so a reader moving between list and post keeps the same column.
-        // Rhythm is two steps only — space-y-12 between page sections, space-y-6 between items.
-        <div className="mx-auto w-full max-w-3xl space-y-12">
-            {/* SEO Meta Tags */}
-            <SEOHead
-                title="Blog - Stories, Thoughts, and Photo Journals"
-                description="Photo journals, short thoughts, articles, tutorials, and updates from our team."
-                ogType="website"
-                twitterCard="summary_large_image"
-            />
+        <BlogMeasure className="space-y-12">
+            <SEOHead title={seoTitle} description={seoDescription} ogType="website" twitterCard="summary_large_image" />
 
-            {/* Header */}
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-                <div className="space-y-1.5">
-                    <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
-                    <p className="text-lg text-muted-foreground">
-                        Photo journals, short thoughts, articles, tutorials, and updates from our team.
-                    </p>
-                </div>
+            <header className="space-y-5">
+                {isHome ? (
+                    <>
+                        <h1 className="font-serif text-4xl font-medium tracking-[-0.035em] text-foreground sm:text-5xl">
+                            {BLOG_SITE.name}
+                        </h1>
+                        <p className="max-w-[34rem] font-serif text-lg leading-relaxed text-muted-foreground sm:text-xl">
+                            {BLOG_SITE.intro} {BLOG_SITE.about}
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <h1 className="font-serif text-3xl font-medium tracking-[-0.03em] text-foreground sm:text-4xl">
+                            Writing
+                        </h1>
+                        <p className="font-serif text-lg leading-relaxed text-muted-foreground">{BLOG_SITE.intro}</p>
+                    </>
+                )}
+
                 {canWrite && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button className="shrink-0">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Write
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                            </Button>
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-1.5 text-[0.8125rem] text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                New
+                            </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="start">
                             {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
                                 <DropdownMenuItem key={value} asChild>
                                     <Link to="/studio/new" search={{ contentType: value }}>
@@ -215,352 +175,143 @@ export function BlogListPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
-            </div>
+            </header>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
+                <nav className="flex flex-wrap gap-x-4 gap-y-2 text-[0.8125rem]" aria-label="Filter by type">
+                    {TYPE_FILTERS.map((filter) => (
+                        <FilterLink
+                            key={filter.value || 'all'}
+                            active={contentType === filter.value}
+                            onClick={() => {
+                                setContentType(filter.value);
+                                setCurrentPage(1);
+                            }}
+                        >
+                            {filter.label}
+                        </FilterLink>
+                    ))}
+                    {series.length > 0 &&
+                        series.map((item) => (
+                            <FilterLink
+                                key={item.id}
+                                active={seriesFilter === item.id}
+                                onClick={() => {
+                                    setSeriesFilter((current) => (current === item.id ? '' : item.id));
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                {item.title}
+                            </FilterLink>
+                        ))}
+                </nav>
+
+                <div className="relative w-full sm:w-52">
                     <Input
-                        placeholder="Search posts..."
+                        placeholder="Search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="h-9 pl-10"
+                        className="h-8 border-0 border-b border-border/70 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                        aria-label="Search posts"
                     />
-                </div>
-
-                <div className="flex gap-2">
-                    <NativeSelect
-                        value={contentType}
-                        onChange={(e) => handleFilterChange(() => setContentType(e.target.value as ContentType | ''))}
-                        aria-label="Filter by content type"
-                    >
-                        <NativeSelectOption value="">All Types</NativeSelectOption>
-                        {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
-                            <NativeSelectOption key={value} value={value}>
-                                {label}
-                            </NativeSelectOption>
-                        ))}
-                    </NativeSelect>
-
-                    {series.length > 0 && (
-                        <NativeSelect
-                            value={seriesFilter}
-                            onChange={(e) => handleFilterChange(() => setSeriesFilter(e.target.value))}
-                            aria-label="Filter by series"
-                        >
-                            <NativeSelectOption value="">All Series</NativeSelectOption>
-                            {series.map((s) => (
-                                <NativeSelectOption key={s.id} value={s.id}>
-                                    {s.title}
-                                </NativeSelectOption>
-                            ))}
-                        </NativeSelect>
-                    )}
                 </div>
             </div>
 
-            {/* Loading: same stack and rhythm as the timeline it becomes, so nothing jumps. */}
-            {isLoading && (
-                <div className="space-y-6" aria-busy="true">
-                    <span className="sr-only">Loading posts...</span>
-                    {Array.from({ length: 4 }, (_, index) => (
-                        <div key={index} className="h-40 animate-pulse rounded-2xl bg-muted/40" />
-                    ))}
-                </div>
-            )}
+            {isLoading && <BlogListSkeleton />}
 
-            {/* No posts */}
-            {!isLoading && posts.length === 0 && (
-                <div className="rounded-2xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts found.</p>
-                </div>
-            )}
+            {!isLoading && posts.length === 0 && <BlogEmpty>Nothing here yet.</BlogEmpty>}
 
-            {/* Featured Posts */}
             {featuredPosts.length > 0 && (
-                <section className="space-y-5">
-                    <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Featured
-                    </h2>
-                    <div className="grid gap-6 md:grid-cols-2">
+                <section className="space-y-4">
+                    <YearHeading year="Pinned" />
+                    <ul className="space-y-5">
                         {featuredPosts.map((post) => (
-                            <FeaturedPostCard key={post.id} post={post} />
+                            <li key={post.id}>
+                                <IndexPostLink post={post} />
+                            </li>
                         ))}
-                    </div>
+                    </ul>
                 </section>
             )}
 
-            {/* Chronological timeline: blurbs stay interleaved with full posts. */}
-            {timelinePosts.length > 0 && (
-                <section className="space-y-5">
-                    <h2 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Latest
-                    </h2>
-                    {/* Mixed shapes sit here — a bordered thought, an image collage, an article card.
-                        They need more air between them than a uniform list would. */}
-                    <div className="space-y-6">
-                        {/* A protected post ships no body (the API blanks it), so it falls back to
-                            PostCard, which renders the lock affordance instead of an empty frame. */}
-                        {timelinePosts.map((post) =>
-                            post.isProtected ? (
-                                <PostCard key={post.id} post={post} />
-                            ) : post.contentType === 'blurb' ? (
-                                <Link
-                                    key={post.id}
-                                    to="/blog/$slug"
-                                    params={{ slug: post.slug }}
-                                    aria-label={`Open thought from ${post.author?.name || 'author'}`}
-                                    // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
-                                    className="group block rounded-l-sm rounded-r-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
-                                </Link>
-                            ) : post.contentType === 'photo' ? (
-                                <Link
-                                    key={post.id}
-                                    to="/blog/$slug"
-                                    params={{ slug: post.slug }}
-                                    aria-label={`Open photo journal ${post.title}`}
-                                    className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <PhotoJournalRenderer post={post} variant="timeline" formatDate={formatDate} />
-                                </Link>
-                            ) : (
-                                <PostCard key={post.id} post={post} />
-                            ),
-                        )}
-                    </div>
+            {yearGroups.map((group) => (
+                <section key={group.year} className="space-y-5">
+                    <YearHeading year={group.year} />
+                    <ul className="space-y-6">
+                        {group.posts.map((post) => (
+                            <li key={post.id}>
+                                {post.isProtected ? (
+                                    <IndexPostLink post={post} />
+                                ) : post.contentType === 'blurb' ? (
+                                    <Link
+                                        to="/blog/$slug"
+                                        params={{ slug: post.slug }}
+                                        aria-label={`Open note from ${post.author?.name || 'author'}`}
+                                        className="group block outline-none focus-visible:underline"
+                                    >
+                                        <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
+                                    </Link>
+                                ) : post.contentType === 'photo' ? (
+                                    <Link
+                                        to="/blog/$slug"
+                                        params={{ slug: post.slug }}
+                                        aria-label={`Open journal ${post.title}`}
+                                        className="group block outline-none focus-visible:underline"
+                                    >
+                                        <PhotoJournalRenderer post={post} variant="timeline" formatDate={formatDate} />
+                                    </Link>
+                                ) : (
+                                    <IndexPostLink post={post} />
+                                )}
+                            </li>
+                        ))}
+                    </ul>
                 </section>
-            )}
+            ))}
 
-            {/* Pagination Controls */}
             {!isLoading && posts.length > 0 && (
-                <div className="flex items-center justify-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                    </Button>
-                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Page {currentPage}
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={() => setCurrentPage((p) => p + 1)}
-                        disabled={currentPage >= pagination.totalPages}
-                    >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                </div>
+                <TextPager
+                    page={currentPage}
+                    totalPages={pagination.totalPages}
+                    onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setCurrentPage((p) => p + 1)}
+                />
             )}
-        </div>
+        </BlogMeasure>
     );
 }
 
-function FeaturedPostCard({ post }: { post: BlogPost }) {
-    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
-    const photoCount = post.photoAlbum?.length ?? 0;
-    return (
-        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
-            {heroUrl !== '#' && (
-                <div className="relative h-48 overflow-hidden">
-                    <img
-                        src={heroUrl}
-                        alt={post.heroImage?.alt || post.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover"
-                    />
-                    <div className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        {post.contentType === 'photo' ? `Featured · ${photoCount} frames` : 'Featured'}
-                    </div>
-                </div>
-            )}
-            <CardContent className="p-6">
-                {post.contentType !== 'blog' && (
-                    <span className="mb-2 inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        {contentTypeLabel(post.contentType)}
-                    </span>
-                )}
-                <h3 className="mb-2 flex items-center gap-2 font-serif text-xl font-semibold leading-snug tracking-[-0.02em] line-clamp-2">
-                    <Link
-                        to="/blog/$slug"
-                        params={{ slug: post.slug }}
-                        className="hover:underline focus-visible:outline-none"
-                    >
-                        {post.title}
-                        {post.isProtected && (
-                            <Lock className="h-4 w-4 text-muted-foreground shrink-0" aria-label="Password protected" />
-                        )}
-                    </Link>
-                </h3>
-                {post.excerpt && (
-                    <p className="mb-4 text-sm leading-relaxed text-muted-foreground line-clamp-3">{post.excerpt}</p>
-                )}
-                {post.tags && post.tags.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-1.5">
-                        {post.tags.map((tag) => (
-                            <Badge
-                                key={tag.id}
-                                variant="outline"
-                                className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                            >
-                                <Tag className="h-2.5 w-2.5 mr-1" />
-                                {tag.name}
-                            </Badge>
-                        ))}
-                    </div>
-                )}
-                {post.categories && post.categories.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-1.5">
-                        {post.categories.map((cat) => (
-                            <Badge
-                                key={cat.id}
-                                variant="secondary"
-                                className="rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                            >
-                                {cat.name}
-                            </Badge>
-                        ))}
-                    </div>
-                )}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {post.author?.name && (
-                        <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {post.author.name}
-                        </span>
-                    )}
-                    {post.publishedAt && <PublishedDateLink publishedAt={post.publishedAt} />}
-                    {post.contentType === 'photo' ? (
-                        <span className="flex items-center gap-1">{photoCount} photographs</span>
-                    ) : post.readingTimeMinutes ? (
-                        <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {post.readingTimeMinutes} min
-                        </span>
-                    ) : null}
-                </div>
-                <Link
-                    to="/blog/$slug"
-                    params={{ slug: post.slug }}
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-            </CardContent>
-        </Card>
-    );
-}
+function IndexPostLink({ post }: { post: BlogPost }) {
+    const dateLabel = post.publishedAt
+        ? formatDate(post.publishedAt, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+        : '';
 
-function PostCard({ post }: { post: BlogPost }) {
-    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
-        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
-            {heroUrl !== '#' && (
-                // Print-edge frame, matching the photo journal's tiles and the article hero:
-                // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
-                // a pale photo still has an edge, and the same slow lift on hover.
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted/40">
-                    <img
-                        src={heroUrl}
-                        alt={post.heroImage?.alt || post.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
-                    />
-                    <span
-                        className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
-                        aria-hidden="true"
-                    />
-                </div>
-            )}
-            <CardContent className="p-5">
-                {post.contentType !== 'blog' && (
-                    <span className="mb-2 inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        {contentTypeLabel(post.contentType)}
+        <Link
+            to="/blog/$slug"
+            params={{ slug: post.slug }}
+            className="group grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-x-5 sm:gap-x-8"
+        >
+            <time className="text-[0.8125rem] tabular-nums text-muted-foreground">{dateLabel}</time>
+            <span>
+                <span className="font-serif text-[1.2rem] leading-snug tracking-[-0.02em] text-foreground underline-offset-[5px] decoration-foreground/25 group-hover:underline sm:text-[1.35rem]">
+                    {post.title}
+                    {post.isProtected ? <span className="ml-2 text-xs text-muted-foreground">lock</span> : null}
+                </span>
+                {post.excerpt ? (
+                    <span className="mt-1.5 block line-clamp-2 text-[0.9375rem] leading-relaxed text-muted-foreground">
+                        {post.excerpt}
+                    </span>
+                ) : null}
+                {(post.contentType !== 'blog' || post.readingTimeMinutes) && (
+                    <span className="mt-1.5 block text-[0.75rem] text-muted-foreground">
+                        {post.contentType !== 'blog' ? publicKindLabel(post.contentType) : null}
+                        {post.contentType !== 'blog' && post.readingTimeMinutes ? ' · ' : null}
+                        {post.readingTimeMinutes ? `${post.readingTimeMinutes} min` : null}
                     </span>
                 )}
-                {/* Serif, like the article masthead it opens — a list of articles should look
-                        like a contents page, not a row of app tiles. */}
-                <h3 className="mb-2 flex items-center gap-2 font-serif text-lg font-semibold leading-snug tracking-[-0.015em] line-clamp-2">
-                    <Link
-                        to="/blog/$slug"
-                        params={{ slug: post.slug }}
-                        className="hover:underline focus-visible:outline-none"
-                    >
-                        {post.title}
-                        {post.isProtected && (
-                            <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Password protected" />
-                        )}
-                    </Link>
-                </h3>
-                {post.excerpt && (
-                    <p className="mb-3 text-sm leading-relaxed text-muted-foreground line-clamp-2">{post.excerpt}</p>
-                )}
-                {post.tags && post.tags.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {post.tags.slice(0, 3).map((tag) => (
-                            <Badge
-                                key={tag.id}
-                                variant="outline"
-                                className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                            >
-                                {tag.name}
-                            </Badge>
-                        ))}
-                        {post.tags.length > 3 && (
-                            <span className="text-[0.6875rem] text-muted-foreground">+{post.tags.length - 3}</span>
-                        )}
-                    </div>
-                )}
-                {post.categories && post.categories.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {post.categories.slice(0, 2).map((cat) => (
-                            <Badge
-                                key={cat.id}
-                                variant="secondary"
-                                className="rounded-full border-transparent bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                            >
-                                {cat.name}
-                            </Badge>
-                        ))}
-                        {post.categories.length > 2 && (
-                            <span className="text-[0.6875rem] text-muted-foreground">
-                                +{post.categories.length - 2}
-                            </span>
-                        )}
-                    </div>
-                )}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {post.publishedAt && <PublishedDateLink publishedAt={post.publishedAt} />}
-                    {post.readingTimeMinutes && (
-                        <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {post.readingTimeMinutes} min
-                        </span>
-                    )}
-                </div>
-                <Link
-                    to="/blog/$slug"
-                    params={{ slug: post.slug }}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    Read post
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-            </CardContent>
-        </Card>
+            </span>
+        </Link>
     );
 }
 

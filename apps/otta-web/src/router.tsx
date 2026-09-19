@@ -286,6 +286,9 @@ function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => 
 const blogListRoute = blogPublicRoute('/blog', () =>
     import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
 );
+const aboutRoute = blogPublicRoute('/about', () =>
+    import('@/pages/about/AboutPage').then((m) => ({ default: m.AboutPage })),
+);
 const blogDetailRoute = blogPublicRoute('/blog/$slug', () =>
     import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
 );
@@ -744,6 +747,7 @@ demoLayoutRoute.addChildren(demoChildren);
 // Always-on routes (core platform). Note: brandEngine and ottamenu are core packages.
 const coreRoutes = [
     indexRoute,
+    aboutRoute,
     docsRoute,
     demoLayoutRoute,
     changelogListRoute,

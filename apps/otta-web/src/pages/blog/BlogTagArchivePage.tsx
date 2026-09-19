@@ -1,17 +1,16 @@
 /**
  * Public Blog Tag Archive Page
  *
- * Shows tag details (name, description) and a list of posts tagged with it.
+ * Shows tag details and a list of posts tagged with it.
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, Tag } from 'lucide-react';
 import { useMemo } from 'react';
+import { ArchiveMasthead, BlogBackLink, BlogEmpty, BlogListSkeleton, BlogMeasure, BlogNotFound } from './blogUi';
 
 interface BlogPostsResponse {
     data: BlogPostData[];
@@ -32,7 +31,6 @@ export function BlogTagArchivePage() {
     const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
-    // Fetch tag info
     const { data: tag, isLoading: isLoadingTag } = useApiQuery<TagInfo>({
         entity: 'post_tags',
         queryKey: ['by-slug', slug],
@@ -40,7 +38,6 @@ export function BlogTagArchivePage() {
         queryOptions: { enabled: !!slug, staleTime: 60_000 },
     });
 
-    // Fetch posts with this tag
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
         queryKey: ['tag-archive', slug],
@@ -53,92 +50,52 @@ export function BlogTagArchivePage() {
 
     if (isLoading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
-                <span className="sr-only">Loading tag...</span>
-                <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
-                <div className="space-y-2">
-                    <div className="h-3 w-24 animate-pulse rounded-full bg-muted/40" />
-                    <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/40" />
-                </div>
-                <div className="space-y-4">
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                </div>
-            </div>
+            <BlogMeasure className="space-y-8">
+                <BlogListSkeleton />
+            </BlogMeasure>
         );
     }
 
     if (!tag) {
-        return (
-            <div className="mx-auto max-w-md rounded-xl bg-muted/40 px-6 py-12 text-center">
-                <h1 className="text-lg font-semibold tracking-tight">Tag Not Found</h1>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    The tag you're looking for doesn't exist.
-                </p>
-                <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
-                    <Link to="/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Blog
-                    </Link>
-                </Button>
-            </div>
-        );
+        return <BlogNotFound title="Tag not found" body="That tag doesn't exist on this site." />;
     }
 
     return (
-        <div className={theme.config?.classes?.archiveContainer || 'max-w-4xl mx-auto px-4 py-8 space-y-8'}>
-            <SEOHead title={`Posts tagged "${tag.name}"`} description={`All blog posts tagged with ${tag.name}`} />
+        <BlogMeasure className={theme.config?.classes?.archiveContainer || 'space-y-10'}>
+            <SEOHead title={`#${tag.name}`} description={`Writing tagged ${tag.name}`} />
 
-            {/* Back link */}
-            <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                <Link to="/blog">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Blog
-                </Link>
-            </Button>
+            <BlogBackLink />
 
-            {/* Tag header */}
-            <div className="space-y-1.5">
-                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    <Tag className="h-3.5 w-3.5" />
-                    Tag
-                </p>
-                <h1 className={theme.config?.classes?.archiveTitle || 'text-3xl font-bold tracking-tight'}>
-                    {tag.name}
-                </h1>
-                <p className="pt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {posts.length} {posts.length === 1 ? 'post' : 'posts'} tagged with &quot;{tag.name}&quot;
-                </p>
-            </div>
+            <ArchiveMasthead
+                kicker="Tag"
+                title={tag.name}
+                countLabel={`${posts.length} ${posts.length === 1 ? 'piece' : 'pieces'}`}
+            />
 
-            {/* Posts list */}
             {posts.length === 0 ? (
-                <div className="rounded-xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts found with this tag.</p>
-                </div>
+                <BlogEmpty>Nothing tagged {tag.name} yet.</BlogEmpty>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {posts.map((post) => (
                         <Link
                             key={post.id}
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
-                            className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="group block outline-none focus-visible:underline"
                         >
                             {renderCard ? (
                                 renderCard(post, {
                                     post,
-                                    showHeroImage: true,
+                                    showHeroImage: false,
                                     showExcerpt: true,
                                     showMetadata: true,
                                     formatDate,
                                 })
                             ) : (
-                                <article className="rounded-xl bg-muted/40 p-5 transition-colors duration-normal group-hover:bg-muted/70">
-                                    <h2 className="text-[0.9375rem] font-semibold">{post.title}</h2>
+                                <article>
+                                    <h2 className="font-serif text-xl tracking-tight">{post.title}</h2>
                                     {post.excerpt && (
-                                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                        <p className="mt-1 text-[0.9375rem] leading-relaxed text-muted-foreground">
                                             {post.excerpt}
                                         </p>
                                     )}
@@ -148,7 +105,7 @@ export function BlogTagArchivePage() {
                     ))}
                 </div>
             )}
-        </div>
+        </BlogMeasure>
     );
 }
 

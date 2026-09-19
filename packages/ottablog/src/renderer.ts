@@ -15,7 +15,7 @@
  * ```tsx
  * import { BlogRenderer, initOttablog } from '@ottabase/ottablog/renderer';
  *
- * initOttablog({ defaultThemeId: 'default' });
+ * initOttablog({ defaultThemeId: 'linen' });
  * <BlogRenderer post={post} showHeroImage showMetadata />;
  * ```
  */
@@ -33,6 +33,7 @@ export { BlogRendererErrorBoundary } from './components/BlogRendererErrorBoundar
 
 // Built-in rendered themes (value-import @ottabase/ottarenderer)
 export { defaultTheme } from './themes/default';
+export { linenTheme } from './themes/linen';
 export { minimalTheme } from './themes/minimal';
 
 // Initialization (registers + activates the rendered themes)

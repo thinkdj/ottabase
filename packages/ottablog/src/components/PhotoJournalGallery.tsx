@@ -8,7 +8,7 @@ import { BlurbText } from './BlurbText';
 export interface PhotoJournalGalleryProps {
     post: BlogPostData;
     props: PhotoJournalRendererProps;
-    tone?: 'editorial' | 'minimal';
+    tone?: 'editorial' | 'minimal' | 'linen';
 }
 
 /**
@@ -93,7 +93,7 @@ function PhotoTile({
     index: number;
     postId: string;
     interactive: boolean;
-    tone: 'editorial' | 'minimal';
+    tone: 'editorial' | 'minimal' | 'linen';
 }) {
     const viewerItem = photoViewerItem(item);
     const takenAt = item.takenAt ? renderableDate(item.takenAt, formatPhotoDate) : null;
@@ -165,12 +165,12 @@ function PhotoTile({
     );
 }
 
-function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial' | 'minimal' }) {
+function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial' | 'minimal' | 'linen' }) {
     const photos = (post.photoAlbum ?? []).slice(0, 3);
     if (photos.length === 0) return null;
     return (
         <div
-            className={`overflow-hidden bg-muted/40 ${tone === 'editorial' ? 'rounded-2xl' : 'border-y border-border/60'}`}
+            className={`overflow-hidden bg-muted/40 ${tone === 'editorial' ? 'rounded-2xl' : tone === 'linen' ? '' : 'border-y border-border/60'}`}
         >
             <div
                 className={`grid aspect-[16/10] gap-0.5 bg-background ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}
@@ -189,19 +189,27 @@ function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial'
                     </div>
                 )}
             </div>
-            <div className="flex items-end justify-between gap-4 px-5 py-4 sm:px-6">
+            <div
+                className={`flex items-end justify-between gap-4 ${tone === 'linen' ? 'px-0 py-4' : 'px-5 py-4 sm:px-6'}`}
+            >
                 <div className="min-w-0">
                     <p className="mb-1 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                        Photo journal · {post.photoAlbum?.length ?? 0} frames
+                        Journal · {post.photoAlbum?.length ?? 0} {post.photoAlbum?.length === 1 ? 'frame' : 'frames'}
                     </p>
-                    <h2 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{post.title}</h2>
+                    <h2
+                        className={`truncate tracking-tight ${tone === 'linen' ? 'font-serif text-xl sm:text-2xl' : 'text-xl font-semibold sm:text-2xl'}`}
+                    >
+                        {post.title}
+                    </h2>
                     {post.photoNote && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.photoNote}</p>
                     )}
                 </div>
-                <span className="shrink-0 text-2xl font-light text-muted-foreground" aria-hidden="true">
-                    ↗
-                </span>
+                {tone !== 'linen' && (
+                    <span className="shrink-0 text-2xl font-light text-muted-foreground" aria-hidden="true">
+                        ↗
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -241,7 +249,7 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
                                 Photo journal · {photos.length} {photos.length === 1 ? 'frame' : 'frames'}
                             </p>
                             <h1
-                                className={`${tone === 'editorial' ? 'font-serif' : 'font-light'} text-4xl tracking-[-0.035em] sm:text-6xl`}
+                                className={`${tone === 'minimal' ? 'font-light' : 'font-serif'} text-4xl tracking-[-0.035em] ${tone === 'linen' ? 'sm:text-5xl' : 'sm:text-6xl'}`}
                             >
                                 {post.title}
                             </h1>
@@ -269,7 +277,7 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
              * tile end where its photograph does and the rows go pleasantly ragged instead.
              */}
             <div
-                className={`grid grid-cols-2 items-start gap-x-2 gap-y-5 md:grid-cols-12 md:gap-x-3 md:gap-y-8 ${tone === 'minimal' ? 'md:gap-x-1' : ''}`}
+                className={`grid grid-cols-2 items-start gap-x-2 gap-y-5 md:grid-cols-12 md:gap-x-3 md:gap-y-8 ${tone === 'minimal' || tone === 'linen' ? 'md:gap-x-1' : ''}`}
             >
                 {photos.map((item, index) => (
                     <PhotoTile key={item.id} item={item} index={index} postId={post.id} interactive tone={tone} />

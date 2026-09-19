@@ -15,6 +15,7 @@ describe('ottablog entrypoint boundaries', () => {
         expect(rendered.BlurbRenderer).toBeTypeOf('function');
         expect(rendered.PhotoJournalRenderer).toBeTypeOf('function');
         expect(rendered.PhotoJournalGallery).toBeTypeOf('function');
+        expect(rendered.linenTheme.metadata.id).toBe('linen');
         expect(rendered).not.toHaveProperty('ShareButton');
     });
 
