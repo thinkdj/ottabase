@@ -9,7 +9,8 @@ import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablo
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Badge, Button } from '@ottabase/ui-shadcn';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -29,6 +30,8 @@ interface SeriesInfo {
 export function BlogSeriesArchivePage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
@@ -43,8 +46,10 @@ export function BlogSeriesArchivePage() {
     // Fetch posts in this series, ordered by seriesOrder
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['series-archive', slug],
-        endpoint: `/api/blog/posts?seriesId=${encodeURIComponent(series?.id ?? '')}&orderBy=seriesOrder&orderDirection=asc&perPage=50`,
+        queryKey: ['series-archive', slug, requestedLanguage],
+        endpoint:
+            `/api/blog/posts?seriesId=${encodeURIComponent(series?.id ?? '')}&orderBy=seriesOrder&orderDirection=asc&perPage=50` +
+            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
         queryOptions: { enabled: !!series?.id, ...BLOG_LIST_QUERY_CONFIG },
     });
 
@@ -141,6 +146,7 @@ export function BlogSeriesArchivePage() {
                                 key={post.id}
                                 to="/blog/$slug"
                                 params={{ slug: post.slug }}
+                                search={localizedPostSearch(post, requestedLanguage)}
                                 className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 {renderCard ? (

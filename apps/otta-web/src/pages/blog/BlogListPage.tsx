@@ -32,7 +32,8 @@ import {
 } from '@ottabase/ui-shadcn';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import {
     ArrowRight,
     Calendar,
@@ -79,6 +80,10 @@ interface BlogPost {
     categories?: { id: string; name: string; slug: string }[];
     tags?: BlogPostTag[];
     viewCount?: number;
+    language?: string;
+    baseLanguage?: string;
+    baseSlug?: string;
+    translationId?: string;
 }
 
 interface BlogSeries {
@@ -117,6 +122,8 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 const POSTS_PER_PAGE = 12;
 
 export function BlogListPage() {
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const { user } = useSession();
     // Editorial CTAs are for people who can actually write: /studio is gated on posts:update, and
     // every write is re-checked server-side. "Signed in" is not a content permission — showing the
@@ -147,13 +154,17 @@ export function BlogListPage() {
     if (contentType) blogListParams.set('contentType', contentType);
     if (seriesFilter) blogListParams.set('seriesId', seriesFilter);
     if (debouncedSearch) blogListParams.set('search', debouncedSearch);
+    if (requestedLanguage) blogListParams.set('lang', requestedLanguage);
 
     // useApiQuery with entity:'posts' namespaces the key as ['posts', 'list', { ... }].
     // Any mutation on the posts entity (admin create/update/delete) auto-busts this cache
     // via the global mutation observer in OttaQueryProvider — no manual coordination needed.
     const { data: listResponse, isLoading } = useApiQuery<BlogListResponse>({
         entity: 'posts',
-        queryKey: ['list', { page: currentPage, contentType, seriesFilter, search: debouncedSearch }],
+        queryKey: [
+            'list',
+            { page: currentPage, contentType, seriesFilter, search: debouncedSearch, language: requestedLanguage },
+        ],
         endpoint: `/api/blog/posts?${blogListParams.toString()}`,
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
@@ -285,7 +296,7 @@ export function BlogListPage() {
                     </h2>
                     <div className="grid gap-6 md:grid-cols-2">
                         {featuredPosts.map((post) => (
-                            <FeaturedPostCard key={post.id} post={post} />
+                            <FeaturedPostCard key={post.id} post={post} activeLanguage={requestedLanguage} />
                         ))}
                     </div>
                 </section>
@@ -304,12 +315,13 @@ export function BlogListPage() {
                             PostCard, which renders the lock affordance instead of an empty frame. */}
                         {timelinePosts.map((post) =>
                             post.isProtected ? (
-                                <PostCard key={post.id} post={post} />
+                                <PostCard key={post.id} post={post} activeLanguage={requestedLanguage} />
                             ) : post.contentType === 'blurb' ? (
                                 <Link
                                     key={post.id}
                                     to="/blog/$slug"
                                     params={{ slug: post.slug }}
+                                    search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open thought from ${post.author?.name || 'author'}`}
                                     // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
                                     className="group block rounded-l-sm rounded-r-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -321,6 +333,7 @@ export function BlogListPage() {
                                     key={post.id}
                                     to="/blog/$slug"
                                     params={{ slug: post.slug }}
+                                    search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open photo journal ${post.title}`}
                                     className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
@@ -366,7 +379,7 @@ export function BlogListPage() {
     );
 }
 
-function FeaturedPostCard({ post }: { post: BlogPost }) {
+function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
@@ -395,6 +408,7 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
                     <Link
                         to="/blog/$slug"
                         params={{ slug: post.slug }}
+                        search={localizedPostSearch(post, activeLanguage)}
                         className="hover:underline focus-visible:outline-none"
                     >
                         {post.title}
@@ -453,6 +467,7 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
                 <Link
                     to="/blog/$slug"
                     params={{ slug: post.slug }}
+                    search={localizedPostSearch(post, activeLanguage)}
                     className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
@@ -463,7 +478,7 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
     );
 }
 
-function PostCard({ post }: { post: BlogPost }) {
+function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
         <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
@@ -497,6 +512,7 @@ function PostCard({ post }: { post: BlogPost }) {
                     <Link
                         to="/blog/$slug"
                         params={{ slug: post.slug }}
+                        search={localizedPostSearch(post, activeLanguage)}
                         className="hover:underline focus-visible:outline-none"
                     >
                         {post.title}
@@ -554,6 +570,7 @@ function PostCard({ post }: { post: BlogPost }) {
                 <Link
                     to="/blog/$slug"
                     params={{ slug: post.slug }}
+                    search={localizedPostSearch(post, activeLanguage)}
                     className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     Read post

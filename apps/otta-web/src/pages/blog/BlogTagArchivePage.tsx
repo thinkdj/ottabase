@@ -9,7 +9,8 @@ import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablo
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, Tag } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -29,6 +30,8 @@ interface TagInfo {
 export function BlogTagArchivePage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
@@ -43,8 +46,10 @@ export function BlogTagArchivePage() {
     // Fetch posts with this tag
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['tag-archive', slug],
-        endpoint: `/api/blog/posts?tagId=${encodeURIComponent(tag?.id ?? '')}&perPage=50`,
+        queryKey: ['tag-archive', slug, requestedLanguage],
+        endpoint:
+            `/api/blog/posts?tagId=${encodeURIComponent(tag?.id ?? '')}&perPage=50` +
+            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
         queryOptions: { enabled: !!tag?.id, ...BLOG_LIST_QUERY_CONFIG },
     });
 
@@ -124,6 +129,7 @@ export function BlogTagArchivePage() {
                             key={post.id}
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
+                            search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {renderCard ? (

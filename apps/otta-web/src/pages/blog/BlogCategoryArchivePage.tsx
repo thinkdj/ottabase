@@ -9,7 +9,8 @@ import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablo
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, FolderTree } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -28,6 +29,8 @@ interface CategoryInfo {
 export function BlogCategoryArchivePage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
@@ -42,8 +45,10 @@ export function BlogCategoryArchivePage() {
     // Fetch posts in this category
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['category-archive', slug],
-        endpoint: `/api/blog/posts?categoryId=${encodeURIComponent(category?.id ?? '')}&perPage=50`,
+        queryKey: ['category-archive', slug, requestedLanguage],
+        endpoint:
+            `/api/blog/posts?categoryId=${encodeURIComponent(category?.id ?? '')}&perPage=50` +
+            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
         queryOptions: { enabled: !!category?.id, ...BLOG_LIST_QUERY_CONFIG },
     });
 
@@ -127,6 +132,7 @@ export function BlogCategoryArchivePage() {
                             key={post.id}
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
+                            search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {renderCard ? (
