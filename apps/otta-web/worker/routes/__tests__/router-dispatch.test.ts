@@ -118,6 +118,11 @@ vi.mock('../blog', () => ({
     handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
     handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
     handleBlogStudioState: handlerMock('handleBlogStudioState'),
+    handleBlogStudioLanguages: handlerMock('handleBlogStudioLanguages'),
+    handleBlogPostTranslations: handlerMock('handleBlogPostTranslations'),
+    handleBlogPostTranslationCreate: handlerMock('handleBlogPostTranslationCreate'),
+    handleBlogPostTranslationUpdate: handlerMock('handleBlogPostTranslationUpdate'),
+    handleBlogPostTranslationDelete: handlerMock('handleBlogPostTranslationDelete'),
     handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
     handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
 }));

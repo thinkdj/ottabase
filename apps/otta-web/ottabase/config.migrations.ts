@@ -34,9 +34,12 @@ import { commentReactionsTable, commentsTable } from '@ottabase/comments';
 import type { BuiltInPackageName } from '@ottabase/config';
 import {
     categoriesTable,
+    ottablogMigrations,
     ottablogOrgModeMigrations,
     ottablogPluginsTable,
     ottablogThemesTable,
+    ottablogSettingsTable,
+    postTranslationsTable,
     postCategoryLinksTable,
     postTagLinksTable,
     postTagsTable,
@@ -68,10 +71,12 @@ const PACKAGE_REGISTRY = {
             postVersionsTable,
             ottablogPluginsTable,
             ottablogThemesTable,
+            ottablogSettingsTable,
+            postTranslationsTable,
         },
         // Org-mode slug-index migrations are appended env-aware in
         // getEnabledPackageMigrations() below (features.ottablog.mode === 'org').
-        migrations: [] as Migration[],
+        migrations: ottablogMigrations as Migration[],
     },
     comments: {
         tables: { commentsTable, commentReactionsTable },

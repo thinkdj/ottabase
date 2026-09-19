@@ -14,6 +14,72 @@ export type ContentType = 'blog' | 'blurb' | 'photo' | 'changelog' | 'docs' | 'n
  */
 export type PostStatus = 'draft' | 'published' | 'archived' | 'scheduled';
 
+/** A language enabled for a blog. Codes follow the BCP-47 shape (for example `en`, `fr`, `pt-BR`). */
+export interface BlogLanguage {
+    code: string;
+    name: string;
+    nativeName?: string;
+}
+
+/** Blog-level language policy shared by the public router and admin Studio. */
+export interface BlogLanguageConfig {
+    defaultLanguage: string;
+    supportedLanguages: BlogLanguage[];
+    fallbackToDefault: boolean;
+}
+
+/** A small built-in catalog used by admin UI suggestions; custom BCP-47 codes are also accepted. */
+export const COMMON_BLOG_LANGUAGES: readonly BlogLanguage[] = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'es', name: 'Spanish', nativeName: 'Español' },
+    { code: 'fr', name: 'French', nativeName: 'Français' },
+    { code: 'de', name: 'German', nativeName: 'Deutsch' },
+    { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+    { code: 'pt-BR', name: 'Portuguese (Brazil)', nativeName: 'Português (Brasil)' },
+    { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+    { code: 'ko', name: 'Korean', nativeName: '한국어' },
+    { code: 'zh-CN', name: 'Chinese (Simplified)', nativeName: '简体中文' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+];
+
+const LANGUAGE_CODE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
+
+/** Normalize a language tag for stable storage and matching. */
+export function normalizeLanguageCode(value: unknown): string {
+    if (typeof value !== 'string') throw new ContentValidationError('Language code is required');
+    const trimmed = value.trim();
+    if (!LANGUAGE_CODE_PATTERN.test(trimmed)) {
+        throw new ContentValidationError('Invalid language code: ' + (trimmed || '(empty)'));
+    }
+    return trimmed
+        .split('-')
+        .map((part, index) =>
+            index === 0 ? part.toLowerCase() : part.length === 2 || part.length === 3 ? part.toUpperCase() : part,
+        )
+        .join('-');
+}
+
+/** Validate and normalize the blog's supported language list. */
+export function normalizeBlogLanguages(value: unknown): BlogLanguage[] {
+    if (!Array.isArray(value) || value.length === 0) {
+        throw new ContentValidationError('Enable at least one blog language');
+    }
+    const seen = new Set<string>();
+    return value.map((raw, index) => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+            throw new ContentValidationError('Language ' + (index + 1) + ' is invalid');
+        const item = raw as Record<string, unknown>;
+        const code = normalizeLanguageCode(item.code);
+        if (seen.has(code)) throw new ContentValidationError('Language ' + code + ' is listed more than once');
+        seen.add(code);
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        if (!name || name.length > 100) throw new ContentValidationError('Language ' + code + ' needs a display name');
+        const nativeName = typeof item.nativeName === 'string' ? item.nativeName.trim() : undefined;
+        return { code, name, ...(nativeName ? { nativeName: nativeName.slice(0, 100) } : {}) };
+    });
+}
+
 /**
  * SEO metadata for posts
  */

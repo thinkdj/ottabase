@@ -40,3 +40,11 @@ export type { NewOttablogPluginType, OttablogPluginType } from './OttablogPlugin
 // OttablogTheme exports
 export { OttablogTheme, ottablogThemesTable } from './OttablogTheme';
 export type { NewOttablogThemeType, OttablogThemeType } from './OttablogTheme';
+
+// Blog language configuration
+export { OttablogSettings, ottablogSettingsTable } from './OttablogSettings';
+export type { NewOttablogSettingsType, OttablogSettingsType } from './OttablogSettings';
+
+// Localized post versions
+export { PostTranslation, postTranslationsTable } from './PostTranslation';
+export type { NewPostTranslationType, PostTranslationType, PostTranslationWriteData } from './PostTranslation';

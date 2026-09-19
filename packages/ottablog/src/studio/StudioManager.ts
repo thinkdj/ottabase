@@ -5,7 +5,7 @@
  * Syncs DB state to in-memory theme/plugin registries.
  */
 
-import { OttablogPlugin, OttablogTheme } from '../ottaorm-models';
+import { OttablogPlugin, OttablogSettings, OttablogTheme } from '../ottaorm-models';
 import { activatePlugin } from '../plugins/registry';
 import { setActiveTheme } from '../themes/registry';
 
@@ -31,10 +31,17 @@ export interface StudioPluginState {
     config: Record<string, unknown> | null;
 }
 
+export interface StudioLanguageState {
+    defaultLanguage: string;
+    supportedLanguages: { code: string; name: string; nativeName?: string }[];
+    fallbackToDefault: boolean;
+}
+
 export interface StudioState {
     activeThemeId: string | null;
     themes: StudioThemeState[];
     plugins: StudioPluginState[];
+    languageConfig: StudioLanguageState;
 }
 
 /**
@@ -68,9 +75,10 @@ export class StudioManager {
     static async getState(appId: string | null = null, organizationId?: string | null): Promise<StudioState> {
         const scope: Record<string, unknown> = { ...(appId ? { appId } : {}) };
         if (organizationId !== undefined) scope.organizationId = organizationId;
-        const [themesRows, pluginsRows] = await Promise.all([
+        const [themesRows, pluginsRows, settings] = await Promise.all([
             OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
             OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogSettings.forScope({ appId: appId ?? null, organizationId }),
         ]);
 
         const activeThemeRow = themesRows.find((t) => t.get('isActive'));
@@ -97,6 +105,12 @@ export class StudioManager {
             config: (p.get('config') as Record<string, unknown>) ?? null,
         }));
 
-        return { activeThemeId, themes, plugins };
+        const languageConfig = settings?.config() ?? {
+            defaultLanguage: 'en',
+            supportedLanguages: [{ code: 'en', name: 'English', nativeName: 'English' }],
+            fallbackToDefault: true,
+        };
+
+        return { activeThemeId, themes, plugins, languageConfig };
     }
 }

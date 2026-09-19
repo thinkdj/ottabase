@@ -21,6 +21,10 @@ export {
     ottablogPluginsTable,
     OttablogTheme,
     ottablogThemesTable,
+    OttablogSettings,
+    ottablogSettingsTable,
+    PostTranslation,
+    postTranslationsTable,
 } from './ottaorm-models';
 export type {
     Series,
@@ -37,4 +41,8 @@ export type {
     NewOttablogPluginType,
     OttablogThemeType,
     NewOttablogThemeType,
+    NewOttablogSettingsType,
+    OttablogSettingsType,
+    NewPostTranslationType,
+    PostTranslationType,
 } from './ottaorm-models';

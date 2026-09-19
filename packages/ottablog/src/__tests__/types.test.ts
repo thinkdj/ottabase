@@ -14,6 +14,8 @@ import {
     generateSlug,
     MAX_JAVASCRIPT_DATE_TIMESTAMP,
     normalizeBlurbText,
+    normalizeBlogLanguages,
+    normalizeLanguageCode,
     MAX_CROSSPOSTS,
     PHOTO_JOURNAL_MAX_ITEMS,
     validateCrossposts,
@@ -359,6 +361,35 @@ describe('ottablog helpers', () => {
             expect(
                 validatePostWrite({ contentType: 'blog', content: { blocks: [] }, photoAlbum: null }).content,
             ).toEqual({ blocks: [] });
+        });
+    });
+
+    describe('multilingual blog settings', () => {
+        it('normalizes language tags and preserves region casing', () => {
+            expect(normalizeLanguageCode(' PT-br ')).toBe('pt-BR');
+            expect(normalizeLanguageCode('zh-cn')).toBe('zh-CN');
+        });
+
+        it('rejects duplicate or unnamed supported languages', () => {
+            expect(() =>
+                normalizeBlogLanguages([
+                    { code: 'en', name: 'English' },
+                    { code: 'EN', name: 'English' },
+                ]),
+            ).toThrow('listed more than once');
+            expect(() => normalizeBlogLanguages([{ code: 'fr', name: '' }])).toThrow('needs a display name');
+        });
+
+        it('normalizes a supported language catalog for stable matching', () => {
+            expect(
+                normalizeBlogLanguages([
+                    { code: 'en-us', name: 'English', nativeName: 'English' },
+                    { code: 'fr', name: 'French' },
+                ]),
+            ).toEqual([
+                { code: 'en-US', name: 'English', nativeName: 'English' },
+                { code: 'fr', name: 'French' },
+            ]);
         });
     });
 

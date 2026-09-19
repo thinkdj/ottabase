@@ -8,6 +8,7 @@ import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/ed
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
+import { AdminBlogTranslationsPanel } from './AdminBlogTranslationsPanel';
 import { useBlogSurface } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
@@ -17,6 +18,7 @@ import { useSession } from '@/lib/auth';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
     CONTENT_TYPES,
+    type BlogLanguageConfig,
     formatDate,
     formatShortDate,
     generateSlug,
@@ -38,7 +40,7 @@ import {
     type OutputData,
     type ToolSettings,
 } from '@ottabase/ottaeditor';
-import { createModelHooks } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
@@ -81,6 +83,7 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import * as Diff from 'diff';
 import {
     ArrowLeft,
+    Languages,
     Braces,
     Calendar,
     Download,
@@ -109,6 +112,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface BlogPost {
     id: string;
+    language: string;
     title: string;
     slug: string;
     excerpt: string | null;
@@ -311,6 +315,15 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const { user } = useSession();
 
     // Form state - initialized from props
+    const { data: studioState } = useApiQuery<{ languageConfig: BlogLanguageConfig }>({
+        entity: 'blog_studio',
+        queryKey: ['state'],
+        endpoint: '/api/blog/studio/state',
+    });
+    const supportedLanguages = studioState?.languageConfig.supportedLanguages ?? [{ code: 'en', name: 'English' }];
+    const [language, setLanguage] = useState(
+        initialData?.language || studioState?.languageConfig.defaultLanguage || 'en',
+    );
     const [title, setTitle] = useState(initialData?.title || '');
     const [slug, setSlug] = useState(initialData?.slug || '');
     const [excerpt, setExcerpt] = useState(initialData?.excerpt || '');
@@ -326,6 +339,11 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const [publishAt, setPublishAt] = useState(
         initialData?.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '',
     );
+
+    useEffect(() => {
+        if (!initialData && studioState?.languageConfig.defaultLanguage)
+            setLanguage(studioState.languageConfig.defaultLanguage);
+    }, [initialData, studioState?.languageConfig.defaultLanguage]);
 
     // When the content was originally written — a fuzzy date ("Late May 2010", "Summer 1998")
     const [originalDate, setOriginalDate] = useState<FuzzyDateTime | null>(
@@ -531,6 +549,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     useEffect(() => {
         if (!justSavedRef.current || !initialData) return;
         justSavedRef.current = false;
+        setLanguage(initialData.language ?? studioState?.languageConfig.defaultLanguage ?? 'en');
         setTitle(initialData.title ?? '');
         setSlug(initialData.slug ?? '');
         setExcerpt(initialData.excerpt ?? '');
@@ -553,7 +572,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setSeriesId(initialData.seriesId ?? null);
         setSeriesOrder(initialData.seriesOrder ?? null);
         setMaxVersionsToKeep(initialData.maxVersionsToKeep ?? null);
-    }, [initialData, user]);
+    }, [initialData, user, studioState?.languageConfig.defaultLanguage]);
 
     // Content editors - initialData is guaranteed to be available in edit mode
     const mainEditor = useOttaEditor({
@@ -576,6 +595,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         if (!initialData && !isEditMode) return true; // New post: allow save
         const formSame =
             initialData &&
+            language === (initialData.language ?? studioState?.languageConfig.defaultLanguage ?? 'en') &&
             title === (initialData.title ?? '') &&
             slug === (initialData.slug ?? '') &&
             excerpt === (initialData.excerpt ?? '') &&
@@ -615,6 +635,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             mainEditor.hasUnsavedChanges || notesEditor.hasUnsavedChanges || footnotesEditor.hasUnsavedChanges;
         return formDirty || editorDirty;
     }, [
+        language,
         title,
         slug,
         excerpt,
@@ -622,6 +643,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         status,
         isFeatured,
         allowComments,
+        isProtected,
+        password,
+        passwordHint,
         publishAt,
         originalDate,
         seriesId,
@@ -636,6 +660,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         meta,
         initialData,
         isEditMode,
+        studioState?.languageConfig.defaultLanguage,
         mainEditor.hasUnsavedChanges,
         notesEditor.hasUnsavedChanges,
         footnotesEditor.hasUnsavedChanges,
@@ -1039,6 +1064,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             const expectedUpdatedAt = initialData?.updatedAt ? new Date(initialData.updatedAt).getTime() : undefined;
 
             const postData: Partial<BlogPost> & { expectedUpdatedAt?: number } = {
+                language,
                 title,
                 slug: baseSlug,
                 excerpt: excerpt || undefined,
@@ -1363,7 +1389,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
                     {/* Content Tabs */}
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-5">
+                        <TabsList className="grid w-full grid-cols-6">
                             <TabsTrigger value="content" className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
                                 Content
@@ -1379,6 +1405,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             <TabsTrigger value="seo" className="flex items-center gap-2">
                                 <Search className="h-4 w-4" />
                                 SEO
+                            </TabsTrigger>
+                            <TabsTrigger value="languages" className="flex items-center gap-2">
+                                <Languages className="h-4 w-4" />
+                                Languages
                             </TabsTrigger>
                             <TabsTrigger value="meta" className="flex items-center gap-2">
                                 <Braces className="h-4 w-4" />
@@ -1573,6 +1603,17 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                 </CardContent>
                             </Card>
                         </TabsContent>
+                        <TabsContent value="languages" className="mt-4 data-[state=inactive]:hidden">
+                            {isEditMode && postId && initialData ? (
+                                <AdminBlogTranslationsPanel postId={postId} basePost={initialData} />
+                            ) : (
+                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardContent className="p-6 text-sm text-muted-foreground">
+                                        Save this post first to add translations.
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </TabsContent>
                     </Tabs>
 
                     {/* Excerpt */}
@@ -1741,6 +1782,26 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="postLanguage">Canonical language</Label>
+                                <NativeSelect
+                                    id="postLanguage"
+                                    aria-label="Canonical language"
+                                    value={language}
+                                    onChange={(e) => setLanguage(e.target.value)}
+                                    wrapperClassName="w-full"
+                                >
+                                    {supportedLanguages.map((item) => (
+                                        <NativeSelectOption key={item.code} value={item.code}>
+                                            {item.name} ({item.code})
+                                        </NativeSelectOption>
+                                    ))}
+                                </NativeSelect>
+                                <p className="text-xs text-muted-foreground">
+                                    Translations are managed in the Languages tab.
+                                </p>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="contentType">Content Type</Label>
                                 <NativeSelect

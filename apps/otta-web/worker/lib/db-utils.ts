@@ -5,6 +5,8 @@ import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/o
 import {
     OttablogPlugin,
     OttablogTheme,
+    OttablogSettings,
+    PostTranslation,
     Post,
     PostCategory,
     PostCategoryLink,
@@ -125,6 +127,8 @@ function registerAppModels(env: CloudflareEnv): void {
               PostVersion,
               OttablogPlugin,
               OttablogTheme,
+              OttablogSettings,
+              PostTranslation,
           ]
         : [];
     const packageModels = [
@@ -176,7 +180,15 @@ function registerAppModels(env: CloudflareEnv): void {
     // RLS applies on the generic-CRUD path only; the public blog endpoints read published
     // content directly through models and stay public in both modes.
     if (packages.ottablog && config.features.ottablog.mode === 'org') {
-        for (const model of ['categories', 'post_tags', 'series', 'ottablog_themes', 'ottablog_plugins']) {
+        for (const model of [
+            'categories',
+            'post_tags',
+            'series',
+            'ottablog_themes',
+            'ottablog_plugins',
+            'ottablog_settings',
+            'post_translations',
+        ]) {
             registerPolicy({
                 model,
                 policy: RLSPolicies.TenantScoped(false),

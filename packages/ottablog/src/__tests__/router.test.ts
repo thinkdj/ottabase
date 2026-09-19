@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { globalRLS } from '@ottabase/ottaorm';
+import { DomainValidationError, globalRLS } from '@ottabase/ottaorm';
 import { buildBlogRouter, createBlogHandlers } from '../router';
 import type { BlogHandlers } from '../router';
 import { BlurbValidationError } from '../types';
@@ -15,6 +15,7 @@ vi.mock('../ottaorm-models', () => ({
         where: vi.fn(async () => []),
         paginate: vi.fn(async () => ({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 })),
         search: vi.fn(async () => []),
+        searchPostIds: vi.fn(async () => []),
         find: vi.fn(async () => null),
         related: vi.fn(async () => []),
         publishScheduled: vi.fn(async () => ({ posts: [], hasMore: false })),
@@ -28,6 +29,30 @@ vi.mock('../ottaorm-models', () => ({
     PostSeries: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
     PostTag: { findBySlug: vi.fn(async () => null) },
     PostTagLink: { where: vi.fn(async () => []) },
+    OttablogSettings: {
+        forScope: vi.fn(async () => null),
+        ensure: vi.fn(async () => ({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        })),
+    },
+    PostTranslation: {
+        forPost: vi.fn(async () => []),
+        forPublicPosts: vi.fn(async () => []),
+        forPublicFeed: vi.fn(async () => []),
+        searchPostIds: vi.fn(async () => []),
+        publishScheduled: vi.fn(async () => ({ translations: [], hasMore: false })),
+        findForPost: vi.fn(async () => null),
+        findBySlug: vi.fn(async () => null),
+        createForPost: vi.fn(),
+        delete: vi.fn(),
+    },
     OttablogTheme: { create: vi.fn(), findByThemeId: vi.fn(async () => null), where: vi.fn(async () => []) },
     OttablogPlugin: { create: vi.fn(), findByPluginId: vi.fn(async () => null), where: vi.fn(async () => []) },
 }));
@@ -39,7 +64,7 @@ vi.mock('../studio', () => ({
     },
 }));
 
-import { Post, PostTag } from '../ottaorm-models';
+import { OttablogSettings, Post, PostTag, PostTranslation } from '../ottaorm-models';
 import { StudioManager } from '../studio';
 
 type Env = { marker: string };
@@ -49,6 +74,11 @@ const named = (name: string) => vi.fn(async () => new Response(name));
 function stubHandlers(): BlogHandlers<Env> {
     return {
         handleBlogStudioState: named('studio-state'),
+        handleBlogStudioLanguages: named('studio-languages'),
+        handleBlogPostTranslations: named('translations'),
+        handleBlogPostTranslationCreate: named('translation-create'),
+        handleBlogPostTranslationUpdate: named('translation-update'),
+        handleBlogPostTranslationDelete: named('translation-delete'),
         handleBlogStudioActivateTheme: named('theme-activate'),
         handleBlogStudioPluginEnable: named('plugin-enable'),
         handleBlogStudioPluginConfig: named('plugin-config'),
@@ -100,8 +130,15 @@ describe('buildBlogRouter', () => {
 
         const cases: Array<[string, string, string]> = [
             ['GET', '/studio/state', 'studio-state'],
+            ['GET', '/studio/languages', 'studio-languages'],
+            ['POST', '/studio/languages', 'studio-languages'],
+            ['GET', '/posts/p1/translations', 'translations'],
+            ['POST', '/posts/p1/translations', 'translation-create'],
+            ['PATCH', '/posts/p1/translations/fr', 'translation-update'],
+            ['DELETE', '/posts/p1/translations/fr', 'translation-delete'],
             ['GET', '/rss', 'rss'],
             ['GET', '/sitemap.xml', 'sitemap'],
+            ['GET', '/sitemap-index.xml', 'sitemap'],
             ['GET', '/posts', 'posts-list'],
             ['POST', '/blurbs', 'blurb-create'],
             ['PATCH', '/blurbs/p1', 'blurb-update'],
@@ -345,8 +382,254 @@ describe('createBlogHandlers', () => {
             hasMore: true,
         });
         expect(Post.publishScheduled).toHaveBeenCalledWith({ appId: 'test-app' });
+        expect(PostTranslation.publishScheduled).toHaveBeenCalledWith({ appId: 'test-app' });
     });
 
+    it('requires publish permission to demote an already-published translation', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:update'],
+        };
+        const post = {
+            get: (field: string) => ({ id: 'p1', appId: 'test-app', organizationId: 'org-1', language: 'en' })[field],
+        };
+        const stored = {
+            id: 't1',
+            postId: 'p1',
+            language: 'ml',
+            status: 'published',
+            title: 'Malayalam title',
+            slug: 'malayalam-title',
+        };
+        const translation = {
+            get: (field: string) => (stored as Record<string, unknown>)[field],
+            toJson: () => stored,
+            updateContent: vi.fn(),
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        vi.mocked(PostTranslation.findForPost).mockResolvedValueOnce(translation as any);
+        const getReadFilter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: async () => ({ session: { user: { id: 'u1' } }, securityContext }),
+        });
+
+        const response = await handlers.handleBlogPostTranslationUpdate(
+            ctxFor('/posts/p1/translations/ml', { method: 'PATCH', body: JSON.stringify({ status: 'draft' }) }),
+            'p1',
+            'ml',
+        );
+
+        expect(response.status).toBe(403);
+        expect(translation.updateContent).not.toHaveBeenCalled();
+        getReadFilter.mockRestore();
+    });
+
+    it('maps invalid translation writes to a validation response instead of a 500', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: ['posts:update'],
+        };
+        const post = {
+            get: (field: string) => ({ id: 'p1', appId: 'test-app', organizationId: 'org-1', language: 'en' })[field],
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        vi.mocked(PostTranslation.createForPost).mockRejectedValueOnce(
+            new DomainValidationError('Translation title is invalid', { status: 422 }),
+        );
+        const getReadFilter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: async () => ({ session: { user: { id: 'u1' } }, securityContext }),
+        });
+
+        const response = await handlers.handleBlogPostTranslationCreate(
+            ctxFor('/posts/p1/translations', { method: 'POST', body: JSON.stringify({ language: 'ml', title: 'x' }) }),
+            'p1',
+        );
+
+        expect(response.status).toBe(422);
+        expect((await response.json()).code).toBe('VALIDATION_ERROR');
+        getReadFilter.mockRestore();
+    });
+
+    it('publishes every published translation variant in the sitemap and varies the public cache', async () => {
+        const post = {
+            get: (field: string) =>
+                ({
+                    id: 'p1',
+                    slug: 'hello',
+                    language: 'en',
+                    contentType: 'blog',
+                    updatedAt: new Date('2026-01-01T00:00:00Z'),
+                })[field],
+        };
+        const translation = {
+            get: (field: string) =>
+                ({
+                    id: 't1',
+                    postId: 'p1',
+                    language: 'ml',
+                    slug: 'namaskaram',
+                    title: 'Namaskaram',
+                })[field],
+        };
+        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        vi.mocked(Post.where).mockResolvedValueOnce([post] as any);
+        vi.mocked(PostTranslation.forPublicPosts).mockResolvedValueOnce([translation] as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+        const response = await handlers.handleBlogSitemap(ctxFor('/sitemap.xml'));
+
+        const body = await response.text();
+        expect(response.headers.get('Vary')).toContain('Accept-Language');
+        expect(body).toContain('/blog/hello');
+        expect(body).toContain('/blog/namaskaram?lang=ml');
+        expect(body).toContain('hreflang="ml"');
+        expect(PostTranslation.forPublicPosts).toHaveBeenCalledWith(['p1'], {
+            appId: 'test-app',
+            organizationId: null,
+            status: 'published',
+        });
+    });
+
+    it('honors Accept-Language quality weights when selecting a supported locale', async () => {
+        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                    { code: 'de', name: 'German' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        const post = {
+            get: (field: string) => ({ id: 'p1', appId: 'test-app', slug: 'hello', language: 'en' })[field],
+            toJson: () => ({
+                id: 'p1',
+                appId: 'test-app',
+                slug: 'hello',
+                language: 'en',
+                title: 'Hello',
+                status: 'published',
+            }),
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+        const response = await handlers.handleBlogPostBySlug(
+            {
+                ...ctxFor('/posts/by-slug/hello', { headers: { 'Accept-Language': 'de;q=0.2,en;q=1' } }),
+                url: new URL('https://x.test/posts/by-slug/hello'),
+            },
+            'hello',
+        );
+        expect(response.status).toBe(200);
+        expect((await response.json()).language).toBe('en');
+        expect(PostTranslation.findBySlug).toHaveBeenCalledWith('hello', expect.objectContaining({ language: 'en' }));
+    });
+
+    it('searches localized fields and keeps the list projection bounded to matching post ids', async () => {
+        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        vi.mocked(PostTranslation.searchPostIds).mockResolvedValueOnce(['p1']);
+        vi.mocked(Post.paginate).mockResolvedValueOnce({
+            data: [],
+            page: 1,
+            perPage: 15,
+            total: 0,
+            totalPages: 0,
+        } as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+        await handlers.handleBlogPostsList(ctxFor('/posts?lang=ml&search=മഴ'));
+        expect(PostTranslation.searchPostIds).toHaveBeenCalledWith(
+            'മഴ',
+            expect.objectContaining({ language: 'ml', status: 'published' }),
+        );
+        expect(Post.paginate).toHaveBeenCalledWith(1, 15, expect.objectContaining({ id: ['p1'] }), expect.any(Object));
+    });
+
+    it('uses each post canonical language, excludes disabled translations, and caps sitemap URL entries', async () => {
+        const post = {
+            get: (field: string) =>
+                ({
+                    id: 'p1',
+                    slug: 'hello',
+                    language: 'ml',
+                    contentType: 'blog',
+                    updatedAt: new Date('2026-01-01T00:00:00Z'),
+                })[field],
+        };
+        const enabledDefaultTranslation = {
+            get: (field: string) => ({ id: 't1', postId: 'p1', language: 'en', slug: 'hello-en' })[field],
+        };
+        const disabledTranslation = {
+            get: (field: string) => ({ id: 't2', postId: 'p1', language: 'fr', slug: 'bonjour' })[field],
+        };
+        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        vi.mocked(Post.where).mockResolvedValueOnce([post] as any);
+        vi.mocked(PostTranslation.forPublicPosts).mockResolvedValueOnce([
+            enabledDefaultTranslation,
+            disabledTranslation,
+        ] as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+        const response = await handlers.handleBlogSitemap(ctxFor('/sitemap.xml?limit=2'));
+        const body = await response.text();
+        expect((body.match(/<url>/g) ?? []).length).toBe(2);
+        expect(body).toContain('/blog/hello</loc>');
+        expect(body).toContain('/blog/hello-en?lang=en');
+        expect(body).not.toContain('bonjour');
+        expect(response.headers.get('X-Sitemap-Truncated')).toBe('true');
+        expect(body).toContain('hreflang="ml"');
+    });
+
+    it('publishes a discoverable sitemap index for paginated URL files', async () => {
+        vi.mocked(Post.paginate).mockResolvedValueOnce({
+            data: [],
+            page: 1,
+            perPage: 20,
+            total: 41,
+            totalPages: 3,
+        } as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+        const response = await handlers.handleBlogSitemap(ctxFor('/sitemap-index.xml'));
+        const body = await response.text();
+
+        expect(response.headers.get('Content-Type')).toContain('application/xml');
+        expect(body).toContain('<sitemapindex');
+        expect(body).toContain('/api/blog/sitemap.xml?page=1');
+        expect(body).toContain('/api/blog/sitemap.xml?page=3');
+    });
     it('seed-demo responds 404 when no demo content is configured', async () => {
         const handlers = createBlogHandlers<Env>({ ...baseConfig });
         const response = await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
@@ -904,6 +1187,66 @@ describe('createBlogHandlers', () => {
         expect(body.excerpt).toBe('Teaser stays public');
     });
 
+    it('includes an older canonical parent when its localized translation is newly published', async () => {
+        const recent = {
+            get: (field: string) =>
+                ({ id: 'recent', slug: 'recent', language: 'en', contentType: 'blog', publishedAt: 1_000 })[field],
+            toJson: () => ({ id: 'recent', slug: 'recent', language: 'en', contentType: 'blog', publishedAt: 1_000 }),
+        };
+        const older = {
+            get: (field: string) =>
+                ({ id: 'older', slug: 'older', language: 'en', contentType: 'blog', publishedAt: 100 })[field],
+            toJson: () => ({ id: 'older', slug: 'older', language: 'en', contentType: 'blog', publishedAt: 100 }),
+        };
+        const translation = {
+            get: (field: string) =>
+                ({
+                    id: 't-old',
+                    postId: 'older',
+                    language: 'ml',
+                    slug: 'purono',
+                    title: 'പഴയ ലേഖനം',
+                    excerpt: 'വിവരണം',
+                    publishedAt: 2_000,
+                    status: 'published',
+                })[field],
+        };
+        (translation as any).toPublicListJson = () => ({
+            id: 't-old',
+            postId: 'older',
+            language: 'ml',
+            slug: 'purono',
+            title: 'പഴയ ലേഖനം',
+            excerpt: 'വിവരണം',
+            publishedAt: 2_000,
+            status: 'published',
+        });
+        vi.mocked(Post.where)
+            .mockResolvedValueOnce([recent] as any)
+            .mockResolvedValueOnce([older] as any);
+        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        vi.mocked(PostTranslation.forPublicFeed).mockResolvedValueOnce([translation] as any);
+        vi.mocked(PostTranslation.forPublicPosts).mockResolvedValueOnce([translation] as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogRssFeed(ctxFor('/rss?lang=ml'));
+        const xml = await response.text();
+
+        expect(PostTranslation.forPublicFeed).toHaveBeenCalledWith(
+            expect.objectContaining({ language: 'ml', limit: 25 }),
+        );
+        expect(xml).toContain('/blog/purono?lang=ml');
+        expect(xml).toContain('പഴയ ലേഖനം');
+    });
     it('publishes photo journals to RSS with a lead-image enclosure and category', async () => {
         const fields = {
             id: 'photo-1',

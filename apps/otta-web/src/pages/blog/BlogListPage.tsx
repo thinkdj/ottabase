@@ -30,7 +30,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 import {
     ArrowRight,
     CalendarDays,
@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { partitionBlogTimeline } from './blogTimeline';
+import { localizedPostSearch } from './blogLinks';
 
 interface BlogPostTag {
     id: string;
@@ -53,6 +54,10 @@ interface BlogPostTag {
 
 interface BlogPost {
     id: string;
+    language?: string;
+    baseLanguage?: string;
+    baseSlug?: string;
+    translationId?: string;
     title: string;
     slug: string;
     excerpt: string | null;
@@ -113,6 +118,8 @@ function PublishedDateLink({ publishedAt }: { publishedAt: string }) {
 }
 
 export function BlogListPage() {
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const { user } = useSession();
     const canWrite = hasGrantedPermission(user?.permissions, 'posts:update');
     const [search, setSearch] = useState('');
@@ -136,10 +143,14 @@ export function BlogListPage() {
     if (contentType) params.set('contentType', contentType);
     if (seriesFilter) params.set('seriesId', seriesFilter);
     if (debouncedSearch) params.set('search', debouncedSearch);
+    if (requestedLanguage) params.set('lang', requestedLanguage);
 
     const { data: listResponse, isLoading } = useApiQuery<BlogListResponse>({
         entity: 'posts',
-        queryKey: ['list', { page: currentPage, contentType, seriesFilter, search: debouncedSearch }],
+        queryKey: [
+            'list',
+            { page: currentPage, contentType, seriesFilter, search: debouncedSearch, language: requestedLanguage },
+        ],
         endpoint: `/api/blog/posts?${params.toString()}`,
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
@@ -272,7 +283,12 @@ export function BlogListPage() {
                     </div>
                     <div className="personal-featured-grid">
                         {featuredPosts.slice(0, 3).map((post, index) => (
-                            <FeaturedPostCard key={post.id} post={post} featured={index === 0} />
+                            <FeaturedPostCard
+                                key={post.id}
+                                post={post}
+                                featured={index === 0}
+                                activeLanguage={requestedLanguage}
+                            />
                         ))}
                     </div>
                 </section>
@@ -287,12 +303,13 @@ export function BlogListPage() {
                     <div className="personal-feed-list">
                         {timelinePosts.map((post) =>
                             post.isProtected ? (
-                                <ProtectedPostCard key={post.id} post={post} />
+                                <ProtectedPostCard key={post.id} post={post} activeLanguage={requestedLanguage} />
                             ) : post.contentType === 'blurb' ? (
                                 <Link
                                     key={post.id}
                                     to="/blog/$slug"
                                     params={{ slug: post.slug }}
+                                    search={localizedPostSearch(post, requestedLanguage)}
                                     className="personal-feed-blurb"
                                 >
                                     <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
@@ -302,12 +319,13 @@ export function BlogListPage() {
                                     key={post.id}
                                     to="/blog/$slug"
                                     params={{ slug: post.slug }}
+                                    search={localizedPostSearch(post, requestedLanguage)}
                                     className="personal-feed-photo"
                                 >
                                     <PhotoJournalRenderer post={post} variant="timeline" formatDate={formatDate} />
                                 </Link>
                             ) : (
-                                <PostCard key={post.id} post={post} />
+                                <PostCard key={post.id} post={post} activeLanguage={requestedLanguage} />
                             ),
                         )}
                     </div>
@@ -362,26 +380,48 @@ function TypeLabel({ post }: { post: BlogPost }) {
     ) : null;
 }
 
-function FeaturedPostCard({ post, featured }: { post: BlogPost; featured: boolean }) {
+function FeaturedPostCard({
+    post,
+    featured,
+    activeLanguage,
+}: {
+    post: BlogPost;
+    featured: boolean;
+    activeLanguage?: string;
+}) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : null;
     return (
         <article className={`personal-featured-card ${featured ? 'is-featured' : ''}`}>
             {heroUrl && (
-                <Link to="/blog/$slug" params={{ slug: post.slug }} className="personal-featured-card__image">
+                <Link
+                    to="/blog/$slug"
+                    params={{ slug: post.slug }}
+                    search={localizedPostSearch(post, activeLanguage)}
+                    className="personal-featured-card__image"
+                >
                     <img src={heroUrl} alt={post.heroImage?.alt || post.title} loading="lazy" decoding="async" />
                 </Link>
             )}
             <div className="personal-featured-card__body">
                 <TypeLabel post={post} />
                 <h2>
-                    <Link to="/blog/$slug" params={{ slug: post.slug }}>
+                    <Link
+                        to="/blog/$slug"
+                        params={{ slug: post.slug }}
+                        search={localizedPostSearch(post, activeLanguage)}
+                    >
                         {post.title}
                         {post.isProtected && <LockKeyhole size={16} aria-label="Password protected" />}
                     </Link>
                 </h2>
                 {post.excerpt && <p>{post.excerpt}</p>}
                 <PostMeta post={post} />
-                <Link to="/blog/$slug" params={{ slug: post.slug }} className="personal-text-link">
+                <Link
+                    to="/blog/$slug"
+                    params={{ slug: post.slug }}
+                    search={localizedPostSearch(post, activeLanguage)}
+                    className="personal-text-link"
+                >
                     {post.contentType === 'photo' ? 'Open journal' : 'Read note'} <ArrowRight size={15} />
                 </Link>
             </div>
@@ -389,7 +429,7 @@ function FeaturedPostCard({ post, featured }: { post: BlogPost; featured: boolea
     );
 }
 
-function ProtectedPostCard({ post }: { post: BlogPost }) {
+function ProtectedPostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     return (
         <article className="personal-protected-card">
             <div className="personal-protected-card__icon">
@@ -398,7 +438,11 @@ function ProtectedPostCard({ post }: { post: BlogPost }) {
             <div>
                 <TypeLabel post={post} />
                 <h2>
-                    <Link to="/blog/$slug" params={{ slug: post.slug }}>
+                    <Link
+                        to="/blog/$slug"
+                        params={{ slug: post.slug }}
+                        search={localizedPostSearch(post, activeLanguage)}
+                    >
                         {post.title}
                     </Link>
                 </h2>
@@ -410,7 +454,7 @@ function ProtectedPostCard({ post }: { post: BlogPost }) {
     );
 }
 
-function PostCard({ post }: { post: BlogPost }) {
+function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : null;
     return (
         <article className="personal-post-card">
@@ -420,7 +464,11 @@ function PostCard({ post }: { post: BlogPost }) {
             <div className="personal-post-card__body">
                 <TypeLabel post={post} />
                 <h2>
-                    <Link to="/blog/$slug" params={{ slug: post.slug }}>
+                    <Link
+                        to="/blog/$slug"
+                        params={{ slug: post.slug }}
+                        search={localizedPostSearch(post, activeLanguage)}
+                    >
                         {post.title}
                     </Link>
                 </h2>
@@ -428,13 +476,19 @@ function PostCard({ post }: { post: BlogPost }) {
                 <PostMeta post={post} />
             </div>
             {heroUrl && (
-                <Link to="/blog/$slug" params={{ slug: post.slug }} className="personal-post-card__image">
+                <Link
+                    to="/blog/$slug"
+                    params={{ slug: post.slug }}
+                    search={localizedPostSearch(post, activeLanguage)}
+                    className="personal-post-card__image"
+                >
                     <img src={heroUrl} alt={post.heroImage?.alt || ''} loading="lazy" decoding="async" />
                 </Link>
             )}
             <Link
                 to="/blog/$slug"
                 params={{ slug: post.slug }}
+                search={localizedPostSearch(post, activeLanguage)}
                 className="personal-post-card__arrow"
                 aria-label={`Read ${post.title}`}
             >

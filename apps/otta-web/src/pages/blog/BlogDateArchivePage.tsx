@@ -9,7 +9,8 @@ import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablo
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -50,6 +51,8 @@ function parseArchiveParams(params: Record<string, string | undefined>) {
 export function BlogDateArchivePage() {
     const params = useParams({ strict: false }) as { year?: string; month?: string };
     const { year, month, invalidMonth } = parseArchiveParams(params);
+    const searchParams = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = searchParams.lang || '';
     const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
     const [currentPage, setCurrentPage] = useState(1);
@@ -58,12 +61,19 @@ export function BlogDateArchivePage() {
 
     const endpoint =
         year && !invalidMonth
-            ? `/api/blog/posts?year=${year}${month ? `&month=${month}` : ''}&page=${currentPage}&perPage=${POSTS_PER_PAGE}`
+            ? '/api/blog/posts?year=' +
+              year +
+              (month ? '&month=' + month : '') +
+              '&page=' +
+              currentPage +
+              '&perPage=' +
+              POSTS_PER_PAGE +
+              (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : '')
             : null;
 
     const { data: postsResponse, isLoading } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['date-archive', year, month, currentPage],
+        queryKey: ['date-archive', year, month, currentPage, requestedLanguage],
         endpoint: endpoint ?? '',
         queryOptions: { enabled: !!year && !invalidMonth, ...BLOG_LIST_QUERY_CONFIG },
     });
@@ -195,6 +205,7 @@ export function BlogDateArchivePage() {
                             key={post.id}
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
+                            search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {renderCard ? (

@@ -47,6 +47,8 @@ vi.mock('@ottabase/ottablog', () => ({
     PostTag: class PostTag {},
     PostTagLink: class PostTagLink {},
     PostVersion: class PostVersion {},
+    OttablogSettings: class OttablogSettings {},
+    PostTranslation: class PostTranslation {},
 }));
 
 vi.mock('@ottabase/ottaorm', () => ({

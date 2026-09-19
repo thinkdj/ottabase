@@ -5,7 +5,7 @@
  * Uses public API so protected posts return without body until unlocked.
  */
 import { SEOHead } from '@/components/SEOHead';
-import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
 import { useComments, useCreateComment, type CommentType } from '@/hooks/commentHooks';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
@@ -24,12 +24,18 @@ import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, ArrowRight, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 interface BlogPost {
     id: string;
+    language?: string;
+    baseLanguage?: string;
+    baseSlug?: string;
+    translationId?: string;
+    availableLanguages?: { code: string; name: string; nativeName?: string }[];
     title: string;
     slug: string;
     excerpt: string | null;
@@ -85,7 +91,6 @@ interface BlogSeries {
     isComplete: boolean;
 }
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 const blogSeriesHooks = createModelHooks<BlogSeries>({
     entityName: 'series',
 });
@@ -206,6 +211,8 @@ const CommentNode = memo(function CommentNode({
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const search = useSearch({ strict: false }) as { lang?: string };
+    const requestedLanguage = search.lang || '';
     const { user } = useSession();
     const { isReady: studioReady } = useBlogStudio();
     const [unlockedPost, setUnlockedPost] = useState<BlogPost | null>(null);
@@ -220,8 +227,11 @@ export function BlogDetailPage() {
     // Any mutation on the posts entity auto-busts this cache via the global observer.
     const { data: post, isLoading: isLoadingPost } = useApiQuery<BlogPost>({
         entity: 'posts',
-        queryKey: ['by-slug', slug],
-        endpoint: `/api/blog/posts/by-slug/${encodeURIComponent(slug ?? '')}`,
+        queryKey: ['by-slug', slug, requestedLanguage],
+        endpoint:
+            '/api/blog/posts/by-slug/' +
+            encodeURIComponent(slug ?? '') +
+            (requestedLanguage ? '?lang=' + encodeURIComponent(requestedLanguage) : ''),
         queryOptions: {
             enabled: !!slug,
             ...BLOG_DETAIL_QUERY_CONFIG,
@@ -234,20 +244,19 @@ export function BlogDetailPage() {
         ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
-    // Fetch other posts in the series for navigation
-    const { data: seriesPostsData } = blogPostHooks.useList(
-        {
-            where: post?.seriesId ? { seriesId: post.seriesId, status: 'published' } : undefined,
-            orderBy: 'seriesOrder',
-            orderDirection: 'asc',
-        },
-        {
-            enabled: !!post?.seriesId,
-            ...BLOG_LIST_QUERY_CONFIG,
-        },
-    );
-    const seriesPosts = seriesPostsData || [];
-
+    // Fetch localized series posts through the public endpoint so the
+    // navigation uses the same language as the page and has self-contained links.
+    const { data: seriesPostsResponse } = useApiQuery<{ data: BlogPost[] }>({
+        entity: 'posts',
+        queryKey: ['series-navigation', post?.seriesId, requestedLanguage],
+        endpoint:
+            '/api/blog/posts?seriesId=' +
+            encodeURIComponent(post?.seriesId ?? '') +
+            '&orderBy=seriesOrder&orderDirection=asc&perPage=50' +
+            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
+        queryOptions: { enabled: !!post?.seriesId },
+    });
+    const seriesPosts = seriesPostsResponse?.data ?? [];
     // Find previous and next posts in series
     const currentIndex = seriesPosts.findIndex((p) => p.id === post?.id);
     const prevPost = currentIndex > 0 ? seriesPosts[currentIndex - 1] : null;
@@ -374,10 +383,13 @@ export function BlogDetailPage() {
         if (!password.trim() || !slug) return;
         setIsUnlocking(true);
         try {
-            const full = await api<BlogPost>('/api/blog/posts/unlock', {
-                method: 'POST',
-                body: { slug, password: password.trim() },
-            });
+            const full = await api<BlogPost>(
+                '/api/blog/posts/unlock' + (requestedLanguage ? '?lang=' + encodeURIComponent(requestedLanguage) : ''),
+                {
+                    method: 'POST',
+                    body: { slug, password: password.trim() },
+                },
+            );
             setUnlockedPost(full);
             setPassword('');
         } catch (err) {
@@ -419,6 +431,11 @@ export function BlogDetailPage() {
     // Convert post to BlogPostData format
     const blogPostData: BlogPostData = {
         id: displayPost.id,
+        language: displayPost.language,
+        baseLanguage: displayPost.baseLanguage,
+        baseSlug: displayPost.baseSlug,
+        translationId: displayPost.translationId,
+        availableLanguages: displayPost.availableLanguages,
         title: displayPost.title,
         slug: displayPost.slug,
         excerpt: displayPost.excerpt,
@@ -492,6 +509,31 @@ export function BlogDetailPage() {
                     </Link>
                 </Button>
                 <div className="flex items-center gap-2">
+                    {displayPost.availableLanguages && displayPost.availableLanguages.length > 1 && (
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="sr-only">Post language</span>
+                            <select
+                                value={displayPost.language || requestedLanguage || displayPost.baseLanguage || ''}
+                                onChange={(event) => {
+                                    const targetSlug = displayPost.baseSlug || displayPost.slug;
+                                    window.location.assign(
+                                        '/blog/' +
+                                            encodeURIComponent(targetSlug) +
+                                            '?lang=' +
+                                            encodeURIComponent(event.target.value),
+                                    );
+                                }}
+                                className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                                aria-label="Post language"
+                            >
+                                {displayPost.availableLanguages.map((item) => (
+                                    <option key={item.code} value={item.code}>
+                                        {item.name} ({item.code})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
                     <ShareButton
                         url={typeof window !== 'undefined' ? window.location.href : ''}
                         title={displayPost.title}
@@ -575,6 +617,7 @@ export function BlogDetailPage() {
                                                 <Link
                                                     to="/blog/$slug"
                                                     params={{ slug: prevPost.slug }}
+                                                    search={localizedPostSearch(prevPost, requestedLanguage)}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 >
                                                     <ArrowLeft className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
@@ -592,6 +635,7 @@ export function BlogDetailPage() {
                                                 <Link
                                                     to="/blog/$slug"
                                                     params={{ slug: nextPost.slug }}
+                                                    search={localizedPostSearch(nextPost, requestedLanguage)}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
                                                 >
                                                     <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
@@ -758,6 +802,7 @@ export function BlogDetailPage() {
                                         <Link
                                             to="/blog/$slug"
                                             params={{ slug: p.slug }}
+                                            search={localizedPostSearch(p, requestedLanguage)}
                                             className="text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                         >
                                             {p.title}

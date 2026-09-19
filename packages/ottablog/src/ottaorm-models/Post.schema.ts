@@ -18,6 +18,9 @@ export const postsTable = sqliteTable(
         // URL-friendly slug (unique per appId)
         slug: text('slug').notNull(),
 
+        // Canonical language for this post; additional languages live in post_translations.
+        language: text('language').notNull().default('en'),
+
         // Short excerpt/summary (auto-generated or manual)
         excerpt: text('excerpt'),
 
@@ -194,6 +197,8 @@ export const postsTable = sqliteTable(
 
         // Content type filtering: appId + contentType + status
         index('posts_app_id_content_type_status_idx').on(table.appId, table.contentType, table.status),
+
+        index('posts_language_status_idx').on(table.language, table.status),
 
         // Author's posts: authorId + status + publishedAt
         index('posts_author_id_status_published_at_idx').on(table.authorId, table.status, table.publishedAt),
