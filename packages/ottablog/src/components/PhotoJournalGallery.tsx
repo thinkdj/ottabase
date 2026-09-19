@@ -247,7 +247,8 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
                     {showTitle && (
                         <>
                             <p className="mb-4 text-[0.625rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                                Photo journal · {photos.length} {photos.length === 1 ? 'frame' : 'frames'}
+                                {tone === 'linen' ? 'Journal' : 'Photo journal'} · {photos.length}{' '}
+                                {photos.length === 1 ? 'frame' : 'frames'}
                             </p>
                             <h1
                                 className={`${tone === 'minimal' ? 'font-light' : 'font-serif'} text-4xl tracking-[-0.035em] ${tone === 'linen' ? 'sm:text-5xl' : 'sm:text-6xl'}`}

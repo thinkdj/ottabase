@@ -1352,8 +1352,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Derive the site URL from the request
         const siteUrl = `${url.protocol}//${url.host}`;
-        const feedTitle = url.searchParams.get('title') || 'Blog';
-        const feedDescription = url.searchParams.get('description') || 'Latest posts';
+        const configuredTitle = typeof config.feedTitle === 'function' ? config.feedTitle(env) : config.feedTitle;
+        const configuredDescription =
+            typeof config.feedDescription === 'function' ? config.feedDescription(env) : config.feedDescription;
+        const feedTitle = url.searchParams.get('title') || configuredTitle || 'Blog';
+        const feedDescription = url.searchParams.get('description') || configuredDescription || 'Latest posts';
 
         const escapeXml = (str: string): string =>
             str

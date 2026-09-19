@@ -90,7 +90,7 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
     if (result.success) {
         initDbConnection(env);
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
-        await ensureAppBrandDefaults('Ottabase', appId);
+        await ensureAppBrandDefaults(getOttabaseConfig(env).appName, appId);
     }
 
     return jsonResponse(result);

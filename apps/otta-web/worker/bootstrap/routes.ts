@@ -477,7 +477,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
 
         // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
-        await ensureAppBrandDefaults('Ottabase', appId);
+        await ensureAppBrandDefaults(getOttabaseConfig(env).appName, appId);
 
         // Seed default roles (platform_owner, owner, admin, editor, viewer, member) AND reconcile
         // existing system-role permission sets to the canonical definitions — e.g. heal a legacy

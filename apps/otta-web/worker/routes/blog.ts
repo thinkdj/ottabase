@@ -127,6 +127,8 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     },
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
+    feedTitle: (env) => getOttabaseConfig(env).appName,
+    feedDescription: (env) => getOttabaseConfig(env).meta.description,
     // Demo seeding is platform-owner-only via the system-scoped requireAdmin above.
     demoPosts: demoBlogPosts,
 });
