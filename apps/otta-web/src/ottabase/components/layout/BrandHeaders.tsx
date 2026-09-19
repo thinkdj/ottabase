@@ -8,6 +8,38 @@ import { memo } from 'react';
 import { ControlsSection } from './ControlsSection';
 import { UserSection } from './UserSection';
 import { getNavLinks } from './layout.constants';
+import { isNavActive, navLinkClass } from './nav-styles';
+
+function SiteWordmark() {
+    return (
+        <Link
+            to="/"
+            className="truncate font-serif text-[1.05rem] tracking-[-0.02em] text-foreground transition-colors duration-normal hover:text-foreground/80 sm:text-lg"
+        >
+            {APP_META.appName}
+        </Link>
+    );
+}
+
+function StaticNav({ navLinks, pathname }: { navLinks: ReturnType<typeof getNavLinks>; pathname: string }) {
+    return (
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
+            {navLinks.map((link) => {
+                const isActive = isNavActive(pathname, link.to);
+                return (
+                    <Link
+                        key={link.to}
+                        to={link.to}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={navLinkClass(isActive)}
+                    >
+                        {link.label}
+                    </Link>
+                );
+            })}
+        </nav>
+    );
+}
 
 export const TopbarHeader = memo(function TopbarHeader({
     showNav,
@@ -26,28 +58,7 @@ export const TopbarHeader = memo(function TopbarHeader({
 
     const isAdmin = isAdminUser(user);
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
-    const staticNav = (
-        <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-                const isActive =
-                    location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
-                return (
-                    <Link
-                        key={link.to}
-                        to={link.to}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
-                            isActive
-                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
-                    >
-                        {link.label}
-                    </Link>
-                );
-            })}
-        </nav>
-    );
+    const staticNav = <StaticNav navLinks={navLinks} pathname={location.pathname} />;
 
     // Menu slot takes precedence: when menuSlots exists, always try header-nav (even if nav is in sidebar).
     // Fallback: static nav only when showNav (navigation === 'topbar').
@@ -57,26 +68,19 @@ export const TopbarHeader = memo(function TopbarHeader({
             menuSlots={config.menuSlots as Record<string, ResolvedMenuSlotData[]> | undefined}
             options={{ isAuthenticated: !!isAuthenticated, pathname: location.pathname }}
             fallback={showNav ? staticNav : null}
-            className="hidden md:flex items-center gap-1"
+            className="hidden items-center gap-6 md:flex"
         />
     ) : showNav ? (
         staticNav
     ) : null;
 
     return (
-        <header
-            className={`border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
-        >
-            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-3 ${containerClass}`}>
+        <header className={`${sticky ? 'sticky top-0' : ''} z-40 bg-background/85 backdrop-blur-md`}>
+            <div className={`mx-auto flex items-center justify-between gap-4 px-4 py-5 ${containerClass}`}>
                 {/* min-w-0 lets the app name ellipsize instead of wrapping the header onto extra lines */}
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-3">
                     {leading}
-                    <Link
-                        to="/"
-                        className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground sm:text-base"
-                    >
-                        {APP_META.appName}
-                    </Link>
+                    <SiteWordmark />
                     {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
                     {APP_META.tagline && (
                         <span className="hidden whitespace-nowrap text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground md:inline">
@@ -87,7 +91,7 @@ export const TopbarHeader = memo(function TopbarHeader({
 
                 {headerNav}
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-3">
                     <ControlsSection />
                     <UserSection />
                 </div>
@@ -112,28 +116,7 @@ export const MinimalHeader = memo(function MinimalHeader({
 
     const isAdmin = isAdminUser(user);
     const navLinks = getNavLinks({ isAuthenticated, isAdmin });
-    const staticNav = (
-        <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-                const isActive =
-                    location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
-                return (
-                    <Link
-                        key={link.to}
-                        to={link.to}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
-                            isActive
-                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
-                    >
-                        {link.label}
-                    </Link>
-                );
-            })}
-        </nav>
-    );
+    const staticNav = <StaticNav navLinks={navLinks} pathname={location.pathname} />;
 
     const headerNav =
         config?.menuSlots && showNav ? (
@@ -142,26 +125,21 @@ export const MinimalHeader = memo(function MinimalHeader({
                 menuSlots={config.menuSlots as Record<string, ResolvedMenuSlotData[]> | undefined}
                 options={{ isAuthenticated: !!isAuthenticated, pathname: location.pathname }}
                 fallback={staticNav}
-                className="hidden md:flex items-center gap-1"
+                className="hidden items-center gap-6 md:flex"
             />
         ) : showNav ? (
             staticNav
         ) : null;
 
     return (
-        <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-2 ${containerClass}`}>
-                <div className="flex min-w-0 items-center gap-2.5">
+        <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md">
+            <div className={`mx-auto flex items-center justify-between gap-4 px-4 py-5 ${containerClass}`}>
+                <div className="flex min-w-0 items-center gap-3">
                     {leading}
-                    <Link
-                        to="/"
-                        className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground"
-                    >
-                        {APP_META.appName}
-                    </Link>
+                    <SiteWordmark />
                 </div>
                 {headerNav}
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-3">
                     <ControlsSection />
                     <UserSection compact />
                 </div>

@@ -2,7 +2,7 @@ import { useSession } from '@/lib/auth';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { LogIn, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 
 export const UserSection = memo(function UserSection({ compact }: { compact?: boolean }) {
@@ -30,16 +30,9 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
 
     if (!isAuthenticated) {
         return (
-            <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2'}`}>
-                {/* Login carries mobile — the login page links to registration, so Sign up can yield */}
-                <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                    <Link to="/register">Sign up</Link>
-                </Button>
-                <Button asChild variant="default" size="sm">
-                    <Link to="/login" className="flex items-center gap-2">
-                        <LogIn className="h-4 w-4" />
-                        Login
-                    </Link>
+            <div className={`flex items-center ${compact ? '' : ''}`}>
+                <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-[0.8125rem] text-muted-foreground">
+                    <Link to="/login">Sign in</Link>
                 </Button>
             </div>
         );

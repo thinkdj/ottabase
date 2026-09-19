@@ -9,26 +9,19 @@ export interface NavLink {
 }
 
 /**
- * Top-level app navigation. Admin users see an extra `Admin` entry that
- * deep-links into the dedicated `/admin` console (which has its own sidebar).
+ * Public personal-blog navigation. Studio/Admin stay reachable for people who
+ * can actually use them; generic SaaS demo/docs/shortlink chrome stays off
+ * the public header.
  */
 const NAV_LINKS_ALL: NavLink[] = [
-    { to: '/', label: 'Home' },
-    { to: '/demo', label: 'Demo' },
-    { to: '/docs', label: 'Docs' },
-    { to: '/blog', label: 'Blog' },
-    { to: '/changelog', label: "What's New" },
-    { to: '/shortlinks', label: 'Shortlinks' },
-    { to: '/dashboard', label: 'Profile Information', authRequired: true },
-    { to: '/referrals', label: 'Referrals', authRequired: true },
-    { to: '/analytics', label: 'Analytics', authRequired: true, adminOnly: true },
+    { to: '/', label: 'Writing' },
+    { to: '/about', label: 'About' },
+    { to: '/studio', label: 'Studio', authRequired: true },
     { to: '/admin', label: 'Admin', authRequired: true, adminOnly: true },
 ];
 
 const PACKAGE_ROUTE_MAP: Partial<Record<string, keyof typeof PACKAGES_ENABLED>> = {
-    '/blog': 'ottablog',
-    '/shortlinks': 'shortlinks',
-    '/referrals': 'referrals',
+    '/studio': 'ottablog',
 };
 
 /**

@@ -7,6 +7,7 @@ import artisanTheme from './themes/artisan.json';
 import crispTheme from './themes/crisp.json';
 import defaultTheme from './themes/default.json';
 import funkyTheme from './themes/funky.json';
+import linenTheme from './themes/linen.json';
 import midnightTheme from './themes/midnight.json';
 import neoTheme from './themes/neo.json';
 import marqueeTheme from './themes/marquee.json';
@@ -34,6 +35,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     crispTheme as PresetTheme,
     funkyTheme as PresetTheme,
     artisanTheme as PresetTheme,
+    linenTheme as PresetTheme,
     midnightTheme as PresetTheme,
     roseTheme as PresetTheme,
     verdantTheme as PresetTheme,
@@ -48,6 +50,7 @@ export const PRESET_MAP: Record<string, PresetTheme> = {
     crisp: crispTheme as PresetTheme,
     funky: funkyTheme as PresetTheme,
     artisan: artisanTheme as PresetTheme,
+    linen: linenTheme as PresetTheme,
     midnight: midnightTheme as PresetTheme,
     rose: roseTheme as PresetTheme,
     verdant: verdantTheme as PresetTheme,

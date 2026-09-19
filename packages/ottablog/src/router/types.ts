@@ -124,6 +124,12 @@ export interface BlogRouterConfig<Env = unknown> {
      */
     previewTokenSecret?: (env: Env) => string | null;
 
+    /** RSS channel title. Query `?title=` still overrides. Defaults to "Blog". */
+    feedTitle?: string | ((env: Env) => string);
+
+    /** RSS channel description. Query `?description=` still overrides. */
+    feedDescription?: string | ((env: Env) => string);
+
     /**
      * Update-grade EDITORIAL gate (someone allowed to edit posts), typically looser than
      * {@link requireAdmin}. Guards the preview-token mint and the blurb/photo-journal updates.

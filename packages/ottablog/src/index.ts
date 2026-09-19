@@ -168,7 +168,7 @@ export type {
 // Hooks System
 export * from './hooks';
 
-// Theme System (pure): registry + types only. The rendered default/minimal themes live behind
+// Theme System (pure): registry + types only. The rendered default/minimal/linen themes live behind
 // '@ottabase/ottablog/renderer'; re-exporting the barrel here would leak @ottabase/ottarenderer.
 export {
     getActiveTheme,

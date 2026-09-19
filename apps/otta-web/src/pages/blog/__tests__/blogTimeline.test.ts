@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { partitionBlogTimeline } from '../blogTimeline';
+import { partitionBlogTimeline, groupPostsByYear } from '../blogTimeline';
 
 describe('partitionBlogTimeline', () => {
     it('keeps blurbs and ordinary photo journals interleaved in source chronology', () => {
@@ -21,5 +21,17 @@ describe('partitionBlogTimeline', () => {
             'travel-log',
             'article-old',
         ]);
+    });
+
+    it('groups posts into year sections for the personal index', () => {
+        const grouped = groupPostsByYear([
+            { id: 'a', publishedAt: '2026-03-12T00:00:00Z' },
+            { id: 'b', publishedAt: '2026-01-02T00:00:00Z' },
+            { id: 'c', publishedAt: '2025-11-01T00:00:00Z' },
+            { id: 'd', publishedAt: null },
+        ]);
+
+        expect(grouped.map((group) => group.year)).toEqual(['2026', '2025', 'Undated']);
+        expect(grouped[0].posts.map((post) => post.id)).toEqual(['a', 'b']);
     });
 });

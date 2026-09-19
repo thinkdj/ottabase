@@ -439,13 +439,25 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             if (state.themes.length === 0) {
                 await seedTolerant(() =>
                     OttablogTheme.create({
+                        themeId: 'linen',
+                        name: 'Linen',
+                        description: 'Warm paper, serif type, and a quiet personal-blog layout',
+                        version: '1.0.0',
+                        author: 'Deepak Thomas',
+                        appId,
+                        ...orgScope,
+                        isActive: true,
+                    }),
+                );
+                await seedTolerant(() =>
+                    OttablogTheme.create({
                         themeId: 'default',
                         name: 'Default',
                         description: 'Clean, modern default theme with dark mode support',
                         version: '1.0.0',
                         appId,
                         ...orgScope,
-                        isActive: true,
+                        isActive: false,
                     }),
                 );
                 await seedTolerant(() =>
@@ -1340,8 +1352,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Derive the site URL from the request
         const siteUrl = `${url.protocol}//${url.host}`;
-        const feedTitle = url.searchParams.get('title') || 'Blog';
-        const feedDescription = url.searchParams.get('description') || 'Latest posts';
+        const configuredTitle = typeof config.feedTitle === 'function' ? config.feedTitle(env) : config.feedTitle;
+        const configuredDescription =
+            typeof config.feedDescription === 'function' ? config.feedDescription(env) : config.feedDescription;
+        const feedTitle = url.searchParams.get('title') || configuredTitle || 'Blog';
+        const feedDescription = url.searchParams.get('description') || configuredDescription || 'Latest posts';
 
         const escapeXml = (str: string): string =>
             str

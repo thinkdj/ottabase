@@ -5,6 +5,7 @@ import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
 import { getNavLinks } from './layout.constants';
+import { drawerLinkClass, isNavActive } from './nav-styles';
 
 /** Map width class to px value for responsive inline style */
 const WIDTH_MAP: Record<string, string> = {
@@ -25,17 +26,13 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
     const links = getNavLinks({ isAuthenticated, isAdmin });
 
     const staticContent = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isNavActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}
                 to={link.to}
                 aria-current={isActive ? 'page' : undefined}
-                className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal whitespace-nowrap md:whitespace-normal ${
-                    isActive
-                        ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                }`}
+                className={`${drawerLinkClass(isActive)} whitespace-nowrap md:whitespace-normal`}
             >
                 {link.label}
             </Link>

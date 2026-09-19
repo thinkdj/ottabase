@@ -41,10 +41,11 @@ export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: s
             appId: targetAppId,
             isDefault: true,
             name: 'Default',
-            brandName: fallbackBrandName || 'My App',
-            themePresetId: 'verdant',
+            brandName: fallbackBrandName || 'Deepak Thomas',
+            themePresetId: 'linen',
             defaultColorScheme: 'system',
             allowDarkModeToggle: true,
+            hideOttabaseBranding: true,
         })) as BrandKit;
     }
 

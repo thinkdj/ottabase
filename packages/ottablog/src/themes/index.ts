@@ -15,4 +15,5 @@ export {
     themeRegistry,
 } from './registry';
 export * from './default';
+export * from './linen';
 export * from './minimal';

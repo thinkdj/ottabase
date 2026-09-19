@@ -33,7 +33,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
                     </Link>
                     <nav className="flex items-center gap-3 text-sm text-muted-foreground">
                         <Link to={PATHS.blog} className="inline-flex items-center gap-1.5 hover:text-foreground">
-                            View blog
+                            View site
                             <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                     </nav>

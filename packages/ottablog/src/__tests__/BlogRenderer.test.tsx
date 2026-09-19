@@ -2,6 +2,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { BlogExcerptCard, BlogRenderer, BlurbRenderer, type BlogPostData } from '../components/BlogRenderer';
+import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 
 const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
     id: 'test-post-1',
@@ -447,6 +448,22 @@ describe('BlogRenderer', () => {
             const { container } = render(<BlogExcerptCard post={journal} />);
             await waitFor(() => expect(container.querySelector('.blog-photo-journal--timeline')).toBeTruthy());
             expect(container.textContent).toContain('Photo journal · 2 frames');
+        });
+
+        it('uses a quieter journal label on linen listing cards', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: [
+                    { id: 'p1', url: 'https://images.test/one.jpg' },
+                    { id: 'p2', url: 'https://images.test/two.jpg' },
+                ],
+                content: null,
+            });
+            const { container } = render(
+                <PhotoJournalGallery post={journal} props={{ variant: 'timeline' }} tone="linen" />,
+            );
+            expect(container.textContent).toContain('Journal · 2 frames');
+            expect(container.textContent).not.toContain('Photo journal');
         });
 
         it('should handle empty content blocks without crashing', async () => {

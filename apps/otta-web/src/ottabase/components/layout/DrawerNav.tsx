@@ -9,6 +9,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getNavLinks } from './layout.constants';
+import { drawerLinkClass, isNavActive } from './nav-styles';
 
 export function DrawerNav() {
     const { isAuthenticated, user } = useSession();
@@ -19,17 +20,13 @@ export function DrawerNav() {
     const isAdmin = isAdminUser(user);
     const links = getNavLinks({ isAuthenticated, isAdmin });
     const staticNav = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isNavActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}
                 to={link.to}
                 aria-current={isActive ? 'page' : undefined}
-                className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
-                    isActive
-                        ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                }`}
+                className={drawerLinkClass(isActive)}
                 onClick={() => setOpen(false)}
             >
                 {link.label}
@@ -66,13 +63,13 @@ export function DrawerNav() {
                             role="presentation"
                         />
                         <div
-                            className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r border-border/60 shadow-lg z-50 flex flex-col animate-in slide-in-from-left duration-normal"
+                            className="fixed inset-y-0 left-0 w-64 bg-background z-50 flex flex-col animate-in slide-in-from-left duration-normal"
                             role="dialog"
                             aria-modal="true"
                             aria-label="Navigation Menu"
                         >
-                            <div className="flex items-center justify-between p-4 border-b border-border/60">
-                                <span className="text-sm font-semibold">{APP_META.appName}</span>
+                            <div className="flex items-center justify-between p-5">
+                                <span className="font-serif text-base tracking-tight">{APP_META.appName}</span>
                                 <Button
                                     variant="ghost"
                                     size="sm"

@@ -45,7 +45,7 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
     const drawerTrigger = useMemo(() => (hasDrawer ? <DrawerNav /> : undefined), [hasDrawer]);
 
     return (
-        <div className="min-h-screen bg-background font-sans flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col">
             {PACKAGES_ENABLED.referrals && <ReferralTracker />}
 
             {/* Announcement slot – pages can inject banners here */}

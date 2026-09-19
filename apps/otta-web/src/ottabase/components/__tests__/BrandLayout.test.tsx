@@ -175,10 +175,10 @@ describe('BrandLayout', () => {
         it('renders topbar header with navigation when navigation is topbar', () => {
             setLayout({ header: 'topbar', navigation: 'topbar' });
             render(<BrandLayout />);
-            // "/" link appears twice: logo link + nav "Home" link
+            // "/" link appears twice: logo link + nav "Writing" link
             expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(2);
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/demo')).toBeTruthy();
+            expect(screen.getAllByTestId('link-/about').length).toBeGreaterThanOrEqual(1);
+            expect(screen.queryByTestId('link-/demo')).toBeNull();
         });
 
         it('renders minimal header', () => {
@@ -211,8 +211,8 @@ describe('BrandLayout', () => {
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
             // Sidebar links present (public links — admin link is gated behind adminOnly)
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/changelog')).toBeTruthy();
+            expect(screen.getAllByTestId('link-/about').length).toBeGreaterThanOrEqual(1);
+            expect(screen.queryByTestId('link-/changelog')).toBeNull();
         });
 
         it('renders drawer trigger for drawer navigation', () => {
@@ -237,13 +237,13 @@ describe('BrandLayout', () => {
         it('renders footer when footer is true', () => {
             setLayout({ footer: true });
             render(<BrandLayout />);
-            expect(screen.getByText('Built with Ottabase')).toBeTruthy();
+            expect(screen.getByText('RSS')).toBeTruthy();
         });
 
         it('does not render footer when footer is false', () => {
             setLayout({ footer: false });
             render(<BrandLayout />);
-            expect(screen.queryByText('Built with Ottabase')).toBeNull();
+            expect(screen.queryByText('RSS')).toBeNull();
         });
     });
 
@@ -306,7 +306,7 @@ describe('BrandLayout', () => {
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
             expect(screen.queryByTestId('link-/dashboard')).toBeNull();
-            expect(screen.queryByTestId('link-/referrals')).toBeNull();
+            expect(screen.queryByTestId('link-/studio')).toBeNull();
         });
 
         it('shows auth-required links when authenticated', () => {
@@ -314,8 +314,8 @@ describe('BrandLayout', () => {
             mockSession.user = { name: 'Test User', email: 'test@example.com' } as any;
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
-            expect(screen.getByTestId('link-/dashboard')).toBeTruthy();
-            expect(screen.getByTestId('link-/referrals')).toBeTruthy();
+            expect(screen.getByTestId('link-/studio')).toBeTruthy();
+            expect(screen.queryByTestId('link-/referrals')).toBeNull();
         });
 
         it('shows login button when not authenticated', () => {
@@ -337,10 +337,10 @@ describe('BrandLayout', () => {
             expect(screen.getByTestId('dark-mode-toggle')).toBeTruthy();
         });
 
-        it('renders language switcher', () => {
+        it('does not render a language switcher in the public chrome', () => {
             setLayout({ header: 'topbar' });
             render(<BrandLayout />);
-            expect(screen.getByTestId('language-switcher')).toBeTruthy();
+            expect(screen.queryByTestId('language-switcher')).toBeNull();
         });
     });
 
