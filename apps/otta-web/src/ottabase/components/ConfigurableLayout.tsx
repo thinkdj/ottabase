@@ -9,9 +9,11 @@ import type { LayoutConfig } from '@ottabase/ottalayout';
 import { contentWidthClass, containerPaddingClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 import { LayoutSlot } from '@ottabase/ottalayout/react';
 import { memo, useMemo } from 'react';
+import { useLocation } from '@tanstack/react-router';
 import { BrandFooter } from './layout/BrandFooter';
 import { MinimalHeader, TopbarHeader } from './layout/BrandHeaders';
 import { DrawerNav } from './layout/DrawerNav';
+import { PersonalBlogLayout } from './PersonalBlogLayout';
 import { SidebarNav } from './layout/SidebarNav';
 
 export interface ConfigurableLayoutProps {
@@ -24,6 +26,7 @@ export interface ConfigurableLayoutProps {
  * Used by @ottabase/brand-engine-react LayoutResolver.
  */
 export const ConfigurableLayout = memo(function ConfigurableLayout({ config, children }: ConfigurableLayoutProps) {
+    const { pathname } = useLocation();
     const header = config?.header ?? 'topbar';
     const navigation = config?.navigation ?? 'topbar';
     const cw = config?.contentWidth ?? 'lg';
@@ -43,6 +46,10 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
     const noNav = navigation === 'none';
 
     const drawerTrigger = useMemo(() => (hasDrawer ? <DrawerNav /> : undefined), [hasDrawer]);
+
+    if (pathname === '/' || pathname === '/about' || pathname.startsWith('/blog')) {
+        return <PersonalBlogLayout>{children}</PersonalBlogLayout>;
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans flex flex-col">

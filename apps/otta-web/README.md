@@ -20,6 +20,15 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Three.js landing hero** - A theme-aware, drag-spinnable WebGL network scene that respects reduced-motion
   preferences; the rest of the home page remains rendered from its Editor.js blocks
 
+### Personal blog public surface
+
+The public root is now a calm personal-publication surface: / and /blog share a responsive editorial shell with a
+porcelain/navy/cobalt palette and lime signal color, serif reading typography, RSS access, an About page, dark mode,
+mobile navigation, featured posts, chronological writing, search, content-type filters, series filters, pagination,
+protected-post affordances, and the existing authoring CTA. Blog detail, archive, series, tag, category, photo journal,
+blurb, comment, share, SEO, and media-lightbox behavior remain backed by Ottablog and are styled through the scoped
+personal-publication theme in src/styles/globals.css.
+
 Worker runtime note: database/model/RLS setup is cached once per Cloudflare isolate and reused across later requests, so
 the worker avoids rebuilding OttaORM state on every request. Static asset requests skip that setup entirely.
 

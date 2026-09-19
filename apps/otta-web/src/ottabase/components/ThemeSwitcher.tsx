@@ -1,32 +1,16 @@
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
-import { Check, Palette } from 'lucide-react';
-import { useTheme } from '../providers/ThemeContext';
-import { getAvailableThemes } from '../utils/theme.loader';
+import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 
+/**
+ * Public theme control.
+ *
+ * The app-level Brand theme context exposes a compatibility setter, but the supported user-facing
+ * theme choice is the next-themes light/dark mode. Keeping this wrapper preserves existing imports
+ * while making the control actually update html.dark and all scoped publication tokens.
+ */
 export function ThemeSwitcher() {
-    const { theme, setTheme } = useTheme();
-    const themes = getAvailableThemes();
-
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 w-9 px-0" title="Switch Theme">
-                    <Palette className="h-4 w-4" />
-                    <span className="sr-only">Switch Theme</span>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                {themes.map((t) => (
-                    <DropdownMenuItem
-                        key={t}
-                        className="flex items-center justify-between capitalize"
-                        onClick={() => setTheme(t)}
-                    >
-                        {t}
-                        {theme === t && <Check className="ml-2 h-4 w-4" />}
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <span className="personal-theme-switcher">
+            <DarkModeToggle type="button" title="Toggle dark/light mode" />
+        </span>
     );
 }

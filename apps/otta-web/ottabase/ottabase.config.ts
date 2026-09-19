@@ -16,17 +16,16 @@ import { defineOttabaseConfig } from '@ottabase/config';
 export default defineOttabaseConfig({
     // ── App Identity ──────────────────────────────────────────
     appId: 'otta-web',
-    appName: 'Ottabase Template App',
+    appName: 'Slices.',
 
     // ── App Metadata (SEO, copyright, social) ─────────────────
     meta: {
         // Short line beside the app name in the header — say what the app IS, not what it is built with
-        tagline: 'Cloudflare-native',
-        description: 'A minimal Vite + Cloudflare Workers template app in the Ottabase monorepo',
-        author: '@thinkdj',
-        keywords:
-            'Ottabase, TanStack Router, TanStack Query, Vite, Tailwind, Shadcn, Cloudflare Workers, TypeScript, React',
-        companyName: 'Ottabase',
+        tagline: 'A personal journal',
+        description: 'Essays, observations, photographs, and occasional dispatches from a personal notebook.',
+        author: 'Slices.',
+        keywords: 'personal blog, essays, observations, photographs, journal',
+        companyName: 'Slices.',
     },
 
     // ── Storage ───────────────────────────────────────────────

@@ -53,7 +53,7 @@ export function BlogSeriesArchivePage() {
 
     if (isLoading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
+            <div className="personal-blog-archive max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
                 <span className="sr-only">Loading series...</span>
                 <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
                 <div className="space-y-2">
@@ -87,7 +87,11 @@ export function BlogSeriesArchivePage() {
     }
 
     return (
-        <div className={theme.config?.classes?.archiveContainer || 'max-w-4xl mx-auto px-4 py-8 space-y-8'}>
+        <div
+            className={
+                theme.config?.classes?.archiveContainer || 'personal-blog-archive max-w-4xl mx-auto px-4 py-8 space-y-8'
+            }
+        >
             <SEOHead
                 title={`${series.title} — Blog Series`}
                 description={series.description || `All posts in the "${series.title}" series`}

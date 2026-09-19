@@ -208,8 +208,6 @@ function makeStudioRoute<const TPath extends string, TSearch = Record<string, un
 
 // ─── Marketing / app surface ─────────────────────────────────────────────────
 
-const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
-
 const docsRoute = publicRoute('/docs/$', () => import('@/pages/docs/DocsPage').then((m) => ({ default: m.DocsPage })));
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -282,6 +280,13 @@ function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => 
         }),
     );
 }
+
+const indexRoute = blogPublicRoute('/', () =>
+    import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
+);
+const aboutRoute = blogPublicRoute('/about', () =>
+    import('@/pages/blog/PersonalAboutPage').then((m) => ({ default: m.PersonalAboutPage })),
+);
 
 const blogListRoute = blogPublicRoute('/blog', () =>
     import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
@@ -804,6 +809,7 @@ const premiumRoutes = PREMIUM_ADMIN_PAGES.map((page) => ({
 const packageRoutes = [
     { route: shortlinksRoute, pkg: 'shortlinks' as const },
     { route: referralsRoute, pkg: 'referrals' as const },
+    { route: aboutRoute, pkg: 'ottablog' as const },
     { route: blogListRoute, pkg: 'ottablog' as const },
     { route: blogDetailRoute, pkg: 'ottablog' as const },
     { route: blogTagArchiveRoute, pkg: 'ottablog' as const },

@@ -92,7 +92,7 @@ export function BlogDateArchivePage() {
 
     if (isLoading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
+            <div className="personal-blog-archive max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
                 <span className="sr-only">Loading archive...</span>
                 <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
                 <div className="space-y-2">
@@ -126,7 +126,11 @@ export function BlogDateArchivePage() {
     }
 
     return (
-        <div className={theme.config?.classes?.archiveContainer || 'max-w-4xl mx-auto px-4 py-8 space-y-8'}>
+        <div
+            className={
+                theme.config?.classes?.archiveContainer || 'personal-blog-archive max-w-4xl mx-auto px-4 py-8 space-y-8'
+            }
+        >
             <SEOHead title={`Archive: ${title}`} description={`Blog posts from ${title}`} />
 
             {/* Back link */}

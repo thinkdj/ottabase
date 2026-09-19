@@ -467,7 +467,7 @@ export function BlogDetailPage() {
     const ogImage = displayPost.seoMeta?.ogImage || displayPost.heroImage?.url;
 
     return (
-        <div>
+        <div className="personal-blog-detail">
             {/* SEO Meta Tags */}
             <SEOHead
                 title={seoTitle}
