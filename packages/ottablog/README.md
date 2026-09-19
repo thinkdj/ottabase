@@ -25,8 +25,10 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Scheduled Publishing** - Automatic post publishing via cron
 - **Related Posts** - Related content discovery by category and content type
 - **Server-Side Search** - Full-text search across titles, slugs, and excerpts
-- **Blog Studio** - Themes and plugins managed from DB; active theme and Content Injector (and config) applied at init
-  (see [STUDIO.md](./STUDIO.md))
+- **Blog Studio** - Themes, plugins, and blog-level language policy managed from DB; active theme and Content Injector
+  (and config) applied at init (see [STUDIO.md](./STUDIO.md))
+- **Multilingual publishing** - Configure supported BCP-47 languages per blog, assign each post a canonical language,
+  and manage independent localized versions with fallback-aware public routing, RSS, and sitemap URLs
 
 ## Installation
 
@@ -122,6 +124,62 @@ export {
 # Call your auto-init endpoint to create all tables
 curl -X POST http://localhost:3000/api/ottaorm/init
 ```
+
+## Multilingual publishing
+
+Multilingual support is part of the core blog model. A blog has one language policy, and every post has a canonical
+`language` plus zero or more localized rows in `post_translations`. Translation bodies are stored separately so normal
+post lists stay small and the large EditorJS payloads remain deferred.
+
+Configure the policy from the admin Content Studio or by updating the Studio endpoint:
+
+```http
+GET  /api/blog/studio/languages
+POST /api/blog/studio/languages
+Content-Type: application/json
+
+{
+  "defaultLanguage": "en",
+  "supportedLanguages": [
+    { "code": "en", "name": "English", "nativeName": "English" },
+    { "code": "fr", "name": "French", "nativeName": "Français" }
+  ],
+  "fallbackToDefault": true
+}
+```
+
+The canonical language is selected in the post editor. Once the post exists, its Languages tab creates, updates,
+publishes, schedules, or deletes one translation per enabled language:
+
+```http
+GET    /api/blog/posts/{postId}/translations
+POST   /api/blog/posts/{postId}/translations
+PATCH  /api/blog/posts/{postId}/translations/{language}
+DELETE /api/blog/posts/{postId}/translations/{language}
+```
+
+A translation can have its own title, slug, excerpt, rich body, hero/SEO fields, status, and publish schedule. Shared
+structural content is inherited from the canonical post when omitted (for example a photo journal's album), so
+translating metadata never removes the gallery or body. The canonical language is edited only on the main post to keep
+one authoritative base version. Translation writes are gated by the normal content-editor and publish permissions, and
+are scoped to the post row's verified app and organization. Duplicate canonical or localized slugs return a validation
+conflict instead of a server error.
+
+Public post requests choose a language with `?lang=fr` or the request's `Accept-Language` header; weighted language
+ranges (`q=`) are honored. If that language is enabled and has a published translation, the localized payload is
+returned; otherwise the canonical version is returned when `fallbackToDefault` is enabled. Localized search covers
+translated titles, slugs, excerpts, field notes, blurbs, and rich text. Localized slugs include `?lang=<code>` in
+generated RSS and sitemap URLs so they remain resolvable. The sitemap uses each post's own canonical language, excludes
+translations whose languages are no longer enabled, emits `xhtml:link` alternates, and never emits more than 50,000 URLs
+per file; use `/api/blog/sitemap-index.xml` for a standard sitemap index, whose `/api/blog/sitemap.xml?page=N` children
+cover every canonical-post page. `?limit=` can be used to make smaller pages, and a truncation header is returned when
+variants fill a page. RSS is language-selected, ordered by the selected translation's publication time, and advertises
+`Vary: Accept-Language` plus tenant scope headers. Public collection/feed/sitemap queries use scalar translation
+projections, so rich bodies, footnotes, albums, SEO blobs, and other deferred fields are not overfetched. The response
+exposes `language`, `baseLanguage`, `baseSlug`, `translationId`, and `availableLanguages` for language switchers. A
+scheduled translation is published by the same cron endpoint as canonical posts. The translation schema has a post
+foreign key with cascade protection, and upgrades clean orphan rows through the `ottablog_translation_orphan_cleanup_v2`
+migration. Run auto-init/migrations after deployment.
 
 ## Models
 
@@ -900,7 +958,8 @@ enclosure. Supports `title`, `description`, `contentType`, `appId`, and `limit` 
 GET /api/blog/sitemap.xml?appId=xyz
 ```
 
-Returns an XML sitemap of all published posts for SEO.
+Returns an XML sitemap of all published posts for SEO. Use /api/blog/sitemap-index.xml to enumerate paginated sitemap
+files on larger multilingual sites.
 
 ### Scheduled Publishing
 

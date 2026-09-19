@@ -38,6 +38,7 @@ export function buildBlogRouter<Env = unknown>(
     r.get('/studio/state', (c) => handlers.handleBlogStudioState(ctxOf(c)));
     r.get('/rss', (c) => handlers.handleBlogRssFeed(ctxOf(c)));
     r.get('/sitemap.xml', (c) => handlers.handleBlogSitemap(ctxOf(c)));
+    r.get('/sitemap-index.xml', (c) => handlers.handleBlogSitemap(ctxOf(c)));
     r.get('/posts', (c) => handlers.handleBlogPostsList(ctxOf(c)));
     r.post('/blurbs', (c) => handlers.handleBlogBlurbCreate(ctxOf(c)));
     r.patch('/blurbs/:postId', (c) => handlers.handleBlogBlurbUpdate(ctxOf(c), c.params.postId));
@@ -50,6 +51,16 @@ export function buildBlogRouter<Env = unknown>(
     r.get('/series/by-slug/:slug', (c) => handlers.handleBlogSeriesBySlug(ctxOf(c), c.params.slug));
     r.post('/studio/theme/activate', (c) => handlers.handleBlogStudioActivateTheme(ctxOf(c)));
     r.post('/studio/theme/tokens', (c) => handlers.handleBlogStudioThemeTokens(ctxOf(c)));
+    r.get('/studio/languages', (c) => handlers.handleBlogStudioLanguages(ctxOf(c)));
+    r.post('/studio/languages', (c) => handlers.handleBlogStudioLanguages(ctxOf(c)));
+    r.get('/posts/:postId/translations', (c) => handlers.handleBlogPostTranslations(ctxOf(c), c.params.postId));
+    r.post('/posts/:postId/translations', (c) => handlers.handleBlogPostTranslationCreate(ctxOf(c), c.params.postId));
+    r.patch('/posts/:postId/translations/:language', (c) =>
+        handlers.handleBlogPostTranslationUpdate(ctxOf(c), c.params.postId, c.params.language),
+    );
+    r.delete('/posts/:postId/translations/:language', (c) =>
+        handlers.handleBlogPostTranslationDelete(ctxOf(c), c.params.postId, c.params.language),
+    );
     r.post('/studio/plugin/enable', (c) => handlers.handleBlogStudioPluginEnable(ctxOf(c)));
     r.post('/studio/plugin/config', (c) => handlers.handleBlogStudioPluginConfig(ctxOf(c)));
     r.post('/posts/unlock', (c) => handlers.handleBlogPostUnlock(ctxOf(c)));

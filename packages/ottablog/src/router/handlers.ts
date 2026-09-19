@@ -8,9 +8,17 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { globalRLS, MAX_SEARCH_TERM_BYTES, RLSError, type SecurityContext } from '@ottabase/ottaorm';
+import {
+    DomainValidationError,
+    globalRLS,
+    MAX_SEARCH_TERM_BYTES,
+    RLSError,
+    type SecurityContext,
+} from '@ottabase/ottaorm';
 import {
     OttablogPlugin,
+    OttablogSettings,
+    PostTranslation,
     OttablogTheme,
     Post,
     PostCategory,
@@ -21,8 +29,22 @@ import {
 } from '../ottaorm-models';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
-import { ContentValidationError, type EditorJSData, type PostCrosspost } from '../types';
-import type { BlogEditorialWriteResult, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
+import {
+    ContentValidationError,
+    normalizeLanguageCode,
+    type BlogLanguage,
+    type BlogLanguageConfig,
+    type EditorJSData,
+    type PostCrosspost,
+    type PostStatus,
+} from '../types';
+import type {
+    BlogEditorialWriteResult,
+    BlogHandlers,
+    BlogRequestContext,
+    BlogRouterConfig,
+    BlogTranslationBody,
+} from './types';
 
 function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number): number {
     const raw = value == null || value === '' ? '' : String(value);
@@ -126,7 +148,15 @@ function stripProtectedBody(post: Record<string, unknown>): void {
  * bounded: 6 flat queries per page (each id list chunked at 90 for D1's
  * bound-parameter limit), matching the RSS handler's whereIn batching pattern.
  */
-async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unknown>[]> {
+async function enrichPostsJsonBatch(
+    records: Post[],
+    options?: {
+        language?: string | null;
+        languageConfig?: BlogLanguageConfig;
+        appId?: string | null;
+        organizationId?: string | null;
+    },
+): Promise<Record<string, unknown>[]> {
     if (records.length === 0) return [];
 
     const postIds = records.map((r) => r.get('id') as string);
@@ -214,9 +244,62 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
         }
     }
 
+    const translationByPost = new Map<string, PostTranslation>();
+    const publishedLanguagesByPost = new Map<string, string[]>();
+    const language = options?.language;
+    const publishedTranslations = await PostTranslation.forPublicPosts(postIds, {
+        status: 'published',
+        ...(options?.appId !== undefined ? { appId: options.appId } : {}),
+        ...(options?.organizationId !== undefined ? { organizationId: options.organizationId } : {}),
+    });
+    for (const translation of publishedTranslations) {
+        const postId = translation.get('postId') as string;
+        const codes = publishedLanguagesByPost.get(postId) ?? [];
+        codes.push(translation.get('language') as string);
+        publishedLanguagesByPost.set(postId, codes);
+        if (
+            language &&
+            options?.languageConfig?.supportedLanguages.some((item) => item.code === language) &&
+            translation.get('language') === language
+        ) {
+            translationByPost.set(postId, translation as PostTranslation);
+        }
+    }
+
     return records.map((record) => {
-        const j = record.toJson() as Record<string, unknown>;
-        const { privateNotes, ...rest } = j;
+        const row = record as Post & { toJson?: () => Record<string, unknown> };
+        const j =
+            typeof row.toJson === 'function'
+                ? row.toJson()
+                : {
+                      id: record.get('id'),
+                      title: record.get('title'),
+                      slug: record.get('slug'),
+                      excerpt: record.get('excerpt'),
+                      blurbText: record.get('blurbText'),
+                      photoNote: record.get('photoNote'),
+                      photoAlbum: record.get('photoAlbum'),
+                      content: record.get('content'),
+                      contentType: record.get('contentType'),
+                      status: record.get('status'),
+                      heroImage: record.get('heroImage'),
+                      seoMeta: record.get('seoMeta'),
+                      footnotes: record.get('footnotes'),
+                      readingTimeMinutes: record.get('readingTimeMinutes'),
+                      wordCount: record.get('wordCount'),
+                      publishAt: record.get('publishAt'),
+                      publishedAt: record.get('publishedAt'),
+                      postedAt: record.get('postedAt'),
+                      authorId: record.get('authorId'),
+                  };
+        const { privateNotes, ...baseRest } = j;
+        const rest = mergeTranslationJson(
+            baseRest,
+            translationByPost.get(record.get('id') as string) ?? null,
+            options?.languageConfig,
+            false,
+            publishedLanguagesByPost.get(record.get('id') as string),
+        );
 
         if (rest.isProtected) stripProtectedBody(rest);
 
@@ -250,6 +333,54 @@ async function enrichPostsJsonBatch(records: Post[]): Promise<Record<string, unk
  * Strips privateNotes. Strips content from protected posts unless explicitly included.
  * Optionally enriches with tags, category name, and author info.
  */
+function mergeTranslationJson(
+    base: Record<string, unknown>,
+    translation: PostTranslation | null,
+    languageConfig?: BlogLanguageConfig,
+    includeDeferred = true,
+    publishedTranslationLanguages?: string[],
+): Record<string, unknown> {
+    const baseLanguage = typeof base.language === 'string' ? base.language : 'en';
+    const translated = translation
+        ? ((includeDeferred ? translation.toJson() : translation.toPublicListJson()) as Record<string, unknown>)
+        : undefined;
+    const localized: Record<string, unknown> = translated
+        ? {
+              ...base,
+              title: translated.title,
+              slug: translated.slug,
+              baseSlug: base.slug,
+              excerpt: translated.excerpt ?? base.excerpt,
+              blurbText: translated.blurbText ?? base.blurbText,
+              photoNote: translated.photoNote ?? base.photoNote,
+              ...(includeDeferred
+                  ? {
+                        photoAlbum: translated.photoAlbum ?? base.photoAlbum,
+                        content: translated.content ?? base.content,
+                        seoMeta: translated.seoMeta ?? base.seoMeta,
+                        footnotes: translated.footnotes ?? base.footnotes,
+                    }
+                  : {}),
+              heroImage: translated.heroImage ?? base.heroImage,
+              status: translated.status,
+              readingTimeMinutes: translated.readingTimeMinutes,
+              wordCount: translated.wordCount,
+              publishAt: translated.publishAt,
+              publishedAt: translated.publishedAt,
+              postedAt: translated.postedAt,
+              language: translated.language,
+              baseLanguage,
+              translationId: translated.id,
+          }
+        : { ...base, language: baseLanguage, baseLanguage, baseSlug: base.slug };
+    const availableCodes = new Set([baseLanguage, ...(publishedTranslationLanguages ?? [])]);
+    const configuredLanguages =
+        languageConfig?.supportedLanguages.filter((item) => availableCodes.has(item.code)) ?? [];
+    localized.availableLanguages =
+        configuredLanguages.length > 0 ? configuredLanguages : [{ code: baseLanguage, name: baseLanguage }];
+    return localized;
+}
+
 async function publicPostJson(
     record: Post,
     options?: {
@@ -258,10 +389,26 @@ async function publicPostJson(
         enrichCategory?: boolean;
         enrichSeries?: boolean;
         enrichAuthor?: boolean;
+        translation?: PostTranslation | null;
+        languageConfig?: BlogLanguageConfig;
     },
 ) {
     const j = record.toJson() as Record<string, unknown>;
-    const { privateNotes, ...rest } = j;
+    const { privateNotes, ...baseRest } = j;
+    const publishedTranslations = options?.languageConfig
+        ? await PostTranslation.forPublicPosts([String(record.get('id'))], {
+              status: 'published',
+              appId: record.get('appId') as string | null,
+              organizationId: record.get('organizationId') as string | null,
+          })
+        : [];
+    const rest = mergeTranslationJson(
+        baseRest,
+        options?.translation ?? null,
+        options?.languageConfig,
+        true,
+        publishedTranslations.map((item) => item.get('language') as string),
+    );
 
     // Strip content from protected posts
     if (rest.isProtected && !options?.includeContent) stripProtectedBody(rest);
@@ -359,6 +506,125 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return resolved ?? null;
     }
 
+    async function languageConfigFor(
+        _context: Ctx,
+        appId: string,
+        organizationId: string | null | undefined,
+    ): Promise<BlogLanguageConfig> {
+        const settings = await OttablogSettings.forScope({ appId, organizationId });
+        return (
+            settings?.config() ?? {
+                defaultLanguage: 'en',
+                supportedLanguages: [{ code: 'en', name: 'English', nativeName: 'English' }],
+                fallbackToDefault: true,
+            }
+        );
+    }
+
+    function requestedLanguage(context: Ctx, languageConfig?: BlogLanguageConfig): string | null {
+        const resolveRange = (raw: string): string | null => {
+            let normalized: string;
+            try {
+                normalized = normalizeLanguageCode(raw);
+            } catch {
+                return null;
+            }
+            if (!languageConfig) return normalized;
+            const exact = languageConfig.supportedLanguages.find((item) => item.code === normalized);
+            if (exact) return exact.code;
+            const primary = normalized.split('-')[0];
+            return languageConfig.supportedLanguages.find((item) => item.code === primary)?.code ?? null;
+        };
+        const explicit = context.url.searchParams.get('lang')?.trim();
+        if (explicit) return resolveRange(explicit);
+        const header = context.request.headers.get('accept-language');
+        if (!header) return null;
+        const candidates = header
+            .split(',')
+            .map((part, index) => {
+                const pieces = part.trim().split(';');
+                const range = pieces.shift()?.trim() ?? '';
+                let quality = 1;
+                for (const parameter of pieces) {
+                    const match = /^q\s*=\s*([0-9.]+)$/i.exec(parameter.trim());
+                    if (match) {
+                        const parsed = Number(match[1]);
+                        quality = Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : 0;
+                    }
+                }
+                return { range, quality, index };
+            })
+            .filter((candidate) => candidate.range && candidate.quality > 0)
+            .sort((a, b) => b.quality - a.quality || a.index - b.index);
+        for (const candidate of candidates) {
+            if (candidate.range === '*') return languageConfig?.defaultLanguage ?? null;
+            const resolved = resolveRange(candidate.range);
+            if (resolved) return resolved;
+        }
+        return null;
+    }
+
+    async function translationFor(
+        postId: string,
+        language: string | null,
+        appId: string,
+        organizationId: string | null | undefined,
+        configForBlog: BlogLanguageConfig,
+    ): Promise<PostTranslation | null> {
+        if (!language) return null;
+        if (!configForBlog.supportedLanguages.some((item) => item.code === language)) return null;
+        return PostTranslation.findForPost(postId, language, { appId, organizationId, status: 'published' });
+    }
+
+    async function findLocalizedPostBySlug(
+        context: Ctx,
+        slug: string,
+        appId: string,
+        contentTypeParam: string | null,
+        organizationId: string | null | undefined,
+        languageConfig: BlogLanguageConfig,
+    ): Promise<{ record: Post; translation: PostTranslation | null; language: string } | null> {
+        const language = requestedLanguage(context, languageConfig);
+        if (language && languageConfig.supportedLanguages.some((item) => item.code === language)) {
+            const translation = await PostTranslation.findBySlug(slug, {
+                appId,
+                organizationId,
+                language,
+                status: 'published',
+            });
+            if (translation) {
+                const baseWhere: Record<string, unknown> = {
+                    id: translation.get('postId'),
+                    status: 'published',
+                    appId,
+                };
+                if (contentTypeParam) baseWhere.contentType = contentTypeParam;
+                if (organizationId !== undefined) baseWhere.organizationId = organizationId;
+                const record = await Post.first(baseWhere);
+                if (record) return { record, translation, language };
+            }
+        }
+        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
+        if (!record) return null;
+        const translation = await translationFor(
+            record.get('id') as string,
+            language,
+            appId,
+            organizationId,
+            languageConfig,
+        );
+        if (translation) return { record, translation, language: language! };
+        const canonicalLanguage = (record.get('language') as string) || languageConfig.defaultLanguage;
+        if (
+            language &&
+            language !== canonicalLanguage &&
+            languageConfig.supportedLanguages.some((item) => item.code === language) &&
+            !languageConfig.fallbackToDefault
+        )
+            return null;
+        return { record, translation: null, language: canonicalLanguage };
+    }
+
     /**
      * Guard a Studio operation against its RESOLVED blog scope: null/undefined
      * target = the platform blog (platform admin), an org id = that org's blog
@@ -387,6 +653,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     function toPublicStudioState(state: Awaited<ReturnType<typeof StudioManager.getState>>) {
         return {
             activeThemeId: state.activeThemeId,
+            languageConfig: state.languageConfig,
             themes: state.themes.filter((t) => t.isActive),
             plugins: state.plugins.map((p) =>
                 p.enabled ? p : { ...p, config: null, description: null, name: p.pluginId },
@@ -483,6 +750,236 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return jsonResponse(state);
         }
         return jsonResponse(toPublicStudioState(state));
+    }
+
+    async function handleBlogStudioLanguages(context: Ctx): Promise<Response> {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const appId = resolveAppId(context);
+        const organizationId = await resolveTenant(context);
+        if (context.request.method === 'GET') {
+            return jsonResponse(await languageConfigFor(context, appId, organizationId));
+        }
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
+        const body = await readJson<{
+            defaultLanguage?: unknown;
+            supportedLanguages?: unknown;
+            fallbackToDefault?: unknown;
+        }>(context.request);
+        if (typeof body.defaultLanguage !== 'string' || !Array.isArray(body.supportedLanguages)) {
+            return errorResponse('defaultLanguage and supportedLanguages are required', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+        if (body.fallbackToDefault !== undefined && typeof body.fallbackToDefault !== 'boolean') {
+            return errorResponse('fallbackToDefault must be a boolean', 400, { code: 'VALIDATION_ERROR' });
+        }
+        try {
+            const settings = await OttablogSettings.ensure({ appId, organizationId });
+            await settings.updateLanguages({
+                defaultLanguage: body.defaultLanguage,
+                supportedLanguages: body.supportedLanguages as BlogLanguage[],
+                fallbackToDefault: body.fallbackToDefault as boolean | undefined,
+            });
+            return jsonResponse(settings.config());
+        } catch (error) {
+            if (error instanceof ContentValidationError || error instanceof DomainValidationError) {
+                return errorResponse(error.message, error instanceof DomainValidationError ? error.status : 400, {
+                    code: 'VALIDATION_ERROR',
+                });
+            }
+            throw error;
+        }
+    }
+
+    async function translationPostFor(
+        context: Ctx,
+        postId: string,
+        _permission: 'read' | 'write',
+    ): Promise<{ post: Post; securityContext: SecurityContext; languageConfig: BlogLanguageConfig } | Response> {
+        const guard = config.requireContentEditor;
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        let filter: Record<string, unknown>;
+        try {
+            filter = globalRLS.getReadFilter(Post.entity, securityContext);
+        } catch {
+            return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        }
+        const post = await Post.first({ id: postId, ...filter });
+        if (!post) return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        return {
+            post,
+            securityContext,
+            languageConfig: await languageConfigFor(
+                context,
+                (securityContext.appId ?? appIdForPost(post)) as string,
+                securityContext.organizationId,
+            ),
+        };
+    }
+
+    function appIdForPost(post: Post): string {
+        return (post.get('appId') as string) || '';
+    }
+
+    function translationPayload(body: BlogTranslationBody, language: string): Record<string, unknown> {
+        const payload: Record<string, unknown> = { language };
+        for (const key of [
+            'title',
+            'slug',
+            'excerpt',
+            'blurbText',
+            'photoNote',
+            'photoAlbum',
+            'content',
+            'heroImage',
+            'seoMeta',
+            'footnotes',
+            'status',
+            'publishAt',
+        ] as const) {
+            if (Object.prototype.hasOwnProperty.call(body, key)) payload[key] = body[key];
+        }
+        return payload;
+    }
+
+    async function handleBlogPostTranslations(context: Ctx, postId: string): Promise<Response> {
+        const result = await translationPostFor(context, postId, 'read');
+        if (result instanceof Response) return result;
+        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
+        const translations = await PostTranslation.forPost(postId, {
+            appId: scopedAppId,
+            organizationId: result.securityContext.organizationId,
+        });
+        return jsonResponse({
+            baseLanguage: result.post.get('language') || result.languageConfig.defaultLanguage,
+            languageConfig: result.languageConfig,
+            translations: translations.map((translation) => translation.toJson()),
+        });
+    }
+
+    async function handleBlogPostTranslationCreate(context: Ctx, postId: string): Promise<Response> {
+        const result = await translationPostFor(context, postId, 'write');
+        if (result instanceof Response) return result;
+        const body = await readJson<BlogTranslationBody>(context.request);
+        if (typeof body.language !== 'string')
+            return errorResponse('language is required', 400, { code: 'VALIDATION_ERROR' });
+        let language: string;
+        try {
+            language = normalizeLanguageCode(body.language);
+        } catch (error) {
+            return errorResponse(error instanceof Error ? error.message : 'Invalid language', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+        if (language === result.post.get('language'))
+            return errorResponse('The canonical language is edited on the main post', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        if (
+            (body.status === 'published' || body.status === 'scheduled') &&
+            !result.securityContext.platformAdmin &&
+            !hasGrantedPermission(result.securityContext.permissions, 'posts:publish')
+        )
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+        try {
+            const translation = await PostTranslation.createForPost(
+                postId,
+                {
+                    ...translationPayload(body, language),
+                    appId: result.post.get('appId') as string | null,
+                    organizationId: result.post.get('organizationId') as string | null,
+                } as import('../ottaorm-models/PostTranslation').PostTranslationWriteData,
+                result.languageConfig,
+            );
+            return jsonResponse(translation.toJson(), 201);
+        } catch (error) {
+            if (error instanceof ContentValidationError || error instanceof DomainValidationError)
+                return errorResponse(error.message, error instanceof DomainValidationError ? error.status : 400, {
+                    code: 'VALIDATION_ERROR',
+                });
+            throw error;
+        }
+    }
+
+    async function handleBlogPostTranslationUpdate(
+        context: Ctx,
+        postId: string,
+        languageParam: string,
+    ): Promise<Response> {
+        const result = await translationPostFor(context, postId, 'write');
+        if (result instanceof Response) return result;
+        let language: string;
+        try {
+            language = normalizeLanguageCode(languageParam);
+        } catch (error) {
+            return errorResponse(error instanceof Error ? error.message : 'Invalid language', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
+        const translation = await PostTranslation.findForPost(postId, language, {
+            appId: scopedAppId,
+            organizationId: result.securityContext.organizationId,
+        });
+        if (!translation) return errorResponse('Translation not found', 404, { code: 'NOT_FOUND' });
+        const body = await readJson<BlogTranslationBody>(context.request);
+        const currentStatus = translation.get('status') as PostStatus;
+        const effectiveStatus = body.status ?? currentStatus;
+        const mayPublish =
+            result.securityContext.platformAdmin ||
+            hasGrantedPermission(result.securityContext.permissions, 'posts:publish');
+        if (
+            (currentStatus === 'published' ||
+                currentStatus === 'scheduled' ||
+                effectiveStatus === 'published' ||
+                effectiveStatus === 'scheduled') &&
+            !mayPublish
+        ) {
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+        }
+        try {
+            const updated = await translation.updateContent(translationPayload(body, language), result.languageConfig);
+            return jsonResponse(updated.toJson());
+        } catch (error) {
+            if (error instanceof ContentValidationError || error instanceof DomainValidationError)
+                return errorResponse(error.message, error instanceof DomainValidationError ? error.status : 400, {
+                    code: 'VALIDATION_ERROR',
+                });
+            throw error;
+        }
+    }
+
+    async function handleBlogPostTranslationDelete(
+        context: Ctx,
+        postId: string,
+        languageParam: string,
+    ): Promise<Response> {
+        const result = await translationPostFor(context, postId, 'write');
+        if (result instanceof Response) return result;
+        let language: string;
+        try {
+            language = normalizeLanguageCode(languageParam);
+        } catch (error) {
+            return errorResponse(error instanceof Error ? error.message : 'Invalid language', 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
+        const translation = await PostTranslation.findForPost(postId, language, {
+            appId: scopedAppId,
+            organizationId: result.securityContext.organizationId,
+        });
+        if (!translation) return errorResponse('Translation not found', 404, { code: 'NOT_FOUND' });
+        await PostTranslation.delete(translation.get('id') as string);
+        return jsonResponse({ success: true });
     }
 
     async function handleBlogStudioActivateTheme(context: Ctx): Promise<Response> {
@@ -951,6 +1448,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const yearParam = url.searchParams.get('year') || null;
         const monthParam = url.searchParams.get('month') || null;
         const organizationId = await resolveTenant(context);
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const language = requestedLanguage(context, languageConfig);
 
         const where: Record<string, unknown> = { status: 'published' };
         if (appId) where.appId = appId;
@@ -1016,11 +1515,68 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             }
         }
 
+        // When fallback is disabled, a localized list contains both posts whose canonical
+        // language is the requested language and posts with a published translation.
+        if (
+            language &&
+            languageConfig.supportedLanguages.some((item) => item.code === language) &&
+            !languageConfig.fallbackToDefault
+        ) {
+            const [translatedRows, canonicalRows] = await Promise.all([
+                PostTranslation.where(
+                    { language, status: 'published', appId, organizationId: organizationId ?? null },
+                    { select: ['postId'] },
+                ),
+                Post.where({ ...where, language }, { select: ['id'] }),
+            ]);
+            const visibleIds = [
+                ...new Set([
+                    ...translatedRows.map((row) => row.get('postId') as string),
+                    ...canonicalRows.map((row) => row.get('id') as string),
+                ]),
+            ];
+            if (visibleIds.length === 0)
+                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+            if (junctionIds) {
+                const visibleSet = new Set(visibleIds);
+                junctionIds = junctionIds.filter((id) => visibleSet.has(id));
+                if (junctionIds.length === 0)
+                    return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+            } else {
+                where.id = visibleIds;
+            }
+        }
+
         const searchTerm = search?.trim() || null;
         if (searchTerm && new TextEncoder().encode(searchTerm).byteLength > MAX_SEARCH_TERM_BYTES) {
             return jsonResponse({ error: 'Search term is too long', code: 'INVALID_SEARCH' }, 400);
         }
         const searchFields = ['title', 'slug', 'excerpt', 'blurbText', 'photoNote'];
+        let localizedSearchMatched = false;
+        if (searchTerm && language && languageConfig.supportedLanguages.some((item) => item.code === language)) {
+            const [localizedIds, canonicalIds] = await Promise.all([
+                PostTranslation.searchPostIds(searchTerm, {
+                    language,
+                    status: 'published',
+                    appId,
+                    organizationId: organizationId ?? null,
+                }),
+                Post.searchPostIds(searchTerm, searchFields, where),
+            ]);
+            const matchingIds = [...new Set([...localizedIds, ...canonicalIds])];
+            if (matchingIds.length > 0) {
+                localizedSearchMatched = true;
+                if (junctionIds) {
+                    const matchingSet = new Set(matchingIds);
+                    junctionIds = junctionIds.filter((id) => matchingSet.has(id));
+                    if (junctionIds.length === 0)
+                        return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                } else {
+                    where.id = matchingIds;
+                }
+            }
+        }
+        const searchTermForPosts = localizedSearchMatched ? null : searchTerm;
 
         let result;
         if (junctionIds !== null && junctionIds.length <= D1_FILTERED_ID_CHUNK) {
@@ -1030,8 +1586,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             // contentType, appId, ...) plus pagination/search params, so the
             // smaller filtered-chunk threshold (not D1_IN_CHUNK) applies here.
             const idWhere = { ...where, id: junctionIds };
-            result = searchTerm
-                ? await Post.searchPaginate(searchTerm, searchFields, page, perPage, idWhere, {
+            result = searchTermForPosts
+                ? await Post.searchPaginate(searchTermForPosts, searchFields, page, perPage, idWhere, {
                       orderBy,
                       orderDirection,
                   })
@@ -1048,7 +1604,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 (ids) => Post.where({ ...where, id: ids }, { orderBy, orderDirection }),
                 D1_FILTERED_ID_CHUNK,
             );
-            const needle = searchTerm?.toLowerCase() ?? null;
+            const needle = searchTermForPosts?.toLowerCase() ?? null;
             const filtered = needle
                 ? rows.filter((p) =>
                       searchFields.some((f) => ((p.get(f) as string | null) ?? '').toLowerCase().includes(needle)),
@@ -1071,10 +1627,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 total,
                 totalPages: Math.ceil(total / perPage),
             };
-        } else if (searchTerm) {
+        } else if (searchTermForPosts) {
             // Single data+COUNT round-trip instead of the previous double scan
             // (the second of which fetched every matching row just for .length).
-            result = await Post.searchPaginate(searchTerm, searchFields, page, perPage, where, {
+            result = await Post.searchPaginate(searchTermForPosts, searchFields, page, perPage, where, {
                 orderBy,
                 orderDirection,
             });
@@ -1084,7 +1640,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Enrich the page with tags, categories, series, and author — batched
         // flat queries (see enrichPostsJsonBatch) instead of ~5 queries per post.
-        const data = await enrichPostsJsonBatch(result.data as Post[]);
+        const data = await enrichPostsJsonBatch(result.data as Post[], {
+            language,
+            languageConfig,
+            appId,
+            organizationId: organizationId ?? null,
+        });
         return jsonResponse({
             data,
             pagination: {
@@ -1125,7 +1686,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const preview = await findPostForPreview(context, slug, appId);
         const organizationId = preview ? undefined : await resolveTenant(context);
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const record = preview ?? (await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId));
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const localized = preview
+            ? {
+                  record: preview,
+                  translation: null,
+                  language: (preview.get('language') as string) || languageConfig.defaultLanguage,
+              }
+            : await findLocalizedPostBySlug(context, slug, appId, contentTypeParam, organizationId, languageConfig);
+        const record = localized?.record;
 
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
@@ -1148,6 +1717,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             enrichCategory: true,
             enrichSeries: true,
             enrichAuthor: true,
+            translation: localized?.translation ?? null,
+            languageConfig,
         });
         return jsonResponse(preview ? { ...data, preview: true } : data);
     }
@@ -1168,7 +1739,16 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const localized = await findLocalizedPostBySlug(
+            context,
+            slug,
+            appId,
+            contentTypeParam,
+            organizationId,
+            languageConfig,
+        );
+        const record = localized?.record;
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
@@ -1188,6 +1768,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 enrichCategory: true,
                 enrichSeries: true,
                 enrichAuthor: true,
+                translation: localized?.translation ?? null,
+                languageConfig,
             });
             return jsonResponse(data);
         }
@@ -1203,6 +1785,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             enrichCategory: true,
             enrichSeries: true,
             enrichAuthor: true,
+            translation: localized?.translation ?? null,
+            languageConfig,
         });
         return jsonResponse(data);
     }
@@ -1289,7 +1873,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Batched enrichment (adds categories/seriesTitle alongside tags/author —
         // additive fields, same per-post shape as the list endpoint).
-        const data = await enrichPostsJsonBatch(related);
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const data = await enrichPostsJsonBatch(related, {
+            language: requestedLanguage(context, languageConfig),
+            languageConfig,
+            appId,
+            organizationId: organizationId ?? null,
+        });
         return jsonResponse(data);
     }
 
@@ -1304,6 +1894,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const language = requestedLanguage(context, languageConfig);
         const contentType = url.searchParams.get('contentType') || null;
         const limit = parseBoundedInteger(url.searchParams.get('limit'), 25, 1, 100);
 
@@ -1322,10 +1914,36 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             limit,
         });
 
+        // A translation may be newer than its canonical post. Start with the
+        // canonical feed window, then add parents referenced by the localized
+        // feed window before sorting. Otherwise a newly published translation
+        // for an older post can never reach a localized RSS feed.
+        let feedCandidates = posts;
+        if (language) {
+            const translationRows = await PostTranslation.forPublicFeed({
+                language,
+                appId,
+                organizationId: organizationId ?? null,
+                limit,
+            });
+            const translatedPostIds = [
+                ...new Set(translationRows.map((row) => row.get('postId') as string).filter(Boolean)),
+            ];
+            if (translatedPostIds.length > 0) {
+                const translatedParents = await Post.where(
+                    { ...where, id: { $in: translatedPostIds } },
+                    { orderBy: 'publishedAt', orderDirection: 'desc', limit: translatedPostIds.length },
+                );
+                const byId = new Map<string, Post>();
+                for (const post of [...posts, ...translatedParents]) byId.set(post.get('id') as string, post);
+                feedCandidates = [...byId.values()];
+            }
+        }
+
         // Load author names from User model via authorId relationship
         // Collect unique authorIds and fetch users in one batch
         const authorIds = [
-            ...new Set(posts.map((p) => p.get('authorId') as string | null).filter(Boolean)),
+            ...new Set(feedCandidates.map((p) => p.get('authorId') as string | null).filter(Boolean)),
         ] as string[];
         const authorMap = new Map<string, string>();
         if (authorIds.length > 0) {
@@ -1360,27 +1978,60 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             }
         };
 
-        const items = posts
-            .map((post) => {
-                const isBlurb = post.get('contentType') === 'blurb';
+        const localizedRows = await enrichPostsJsonBatch(feedCandidates, {
+            language,
+            languageConfig,
+            appId,
+            organizationId: organizationId ?? null,
+        });
+        const localizedById = new Map(localizedRows.map((row) => [row.id as string, row]));
+        const feedPosts =
+            language && !languageConfig.fallbackToDefault
+                ? feedCandidates.filter((post) => {
+                      const localized = localizedById.get(post.get('id') as string);
+                      return localized?.translationId
+                          ? localized.language === language
+                          : post.get('language') === language;
+                  })
+                : feedCandidates;
+        const feedEntries = feedPosts
+            .map((post) => ({
+                post,
+                localized: localizedById.get(post.get('id') as string) ?? (post.toJson() as Record<string, unknown>),
+            }))
+            .sort((a, b) => {
+                const av = Number(a.localized.publishedAt ?? a.post.get('publishedAt') ?? 0);
+                const bv = Number(b.localized.publishedAt ?? b.post.get('publishedAt') ?? 0);
+                return bv - av;
+            })
+            .slice(0, limit);
+        const items = feedEntries
+            .map(({ post, localized }) => {
+                const isBlurb = localized.contentType === 'blurb';
                 const isPhotoJournal = post.get('contentType') === 'photo';
-                const title = escapeXml((post.get('title') as string) || '');
-                const slug = post.get('slug') as string;
+                const title = escapeXml((localized.title as string) || '');
+                const slug = localized.slug as string;
+                const localizedLanguage = localized.language as string | undefined;
+                const languageSuffix =
+                    localized.translationId && localizedLanguage
+                        ? '?lang=' + encodeURIComponent(localizedLanguage)
+                        : '';
                 const excerpt = escapeXml(
-                    (isBlurb ? (post.get('blurbText') as string) : (post.get('excerpt') as string)) || '',
+                    (isBlurb ? (localized.blurbText as string) : (localized.excerpt as string)) || '',
                 );
                 // Get author name from User relationship (via authorId)
                 const authorId = post.get('authorId') as string | null;
                 const authorName = authorId ? escapeXml(authorMap.get(authorId) || '') : '';
-                const publishedAt = post.get('publishedAt') as number | null;
+                const publishedAt =
+                    (localized.publishedAt as number | null) ?? (post.get('publishedAt') as number | null);
                 const pubDate = publishedAt ? new Date(publishedAt).toUTCString() : '';
-                const heroImage = post.get('heroImage') as { url?: string; mimeType?: string } | null;
+                const heroImage = localized.heroImage as { url?: string; mimeType?: string } | null;
                 const enclosureUrl = absoluteMediaUrl(heroImage?.url);
 
                 return `    <item>
       <title>${title}</title>
-      <link>${escapeXml(siteUrl)}/blog/${escapeXml(slug)}</link>
-      <guid isPermaLink="true">${escapeXml(siteUrl)}/blog/${escapeXml(slug)}</guid>
+      <link>${escapeXml(siteUrl)}/blog/${escapeXml(slug)}${languageSuffix}</link>
+      <guid isPermaLink="true">${escapeXml(siteUrl)}/blog/${escapeXml(slug)}${languageSuffix}</guid>
       <description>${excerpt}</description>
       ${authorName ? `<dc:creator>${authorName}</dc:creator>` : ''}
       ${isBlurb ? '<category>Blurb</category>' : ''}${isPhotoJournal ? '<category>Photo Journal</category>' : ''}
@@ -1391,8 +2042,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             .join('\n');
 
         const lastBuildDate =
-            posts.length > 0
-                ? new Date((posts[0].get('publishedAt') as number) || Date.now()).toUTCString()
+            feedPosts.length > 0
+                ? new Date(
+                      Number(
+                          feedEntries[0].localized.publishedAt ?? feedEntries[0].post.get('publishedAt') ?? Date.now(),
+                      ),
+                  ).toUTCString()
                 : new Date().toUTCString();
 
         const rss = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1401,7 +2056,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     <title>${escapeXml(feedTitle)}</title>
     <link>${escapeXml(siteUrl)}/blog</link>
     <description>${escapeXml(feedDescription)}</description>
-    <language>en</language>
+    <language>${escapeXml(language || languageConfig.defaultLanguage)}</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <atom:link href="${escapeXml(siteUrl)}/api/blog/rss" rel="self" type="application/rss+xml" />
 ${items}
@@ -1412,6 +2067,7 @@ ${items}
             headers: {
                 'Content-Type': 'application/rss+xml; charset=utf-8',
                 'Cache-Control': 'public, max-age=3600',
+                Vary: 'Accept-Language, X-Org-Id, X-App-Id',
             },
         });
     }
@@ -1427,44 +2083,169 @@ ${items}
 
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
+        const languageConfig = await languageConfigFor(context, appId, organizationId);
         // Bounded at the sitemap protocol's own 50k-URL-per-file ceiling, not a
         // lower default: crawlers never pass ?limit=, so a smaller default would
         // silently drop older posts from a real deployment's sitemap the moment
         // it passed that default (the old endpoint was unbounded). Sitemap-index
         // pagination is the follow-up once a single deployment nears 50k posts.
-        const limit = parseBoundedInteger(url.searchParams.get('limit'), 50000, 1, 50000);
+        const urlLimit = parseBoundedInteger(url.searchParams.get('limit'), 50000, 1, 50000);
+        const page = parseBoundedInteger(url.searchParams.get('page'), 1, 1, 1000000);
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
         if (organizationId !== undefined) where.organizationId = organizationId;
+        const enabledLanguages = new Set(languageConfig.supportedLanguages.map((item) => item.code));
+        const maxVariantsPerPost = Math.max(1, enabledLanguages.size + 1);
+        const safePageSize = Math.max(1, Math.floor(Math.max(1, urlLimit - 1) / maxVariantsPerPost));
+        const requestedPageSize = parseBoundedInteger(
+            url.searchParams.get('pageSize'),
+            safePageSize,
+            1,
+            Math.max(1, urlLimit - 1),
+        );
+        const pageSize = Math.min(requestedPageSize, safePageSize);
+        const siteUrl = url.protocol + '//' + url.host;
+        const escapeXml = (str: string): string =>
+            str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
 
-        const posts = await Post.where(where, {
+        if (url.pathname.endsWith('/sitemap-index.xml')) {
+            const summary = await Post.paginate(1, pageSize, where, { orderBy: 'publishedAt', orderDirection: 'desc' });
+            const totalPages = Math.max(1, summary.totalPages);
+            const queryAppId = url.searchParams.get('appId');
+            const appQuery = queryAppId ? '&appId=' + encodeURIComponent(queryAppId) : '';
+            const entries = Array.from({ length: totalPages }, (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                    '  <sitemap>\n    <loc>' +
+                    escapeXml(
+                        siteUrl + '/api/blog/sitemap.xml?page=' + pageNumber + '&pageSize=' + pageSize + appQuery,
+                    ) +
+                    '</loc>\n  </sitemap>'
+                );
+            }).join('\n');
+            const indexXml =
+                '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+                entries +
+                '\n</sitemapindex>';
+            return new Response(indexXml, {
+                headers: {
+                    'Content-Type': 'application/xml; charset=utf-8',
+                    'Cache-Control': 'public, max-age=3600',
+                    Vary: 'Accept-Language, X-Org-Id, X-App-Id',
+                },
+            });
+        }
+
+        const postsPage = await Post.where(where, {
             orderBy: 'publishedAt',
             orderDirection: 'desc',
-            limit,
+            limit: pageSize + 1,
+            offset: (page - 1) * pageSize,
         });
+        const hasNextPage = postsPage.length > pageSize;
+        const posts = postsPage.slice(0, pageSize);
+        const publishedTranslations = await PostTranslation.forPublicPosts(
+            posts.map((post) => post.get('id') as string),
+            { appId, organizationId: organizationId ?? null, status: 'published' },
+        );
+        const translationsByPost = new Map<string, PostTranslation[]>();
+        for (const translation of publishedTranslations) {
+            const postId = translation.get('postId') as string;
+            const rows = translationsByPost.get(postId) ?? [];
+            rows.push(translation);
+            translationsByPost.set(postId, rows);
+        }
 
-        const siteUrl = `${url.protocol}//${url.host}`;
+        const absoluteUrl = (slug: string, language: string, canonical = false): string => {
+            const suffix = canonical ? '' : '?lang=' + encodeURIComponent(language);
+            return siteUrl + '/blog/' + encodeURIComponent(slug) + suffix;
+        };
+        const dateOnly = (value: unknown): string => {
+            const timestamp = value instanceof Date ? value.getTime() : typeof value === 'number' ? value : 0;
+            return timestamp ? new Date(timestamp).toISOString().split('T')[0] : '';
+        };
+        const urlBlock = (
+            loc: string,
+            lastmod: string,
+            changefreq: string,
+            priority: string,
+            alternates: Array<{ language: string; href: string }>,
+        ): string =>
+            [
+                '  <url>',
+                '    <loc>' + escapeXml(loc) + '</loc>',
+                ...alternates.map(
+                    (alternate) =>
+                        '    <xhtml:link rel="alternate" hreflang="' +
+                        escapeXml(alternate.language) +
+                        '" href="' +
+                        escapeXml(alternate.href) +
+                        '" />',
+                ),
+                lastmod ? '    <lastmod>' + escapeXml(lastmod) + '</lastmod>' : '',
+                '    <changefreq>' + changefreq + '</changefreq>',
+                '    <priority>' + priority + '</priority>',
+                '  </url>',
+            ]
+                .filter(Boolean)
+                .join('\n');
 
-        const escapeXml = (str: string): string =>
-            str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-        const urls = posts
-            .map((post) => {
-                const slug = post.get('slug') as string;
-                const updatedAt = post.get('updatedAt') as number;
-                const lastmod = updatedAt ? new Date(updatedAt).toISOString().split('T')[0] : '';
-                const isBlurb = post.get('contentType') === 'blurb';
-                return `  <url>
-    <loc>${escapeXml(siteUrl)}/blog/${escapeXml(slug)}</loc>
-    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
-    <changefreq>${isBlurb ? 'daily' : 'weekly'}</changefreq>
-    <priority>${isBlurb ? '0.5' : '0.7'}</priority>
-  </url>`;
-            })
-            .join('\n');
+        const urls: string[] = [];
+        let truncated = false;
+        for (const post of posts) {
+            const postId = post.get('id') as string;
+            const translations = (translationsByPost.get(postId) ?? []).filter((translation) => {
+                const language = translation.get('language') as string;
+                return enabledLanguages.has(language) && language !== (post.get('language') as string | undefined);
+            });
+            let canonicalLanguage = languageConfig.defaultLanguage;
+            try {
+                canonicalLanguage = normalizeLanguageCode(
+                    String(post.get('language') || languageConfig.defaultLanguage),
+                );
+            } catch {
+                /* use blog default */
+            }
+            const variants = [
+                { language: canonicalLanguage, slug: post.get('slug') as string, canonical: true },
+                ...translations.map((translation) => ({
+                    language: translation.get('language') as string,
+                    slug: translation.get('slug') as string,
+                    canonical: false,
+                })),
+            ];
+            const alternates = variants.map((variant) => ({
+                language: variant.language,
+                href: absoluteUrl(variant.slug, variant.language, variant.canonical),
+            }));
+            const lastmod = dateOnly(post.get('updatedAt'));
+            const isBlurb = post.get('contentType') === 'blurb';
+            for (const variant of variants) {
+                if (urls.length + 1 >= urlLimit) {
+                    truncated = true;
+                    break;
+                }
+                urls.push(
+                    urlBlock(
+                        absoluteUrl(variant.slug, variant.language, variant.canonical),
+                        lastmod,
+                        isBlurb ? 'daily' : 'weekly',
+                        isBlurb ? '0.5' : '0.7',
+                        alternates,
+                    ),
+                );
+            }
+            if (truncated) break;
+        }
 
         const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>${escapeXml(siteUrl)}/blog</loc>
     <changefreq>daily</changefreq>
@@ -1477,6 +2258,10 @@ ${urls}
             headers: {
                 'Content-Type': 'application/xml; charset=utf-8',
                 'Cache-Control': 'public, max-age=3600',
+                Vary: 'Accept-Language, X-Org-Id, X-App-Id',
+                'X-Sitemap-Page': String(page),
+                ...(hasNextPage ? { 'X-Sitemap-Next-Page': String(page + 1) } : {}),
+                ...(truncated ? { 'X-Sitemap-Truncated': 'true' } : {}),
             },
         });
     }
@@ -1498,12 +2283,16 @@ ${urls}
         // Deliberately cross-app when no ?appId is given: one shared-DB cron
         // publishes every app's due posts. Pass ?appId= to restrict a run.
         const appId = url.searchParams.get('appId') || null;
-        const result = await Post.publishScheduled({ appId: appId ?? undefined });
+        const [result, translationResult] = await Promise.all([
+            Post.publishScheduled({ appId: appId ?? undefined }),
+            PostTranslation.publishScheduled({ appId: appId ?? undefined }),
+        ]);
 
         return jsonResponse({
-            published: result.posts.length,
+            published: result.posts.length + translationResult.translations.length,
             posts: result.posts,
-            hasMore: result.hasMore,
+            translations: translationResult.translations,
+            hasMore: result.hasMore || translationResult.hasMore,
         });
     }
 
@@ -1682,6 +2471,11 @@ ${urls}
 
     return {
         handleBlogStudioState,
+        handleBlogStudioLanguages,
+        handleBlogPostTranslations,
+        handleBlogPostTranslationCreate,
+        handleBlogPostTranslationUpdate,
+        handleBlogPostTranslationDelete,
         handleBlogStudioActivateTheme,
         handleBlogStudioPluginEnable,
         handleBlogStudioPluginConfig,

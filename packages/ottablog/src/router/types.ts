@@ -8,7 +8,7 @@
  * Ottabase app (or a bare Worker) unchanged.
  */
 
-import type { ContentType, EditorJSData } from '../types';
+import type { BlogLanguageConfig, ContentType, EditorJSData, HeroImage, SeoMeta } from '../types';
 import type { SecurityContext } from '@ottabase/ottaorm';
 
 /** The minimal request context every blog handler receives. */
@@ -60,6 +60,27 @@ export interface BlogDemoPostSeed {
      * install has no uploaded media to point at.
      */
     heroImage?: { url: string; alt?: string; caption?: string };
+}
+
+export interface BlogTranslationBody {
+    language?: unknown;
+    title?: unknown;
+    slug?: unknown;
+    excerpt?: unknown;
+    blurbText?: unknown;
+    photoNote?: unknown;
+    photoAlbum?: unknown;
+    content?: unknown;
+    heroImage?: HeroImage | null;
+    seoMeta?: SeoMeta | null;
+    footnotes?: unknown;
+    status?: unknown;
+    publishAt?: unknown;
+}
+
+export interface BlogTranslationSettingsResponse {
+    languageConfig: BlogLanguageConfig;
+    translations: Record<string, unknown>[];
 }
 
 /** App-injected dependencies for the blog HTTP surface. */
@@ -186,4 +207,9 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogDemoSeed(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogPreviewTokenMint(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioThemeTokens(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioLanguages(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogPostTranslations(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
+    handleBlogPostTranslationCreate(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
+    handleBlogPostTranslationUpdate(ctx: BlogRequestContext<Env>, postId: string, language: string): Promise<Response>;
+    handleBlogPostTranslationDelete(ctx: BlogRequestContext<Env>, postId: string, language: string): Promise<Response>;
 }

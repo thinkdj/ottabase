@@ -109,6 +109,33 @@ callers fail closed and operators retain an accurate failure signal.
 
 ---
 
+## Multilingual publishing
+
+Studio also owns the blog language policy. `OttablogSettings` stores the default language, the supported BCP-47 language
+catalog, and whether public requests fall back to the default language. The admin Content Studio Languages card
+validates codes, labels, duplicates, and the default-language selection.
+
+The post editor exposes the canonical language in Settings. Existing posts expose a Languages tab with a separate rich
+editor for each enabled non-canonical language. Authors can save draft, published, scheduled, or archived translations;
+publishing still requires the normal `posts:publish` capability. A translation has its own title, slug, excerpt, body,
+photo/blurb text, hero/SEO metadata, and schedule. Shared structural fields are inherited from the canonical post when
+omitted, so translating a photo journal does not remove its gallery. Duplicate slugs are returned as validation
+conflicts. Deleting a translation never deletes the canonical post; deleting a post removes its dependent translations.
+
+Public routes accept `?lang=` or weighted `Accept-Language` ranges. A published translation is selected only when its
+language is enabled; otherwise the configured fallback returns the canonical version. Localized list search includes
+translated fields and rich text. Public payloads expose `availableLanguages` and `baseSlug` so a theme can render a
+language switcher safely. RSS uses localized publication dates, and sitemap output uses each post's canonical language,
+excludes disabled translations, and is capped at the protocol's 50,000 URLs per file; larger sites should publish the
+sitemap index endpoint so every paginated file is discoverable.
+
+Language endpoints:
+
+- `GET/POST /api/blog/studio/languages` — read or update the blog policy (admin).
+- `GET /api/blog/posts/{postId}/translations` — list translations (content editor).
+- `POST /api/blog/posts/{postId}/translations` — create a translation.
+- `PATCH/DELETE /api/blog/posts/{postId}/translations/{language}` — update or remove one translation.
+
 ## API (worker)
 
 | Method | Path                              | Body                    | Action                                                                                 |

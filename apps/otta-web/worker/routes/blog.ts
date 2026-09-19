@@ -153,4 +153,9 @@ export const {
     handleBlogDemoSeed,
     handleBlogPreviewTokenMint,
     handleBlogStudioThemeTokens,
+    handleBlogStudioLanguages,
+    handleBlogPostTranslations,
+    handleBlogPostTranslationCreate,
+    handleBlogPostTranslationUpdate,
+    handleBlogPostTranslationDelete,
 } = handlers;
