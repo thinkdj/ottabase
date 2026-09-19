@@ -3,4 +3,4 @@
  */
 
 export { StudioManager } from './StudioManager';
-export type { StudioState, StudioThemeState, StudioPluginState } from './StudioManager';
+export type { StudioState, StudioThemeState, StudioPluginState, StudioLanguageState } from './StudioManager';

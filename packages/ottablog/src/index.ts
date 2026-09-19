@@ -40,6 +40,10 @@ export {
     ottablogPluginsTable,
     OttablogTheme,
     ottablogThemesTable,
+    OttablogSettings,
+    ottablogSettingsTable,
+    PostTranslation,
+    postTranslationsTable,
     Post,
     PostCategory,
     PostCategoryLink,
@@ -83,10 +87,17 @@ export type {
     PostVersionType,
     PhotoJournalWriteOptions,
     Series,
+    NewOttablogSettingsType,
+    OttablogSettingsType,
+    NewPostTranslationType,
+    PostTranslationType,
+    PostTranslationWriteData,
 } from './ottaorm-models';
 
 // Type exports
 export type {
+    BlogLanguage,
+    BlogLanguageConfig,
     ContentType,
     EditorJSData,
     HeroImage,
@@ -102,6 +113,9 @@ export type {
 // Constants and helpers
 export {
     calculateReadingTime,
+    COMMON_BLOG_LANGUAGES,
+    normalizeBlogLanguages,
+    normalizeLanguageCode,
     BLURB_MAX_LENGTH,
     BlurbValidationError,
     ContentValidationError,
@@ -140,7 +154,7 @@ export { normalizeSlugInput, resolveUniqueSlug } from './slug-utils';
 export type { SlugLifecycleConfig, SlugScope } from './slug-utils';
 
 // Migrations (org-mode index swap; register conditionally in the app's migration registry)
-export { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
+export { ottablogMigrations, ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
 
 // Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
 export { signPreviewToken, verifyPreviewToken } from './preview-token';

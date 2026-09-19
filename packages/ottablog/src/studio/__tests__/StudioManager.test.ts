@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../ottaorm-models', () => ({
     OttablogTheme: { active: vi.fn(), where: vi.fn() },
     OttablogPlugin: { enabled: vi.fn(), where: vi.fn() },
+    OttablogSettings: { forScope: vi.fn(async () => null) },
 }));
 // StudioManager imports these from the pure registry modules (not the UI-tainted barrels),
 // so the mocks must target the registries to intercept the calls.

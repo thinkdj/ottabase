@@ -34,6 +34,7 @@ import {
     validatePhotoJournalNote,
     validatePostWrite,
     normalizePostTimestamp,
+    normalizeLanguageCode,
     type ContentType,
     type EditorJSData,
     type PhotoJournalItem,
@@ -330,6 +331,17 @@ export class Post extends BaseModel {
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
 
+    /** Delete dependent translations before the canonical row so older databases without the
+     * cascade constraint cannot retain localized slugs or orphaned content. */
+    static async delete(id: string | number, driver?: DbDriver): Promise<boolean> {
+        const { PostTranslation } = await import('./PostTranslation');
+        const translations = await PostTranslation.where({ postId: String(id) });
+        for (const translation of translations) {
+            await PostTranslation.delete(String(translation.get('id')), driver);
+        }
+        return super.delete.call(this, id, driver);
+    }
+
     static casts = {
         content: 'json' as const,
         photoAlbum: 'json' as const,
@@ -373,6 +385,7 @@ export class Post extends BaseModel {
     protected static defaults = {
         status: 'draft',
         contentType: 'blog',
+        language: 'en',
         isFeatured: false,
         allowComments: true,
         isProtected: false,
@@ -384,6 +397,7 @@ export class Post extends BaseModel {
         create: [
             'title',
             'slug',
+            'language',
             'excerpt',
             'blurbText',
             'crossposts',
@@ -415,6 +429,7 @@ export class Post extends BaseModel {
         update: [
             'title',
             'slug',
+            'language',
             'excerpt',
             'blurbText',
             'crossposts',
@@ -485,6 +500,15 @@ export class Post extends BaseModel {
                     max: 'Title must be less than 200 characters',
                 },
             },
+        },
+        language: {
+            type: 'string',
+            editable: true,
+            filterable: true,
+            sortable: true,
+            uiConfig: { label: 'Language', description: 'Canonical language for this post' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: true, colWidth: 100 },
         },
         slug: {
             type: 'string',
@@ -1063,7 +1087,29 @@ export class Post extends BaseModel {
      * `validatePostWrite` judges only what is present. See its own comment for the PATCH contract.
      */
     protected static prepareForDatabase(data: Record<string, any>): Record<string, any> {
-        return super.prepareForDatabase(validatePostWrite(data));
+        const normalized = { ...data };
+        if (normalized.language !== undefined) normalized.language = normalizeLanguageCode(normalized.language);
+        return super.prepareForDatabase(validatePostWrite(normalized));
+    }
+
+    private static async assertCanonicalLanguageSupported(
+        language: unknown,
+        appId?: string | null,
+        organizationId?: string | null,
+    ): Promise<void> {
+        if (appId === undefined && organizationId === undefined) return;
+        const normalized = normalizeLanguageCode(language ?? 'en');
+        const { OttablogSettings } = await import('./OttablogSettings');
+        const settings = await OttablogSettings.forScope({
+            appId: appId ?? null,
+            organizationId: organizationId ?? null,
+        });
+        if (settings && !settings.isSupported(normalized)) {
+            throw new DomainValidationError('The canonical language must be enabled for this blog', {
+                status: 422,
+                code: 'CANONICAL_LANGUAGE_UNSUPPORTED',
+            });
+        }
     }
 
     static async create<T extends typeof BaseModel>(
@@ -1073,6 +1119,7 @@ export class Post extends BaseModel {
     ): Promise<InstanceType<T>> {
         const withDefaults = { ...(this.defaults as Record<string, any>), ...data };
         const normalized = normalizeWriteDataForCrud(withDefaults, 'create');
+        await Post.assertCanonicalLanguageSupported(normalized.language, normalized.appId, normalized.organizationId);
         return (await super.create.call(this, normalized, driver)) as InstanceType<T>;
     }
 
@@ -1094,7 +1141,26 @@ export class Post extends BaseModel {
             current = record.toJson() as Record<string, any>;
         }
 
-        return normalizeWriteDataForCrud(data, 'update', current);
+        const normalized = normalizeWriteDataForCrud(data, 'update', current);
+        if (normalized.language !== undefined) {
+            await this.assertCanonicalLanguageSupported(normalized.language, current.appId, current.organizationId);
+            const nextLanguage = normalizeLanguageCode(normalized.language);
+            const previousLanguage = normalizeLanguageCode(current.language ?? 'en');
+            if (nextLanguage !== previousLanguage) {
+                const { PostTranslation } = await import('./PostTranslation');
+                const existingTranslation = await PostTranslation.findForPost(String(id), nextLanguage, {
+                    appId: current.appId ?? null,
+                    organizationId: current.organizationId ?? null,
+                });
+                if (existingTranslation) {
+                    throw new DomainValidationError(
+                        'Change the canonical language only after removing its translation',
+                        { status: 422, code: 'CANONICAL_LANGUAGE_CONFLICT' },
+                    );
+                }
+            }
+        }
+        return normalized;
     }
 
     // ============================================================
@@ -1121,7 +1187,14 @@ export class Post extends BaseModel {
         query: string,
         fields: string[],
         where?: Record<string, any>,
-        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+            limit?: number;
+            offset?: number;
+            select?: string[];
+            withDeferred?: boolean;
+        },
         driver?: DbDriver,
     ): Promise<InstanceType<T>[]> {
         return super.search(query, fields, where, options, driver) as Promise<InstanceType<T>[]>;
@@ -1130,6 +1203,16 @@ export class Post extends BaseModel {
     /**
      * Get all published posts
      */
+    static async searchPostIds(
+        query: string,
+        fields: string[],
+        where?: Record<string, unknown>,
+        limit = 10000,
+    ): Promise<string[]> {
+        const rows = await super.search(query, fields, where, { limit, select: ['id'] });
+        return [...new Set(rows.map((row) => String(row.get('id'))))];
+    }
+
     static async published(options?: {
         contentType?: ContentType;
         appId?: string;

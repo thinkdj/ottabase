@@ -21,6 +21,12 @@ import type {
 
 export interface BlogPostData {
     id: string;
+    /** Localized representation metadata for language-aware themes. */
+    language?: string;
+    baseLanguage?: string;
+    baseSlug?: string;
+    translationId?: string;
+    availableLanguages?: { code: string; name: string; nativeName?: string }[];
     title: string;
     slug: string;
     excerpt?: string | null;
