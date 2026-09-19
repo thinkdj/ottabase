@@ -79,6 +79,8 @@ vi.mock('@ottabase/ui-shadcn', () => {
         DialogTitle: Pass,
         Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
         Label: ({ children }: { children?: React.ReactNode }) => <label>{children}</label>,
+        NativeSelect: (props: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...props} />,
+        NativeSelectOption: (props: React.OptionHTMLAttributes<HTMLOptionElement>) => <option {...props} />,
         Select: Pass,
         SelectContent: Pass,
         SelectItem: Pass,

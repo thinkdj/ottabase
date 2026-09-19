@@ -4,7 +4,7 @@
  * Manage content themes and plugins, and run the one-time demo content seed.
  */
 import { isPlatformAdmin, useSession } from '@/lib/auth';
-import type { StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
+import type { BlogLanguageConfig, StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
@@ -40,6 +40,7 @@ import { Link } from '@tanstack/react-router';
 import { Loader2, Palette, Puzzle, Settings, Sparkles } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+import { BlogLanguageSettingsCard } from './BlogLanguageSettingsCard';
 import { useBlogSurface } from './blogAdminPaths';
 
 const STUDIO_ENTITY = 'blog_studio' as const;
@@ -48,6 +49,7 @@ interface StudioStateResponse {
     activeThemeId: string | null;
     themes: StudioThemeState[];
     plugins: StudioPluginState[];
+    languageConfig: BlogLanguageConfig;
 }
 
 /** POST /api/blog/seed-demo — create-only, so `existing` lists slugs it skipped. */
@@ -104,7 +106,6 @@ export function AdminBlogStudioPage() {
         isLoading,
         isError,
         error,
-        refetch,
     } = useApiQuery<StudioStateResponse>({
         entity: STUDIO_ENTITY,
         queryKey: ['state'],
@@ -246,14 +247,24 @@ export function AdminBlogStudioPage() {
         );
     }
 
+    const languageConfig = state.languageConfig ?? {
+        defaultLanguage: 'en',
+        supportedLanguages: [{ code: 'en', name: 'English', nativeName: 'English' }],
+        fallbackToDefault: true,
+    };
+
     return (
         <div className="space-y-8">
             <BlogAdminNav />
 
             <div className="space-y-1.5">
                 <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content Studio</h1>
-                <p className="max-w-3xl text-muted-foreground">Manage themes and plugins for your content.</p>
+                <p className="max-w-3xl text-muted-foreground">
+                    Manage themes, plugins, and the languages your readers can use.
+                </p>
             </div>
+
+            <BlogLanguageSettingsCard config={languageConfig} />
 
             {isLoading ? (
                 <div className="grid gap-6 md:grid-cols-2" aria-busy="true">
