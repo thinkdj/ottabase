@@ -172,18 +172,18 @@ conflict instead of a server error.
 Public post requests choose a language with `?lang=fr` or the request's `Accept-Language` header; weighted language
 ranges (`q=`) are honored. If that language is enabled and has a published translation, the localized payload is
 returned; otherwise the canonical version is returned when `fallbackToDefault` is enabled. Localized search covers
-translated titles, slugs, excerpts, field notes, blurbs, and rich text. Localized slugs include `?lang=<code>` in
-generated RSS and sitemap URLs so they remain resolvable. The sitemap uses each post's own canonical language, excludes
-translations whose languages are no longer enabled, emits `xhtml:link` alternates, and never emits more than 50,000 URLs
-per file; use `/api/blog/sitemap-index.xml` for a standard sitemap index, whose `/api/blog/sitemap.xml?page=N` children
-cover every canonical-post page. `?limit=` can be used to make smaller pages, and a truncation header is returned when
-variants fill a page. RSS is language-selected, ordered by the selected translation's publication time, and advertises
-`Vary: Accept-Language` plus tenant scope headers. Public collection/feed/sitemap queries use scalar translation
-projections, so rich bodies, footnotes, albums, SEO blobs, and other deferred fields are not overfetched. The response
-exposes `language`, `baseLanguage`, `baseSlug`, `translationId`, and `availableLanguages` for language switchers. A
-scheduled translation is published by the same cron endpoint as canonical posts. The translation schema has a post
-foreign key with cascade protection, and upgrades clean orphan rows through the `ottablog_translation_orphan_cleanup_v2`
-migration. Run auto-init/migrations after deployment.
+translated titles, slugs, excerpts, field notes, blurbs, and rich text. A published localized slug resolves directly;
+`?lang=<code>` remains supported and is included in generated RSS and sitemap URLs. The sitemap uses each post's own
+canonical language, excludes translations whose languages are no longer enabled, emits `xhtml:link` alternates, and
+never emits more than 50,000 URLs per file; use `/api/blog/sitemap-index.xml` for a standard sitemap index, whose
+`/api/blog/sitemap.xml?page=N` children cover every canonical-post page. `?limit=` can be used to make smaller pages,
+and a truncation header is returned when variants fill a page. RSS is language-selected, ordered by the selected
+translation's publication time, and advertises `Vary: Accept-Language` plus tenant scope headers. Public
+collection/feed/sitemap queries use scalar translation projections, so rich bodies, footnotes, albums, SEO blobs, and
+other deferred fields are not overfetched. The response exposes `language`, `baseLanguage`, `baseSlug`, `translationId`,
+and `availableLanguages` for language switchers. A scheduled translation is published by the same cron endpoint as
+canonical posts. The translation schema has a post foreign key with cascade protection, and upgrades clean orphan rows
+through the `ottablog_translation_orphan_cleanup_v2` migration. Run auto-init/migrations after deployment.
 
 ## Models
 

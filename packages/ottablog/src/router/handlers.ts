@@ -585,6 +585,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         languageConfig: BlogLanguageConfig,
     ): Promise<{ record: Post; translation: PostTranslation | null; language: string } | null> {
         const language = requestedLanguage(context, languageConfig);
+        const hasExplicitLanguage = Boolean(context.url.searchParams.get('lang')?.trim());
         if (language && languageConfig.supportedLanguages.some((item) => item.code === language)) {
             const translation = await PostTranslation.findBySlug(slug, {
                 appId,
@@ -604,6 +605,34 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 if (record) return { record, translation, language };
             }
         }
+
+        // A translated slug is a complete public URL by itself. If there is no
+        // explicit `?lang=` selector, resolve it across enabled languages even
+        // when the browser's Accept-Language prefers another locale.
+        if (!hasExplicitLanguage) {
+            const translation = await PostTranslation.findBySlug(slug, {
+                appId,
+                organizationId,
+                status: 'published',
+            });
+            const translationLanguage = translation?.get('language');
+            if (
+                translation &&
+                typeof translationLanguage === 'string' &&
+                languageConfig.supportedLanguages.some((item) => item.code === translationLanguage)
+            ) {
+                const baseWhere: Record<string, unknown> = {
+                    id: translation.get('postId'),
+                    status: 'published',
+                    appId,
+                };
+                if (contentTypeParam) baseWhere.contentType = contentTypeParam;
+                if (organizationId !== undefined) baseWhere.organizationId = organizationId;
+                const record = await Post.first(baseWhere);
+                if (record) return { record, translation, language: translationLanguage };
+            }
+        }
+
         const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
         if (!record) return null;
         const translation = await translationFor(

@@ -584,6 +584,61 @@ describe('createBlogHandlers', () => {
         expect(PostTranslation.findBySlug).toHaveBeenCalledWith('hello', expect.objectContaining({ language: 'en' }));
     });
 
+    it('resolves a translated slug directly without requiring a lang query parameter', async () => {
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        const translation = {
+            get: (field: string) => ({ id: 't1', postId: 'p1', language: 'ml', slug: 'dry-season-idris-ml' })[field],
+            toJson: () => ({
+                id: 't1',
+                postId: 'p1',
+                language: 'ml',
+                slug: 'dry-season-idris-ml',
+                title: 'Dry Season Idris',
+            }),
+        };
+        const post = {
+            get: (field: string) =>
+                ({ id: 'p1', appId: 'test-app', slug: 'dry-season-idris', language: 'en', status: 'published' })[field],
+            toJson: () => ({
+                id: 'p1',
+                appId: 'test-app',
+                slug: 'dry-season-idris',
+                language: 'en',
+                title: 'Dry Season Idris',
+                status: 'published',
+            }),
+        };
+        vi.mocked(PostTranslation.findBySlug).mockResolvedValueOnce(translation as any);
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogPostBySlug(
+            ctxFor('/posts/by-slug/dry-season-idris-ml'),
+            'dry-season-idris-ml',
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({
+            slug: 'dry-season-idris-ml',
+            language: 'ml',
+            baseSlug: 'dry-season-idris',
+        });
+        expect(PostTranslation.findBySlug).toHaveBeenCalledWith('dry-season-idris-ml', {
+            appId: 'test-app',
+            organizationId: undefined,
+            status: 'published',
+        });
+    });
+
     it('searches localized fields and keeps the list projection bounded to matching post ids', async () => {
         vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
