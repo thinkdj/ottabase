@@ -152,10 +152,26 @@ Content-Type: application/json
 }
 ```
 
-The canonical language is selected in the post editor. Once the post exists, its Languages tab creates, updates,
-publishes, schedules, or deletes one translation per enabled language:
+The post editor has one **Writing language** selector for the original and its translations. Save a new post once to
+enable translation editing. The original's body and excerpt live together under Content; choosing another language opens
+that language's title, body, excerpt, and publishing controls in the same workspace. Original drafts are kept while
+switching. Unsaved translations prompt before switching languages or leaving the page. Each translation is saved,
+published, scheduled, or deleted independently. Only the writing column switches languages: the shared sidebar stays
+visible. While translating, **Save original & shared settings** uses the existing original-post save operation
+(including any pending original text edits); **Save translation** saves only the selected translation. Translation
+status and save controls appear in the page header. The sidebar's original status and schedule are explicitly labelled.
+Published originals show **Save changes** and **View post**; drafts retain **Save draft** and **Publish now**.
 
-The admin detail read uses `?language={language}` to load one editable translation.
+The admin detail read uses `?language={language}` to load one editable translation. In the admin UI, translation slugs
+are presented as `<canonical-post-slug>-<editable-suffix>`; the canonical slug is fixed while the suffix can be
+customized per language. The API continues to receive the complete slug.
+
+Translation creation is create-only: a duplicate language, including concurrent creates, returns 422 instead of
+overwriting another draft or published version. Use PATCH to edit an existing translation. Updating or deleting
+published/scheduled translations requires `posts:publish`. Admin slug checks use the scoped query client and ignore
+outdated results when the author changes the input. Clearing the original excerpt, series, series order, or
+version-retention limit sends an explicit null so PATCH persists the clear rather than retaining the old value; a zero
+series order is preserved.
 
 ```http
 GET    /api/blog/posts/{postId}/translations

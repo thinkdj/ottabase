@@ -659,7 +659,12 @@ export class PostTranslation extends BaseModel {
             appId: data.appId,
             organizationId: data.organizationId,
         });
-        if (existing) return existing.updateContent(normalized, config);
+        if (existing) {
+            throw new DomainValidationError('This translation already exists. Reload it before editing.', {
+                status: 422,
+                code: 'TRANSLATION_EXISTS',
+            });
+        }
         try {
             return (await this.create({
                 postId,
@@ -673,7 +678,12 @@ export class PostTranslation extends BaseModel {
                     appId: data.appId,
                     organizationId: data.organizationId,
                 });
-                if (raced) return raced.updateContent(normalized, config);
+                if (raced) {
+                    throw new DomainValidationError('This translation already exists. Reload it before editing.', {
+                        status: 422,
+                        code: 'TRANSLATION_EXISTS',
+                    });
+                }
                 throw new DomainValidationError('Translation slug is already used in this blog', {
                     status: 422,
                     code: 'TRANSLATION_SLUG_CONFLICT',

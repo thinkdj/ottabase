@@ -470,6 +470,44 @@ describe('createBlogHandlers', () => {
         getReadFilter.mockRestore();
     });
 
+    it.each([
+        ['published', false, 403],
+        ['scheduled', false, 403],
+        ['draft', false, 200],
+        ['published', true, 200],
+        ['scheduled', true, 200],
+    ] as const)('checks deletion of %s translation (publisher: %s)', async (status, publisher, expectedStatus) => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+            permissions: publisher ? ['posts:update', 'posts:publish'] : ['posts:update'],
+        };
+        const post = {
+            get: (field: string) => ({ id: 'p1', appId: 'test-app', organizationId: 'org-1', language: 'en' })[field],
+        };
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        vi.mocked(PostTranslation.findForPost).mockResolvedValueOnce({
+            get: (field: string) => (field === 'status' ? status : 't1'),
+        } as any);
+        const filter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+        try {
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                requireContentEditor: async () => ({ session: { user: { id: 'u1' } }, securityContext }),
+            });
+            const response = await handlers.handleBlogPostTranslationDelete(
+                ctxFor('/posts/p1/translations/ml', { method: 'DELETE' }),
+                'p1',
+                'ml',
+            );
+            expect(response.status).toBe(expectedStatus);
+            expect(PostTranslation.delete).toHaveBeenCalledTimes(expectedStatus === 200 ? 1 : 0);
+        } finally {
+            filter.mockRestore();
+        }
+    });
+
     it('maps invalid translation writes to a validation response instead of a 500', async () => {
         const securityContext = {
             userId: 'u1',

@@ -1034,6 +1034,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             organizationId: result.securityContext.organizationId,
         });
         if (!translation) return errorResponse('Translation not found', 404, { code: 'NOT_FOUND' });
+        if (
+            (translation.get('status') === 'published' || translation.get('status') === 'scheduled') &&
+            !result.securityContext.platformAdmin &&
+            !hasGrantedPermission(result.securityContext.permissions, 'posts:publish')
+        ) {
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+        }
         await PostTranslation.delete(translation.get('id') as string);
         return jsonResponse({ success: true });
     }

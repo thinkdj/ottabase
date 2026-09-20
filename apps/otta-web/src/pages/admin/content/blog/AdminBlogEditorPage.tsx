@@ -40,7 +40,7 @@ import {
     type OutputData,
     type ToolSettings,
 } from '@ottabase/ottaeditor';
-import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
@@ -251,6 +251,78 @@ const getEditorConfig = (placeholder: string) => ({
 });
 
 // Wrapper component that handles data loading
+// Helper to extract raw text for diff comparison
+function extractTextFromBlocks(data: OutputData | null | undefined): string {
+    if (!data?.blocks) return '';
+    let textResult = '';
+
+    for (const block of data.blocks) {
+        const blockText = getTextFromData(block.data);
+        if (blockText) {
+            if (block.type === 'header') {
+                textResult += '# ' + blockText + '\n\n';
+            } else if (block.type === 'list') {
+                const items = block.data?.items;
+                if (Array.isArray(items)) {
+                    for (const item of items) {
+                        textResult += '- ' + (typeof item === 'string' ? item : getTextFromData(item)) + '\n';
+                    }
+                    textResult += '\n';
+                }
+            } else {
+                textResult += blockText + '\n\n';
+            }
+        }
+    }
+    return textResult.trim();
+}
+
+// Helper to extract text from a single block's data
+function getTextFromData(value: unknown): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return value.toString();
+    if (typeof value !== 'object') return '';
+    const data = value as Record<string, unknown>;
+
+    let text = '';
+    // Common EditorJS fields
+    if (data.text && typeof data.text === 'string') text += ' ' + data.text;
+    if (data.title && typeof data.title === 'string') text += ' ' + data.title;
+    if (data.message && typeof data.message === 'string') text += ' ' + data.message;
+    if (data.caption && typeof data.caption === 'string') text += ' ' + data.caption;
+
+    if (data.items && Array.isArray(data.items)) {
+        for (const item of data.items) {
+            if (typeof item === 'string') text += ' ' + item;
+            else if (item && typeof item === 'object') text += ' ' + getTextFromData(item);
+        }
+    }
+
+    if (data.content && Array.isArray(data.content)) {
+        // Table data
+        for (const row of data.content) {
+            if (Array.isArray(row)) {
+                for (const cell of row) {
+                    text += ' ' + (typeof cell === 'string' ? cell : getTextFromData(cell));
+                }
+            }
+        }
+    }
+
+    // Support for layout blocks (nested columns)
+    if (data.columns && Array.isArray(data.columns)) {
+        for (const col of data.columns) {
+            if (col.content) {
+                // Recursive call to extract text from nested blocks
+                text += ' ' + extractTextFromBlocks(col.content);
+            }
+        }
+    }
+
+    return text.trim();
+}
+
 export function AdminBlogEditorPage() {
     const params = useParams({ strict: false });
     const search = useSearch({ strict: false }) as { contentType?: string };
@@ -448,7 +520,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         if (isEditMode && tagLinksData !== undefined) {
             setSelectedTagIds(tagLinks.map((tl) => tl.tagId));
         }
-    }, [tagLinks]);
+    }, [tagLinks, tagLinksData, isEditMode]);
 
     const createTag = blogTagHooks.useCreate();
     const createTagLink = blogTagLinkHooks.useCreate();
@@ -470,7 +542,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         if (isEditMode && categoryLinksData !== undefined) {
             setSelectedCategoryIds(categoryLinks.map((cl) => cl.categoryId));
         }
-    }, [categoryLinks]);
+    }, [categoryLinks, categoryLinksData, isEditMode]);
 
     const createCategoryLink = blogCategoryLinkHooks.useCreate();
     const deleteCategoryLink = blogCategoryLinkHooks.useDelete();
@@ -524,9 +596,25 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
     const isSaving = createPost.isPending || updatePost.isPending;
     const queryClient = useQueryClient();
+    const apiClient = useApiClient();
+    const slugCheckSequence = useRef(0);
 
     // Active tab
     const [activeTab, setActiveTab] = useState('content');
+    const [writingLanguage, setWritingLanguage] = useState<string | null>(null);
+    const [translationDirty, setTranslationDirty] = useState(false);
+    const [translationActionsTarget, setTranslationActionsTarget] = useState<HTMLDivElement | null>(null);
+    const [pendingWritingLanguage, setPendingWritingLanguage] = useState<string | null>(null);
+    const baseLanguage = initialData?.language ?? language;
+    const isWritingTranslation = writingLanguage !== null && writingLanguage !== baseLanguage;
+    const changeWritingLanguage = (next: string) => {
+        if (next === (writingLanguage ?? baseLanguage)) return;
+        if (translationDirty) {
+            setPendingWritingLanguage(next);
+            return;
+        }
+        setWritingLanguage(next === baseLanguage ? null : next);
+    };
     const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
     const [compareVersion, setCompareVersion] = useState<BlogPostVersion | null>(null);
     const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -689,7 +777,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         footnotesEditor.hasUnsavedChanges,
     ]);
 
-    const { blocker, allowNavigateRef } = useEditorLeaveGuard(shouldWarnOnLeave);
+    const { blocker, allowNavigateRef } = useEditorLeaveGuard(shouldWarnOnLeave || translationDirty);
 
     const applyVersionToEditor = async (version: BlogPostVersion) => {
         if (!version) return;
@@ -738,76 +826,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const hasPreviewContent = previewPost?.content?.blocks && previewPost.content.blocks.length > 0;
     const hasPreviewFootnotes = previewPost?.footnotes?.blocks && previewPost.footnotes.blocks.length > 0;
 
-    // Helper to extract raw text for diff comparison
-    function extractTextFromBlocks(data: OutputData | null | undefined): string {
-        if (!data?.blocks) return '';
-        let textResult = '';
-
-        for (const block of data.blocks) {
-            const blockText = getTextFromData(block.data);
-            if (blockText) {
-                if (block.type === 'header') {
-                    textResult += '# ' + blockText + '\n\n';
-                } else if (block.type === 'list') {
-                    const items = block.data?.items;
-                    if (Array.isArray(items)) {
-                        for (const item of items) {
-                            textResult += '- ' + (typeof item === 'string' ? item : getTextFromData(item)) + '\n';
-                        }
-                        textResult += '\n';
-                    }
-                } else {
-                    textResult += blockText + '\n\n';
-                }
-            }
-        }
-        return textResult.trim();
-    }
-
-    // Helper to extract text from a single block's data
-    function getTextFromData(data: any): string {
-        if (!data) return '';
-        if (typeof data === 'string') return data;
-        if (typeof data === 'number') return data.toString();
-
-        let text = '';
-        // Common EditorJS fields
-        if (data.text && typeof data.text === 'string') text += ' ' + data.text;
-        if (data.title && typeof data.title === 'string') text += ' ' + data.title;
-        if (data.message && typeof data.message === 'string') text += ' ' + data.message;
-        if (data.caption && typeof data.caption === 'string') text += ' ' + data.caption;
-
-        if (data.items && Array.isArray(data.items)) {
-            for (const item of data.items) {
-                if (typeof item === 'string') text += ' ' + item;
-                else if (item && typeof item === 'object') text += ' ' + getTextFromData(item);
-            }
-        }
-
-        if (data.content && Array.isArray(data.content)) {
-            // Table data
-            for (const row of data.content) {
-                if (Array.isArray(row)) {
-                    for (const cell of row) {
-                        text += ' ' + (typeof cell === 'string' ? cell : getTextFromData(cell));
-                    }
-                }
-            }
-        }
-
-        // Support for layout blocks (nested columns)
-        if (data.columns && Array.isArray(data.columns)) {
-            for (const col of data.columns) {
-                if (col.content) {
-                    // Recursive call to extract text from nested blocks
-                    text += ' ' + extractTextFromBlocks(col.content);
-                }
-            }
-        }
-
-        return text.trim();
-    }
-
     // Calculate diffs when a version is selected for comparison
     const compareDiffs = useMemo(() => {
         if (!compareVersion) return null;
@@ -826,6 +844,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     // Slug availability check: run only on Title or Slug blur (not on every keystroke)
     const doSlugCheck = useCallback(
         (slugToCheck?: string) => {
+            const sequence = ++slugCheckSequence.current;
             const toCheck = (slugToCheck ?? (slug || generateSlug(title))).trim();
             if (!toCheck) {
                 setSlugStatus('idle');
@@ -852,12 +871,25 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 params.set('where', JSON.stringify({ appId: initialData.appId }));
             }
 
-            fetch(`/api/ottaorm/posts/unique?${params.toString()}`)
-                .then((res) => res.json() as Promise<{ unique?: boolean }>)
-                .then((result) => setSlugStatus(result.unique ? 'available' : 'taken'))
-                .catch(() => setSlugStatus('idle'));
+            queryClient
+                .fetchQuery({
+                    queryKey: ['posts', 'slug-availability', params.toString()],
+                    queryFn: ({ signal }) =>
+                        apiClient<{ unique: boolean }>(`/api/ottaorm/posts/unique?${params.toString()}`, { signal }),
+                    staleTime: 0,
+                    meta: { errorPresentation: 'local' },
+                })
+                .then((result) => {
+                    if (sequence === slugCheckSequence.current) setSlugStatus(result.unique ? 'available' : 'taken');
+                })
+                .catch(() => {
+                    if (sequence === slugCheckSequence.current) {
+                        setSlugStatus('idle');
+                        setSlugError('Could not check slug availability. Try again.');
+                    }
+                });
         },
-        [slug, title, postId, initialData?.appId],
+        [slug, title, postId, initialData?.appId, queryClient, apiClient],
     );
 
     // Initial slug (from server) – only run availability check when slug has changed from this
@@ -865,6 +897,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
     // Auto-generate slug from title only on Title blur (not on every keystroke)
     const handleTitleChange = (newTitle: string) => {
+        slugCheckSequence.current++;
         setTitle(newTitle);
         setSlugStatus('idle');
     };
@@ -1068,7 +1101,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 language,
                 title,
                 slug: baseSlug,
-                excerpt: excerpt || undefined,
+                excerpt: excerpt || null,
                 content: content || undefined,
                 contentType,
                 status: resolvedStatus,
@@ -1090,9 +1123,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 ...(originalDate || !originalDateInput.trim() ? { originalDate } : {}),
                 publishAt: publishAtPayload,
                 ...(expectedUpdatedAt !== undefined ? { expectedUpdatedAt } : {}),
-                seriesId: seriesId || undefined,
-                seriesOrder: seriesOrder || undefined,
-                maxVersionsToKeep: maxVersionsToKeep || undefined,
+                seriesId,
+                seriesOrder,
+                maxVersionsToKeep,
             };
 
             // Create version snapshot before saving (edit mode only)
@@ -1315,342 +1348,411 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                    ref={setTranslationActionsTarget}
+                    className={isWritingTranslation ? 'flex flex-wrap items-center gap-2' : 'hidden'}
+                />
+                <div className={isWritingTranslation ? 'hidden' : 'flex flex-wrap items-center gap-2'}>
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                         <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[status]}`} />
                         {POST_STATUSES[status].label}
                     </span>
-                    <Button variant="outline" onClick={() => handleSave(false)} disabled={saveDisabled}>
+                    {isEditMode && initialData && status === 'published' && (
+                        <Button variant="ghost" asChild>
+                            <a
+                                href={getPublicContentPath(initialData.slug, initialData.contentType)}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Eye className="mr-2 h-4 w-4" /> View post
+                            </a>
+                        </Button>
+                    )}
+                    <Button
+                        variant={status === 'published' ? 'default' : 'outline'}
+                        onClick={() => handleSave(false)}
+                        disabled={saveDisabled}
+                    >
                         {isSaving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                             <Save className="mr-2 h-4 w-4" />
                         )}
-                        Save
+                        {isSaving ? 'Saving…' : status === 'draft' ? 'Save draft' : 'Save changes'}
                     </Button>
-                    <Button onClick={() => handleSave(true)} disabled={saveDisabled}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                        )}
-                        Publish
-                    </Button>
-                    {isEditMode && initialData && status === 'published' && (
-                        <Button variant="outline" asChild>
-                            <a
-                                href={getPublicContentPath(initialData.slug || slug, contentType)}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                            </a>
+                    {status !== 'published' && (
+                        <Button onClick={() => handleSave(true)} disabled={isSaving}>
+                            {isSaving ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Send className="mr-2 h-4 w-4" />
+                            )}
+                            Publish now
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* Main Form */}
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/40 p-4">
+                <div className="space-y-1">
+                    <Label htmlFor="writing-language" className="flex items-center gap-2">
+                        <Languages className="h-4 w-4" /> Writing language
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                        {isWritingTranslation
+                            ? 'Editing a translation. Save and publish this language independently.'
+                            : 'Editing the original post. Choose a language to write a translation.'}
+                    </p>
+                    {!isEditMode && (
+                        <p className="text-xs text-muted-foreground">Save your post once to start translating.</p>
+                    )}
+                    {isWritingTranslation && isDirty && (
+                        <p className="text-xs text-muted-foreground">
+                            Your unsaved original is kept while you translate.
+                        </p>
+                    )}
+                </div>
+                <NativeSelect
+                    id="writing-language"
+                    value={writingLanguage ?? baseLanguage}
+                    onChange={(event) => changeWritingLanguage(event.target.value)}
+                    disabled={!isEditMode}
+                    className="w-full sm:w-64"
+                >
+                    <NativeSelectOption value={baseLanguage}>
+                        {supportedLanguages.find((item) => item.code === baseLanguage)?.name ?? baseLanguage} (Original)
+                    </NativeSelectOption>
+                    {supportedLanguages
+                        .filter((item) => item.code !== baseLanguage)
+                        .map((item) => (
+                            <NativeSelectOption key={item.code} value={item.code}>
+                                {item.name}
+                            </NativeSelectOption>
+                        ))}
+                </NativeSelect>
+            </div>
+            {/* Keep the original editors mounted so switching languages preserves their draft. */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column - Main Content */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Title & Slug */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                        <CardContent className="pt-6 space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="title">Title</Label>
-                                <Input
-                                    id="title"
-                                    value={title}
-                                    onChange={(e) => handleTitleChange(e.target.value)}
-                                    onBlur={handleTitleBlur}
-                                    placeholder="Enter post title..."
-                                    className="text-lg font-semibold"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="slug">Slug</Label>
-                                <Input
-                                    id="slug"
-                                    value={slug}
-                                    onChange={(e) => {
-                                        setSlug(e.target.value);
-                                        setSlugStatus('idle');
-                                    }}
-                                    onBlur={handleSlugBlur}
-                                    placeholder="url-friendly-slug"
-                                    aria-invalid={slugStatus === 'taken' || !!slugError}
-                                    className={
-                                        slugStatus === 'taken' || slugError
-                                            ? 'border-destructive focus-visible:ring-destructive'
-                                            : undefined
-                                    }
-                                />
-                                {slugError && <p className="text-xs text-destructive">{slugError}</p>}
-                                {slugStatus === 'checking' && (
-                                    <p className="text-xs text-muted-foreground">Checking slug...</p>
-                                )}
-                                {slugStatus === 'taken' && (
-                                    <p className="text-xs text-destructive">Slug already in use.</p>
-                                )}
-                                {slugStatus === 'available' && (
-                                    <p className="text-xs text-muted-foreground">Slug is available.</p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Content Tabs */}
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-6">
-                            <TabsTrigger value="content" className="flex items-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                Content
-                            </TabsTrigger>
-                            <TabsTrigger value="notes" className="flex items-center gap-2">
-                                <StickyNote className="h-4 w-4" />
-                                Notes
-                            </TabsTrigger>
-                            <TabsTrigger value="footnotes" className="flex items-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                Footnotes
-                            </TabsTrigger>
-                            <TabsTrigger value="seo" className="flex items-center gap-2">
-                                <Search className="h-4 w-4" />
-                                SEO
-                            </TabsTrigger>
-                            <TabsTrigger value="languages" className="flex items-center gap-2">
-                                <Languages className="h-4 w-4" />
-                                Languages
-                            </TabsTrigger>
-                            <TabsTrigger value="meta" className="flex items-center gap-2">
-                                <Braces className="h-4 w-4" />
-                                Custom Meta
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold">Main Content</CardTitle>
-                                    <CardDescription>
-                                        Write your post content using the rich text editor
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {/* Undo/Redo and Export toolbar */}
-                                    <div className="flex items-center gap-1 mb-3">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => mainEditor.undo()}
-                                            disabled={!mainEditor.canUndo}
-                                            title="Undo (Ctrl+Z)"
-                                        >
-                                            <Undo2 className="h-4 w-4 mr-1" />
-                                            Undo
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => mainEditor.redo()}
-                                            disabled={!mainEditor.canRedo}
-                                            title="Redo (Ctrl+Shift+Z)"
-                                        >
-                                            <Redo2 className="h-4 w-4 mr-1" />
-                                            Redo
-                                        </Button>
-                                        <div className="ml-auto">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm">
-                                                        <Download className="h-4 w-4 mr-1" />
-                                                        Export
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={async () => {
-                                                            const json = await mainEditor.exportJSON();
-                                                            downloadText(json ?? '', 'post-content.json');
-                                                        }}
-                                                    >
-                                                        Export JSON
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={async () => {
-                                                            const md = await mainEditor.exportMarkdown();
-                                                            downloadText(md ?? '', 'post-content.md');
-                                                        }}
-                                                    >
-                                                        Export Markdown
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </div>
-                                    <div
-                                        ref={mainEditor.editorRef}
-                                        className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                    {isWritingTranslation && postId && initialData && (
+                        <AdminBlogTranslationsPanel
+                            key={writingLanguage}
+                            postId={postId}
+                            basePost={initialData}
+                            selectedLanguage={writingLanguage ?? baseLanguage}
+                            onDirtyChange={setTranslationDirty}
+                            actionsTarget={translationActionsTarget}
+                        />
+                    )}
+                    <div className={isWritingTranslation ? 'hidden' : 'space-y-6'}>
+                        {/* Title & Slug */}
+                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                            <CardContent className="pt-6 space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="title">Title</Label>
+                                    <Input
+                                        id="title"
+                                        value={title}
+                                        onChange={(e) => handleTitleChange(e.target.value)}
+                                        onBlur={handleTitleBlur}
+                                        placeholder="Enter post title..."
+                                        className="text-lg font-semibold"
                                     />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold">Private Notes</CardTitle>
-                                    <CardDescription>
-                                        Personal notes for the author (not shown publicly)
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div
-                                        ref={notesEditor.editorRef}
-                                        className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
-                                    />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold">
-                                        Footnotes & References
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Add footnotes, citations, and references (shown at the end of the post)
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div
-                                        ref={footnotesEditor.editorRef}
-                                        className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
-                                    />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold">SEO Settings</CardTitle>
-                                    <CardDescription>Optimize your post for search engines</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="seoTitle">SEO Title</Label>
-                                        <Input
-                                            id="seoTitle"
-                                            value={seoTitle}
-                                            onChange={(e) => setSeoTitle(e.target.value)}
-                                            placeholder={title || 'Defaults to post title'}
-                                        />
-                                        <p className="text-xs text-muted-foreground">{seoTitle.length}/60 characters</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="seoDescription">Meta Description</Label>
-                                        <Textarea
-                                            id="seoDescription"
-                                            value={seoDescription}
-                                            onChange={(e) => setSeoDescription(e.target.value)}
-                                            placeholder="Brief description for search results..."
-                                            rows={3}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            {seoDescription.length}/160 characters
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="seoKeywords">Keywords</Label>
-                                        <Input
-                                            id="seoKeywords"
-                                            value={seoKeywords}
-                                            onChange={(e) => setSeoKeywords(e.target.value)}
-                                            placeholder="keyword1, keyword2, keyword3"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            id="seoNoIndex"
-                                            aria-label="Hide from search engines"
-                                            checked={seoNoIndex}
-                                            onChange={(e) => setSeoNoIndex(e.target.checked)}
-                                            className="rounded"
-                                        />
-                                        <Label htmlFor="seoNoIndex">Hide from search engines (noindex)</Label>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="meta" className="mt-4 data-[state=inactive]:hidden">
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="text-[0.9375rem] font-semibold">Custom Meta</CardTitle>
-                                    <CardDescription>
-                                        Free-form key/value metadata stored on the post. Not used by the blog engine
-                                        itself &mdash; available to themes, plugins, and custom renderers.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <JsonEditor
-                                        value={(meta ?? {}) as JsonValue}
-                                        onChange={(next) =>
-                                            setMeta(
-                                                next && typeof next === 'object' && !Array.isArray(next)
-                                                    ? (next as Record<string, unknown>)
-                                                    : {},
-                                            )
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="slug">Slug</Label>
+                                    <Input
+                                        id="slug"
+                                        value={slug}
+                                        onChange={(e) => {
+                                            slugCheckSequence.current++;
+                                            setSlug(e.target.value);
+                                            setSlugStatus('idle');
+                                        }}
+                                        onBlur={handleSlugBlur}
+                                        placeholder="url-friendly-slug"
+                                        aria-invalid={slugStatus === 'taken' || !!slugError}
+                                        className={
+                                            slugStatus === 'taken' || slugError
+                                                ? 'border-destructive focus-visible:ring-destructive'
+                                                : undefined
                                         }
-                                        rootLabel="meta"
-                                        collapseAtDepth={3}
                                     />
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                        Add custom keys &amp; values (strings, numbers, booleans, arrays, objects).
-                                        Saved as JSON on the post&apos;s <code>meta</code> column.
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="languages" className="mt-4 data-[state=inactive]:hidden">
-                            {isEditMode && postId && initialData ? (
-                                <AdminBlogTranslationsPanel postId={postId} basePost={initialData} />
-                            ) : (
+                                    {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                                    {slugStatus === 'checking' && (
+                                        <p className="text-xs text-muted-foreground">Checking slug...</p>
+                                    )}
+                                    {slugStatus === 'taken' && (
+                                        <p className="text-xs text-destructive">Slug already in use.</p>
+                                    )}
+                                    {slugStatus === 'available' && (
+                                        <p className="text-xs text-muted-foreground">Slug is available.</p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Content Tabs */}
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+                                <TabsTrigger value="content" className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Content
+                                </TabsTrigger>
+                                <TabsTrigger value="notes" className="flex items-center gap-2">
+                                    <StickyNote className="h-4 w-4" />
+                                    Notes
+                                </TabsTrigger>
+                                <TabsTrigger value="footnotes" className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Footnotes
+                                </TabsTrigger>
+                                <TabsTrigger value="seo" className="flex items-center gap-2">
+                                    <Search className="h-4 w-4" />
+                                    SEO
+                                </TabsTrigger>
+                                <TabsTrigger value="meta" className="flex items-center gap-2">
+                                    <Braces className="h-4 w-4" />
+                                    Custom Meta
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
                                 <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                                    <CardContent className="p-6 text-sm text-muted-foreground">
-                                        Save this post first to add translations.
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">Main Content</CardTitle>
+                                        <CardDescription>
+                                            Write your post content using the rich text editor
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {/* Undo/Redo and Export toolbar */}
+                                        <div className="flex items-center gap-1 mb-3">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => mainEditor.undo()}
+                                                disabled={!mainEditor.canUndo}
+                                                title="Undo (Ctrl+Z)"
+                                            >
+                                                <Undo2 className="h-4 w-4 mr-1" />
+                                                Undo
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => mainEditor.redo()}
+                                                disabled={!mainEditor.canRedo}
+                                                title="Redo (Ctrl+Shift+Z)"
+                                            >
+                                                <Redo2 className="h-4 w-4 mr-1" />
+                                                Redo
+                                            </Button>
+                                            <div className="ml-auto">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <Download className="h-4 w-4 mr-1" />
+                                                            Export
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            onClick={async () => {
+                                                                const json = await mainEditor.exportJSON();
+                                                                downloadText(json ?? '', 'post-content.json');
+                                                            }}
+                                                        >
+                                                            Export JSON
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={async () => {
+                                                                const md = await mainEditor.exportMarkdown();
+                                                                downloadText(md ?? '', 'post-content.md');
+                                                            }}
+                                                        >
+                                                            Export Markdown
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </div>
+                                        <div
+                                            ref={mainEditor.editorRef}
+                                            className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                        />
                                     </CardContent>
                                 </Card>
-                            )}
-                        </TabsContent>
-                    </Tabs>
 
-                    {/* Excerpt */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                        <CardHeader>
-                            <CardTitle className="text-[0.9375rem] font-semibold">Excerpt</CardTitle>
-                            <CardDescription>Short summary shown in listings (auto-generated if empty)</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Textarea
-                                value={excerpt}
-                                onChange={(e) => setExcerpt(e.target.value)}
-                                placeholder="Brief summary of the post..."
-                                rows={3}
-                            />
-                        </CardContent>
-                    </Card>
+                                <Card className="mt-6 rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">Excerpt</CardTitle>
+                                        <CardDescription>
+                                            Short summary shown in listings (auto-generated if empty)
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Textarea
+                                            value={excerpt}
+                                            onChange={(e) => setExcerpt(e.target.value)}
+                                            placeholder="Brief summary of the post..."
+                                            rows={3}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
 
-                    <CrosspostsField value={crossposts} onChange={setCrossposts} noun="post" />
+                            <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">Private Notes</CardTitle>
+                                        <CardDescription>
+                                            Personal notes for the author (not shown publicly)
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div
+                                            ref={notesEditor.editorRef}
+                                            className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">
+                                            Footnotes & References
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Add footnotes, citations, and references (shown at the end of the post)
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div
+                                            ref={footnotesEditor.editorRef}
+                                            className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
+                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">SEO Settings</CardTitle>
+                                        <CardDescription>Optimize your post for search engines</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="seoTitle">SEO Title</Label>
+                                            <Input
+                                                id="seoTitle"
+                                                value={seoTitle}
+                                                onChange={(e) => setSeoTitle(e.target.value)}
+                                                placeholder={title || 'Defaults to post title'}
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                {seoTitle.length}/60 characters
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="seoDescription">Meta Description</Label>
+                                            <Textarea
+                                                id="seoDescription"
+                                                value={seoDescription}
+                                                onChange={(e) => setSeoDescription(e.target.value)}
+                                                placeholder="Brief description for search results..."
+                                                rows={3}
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                {seoDescription.length}/160 characters
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="seoKeywords">Keywords</Label>
+                                            <Input
+                                                id="seoKeywords"
+                                                value={seoKeywords}
+                                                onChange={(e) => setSeoKeywords(e.target.value)}
+                                                placeholder="keyword1, keyword2, keyword3"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="seoNoIndex"
+                                                aria-label="Hide from search engines"
+                                                checked={seoNoIndex}
+                                                onChange={(e) => setSeoNoIndex(e.target.checked)}
+                                                className="rounded"
+                                            />
+                                            <Label htmlFor="seoNoIndex">Hide from search engines (noindex)</Label>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="meta" className="mt-4 data-[state=inactive]:hidden">
+                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                    <CardHeader>
+                                        <CardTitle className="text-[0.9375rem] font-semibold">Custom Meta</CardTitle>
+                                        <CardDescription>
+                                            Free-form key/value metadata stored on the post. Not used by the blog engine
+                                            itself &mdash; available to themes, plugins, and custom renderers.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <JsonEditor
+                                            value={(meta ?? {}) as JsonValue}
+                                            onChange={(next) =>
+                                                setMeta(
+                                                    next && typeof next === 'object' && !Array.isArray(next)
+                                                        ? (next as Record<string, unknown>)
+                                                        : {},
+                                                )
+                                            }
+                                            rootLabel="meta"
+                                            collapseAtDepth={3}
+                                        />
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                            Add custom keys &amp; values (strings, numbers, booleans, arrays, objects).
+                                            Saved as JSON on the post&apos;s <code>meta</code> column.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
+
+                        <CrosspostsField value={crossposts} onChange={setCrossposts} noun="post" />
+                    </div>
                 </div>
 
                 {/* Right Column - Settings */}
                 <div className="space-y-6">
+                    {isWritingTranslation && (
+                        <div className="space-y-2 rounded-xl border bg-muted/40 p-4">
+                            <h2 className="text-sm font-semibold">Post settings</h2>
+                            <p className="text-xs text-muted-foreground">
+                                Hero image, tags, categories, and series are shared across languages.
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Save these with the original post. This also saves any pending edits to the original; it
+                                does not save this translation.
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => handleSave(false)}
+                                disabled={saveDisabled}
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                {isSaving ? 'Saving…' : 'Save original & shared settings'}
+                            </Button>
+                        </div>
+                    )}
                     {/* Hero Image */}
                     <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                         <CardHeader>
@@ -1812,7 +1914,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     ))}
                                 </NativeSelect>
                                 <p className="text-xs text-muted-foreground">
-                                    Translations are managed in the Languages tab.
+                                    The original post language. Use Writing language above to edit localized versions.
                                 </p>
                             </div>
 
@@ -1836,7 +1938,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="postStatus">Status</Label>
+                                <Label htmlFor="postStatus">Original post status</Label>
                                 <NativeSelect
                                     id="postStatus"
                                     aria-label="Post status"
@@ -1853,7 +1955,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Schedule Publish</Label>
+                                <Label>Original post schedule</Label>
                                 <Input
                                     type="datetime-local"
                                     value={publishAt}
@@ -2308,6 +2410,20 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 </div>
             </div>
 
+            <ConfirmDialog
+                open={pendingWritingLanguage !== null}
+                title="Unsaved changes"
+                description="Save this translation before switching, or discard its unsaved changes."
+                tone="unsaved-changes"
+                primaryActionText="Discard and switch"
+                secondaryActionText="Keep editing"
+                onConfirm={() => {
+                    setTranslationDirty(false);
+                    setWritingLanguage(pendingWritingLanguage === baseLanguage ? null : pendingWritingLanguage);
+                    setPendingWritingLanguage(null);
+                }}
+                onCancel={() => setPendingWritingLanguage(null)}
+            />
             <Dialog
                 open={!!previewVersion}
                 onOpenChange={(open) => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,6 +62,15 @@ vi.mock('@ottabase/ui-shadcn', () => {
         Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
         NativeSelect: (props: any) => <select {...props} />,
         NativeSelectOption: (props: any) => <option {...props} />,
+        Select: ({ children }: any) => <div>{children}</div>,
+        SelectContent: ({ children }: any) => <div>{children}</div>,
+        SelectItem: ({ children }: any) => <div>{children}</div>,
+        SelectTrigger: ({ children, ...props }: any) => (
+            <button type="button" {...props}>
+                {children}
+            </button>
+        ),
+        SelectValue: () => <span />,
         Textarea: (props: any) => <textarea {...props} />,
         cn: (...classes: any[]) => classes.filter(Boolean).join(' '),
     };
@@ -84,6 +93,7 @@ vi.mock('lucide-react', () => ({
     Loader2: () => null,
     Save: () => null,
     Trash2: () => null,
+    Eye: () => null,
 }));
 
 import { AdminBlogTranslationsPanel } from '../AdminBlogTranslationsPanel';
@@ -92,6 +102,85 @@ describe('AdminBlogTranslationsPanel', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mutationOptions.clear();
+    });
+
+    it('keeps the header save scoped to the translation when shared settings refresh', async () => {
+        const header = document.createElement('div');
+        document.body.appendChild(header);
+        const basePost = {
+            id: 'post-1',
+            language: 'en',
+            title: 'Hello',
+            slug: 'hello',
+            excerpt: null,
+            content: null,
+            contentType: 'blog' as const,
+            status: 'draft' as const,
+        };
+        const view = render(
+            <AdminBlogTranslationsPanel
+                postId="post-1"
+                basePost={basePost}
+                selectedLanguage="hi"
+                actionsTarget={header}
+            />,
+        );
+        try {
+            const save = await within(header).findByRole('button', { name: /save translation/i });
+            expect(within(view.container).queryByRole('button', { name: /save translation/i })).toBeNull();
+            fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'My translation draft' } });
+            view.rerender(
+                <AdminBlogTranslationsPanel
+                    postId="post-1"
+                    basePost={{ ...basePost, title: 'Updated original', excerpt: 'Updated summary' }}
+                    selectedLanguage="hi"
+                    actionsTarget={header}
+                />,
+            );
+            expect(screen.getByLabelText('Title')).toHaveValue('My translation draft');
+            fireEvent.click(save);
+            await waitFor(() =>
+                expect(mutateAsync).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        language: 'hi',
+                        title: 'My translation draft',
+                        slug: 'hello-hi',
+                        status: 'draft',
+                    }),
+                ),
+            );
+        } finally {
+            view.unmount();
+            header.remove();
+        }
+    });
+
+    it('uses the workspace language and reports unsaved edits to the page guard', async () => {
+        const onDirtyChange = vi.fn();
+        render(
+            <AdminBlogTranslationsPanel
+                postId="post-1"
+                selectedLanguage="hi"
+                onDirtyChange={onDirtyChange}
+                basePost={{
+                    id: 'post-1',
+                    language: 'en',
+                    title: 'Hello',
+                    slug: 'hello',
+                    excerpt: null,
+                    content: null,
+                    contentType: 'blog',
+                    status: 'draft',
+                }}
+            />,
+        );
+        expect(await screen.findByText('Add Hindi translation')).toBeTruthy();
+        expect(screen.queryByLabelText('Language')).toBeNull();
+        fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Hindi draft' } });
+        await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+        fireEvent.click(screen.getByRole('button', { name: /save translation/i }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ language: 'hi' })));
+        await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
     });
 
     it('includes the selected language when creating a translation', async () => {
@@ -131,6 +220,33 @@ describe('AdminBlogTranslationsPanel', () => {
             'blog_translation_detail',
         ]);
         await waitFor(() => expect(saveButton).toBeDisabled());
+    });
+
+    it('keeps the original slug as a fixed prefix while allowing a custom suffix', async () => {
+        render(
+            <AdminBlogTranslationsPanel
+                postId="post-1"
+                basePost={{
+                    id: 'post-1',
+                    language: 'en',
+                    title: 'Hello',
+                    slug: 'hello',
+                    excerpt: null,
+                    content: null,
+                    contentType: 'blog',
+                    status: 'draft',
+                }}
+            />,
+        );
+
+        expect(await screen.findByLabelText('Translation slug suffix')).toHaveValue('ml');
+        fireEvent.change(screen.getByLabelText('Translation slug suffix'), { target: { value: 'malayalam' } });
+        fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Malayalam title' } });
+        fireEvent.click(screen.getByRole('button', { name: /save translation/i }));
+
+        await waitFor(() =>
+            expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ slug: 'hello-malayalam' })),
+        );
     });
 
     it('asks before switching languages when the current translation is dirty', async () => {
