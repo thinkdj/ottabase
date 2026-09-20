@@ -511,7 +511,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         appId: string,
         organizationId: string | null | undefined,
     ): Promise<BlogLanguageConfig> {
-        const settings = await OttablogSettings.forScope({ appId, organizationId });
+        const settings = await OttablogSettings.forScopeOrPlatform({ appId, organizationId });
         return (
             settings?.config() ?? {
                 defaultLanguage: 'en',
@@ -758,7 +758,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
         if (context.request.method === 'GET') {
-            return jsonResponse(await languageConfigFor(context, appId, organizationId));
+            // Tenant-specific mutable Studio state must never be reused after a save.
+            return jsonResponse(await languageConfigFor(context, appId, organizationId), 200, {
+                headers: { 'Cache-Control': 'no-store' },
+            });
         }
         const admin = await requireStudioAdmin(context, organizationId);
         if (admin instanceof Response) return admin;
@@ -782,7 +785,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 supportedLanguages: body.supportedLanguages as BlogLanguage[],
                 fallbackToDefault: body.fallbackToDefault as boolean | undefined,
             });
-            return jsonResponse(settings.config());
+            return jsonResponse(settings.config(), 200, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
             if (error instanceof ContentValidationError || error instanceof DomainValidationError) {
                 return errorResponse(error.message, error instanceof DomainValidationError ? error.status : 400, {
@@ -858,11 +861,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             appId: scopedAppId,
             organizationId: result.securityContext.organizationId,
         });
-        return jsonResponse({
-            baseLanguage: result.post.get('language') || result.languageConfig.defaultLanguage,
-            languageConfig: result.languageConfig,
-            translations: translations.map((translation) => translation.toJson()),
-        });
+        return jsonResponse(
+            {
+                baseLanguage: result.post.get('language') || result.languageConfig.defaultLanguage,
+                languageConfig: result.languageConfig,
+                translations: translations.map((translation) => translation.toJson()),
+            },
+            200,
+            { headers: { 'Cache-Control': 'no-store' } },
+        );
     }
 
     async function handleBlogPostTranslationCreate(context: Ctx, postId: string): Promise<Response> {

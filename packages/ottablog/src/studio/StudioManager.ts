@@ -78,7 +78,7 @@ export class StudioManager {
         const [themesRows, pluginsRows, settings] = await Promise.all([
             OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
             OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
-            OttablogSettings.forScope({ appId: appId ?? null, organizationId }),
+            OttablogSettings.forScopeOrPlatform({ appId: appId ?? null, organizationId }),
         ]);
 
         const activeThemeRow = themesRows.find((t) => t.get('isActive'));

@@ -96,8 +96,24 @@ export class OttablogSettings extends BaseModel {
     }): Promise<OttablogSettings | null> {
         const where: Record<string, unknown> = {};
         if (options.appId !== undefined) where.appId = options.appId;
-        if (options.organizationId !== undefined) where.organizationId = options.organizationId;
+        // Settings always belong to one exact scope. An omitted organization is
+        // the platform scope, not an unscoped query that may pick another org's row.
+        where.organizationId = options.organizationId ?? null;
         return (await this.first(where)) as OttablogSettings | null;
+    }
+
+    /**
+     * Resolve the effective language policy for a blog scope. Organization blogs
+     * inherit the platform policy until an organization administrator saves an
+     * explicit override for that organization.
+     */
+    static async forScopeOrPlatform(options: {
+        appId?: string | null;
+        organizationId?: string | null;
+    }): Promise<OttablogSettings | null> {
+        const scoped = await this.forScope(options);
+        if (scoped || options.organizationId == null) return scoped;
+        return this.forScope({ appId: options.appId, organizationId: null });
     }
 
     static async ensure(options: { appId?: string | null; organizationId?: string | null }): Promise<OttablogSettings> {

@@ -8,6 +8,7 @@ import {
 } from '@ottabase/ottablog';
 import { useOttaEditor, type OutputData } from '@ottabase/ottaeditor';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
+import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -68,6 +69,16 @@ interface Props {
     basePost: BasePost;
 }
 
+interface TranslationFormValues {
+    title: string;
+    slug: string;
+    excerpt: string;
+    status: PostStatus;
+    publishAt: string;
+    blurbText: string;
+    photoNote: string;
+}
+
 function TranslationEditor({
     postId,
     basePost,
@@ -75,6 +86,7 @@ function TranslationEditor({
     existing,
     onSaved,
     onDeleted,
+    onDirtyChange,
 }: {
     postId: string;
     basePost: BasePost;
@@ -82,17 +94,43 @@ function TranslationEditor({
     existing?: Translation;
     onSaved: () => void;
     onDeleted: () => void;
+    onDirtyChange: (dirty: boolean) => void;
 }) {
     const languageName = existing?.language || language;
-    const [title, setTitle] = useState(existing?.title ?? basePost.title);
-    const [slug, setSlug] = useState(existing?.slug ?? `${basePost.slug}-${language.toLowerCase()}`);
-    const [excerpt, setExcerpt] = useState(existing?.excerpt ?? basePost.excerpt ?? '');
-    const [status, setStatus] = useState<PostStatus>(existing?.status ?? 'draft');
-    const [publishAt, setPublishAt] = useState(
-        existing?.publishAt ? new Date(existing.publishAt).toISOString().slice(0, 16) : '',
+    const initialValues = useMemo<TranslationFormValues>(
+        () => ({
+            title: existing?.title ?? basePost.title,
+            slug: existing?.slug ?? `${basePost.slug}-${language.toLowerCase()}`,
+            excerpt: existing?.excerpt ?? basePost.excerpt ?? '',
+            status: existing?.status ?? 'draft',
+            publishAt: existing?.publishAt ? new Date(existing.publishAt).toISOString().slice(0, 16) : '',
+            blurbText: existing?.blurbText ?? basePost.blurbText ?? '',
+            photoNote: existing?.photoNote ?? basePost.photoNote ?? '',
+        }),
+        [
+            basePost.blurbText,
+            basePost.excerpt,
+            basePost.photoNote,
+            basePost.slug,
+            basePost.title,
+            existing?.blurbText,
+            existing?.excerpt,
+            existing?.publishAt,
+            existing?.photoNote,
+            existing?.slug,
+            existing?.status,
+            existing?.title,
+            language,
+        ],
     );
-    const [blurbText, setBlurbText] = useState(existing?.blurbText ?? basePost.blurbText ?? '');
-    const [photoNote, setPhotoNote] = useState(existing?.photoNote ?? basePost.photoNote ?? '');
+    const [title, setTitle] = useState(initialValues.title);
+    const [slug, setSlug] = useState(initialValues.slug);
+    const [excerpt, setExcerpt] = useState(initialValues.excerpt);
+    const [status, setStatus] = useState<PostStatus>(initialValues.status);
+    const [publishAt, setPublishAt] = useState(initialValues.publishAt);
+    const [blurbText, setBlurbText] = useState(initialValues.blurbText);
+    const [photoNote, setPhotoNote] = useState(initialValues.photoNote);
+    const [savedValues, setSavedValues] = useState(initialValues);
     const [error, setError] = useState<string | null>(null);
     const editor = useOttaEditor({
         defaultPlugins: 'all',
@@ -114,20 +152,36 @@ function TranslationEditor({
     });
 
     useEffect(() => {
-        setTitle(existing?.title ?? basePost.title);
-        setSlug(existing?.slug ?? `${basePost.slug}-${language.toLowerCase()}`);
-        setExcerpt(existing?.excerpt ?? basePost.excerpt ?? '');
-        setStatus(existing?.status ?? 'draft');
-        setPublishAt(existing?.publishAt ? new Date(existing.publishAt).toISOString().slice(0, 16) : '');
-        setBlurbText(existing?.blurbText ?? basePost.blurbText ?? '');
-        setPhotoNote(existing?.photoNote ?? basePost.photoNote ?? '');
-    }, [existing, basePost, language]);
+        setTitle(initialValues.title);
+        setSlug(initialValues.slug);
+        setExcerpt(initialValues.excerpt);
+        setStatus(initialValues.status);
+        setPublishAt(initialValues.publishAt);
+        setBlurbText(initialValues.blurbText);
+        setPhotoNote(initialValues.photoNote);
+        setSavedValues(initialValues);
+    }, [initialValues]);
+
+    const currentValues = useMemo<TranslationFormValues>(
+        () => ({ title, slug, excerpt, status, publishAt, blurbText, photoNote }),
+        [blurbText, excerpt, photoNote, publishAt, slug, status, title],
+    );
+    const isDirty =
+        editor.hasUnsavedChanges ||
+        (Object.keys(currentValues) as Array<keyof TranslationFormValues>).some(
+            (key) => currentValues[key] !== savedValues[key],
+        );
+
+    useEffect(() => {
+        onDirtyChange(isDirty);
+    }, [isDirty, onDirtyChange]);
 
     const save = async () => {
         setError(null);
         try {
             const content = await editor.save();
             await saveMutation.mutateAsync({
+                language,
                 title,
                 slug,
                 excerpt: excerpt || null,
@@ -137,6 +191,7 @@ function TranslationEditor({
                 blurbText: blurbText || null,
                 photoNote: photoNote || null,
             });
+            setSavedValues(currentValues);
             onSaved();
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Could not save this translation.');
@@ -275,6 +330,8 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
         endpoint: `/api/blog/posts/${postId}/translations`,
     });
     const [language, setLanguage] = useState<string | null>(null);
+    const [translationDirty, setTranslationDirty] = useState(false);
+    const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
     const languages = useMemo(
         () =>
             (data?.languageConfig.supportedLanguages ?? []).filter(
@@ -283,6 +340,23 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
         [data, basePost.language],
     );
     const existing = data?.translations.find((item) => item.language === language);
+
+    const requestLanguageChange = (nextLanguage: string) => {
+        if (nextLanguage === language) return;
+        if (translationDirty) {
+            setPendingLanguage(nextLanguage);
+            return;
+        }
+        setLanguage(nextLanguage);
+    };
+
+    const leaveTranslation = () => {
+        if (!pendingLanguage) return;
+        setTranslationDirty(false);
+        setLanguage(pendingLanguage);
+        setPendingLanguage(null);
+    };
+
     useEffect(() => {
         if (!language && languages[0]) setLanguage(languages[0].code);
         if (language && !languages.some((item) => item.code === language)) setLanguage(languages[0]?.code ?? null);
@@ -330,7 +404,7 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
                     <NativeSelect
                         id="translation-language"
                         value={language ?? ''}
-                        onChange={(event) => setLanguage(event.target.value)}
+                        onChange={(event) => requestLanguageChange(event.target.value)}
                     >
                         {languages.map((item) => (
                             <NativeSelectOption key={item.code} value={item.code}>
@@ -349,8 +423,19 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
                     existing={existing}
                     onSaved={() => void refetch()}
                     onDeleted={() => void refetch()}
+                    onDirtyChange={setTranslationDirty}
                 />
             )}
+            <ConfirmDialog
+                open={pendingLanguage !== null}
+                title="Unsaved changes"
+                description="You have unsaved changes that will be lost if you switch languages."
+                tone="unsaved-changes"
+                primaryActionText="Leave without saving"
+                secondaryActionText="Stay and keep editing"
+                onConfirm={leaveTranslation}
+                onCancel={() => setPendingLanguage(null)}
+            />
         </div>
     );
 }

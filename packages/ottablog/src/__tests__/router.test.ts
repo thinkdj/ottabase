@@ -31,6 +31,7 @@ vi.mock('../ottaorm-models', () => ({
     PostTagLink: { where: vi.fn(async () => []) },
     OttablogSettings: {
         forScope: vi.fn(async () => null),
+        forScopeOrPlatform: vi.fn(async () => null),
         ensure: vi.fn(async () => ({
             config: () => ({
                 defaultLanguage: 'en',
@@ -208,6 +209,47 @@ describe('createBlogHandlers', () => {
             themes: [{ themeId: 'default' }],
             plugins: [{}],
         } as any);
+    });
+
+    it('does not cache mutable language policy reads', async () => {
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [{ code: 'en', name: 'English' }],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const response = await handlers.handleBlogStudioLanguages(ctxFor('/studio/languages'));
+
+        expect(response.headers.get('cache-control')).toBe('no-store');
+    });
+
+    it('uses the platform policy when an organization has no override', async () => {
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+            config: () => ({
+                defaultLanguage: 'en',
+                supportedLanguages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ml', name: 'Malayalam' },
+                ],
+                fallbackToDefault: true,
+            }),
+        } as any);
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            mode: 'org',
+            resolveOrganizationId: vi.fn(async () => 'org-1'),
+        });
+
+        const response = await handlers.handleBlogStudioLanguages(ctxFor('/studio/languages'));
+
+        expect((await response.json()).supportedLanguages).toContainEqual(expect.objectContaining({ code: 'ml' }));
+        expect(OttablogSettings.forScopeOrPlatform).toHaveBeenCalledWith({
+            appId: 'test-app',
+            organizationId: 'org-1',
+        });
     });
 
     /**
@@ -478,7 +520,7 @@ describe('createBlogHandlers', () => {
                     title: 'Namaskaram',
                 })[field],
         };
-        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -506,7 +548,7 @@ describe('createBlogHandlers', () => {
     });
 
     it('honors Accept-Language quality weights when selecting a supported locale', async () => {
-        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -543,7 +585,7 @@ describe('createBlogHandlers', () => {
     });
 
     it('searches localized fields and keeps the list projection bounded to matching post ids', async () => {
-        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -587,7 +629,7 @@ describe('createBlogHandlers', () => {
         const disabledTranslation = {
             get: (field: string) => ({ id: 't2', postId: 'p1', language: 'fr', slug: 'bonjour' })[field],
         };
-        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -1224,7 +1266,7 @@ describe('createBlogHandlers', () => {
         vi.mocked(Post.where)
             .mockResolvedValueOnce([recent] as any)
             .mockResolvedValueOnce([older] as any);
-        vi.mocked(OttablogSettings.forScope).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [

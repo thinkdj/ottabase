@@ -116,12 +116,13 @@ export function useApiMutation<TData, TVariables = unknown, TContext = unknown>(
             });
         },
         onSuccess: async (data, variables, onMutateResult, mutationContext) => {
-            for (const entity of invalidateEntities) {
-                void queryClient.invalidateQueries({ queryKey: [entity] });
-            }
-            for (const key of invalidateKeys) {
-                void queryClient.invalidateQueries({ queryKey: key });
-            }
+            // A caller may navigate to a dependent screen in its onSuccess.
+            // Wait until every matching query has been marked stale/refetched
+            // before reporting the mutation as complete.
+            await Promise.all([
+                ...invalidateEntities.map((entity) => queryClient.invalidateQueries({ queryKey: [entity] })),
+                ...invalidateKeys.map((key) => queryClient.invalidateQueries({ queryKey: key })),
+            ]);
             await consumerOnSuccess?.(data, variables, onMutateResult, mutationContext);
         },
     });

@@ -17,7 +17,7 @@ vi.mock('../ottaorm-models', () => ({
     PostSeries: { findBySlug: vi.fn(async () => null) },
     PostTag: { findBySlug: vi.fn(async () => null) },
     PostTagLink: { where: vi.fn(async () => []) },
-    OttablogSettings: { forScope: vi.fn(async () => null) },
+    OttablogSettings: { forScope: vi.fn(async () => null), forScopeOrPlatform: vi.fn(async () => null) },
     PostTranslation: {
         forPost: vi.fn(async () => []),
         findForPost: vi.fn(async () => null),

@@ -133,6 +133,10 @@ post lists stay small and the large EditorJS payloads remain deferred.
 
 Configure the policy from the admin Content Studio or by updating the Studio endpoint:
 
+In organization mode, a blog inherits its platform language policy until that organization saves its own Content Studio
+policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate the
+platform's enabled languages.
+
 ```http
 GET  /api/blog/studio/languages
 POST /api/blog/studio/languages

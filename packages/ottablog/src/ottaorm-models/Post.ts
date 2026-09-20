@@ -1100,7 +1100,7 @@ export class Post extends BaseModel {
         if (appId === undefined && organizationId === undefined) return;
         const normalized = normalizeLanguageCode(language ?? 'en');
         const { OttablogSettings } = await import('./OttablogSettings');
-        const settings = await OttablogSettings.forScope({
+        const settings = await OttablogSettings.forScopeOrPlatform({
             appId: appId ?? null,
             organizationId: organizationId ?? null,
         });
