@@ -8,6 +8,8 @@
  * never get bounced into admin-gated routes.
  */
 import { useLocation } from '@tanstack/react-router';
+import type { ContentType } from '@ottabase/ottablog';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 
 export interface BlogSurfacePaths {
     /** True when rendering under /studio. */
@@ -21,6 +23,18 @@ export interface BlogSurfacePaths {
     seriesPath: string;
     /** Theme/plugin management (named 'studio' under admin, 'themes' under /studio). */
     themesPath: string;
+}
+
+/** Build a safe public URL for saved blog content. */
+export function getPublicContentPath(slug: string, contentType: ContentType): string {
+    const encodedSlug = encodeURIComponent(slug);
+    const path =
+        contentType === 'changelog'
+            ? `/changelog/${encodedSlug}`
+            : contentType === 'docs'
+              ? `/docs/${encodedSlug}`
+              : `/blog/${encodedSlug}`;
+    return sanitizeUrl(path);
 }
 
 export function resolveBlogSurface(pathname: string): BlogSurfacePaths {

@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
-import { useBlogSurface } from './blogAdminPaths';
+import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
 
 /** Debounce delay for search input (ms) */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -89,18 +89,6 @@ interface BlogPost {
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 
 const POSTS_PER_PAGE = 20;
-
-/** Get the correct public URL for a post based on its content type */
-function getPublicUrl(slug: string, contentType: ContentType): string {
-    switch (contentType) {
-        case 'changelog':
-            return `/changelog/${slug}`;
-        case 'docs':
-            return `/docs/${slug}`;
-        default:
-            return `/blog/${slug}`;
-    }
-}
 
 /** Content type tabs - all singular for consistency */
 // Derived, never hand-listed: the package owns the taxonomy, so a new content type
@@ -556,7 +544,7 @@ export function AdminBlogListPage() {
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button variant="ghost" size="icon" asChild>
                                                     <a
-                                                        href={getPublicUrl(post.slug, post.contentType)}
+                                                        href={getPublicContentPath(post.slug, post.contentType)}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         aria-label="View"

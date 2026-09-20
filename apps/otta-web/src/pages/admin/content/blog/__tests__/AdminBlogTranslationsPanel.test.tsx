@@ -2,15 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { editorSave, mutateAsync, refetch, mutationOptions } = vi.hoisted(() => ({
+const { editorSave, mutateAsync, mutationOptions } = vi.hoisted(() => ({
     editorSave: vi.fn(async () => ({ blocks: [] })),
     mutateAsync: vi.fn(async () => ({})),
-    refetch: vi.fn(),
     mutationOptions: new Map<string, any>(),
 }));
 
 vi.mock('@ottabase/ottaeditor', () => ({
-    useOttaEditor: () => ({ editorRef: { current: null }, save: editorSave }),
+    useOttaEditor: () => ({ editorRef: { current: null }, save: editorSave, hasUnsavedChanges: false }),
 }));
 
 vi.mock('@ottabase/ottaorm/client', () => ({
@@ -30,7 +29,6 @@ vi.mock('@ottabase/ottaorm/client', () => ({
         },
         isLoading: false,
         isError: false,
-        refetch,
     }),
     useApiMutation: (options: any) => {
         mutationOptions.set(options.endpoint, options);
@@ -113,18 +111,26 @@ describe('AdminBlogTranslationsPanel', () => {
             />,
         );
 
-        await waitFor(() => expect(screen.getByRole('button', { name: /save translation/i })).toBeTruthy());
-        fireEvent.click(screen.getByRole('button', { name: /save translation/i }));
+        const saveButton = await screen.findByRole('button', { name: /save translation/i });
+        expect(saveButton).toBeDisabled();
+        fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Edited title' } });
+        await waitFor(() => expect(saveButton).toBeEnabled());
+        fireEvent.click(saveButton);
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
         expect(mutateAsync).toHaveBeenCalledWith(
             expect.objectContaining({
                 language: 'ml',
-                title: 'Hello',
+                title: 'Edited title',
                 slug: 'hello-ml',
             }),
         );
         expect(mutationOptions.get('/api/blog/posts/post-1/translations')?.method).toBe('POST');
+        expect(mutationOptions.get('/api/blog/posts/post-1/translations')?.invalidateEntities).toEqual([
+            'blog_translations',
+            'blog_translation_detail',
+        ]);
+        await waitFor(() => expect(saveButton).toBeDisabled());
     });
 
     it('asks before switching languages when the current translation is dirty', async () => {

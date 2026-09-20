@@ -456,6 +456,17 @@ export class PostTranslation extends BaseModel {
         >;
     }
 
+    static async forPostSummary(postId: string, options?: { appId?: string | null; organizationId?: string | null }) {
+        const where: Record<string, unknown> = { postId };
+        if (options?.appId !== undefined) where.appId = options.appId;
+        if (options?.organizationId !== undefined) where.organizationId = options.organizationId;
+        return this.where(where, {
+            orderBy: 'language',
+            orderDirection: 'asc',
+            select: ['id', 'postId', 'language', 'title', 'slug', 'status', 'publishAt', 'publishedAt', 'updatedAt'],
+        }) as Promise<PostTranslation[]>;
+    }
+
     static async forPublicPosts(
         postIds: string[],
         options: { language?: string; appId?: string | null; organizationId?: string | null; status?: PostStatus },
@@ -544,6 +555,20 @@ export class PostTranslation extends BaseModel {
             publishAt: this.get('publishAt'),
             publishedAt: this.get('publishedAt'),
             postedAt: this.get('postedAt'),
+        };
+    }
+
+    toSummaryJson(): Record<string, unknown> {
+        return {
+            id: this.get('id'),
+            postId: this.get('postId'),
+            language: this.get('language'),
+            title: this.get('title'),
+            slug: this.get('slug'),
+            status: this.get('status'),
+            publishAt: this.get('publishAt'),
+            publishedAt: this.get('publishedAt'),
+            updatedAt: this.get('updatedAt'),
         };
     }
 

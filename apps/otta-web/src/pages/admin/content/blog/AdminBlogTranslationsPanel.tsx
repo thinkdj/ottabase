@@ -58,9 +58,25 @@ interface Translation {
     updatedAt: number;
 }
 
+interface TranslationSummary {
+    id: string;
+    postId: string;
+    language: string;
+    title: string;
+    slug: string;
+    status: PostStatus;
+    publishAt: number | null;
+    publishedAt: number | null;
+    updatedAt: number;
+}
+
 interface TranslationResponse {
     baseLanguage: string;
     languageConfig: BlogLanguageConfig;
+    translations: TranslationSummary[];
+}
+
+interface TranslationDetailResponse extends Omit<TranslationResponse, 'translations'> {
     translations: Translation[];
 }
 
@@ -84,16 +100,12 @@ function TranslationEditor({
     basePost,
     language,
     existing,
-    onSaved,
-    onDeleted,
     onDirtyChange,
 }: {
     postId: string;
     basePost: BasePost;
     language: string;
     existing?: Translation;
-    onSaved: () => void;
-    onDeleted: () => void;
     onDirtyChange: (dirty: boolean) => void;
 }) {
     const languageName = existing?.language || language;
@@ -143,12 +155,12 @@ function TranslationEditor({
             ? `/api/blog/posts/${postId}/translations/${encodeURIComponent(language)}`
             : `/api/blog/posts/${postId}/translations`,
         method: existing ? 'PATCH' : 'POST',
-        invalidateEntities: ['blog_translations'],
+        invalidateEntities: ['blog_translations', 'blog_translation_detail'],
     });
     const deleteMutation = useApiMutation<unknown, Record<string, never>>({
         endpoint: `/api/blog/posts/${postId}/translations/${encodeURIComponent(language)}`,
         method: 'DELETE',
-        invalidateEntities: ['blog_translations'],
+        invalidateEntities: ['blog_translations', 'blog_translation_detail'],
     });
 
     useEffect(() => {
@@ -192,7 +204,6 @@ function TranslationEditor({
                 photoNote: photoNote || null,
             });
             setSavedValues(currentValues);
-            onSaved();
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Could not save this translation.');
         }
@@ -202,7 +213,6 @@ function TranslationEditor({
         setError(null);
         try {
             await deleteMutation.mutateAsync({});
-            onDeleted();
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Could not delete this translation.');
         }
@@ -313,7 +323,7 @@ function TranslationEditor({
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete translation
                     </Button>
-                    <Button type="button" onClick={save} disabled={saveMutation.isPending || !title.trim()}>
+                    <Button type="button" onClick={save} disabled={saveMutation.isPending || !isDirty || !title.trim()}>
                         <Save className="mr-2 h-4 w-4" />
                         {saveMutation.isPending ? 'Saving…' : 'Save translation'}
                     </Button>
@@ -324,7 +334,7 @@ function TranslationEditor({
 }
 
 export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
-    const { data, isLoading, isError, refetch } = useApiQuery<TranslationResponse>({
+    const { data, isLoading, isError } = useApiQuery<TranslationResponse>({
         entity: 'blog_translations',
         queryKey: [postId],
         endpoint: `/api/blog/posts/${postId}/translations`,
@@ -339,7 +349,21 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
             ),
         [data, basePost.language],
     );
-    const existing = data?.translations.find((item) => item.language === language);
+    const existingSummary = data?.translations.find((item) => item.language === language);
+    const {
+        data: selectedTranslationData,
+        isLoading: isLoadingSelectedTranslation,
+        isError: isSelectedTranslationError,
+    } = useApiQuery<TranslationDetailResponse>({
+        entity: 'blog_translation_detail',
+        queryKey: [postId, language ?? ''],
+        endpoint: `/api/blog/posts/${postId}/translations?language=${encodeURIComponent(language ?? '')}`,
+        queryOptions: { enabled: Boolean(language && existingSummary) },
+    });
+    const existing = selectedTranslationData?.translations[0];
+    const isLoadingExistingTranslation = Boolean(
+        existingSummary && (isLoadingSelectedTranslation || !selectedTranslationData),
+    );
 
     const requestLanguageChange = (nextLanguage: string) => {
         if (nextLanguage === language) return;
@@ -414,18 +438,26 @@ export function AdminBlogTranslationsPanel({ postId, basePost }: Props) {
                     </NativeSelect>
                 </div>
             </div>
-            {language && (
+            {isLoadingExistingTranslation ? (
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardContent className="p-6 text-sm text-muted-foreground">Loading translation…</CardContent>
+                </Card>
+            ) : isSelectedTranslationError ? (
+                <Card className="rounded-xl border-destructive/40 bg-destructive/10 shadow-none">
+                    <CardContent className="p-6 text-sm text-destructive">
+                        This translation could not be loaded. Refresh the page and try again.
+                    </CardContent>
+                </Card>
+            ) : language ? (
                 <TranslationEditor
-                    key={language + (existing?.id ?? 'new')}
+                    key={language + (existing?.id ?? existingSummary?.id ?? 'new')}
                     postId={postId}
                     basePost={basePost}
                     language={language}
                     existing={existing}
-                    onSaved={() => void refetch()}
-                    onDeleted={() => void refetch()}
                     onDirtyChange={setTranslationDirty}
                 />
-            )}
+            ) : null}
             <ConfirmDialog
                 open={pendingLanguage !== null}
                 title="Unsaved changes"

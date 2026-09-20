@@ -23,10 +23,36 @@ import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, Skeleton, Textarea } from '@ottabase/ui-shadcn';
+import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+    Badge,
+    Button,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Input,
+    Skeleton,
+    Textarea,
+} from '@ottabase/ui-shadcn';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
-import { localizedPostSearch } from './blogLinks';
-import { ArrowLeft, ArrowRight, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
+import { localizedPostPath, localizedPostSearch } from './blogLinks';
+import {
+    ArrowLeft,
+    ArrowRight,
+    Check,
+    ChevronDown,
+    FolderTree,
+    Languages,
+    Loader2,
+    Lock,
+    Pencil,
+    Tag,
+} from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 interface BlogPost {
@@ -96,6 +122,82 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 });
 
 const COMMENTS_TARGET_TYPE = 'post';
+
+function PostLanguageMenu({
+    post,
+    requestedLanguage,
+}: {
+    post: Pick<BlogPost, 'availableLanguages' | 'language' | 'baseLanguage' | 'baseSlug' | 'slug'>;
+    requestedLanguage: string;
+}) {
+    const languages = post.availableLanguages ?? [];
+    if (languages.length <= 1) return null;
+
+    const defaultLanguage = post.baseLanguage || languages[0]?.code || '';
+    const currentCode = post.language || requestedLanguage || post.baseLanguage || languages[0]?.code || '';
+    const currentLanguage = languages.find((item) => item.code === currentCode) ?? languages[0];
+
+    const navigateToLanguage = (code: string) => {
+        const targetSlug = post.baseSlug || post.slug;
+        window.location.assign(localizedPostPath(targetSlug, code));
+    };
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground"
+                    aria-label={`Post language: ${currentLanguage?.name ?? currentCode}`}
+                >
+                    <Languages className="h-4 w-4" />
+                    <span className="hidden max-w-28 truncate sm:inline">{currentLanguage?.name ?? currentCode}</span>
+                    <span className="uppercase sm:hidden">{currentCode.slice(0, 2)}</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <Languages className="h-3.5 w-3.5" />
+                    Read this post in
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {languages.map((item) => {
+                    const isCurrent = item.code === currentCode;
+                    const isDefault = item.code === defaultLanguage;
+                    const subtitle = isDefault
+                        ? 'Default'
+                        : item.nativeName && item.nativeName !== item.name
+                          ? item.nativeName
+                          : null;
+                    return (
+                        <DropdownMenuItem
+                            key={item.code}
+                            onSelect={() => navigateToLanguage(item.code)}
+                            className="group cursor-pointer gap-3 rounded-lg px-3 py-2.5 focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+                        >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[highlighted]:border-accent-foreground/30 group-data-[highlighted]:bg-accent/80 group-data-[highlighted]:text-accent-foreground">
+                                {item.code.slice(0, 2)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block truncate font-medium">{item.name}</span>
+                                {subtitle && (
+                                    <span className="block truncate text-xs text-muted-foreground group-data-[highlighted]:text-accent-foreground/80">
+                                        {subtitle}
+                                    </span>
+                                )}
+                            </span>
+                            {isCurrent && (
+                                <Check className="h-4 w-4 shrink-0 text-primary group-data-[highlighted]:text-accent-foreground" />
+                            )}
+                        </DropdownMenuItem>
+                    );
+                })}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 function getInitials(name?: string | null): string {
     if (!name) return '??';
@@ -509,31 +611,7 @@ export function BlogDetailPage() {
                     </Link>
                 </Button>
                 <div className="flex items-center gap-2">
-                    {displayPost.availableLanguages && displayPost.availableLanguages.length > 1 && (
-                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span className="sr-only">Post language</span>
-                            <select
-                                value={displayPost.language || requestedLanguage || displayPost.baseLanguage || ''}
-                                onChange={(event) => {
-                                    const targetSlug = displayPost.baseSlug || displayPost.slug;
-                                    window.location.assign(
-                                        '/blog/' +
-                                            encodeURIComponent(targetSlug) +
-                                            '?lang=' +
-                                            encodeURIComponent(event.target.value),
-                                    );
-                                }}
-                                className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
-                                aria-label="Post language"
-                            >
-                                {displayPost.availableLanguages.map((item) => (
-                                    <option key={item.code} value={item.code}>
-                                        {item.name} ({item.code})
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                    )}
+                    <PostLanguageMenu post={displayPost} requestedLanguage={requestedLanguage} />
                     <ShareButton
                         url={typeof window !== 'undefined' ? window.location.href : ''}
                         title={displayPost.title}

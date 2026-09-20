@@ -886,15 +886,35 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const result = await translationPostFor(context, postId, 'read');
         if (result instanceof Response) return result;
         const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
-        const translations = await PostTranslation.forPost(postId, {
-            appId: scopedAppId,
-            organizationId: result.securityContext.organizationId,
-        });
+        const translationLanguage = context.url.searchParams.get('language')?.trim();
+        let translations: PostTranslation[];
+        if (translationLanguage) {
+            let normalizedLanguage: string;
+            try {
+                normalizedLanguage = normalizeLanguageCode(translationLanguage);
+            } catch (error) {
+                return errorResponse(error instanceof Error ? error.message : 'Invalid language', 400, {
+                    code: 'VALIDATION_ERROR',
+                });
+            }
+            const translation = await PostTranslation.findForPost(postId, normalizedLanguage, {
+                appId: scopedAppId,
+                organizationId: result.securityContext.organizationId,
+            });
+            translations = translation ? [translation] : [];
+        } else {
+            translations = await PostTranslation.forPostSummary(postId, {
+                appId: scopedAppId,
+                organizationId: result.securityContext.organizationId,
+            });
+        }
         return jsonResponse(
             {
                 baseLanguage: result.post.get('language') || result.languageConfig.defaultLanguage,
                 languageConfig: result.languageConfig,
-                translations: translations.map((translation) => translation.toJson()),
+                translations: translations.map((translation) =>
+                    translationLanguage ? translation.toJson() : translation.toSummaryJson(),
+                ),
             },
             200,
             { headers: { 'Cache-Control': 'no-store' } },

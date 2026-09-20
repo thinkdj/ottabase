@@ -45,6 +45,7 @@ vi.mock('../ottaorm-models', () => ({
     },
     PostTranslation: {
         forPost: vi.fn(async () => []),
+        forPostSummary: vi.fn(async () => []),
         forPublicPosts: vi.fn(async () => []),
         forPublicFeed: vi.fn(async () => []),
         searchPostIds: vi.fn(async () => []),
@@ -496,6 +497,73 @@ describe('createBlogHandlers', () => {
 
         expect(response.status).toBe(422);
         expect((await response.json()).code).toBe('VALIDATION_ERROR');
+        getReadFilter.mockRestore();
+    });
+
+    it('returns translation metadata in the list and full content only for the selected language', async () => {
+        const securityContext = {
+            userId: 'u1',
+            organizationId: null,
+            appId: 'test-app',
+            permissions: ['posts:read'],
+            platformAdmin: true,
+        };
+        const post = {
+            get: (field: string) => ({ id: 'p1', appId: 'test-app', language: 'en' })[field],
+        };
+        const summary = {
+            toSummaryJson: () => ({
+                id: 't1',
+                postId: 'p1',
+                language: 'ml',
+                title: 'Malayalam title',
+                slug: 'namaskaram',
+                status: 'draft',
+                publishAt: null,
+                publishedAt: null,
+                updatedAt: 123,
+            }),
+        };
+        const full = {
+            toJson: () => ({
+                id: 't1',
+                postId: 'p1',
+                language: 'ml',
+                title: 'Malayalam title',
+                slug: 'namaskaram',
+                content: { blocks: [{ type: 'paragraph', data: { text: 'Full body' } }] },
+            }),
+        };
+        vi.mocked(Post.first)
+            .mockResolvedValueOnce(post as any)
+            .mockResolvedValueOnce(post as any);
+        vi.mocked(PostTranslation.forPostSummary).mockResolvedValueOnce([summary] as any);
+        vi.mocked(PostTranslation.findForPost).mockResolvedValueOnce(full as any);
+        const getReadFilter = vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: null });
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: async () => ({ session: { user: { id: 'u1' } }, securityContext }),
+        });
+
+        const listResponse = await handlers.handleBlogPostTranslations(ctxFor('/posts/p1/translations'), 'p1');
+        expect((await listResponse.json()).translations).toEqual([expect.objectContaining({ slug: 'namaskaram' })]);
+        expect(PostTranslation.forPostSummary).toHaveBeenCalledWith('p1', {
+            appId: 'test-app',
+            organizationId: null,
+        });
+        expect(PostTranslation.forPost).not.toHaveBeenCalled();
+
+        const detailResponse = await handlers.handleBlogPostTranslations(
+            ctxFor('/posts/p1/translations?language=ml'),
+            'p1',
+        );
+        expect((await detailResponse.json()).translations).toEqual([
+            expect.objectContaining({ content: expect.any(Object) }),
+        ]);
+        expect(PostTranslation.findForPost).toHaveBeenCalledWith('p1', 'ml', {
+            appId: 'test-app',
+            organizationId: null,
+        });
         getReadFilter.mockRestore();
     });
 

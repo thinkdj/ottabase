@@ -9,7 +9,7 @@ import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
 import { AdminBlogTranslationsPanel } from './AdminBlogTranslationsPanel';
-import { useBlogSurface } from './blogAdminPaths';
+import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
@@ -87,6 +87,7 @@ import {
     Braces,
     Calendar,
     Download,
+    Eye,
     FileText,
     FolderTree,
     History,
@@ -1116,6 +1117,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
             if (isEditMode && postId) {
                 await updatePost.mutateAsync({ id: postId, data: postData });
+                setStatus(resolvedStatus);
                 justSavedRef.current = true;
                 // Invalidate post detail; when initialData refreshes we sync form state so isDirty stays false
                 queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -1334,6 +1336,18 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         )}
                         Publish
                     </Button>
+                    {isEditMode && initialData && status === 'published' && (
+                        <Button variant="outline" asChild>
+                            <a
+                                href={getPublicContentPath(initialData.slug || slug, contentType)}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                            </a>
+                        </Button>
+                    )}
                 </div>
             </div>
 
