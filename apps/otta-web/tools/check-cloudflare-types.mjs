@@ -10,7 +10,8 @@ const generatedName = 'cloudflare-env.d.ts';
 const candidateName = 'cloudflare-env.check.d.ts';
 const generatedPath = join(appRoot, generatedName);
 const candidatePath = join(appRoot, candidateName);
-const wranglerPath = require.resolve('wrangler/bin/wrangler.js');
+// wrangler's exports map hides bin/, but still exposes package.json.
+const wranglerPath = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 
 function normalize(content) {
     return content.replaceAll(candidateName, generatedName).replaceAll('\r\n', '\n');
