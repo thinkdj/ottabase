@@ -46,7 +46,7 @@ export function createColumns<TData extends Record<string, unknown>>(
 
                 // Named format
                 if (def.format) {
-                    return formatCellValue(value, def.format);
+                    return formatCellValue(value, def.format, { currency: def.currency });
                 }
 
                 // Null values
@@ -67,9 +67,6 @@ export function createColumns<TData extends Record<string, unknown>>(
             // Sorting
             enableSorting: def.sortable ?? false,
 
-            // Column visibility
-            enableHiding: def.visible !== false,
-
             // Size
             size: typeof def.width === 'number' ? def.width : undefined,
             minSize: def.minWidth,
@@ -80,9 +77,11 @@ export function createColumns<TData extends Record<string, unknown>>(
                 align: def.align,
                 className: def.className,
                 headerClassName: def.headerClassName,
-                editable: def.editable,
-                onEdit: def.onEdit,
                 filterable: def.filterable,
+                // String widths are applied by DataTable as CSS; TanStack `size` is numeric only
+                width: def.width,
+                // Read by useDataTable to seed initial column visibility
+                visible: def.visible,
             },
         };
 

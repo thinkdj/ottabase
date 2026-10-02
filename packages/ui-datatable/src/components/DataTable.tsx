@@ -142,7 +142,12 @@ export function DataTable<TData extends Record<string, unknown>>({
                                                     bordered && 'border-r border-border/60 last:border-r-0',
                                                 )}
                                                 style={{
-                                                    width: header.getSize() !== 150 ? header.getSize() : undefined,
+                                                    width:
+                                                        typeof meta?.width === 'string'
+                                                            ? meta.width
+                                                            : header.getSize() !== 150
+                                                              ? header.getSize()
+                                                              : undefined,
                                                     minWidth: header.column.columnDef.minSize,
                                                     maxWidth: header.column.columnDef.maxSize,
                                                 }}

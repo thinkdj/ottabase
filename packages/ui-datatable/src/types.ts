@@ -34,15 +34,6 @@ export interface DataTablePaginationState {
     total: number;
 }
 
-// ── Filtering ────────────────────────────────────────────────
-
-export interface DataTableFilterValue {
-    /** Column ID to filter */
-    column: string;
-    /** Filter value */
-    value: unknown;
-}
-
 // ── Row Actions ──────────────────────────────────────────────
 
 export interface DataTableAction<TData> {
@@ -90,18 +81,16 @@ export interface DataTableColumnDef<TData> {
     cell?: (props: { row: TData; value: TData[keyof TData] }) => React.ReactNode;
     /** Cell value formatter (string output — use `cell` for JSX) */
     format?: 'date' | 'datetime' | 'boolean' | 'currency' | 'percentage' | 'image' | 'link' | 'badge';
-    /** Column width (px or CSS string) */
+    /** ISO 4217 currency code for `format: 'currency'` (default `'USD'`) */
+    currency?: string;
+    /** Column width: a number is px, a string is any CSS width (`'200px'`, `'20%'`) */
     width?: number | string;
     /** Min width */
     minWidth?: number;
     /** Max width */
     maxWidth?: number;
-    /** Whether column is visible by default */
+    /** `false` hides the column initially; it stays in the visibility toggle so users can show it */
     visible?: boolean;
-    /** Enable inline editing for this column */
-    editable?: boolean;
-    /** On cell edit commit */
-    onEdit?: (row: TData, value: unknown) => void | Promise<void>;
     /** Additional className for cells */
     className?: string;
     /** Additional className for header */
@@ -139,10 +128,6 @@ export interface UseDataTableOptions<TData> {
     pagination?: DataTablePaginationState;
     /** Callback when page changes */
     onPaginationChange?: (pagination: DataTablePaginationState) => void;
-    /** Server-side filter values */
-    filters?: DataTableFilterValue[];
-    /** Callback when filters change */
-    onFiltersChange?: (filters: DataTableFilterValue[]) => void;
     /** Whether sorting/pagination/filtering is server-driven */
     manualSorting?: boolean;
     /** Whether pagination is server-driven */

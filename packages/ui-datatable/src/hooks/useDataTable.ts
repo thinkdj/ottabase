@@ -69,7 +69,15 @@ export function useDataTable<TData extends Record<string, unknown>>(
 
     const [clientSorting, setClientSorting] = useState<SortingState>(initialSorting);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility);
+    // Columns declared `visible: false` (createColumns meta) start hidden; explicit initialColumnVisibility wins
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+        const hidden: VisibilityState = {};
+        for (const column of columns) {
+            const id = (column as { id?: string }).id;
+            if (id && (column.meta as { visible?: boolean } | undefined)?.visible === false) hidden[id] = false;
+        }
+        return { ...hidden, ...initialColumnVisibility };
+    });
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
     // ── Sorting bridge ───────────────────────────────────────

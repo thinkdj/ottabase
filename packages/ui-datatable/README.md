@@ -138,7 +138,8 @@ function TodosPage() {
 you get the upgraded table automatically — no changes needed:
 
 ```tsx
-import { ModelCrud, createModelConfig } from '@ottabase/forms';
+import { createModelConfig } from '@ottabase/forms';
+import { ModelCrud } from '@ottabase/forms/react';
 import { User } from '@ottabase/ottaorm/models';
 
 const usersConfig = createModelConfig(User);
@@ -193,16 +194,21 @@ too.
     key: string & keyof T;     // Accessor key on data
     header: string;            // Column header label
     sortable?: boolean;        // Enable sorting (default: false)
-    filterable?: boolean;      // Enable filtering
+    filterable?: boolean;      // Stored in column meta only; no built-in filter UI
     format?: 'date' | 'datetime' | 'boolean' | 'currency' | 'percentage' | 'image' | 'link' | 'badge';
+    currency?: string;         // ISO 4217 code for format: 'currency' (default: 'USD')
     cell?: (props) => ReactNode;  // Custom cell renderer
-    width?: number | string;   // Column width
+    width?: number | string;   // Number = px; string = any CSS width ('200px', '20%')
     align?: 'left' | 'center' | 'right';
-    visible?: boolean;         // Default visibility (default: true)
+    visible?: boolean;         // false = hidden initially, still toggleable (default: true)
     truncate?: boolean;        // Enable text truncation
     maxLength?: number;        // Max chars before truncation
 }
 ```
+
+`link` and `image` formats pass the cell value through `sanitizeUrl` (`@ottabase/utils/sanitize`), so a
+`javascript:`/`data:` value renders as `#`. Inline editing and controlled filters are not built in; use `cell` for
+custom editors and filter server-side via `useServerTable`.
 
 ### DataTable Props
 

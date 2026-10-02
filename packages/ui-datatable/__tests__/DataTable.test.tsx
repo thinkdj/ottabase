@@ -232,6 +232,22 @@ describe('formatCellValue', () => {
         expect(result).toBe('$1,234.56');
     });
 
+    it('formats currency in the configured currency', () => {
+        expect(formatCellValue(1234.56, 'currency', { currency: 'EUR' })).toBe('€1,234.56');
+    });
+
+    it('sanitizes link href and image src', () => {
+        const { container } = render(
+            <>
+                {formatCellValue('javascript:alert(1)', 'link')}
+                {formatCellValue('javascript:alert(2)', 'image')}
+            </>,
+        );
+
+        expect(container.querySelector('a')?.getAttribute('href')).toBe('#');
+        expect(container.querySelector('img')?.getAttribute('src')).toBe('#');
+    });
+
     it('formats percentage values', () => {
         const result = formatCellValue(75.5, 'percentage');
         expect(result).toBe('75.5%');
@@ -365,6 +381,18 @@ describe('useDataTable', () => {
         expect(result.current.columnVisibility).toEqual({ email: false });
     });
 
+    it('starts columns declared visible: false hidden but still hideable', () => {
+        const columns = createColumns<TestItem>([
+            { key: 'name', header: 'Name' },
+            { key: 'email', header: 'Email', visible: false },
+        ]);
+
+        const { result } = renderHook(() => useDataTable<TestItem>({ data: TEST_DATA, columns }));
+
+        expect(result.current.columnVisibility).toEqual({ email: false });
+        expect(result.current.table.getColumn('email')?.getCanHide()).toBe(true);
+    });
+
     it('supports client-side pagination', () => {
         const columns = createColumns<TestItem>([{ key: 'name', header: 'Name' }]);
 
@@ -392,6 +420,12 @@ describe('DataTable component', () => {
         expect(screen.getByText('Email')).toBeDefined();
         expect(screen.getByText('Active')).toBeDefined();
         expect(screen.getByText('Created')).toBeDefined();
+    });
+
+    it('applies string column widths as CSS', () => {
+        render(<TestTable columnDefs={[{ key: 'name', header: 'Name', width: '240px' }]} />);
+
+        expect(screen.getByText('Name').closest('th')?.style.width).toBe('240px');
     });
 
     it('renders data rows', () => {

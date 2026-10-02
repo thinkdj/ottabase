@@ -4,6 +4,7 @@
 // Utility functions for formatting cell values
 // ============================================================
 
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import React from 'react';
 
 /**
@@ -13,6 +14,7 @@ import React from 'react';
 export function formatCellValue(
     value: unknown,
     format: 'date' | 'datetime' | 'boolean' | 'currency' | 'percentage' | 'image' | 'link' | 'badge',
+    options: { currency?: string } = {},
 ): React.ReactNode {
     if (value === null || value === undefined) {
         return React.createElement('span', { className: 'text-muted-foreground' }, '—');
@@ -47,7 +49,7 @@ export function formatCellValue(
         case 'currency':
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: 'USD',
+                currency: options.currency ?? 'USD',
             }).format(Number(value));
 
         case 'percentage':
@@ -55,7 +57,8 @@ export function formatCellValue(
 
         case 'image':
             return React.createElement('img', {
-                src: String(value),
+                // Cell values are untrusted data: only allowlisted schemes reach src/href
+                src: sanitizeUrl(String(value)),
                 alt: '',
                 className: 'h-8 w-8 rounded-full object-cover',
             });
@@ -64,7 +67,7 @@ export function formatCellValue(
             return React.createElement(
                 'a',
                 {
-                    href: String(value),
+                    href: sanitizeUrl(String(value)),
                     target: '_blank',
                     rel: 'noopener noreferrer',
                     className: 'text-primary hover:underline',

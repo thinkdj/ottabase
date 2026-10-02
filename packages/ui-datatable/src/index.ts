@@ -3,7 +3,7 @@
 // ============================================================
 // Headless-first data table built on TanStack Table v8.
 // Supports server-side sort/filter/pagination (via OttaORM),
-// column visibility, row selection, inline editing, and bulk actions.
+// column visibility, row selection, and bulk actions.
 //
 // This `.` barrel is PURE: hooks, types, and string helpers only —
 // ZERO rendered UI. The rendered DataTable components and the
@@ -22,7 +22,6 @@ export type {
     DataTableProps,
     DataTableSortingState,
     DataTablePaginationState,
-    DataTableFilterValue,
     DataTableAction,
     DataTableBulkAction,
     DataTableColumnDef,
