@@ -158,16 +158,6 @@ export class PostTag extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        name: {
-            rules: 'required|min:2|max:50',
-            fieldName: 'Name',
-            messages: {
-                required: 'Tag name is required',
-            },
-        },
-    };
-
     // ==================== Slug Lifecycle Config ====================
 
     private static readonly slugConfig: SlugLifecycleConfig = {

@@ -41,7 +41,7 @@ export interface AutoInitConfig {
      *   {
      *     name: '0000_seed_data',
      *     up: async (db) => {
-     *       await db.execute(`INSERT INTO ...`);
+     *       await db.executeRaw(`INSERT INTO ...`);
      *     }
      *   }
      * ]
@@ -83,7 +83,7 @@ export interface AutoInitConfig {
  *
  * @example
  * // In your /api/ottaorm/init route:
- * import { autoInit } from '@ottabase/ottaorm/migrations';
+ * import { autoInit } from '@ottabase/ottaorm';
  * import * as schema from './db/schema';
  * import { customMigrations } from './migrations';
  *

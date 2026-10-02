@@ -17,19 +17,13 @@
  * re-runs.
  */
 
+/** Both migration runners (`runMigrations` and `autoInit`) hand `up()` the DbDriver. */
 interface MigrationDb {
-    executeRaw?: (sql: string) => Promise<unknown>;
-    execute?: (sql: string) => Promise<unknown>;
+    executeRaw: (sql: string) => Promise<unknown>;
 }
 
 async function exec(db: MigrationDb, sql: string): Promise<void> {
-    if (db.executeRaw) {
-        await db.executeRaw(sql);
-    } else if (db.execute) {
-        await db.execute(sql);
-    } else {
-        throw new Error('ottablog migration: driver exposes neither executeRaw nor execute');
-    }
+    await db.executeRaw(sql);
 }
 
 export const ottablogMigrations = [

@@ -177,16 +177,6 @@ export class PostCategory extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        name: {
-            rules: 'required|min:2|max:100',
-            fieldName: 'Name',
-            messages: {
-                required: 'Category name is required',
-            },
-        },
-    };
-
     // ==================== Slug Lifecycle Config ====================
 
     private static readonly slugConfig: SlugLifecycleConfig = {

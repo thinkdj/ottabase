@@ -288,6 +288,12 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         policy: {
             level: 'custom',
             filter: (context) => {
+                // Mirrors `posts`: version history is editor data. An anonymous caller (or a signed-in
+                // user with no active org) must not land on the platform-owned NULL-org partition —
+                // that would expose the platform blog's draft history to anyone. Only a platform
+                // admin acting without an org manages that scope.
+                if (!context.userId) return null;
+                if (context.organizationId == null && context.platformAdmin !== true) return null;
                 const filter: Record<string, any> = { organizationId: context.organizationId ?? null };
                 if (context.appId) filter.appId = context.appId;
                 return filter;

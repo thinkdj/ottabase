@@ -18,8 +18,9 @@ export { autoInit, collectTableSchemas, type AutoInitConfig } from './auto-init'
  */
 export interface Migration {
     name: string; // Unique migration name (e.g., '001_create_users')
-    up: (db: any) => Promise<void>; // Run migration
-    down?: (db: any) => Promise<void>; // Rollback migration (optional)
+    /** Receives the same `DbDriver` from `runMigrations` and `autoInit`; use `db.executeRaw(sql)`. */
+    up: (db: DbDriver) => Promise<void>; // Run migration
+    down?: (db: DbDriver) => Promise<void>; // Rollback migration (optional)
     /**
      * Tables this migration's `up()` creates/modifies indexes or constraints on. Only
      * consulted by the runtime generator's autoMigrate (see runtime-generator.ts) to
@@ -32,8 +33,8 @@ export interface Migration {
 /**
  * Create migrations tracking table
  */
-async function createMigrationsTable(db: any): Promise<void> {
-    await db.execute(`
+async function createMigrationsTable(driver: DbDriver): Promise<void> {
+    await driver.executeRaw(`
     CREATE TABLE IF NOT EXISTS _ottabase_migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -80,7 +81,7 @@ async function recordMigration(driver: DbDriver, name: string, driverType: strin
  *
  * @example
  * ```typescript
- * import { runMigrations, coreMigrations } from "@ottabase/ottaorm/migrations";
+ * import { runMigrations, coreMigrations } from "@ottabase/ottaorm";
  * import { appMigrations } from "./migrations";
  * import { createD1Driver } from "@ottabase/db/drizzle-d1";
  *
@@ -94,25 +95,8 @@ export async function runMigrations(
     driver: DbDriver,
     migrations: Migration[],
 ): Promise<{ executed: string[]; skipped: string[] }> {
-    // Create an adapter that assumes D1-like response structure but returns array
-    // This bridges the gap between raw SQL execution and what migrations expect
-    const db = {
-        execute: async (sql: string) => {
-            const result = await driver.executeRaw(sql);
-            // Handle D1 response { results: [], ... }
-            if (result && typeof result === 'object' && 'results' in result && Array.isArray(result.results)) {
-                return result.results;
-            }
-            // Handle standard array response
-            if (Array.isArray(result)) {
-                return result;
-            }
-            return [];
-        },
-    };
-
     // Ensure migrations table exists
-    await createMigrationsTable(db);
+    await createMigrationsTable(driver);
 
     const executed: string[] = [];
     const skipped: string[] = [];
@@ -130,7 +114,7 @@ export async function runMigrations(
 
         try {
             console.log(`⚡ Executing: ${migration.name}`);
-            await migration.up(db);
+            await migration.up(driver);
             await recordMigration(driver, migration.name);
             executed.push(migration.name);
             console.log(`✅ Completed: ${migration.name}`);
@@ -158,28 +142,13 @@ export async function rollbackMigrations(
     migrations: Migration[],
     options?: { steps?: number }, // Number of migrations to rollback (default: all)
 ): Promise<{ rolledBack: string[] }> {
-    // Same adapter as runMigrations
-    const db = {
-        execute: async (sql: string) => {
-            const result = await driver.executeRaw(sql);
-            if (result && typeof result === 'object' && 'results' in result && Array.isArray(result.results)) {
-                return result.results;
-            }
-            if (Array.isArray(result)) {
-                return result;
-            }
-            return [];
-        },
-    };
-
     const rolledBack: string[] = [];
 
     // Get all executed migrations
-    const result = await db.execute(`
-    SELECT name FROM _ottabase_migrations ORDER BY executed_at DESC
-  `);
-
-    const executedMigrations = result.map((row: any) => row.name);
+    const result = await driver.executeRaw(`SELECT name FROM _ottabase_migrations ORDER BY executed_at DESC`);
+    // D1 returns { results: [] }; other drivers may return the rows directly.
+    const rows: any[] = Array.isArray(result) ? result : (result?.results ?? []);
+    const executedMigrations = rows.map((row) => row.name);
     const steps = options?.steps || executedMigrations.length;
 
     console.log(`🔄 Rolling back ${steps} migration(s)...`);
@@ -200,7 +169,7 @@ export async function rollbackMigrations(
 
         try {
             console.log(`⚡ Rolling back: ${migrationName}`);
-            await migration.down(db);
+            await migration.down(driver);
             await driver.executeRaw(`DELETE FROM _ottabase_migrations WHERE name = ?`, [migrationName]);
             rolledBack.push(migrationName);
             console.log(`✅ Rolled back: ${migrationName}`);
@@ -223,7 +192,7 @@ export const coreMigrations: Migration[] = [
     {
         name: '001_create_users_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           name TEXT,
@@ -237,13 +206,13 @@ export const coreMigrations: Migration[] = [
       `);
         },
         down: async (db) => {
-            await db.execute(`DROP TABLE IF EXISTS users`);
+            await db.executeRaw(`DROP TABLE IF EXISTS users`);
         },
     },
     {
         name: '002_create_accounts_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS accounts (
           id TEXT PRIMARY KEY,
           user_id TEXT NOT NULL,
@@ -262,17 +231,17 @@ export const coreMigrations: Migration[] = [
         )
       `);
             // Index for faster lookups
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id)`);
         },
         down: async (db) => {
-            await db.execute(`DROP INDEX IF EXISTS idx_accounts_user_id`);
-            await db.execute(`DROP TABLE IF EXISTS accounts`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_accounts_user_id`);
+            await db.executeRaw(`DROP TABLE IF EXISTS accounts`);
         },
     },
     {
         name: '003_create_posts_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS posts (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
@@ -287,13 +256,13 @@ export const coreMigrations: Migration[] = [
       `);
         },
         down: async (db) => {
-            await db.execute(`DROP TABLE IF EXISTS posts`);
+            await db.executeRaw(`DROP TABLE IF EXISTS posts`);
         },
     },
     {
         name: '004_create_tags_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS tags (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -304,13 +273,13 @@ export const coreMigrations: Migration[] = [
       `);
         },
         down: async (db) => {
-            await db.execute(`DROP TABLE IF EXISTS tags`);
+            await db.executeRaw(`DROP TABLE IF EXISTS tags`);
         },
     },
     {
         name: '005_create_post_tags_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS post_tags (
           post_id TEXT NOT NULL,
           tag_id TEXT NOT NULL,
@@ -320,13 +289,13 @@ export const coreMigrations: Migration[] = [
       `);
         },
         down: async (db) => {
-            await db.execute(`DROP TABLE IF EXISTS post_tags`);
+            await db.executeRaw(`DROP TABLE IF EXISTS post_tags`);
         },
     },
     {
         name: '006_create_sessions_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS sessions (
           id TEXT PRIMARY KEY,
           session_token TEXT NOT NULL UNIQUE,
@@ -336,19 +305,19 @@ export const coreMigrations: Migration[] = [
           updated_at INTEGER NOT NULL
         )
       `);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)`);
         },
         down: async (db) => {
-            await db.execute(`DROP INDEX IF EXISTS idx_sessions_token`);
-            await db.execute(`DROP INDEX IF EXISTS idx_sessions_user_id`);
-            await db.execute(`DROP TABLE IF EXISTS sessions`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_sessions_token`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_sessions_user_id`);
+            await db.executeRaw(`DROP TABLE IF EXISTS sessions`);
         },
     },
     {
         name: '007_create_verification_tokens_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS verification_tokens (
           identifier TEXT NOT NULL,
           token TEXT NOT NULL,
@@ -358,13 +327,13 @@ export const coreMigrations: Migration[] = [
       `);
         },
         down: async (db) => {
-            await db.execute(`DROP TABLE IF EXISTS verification_tokens`);
+            await db.executeRaw(`DROP TABLE IF EXISTS verification_tokens`);
         },
     },
     {
         name: '008_create_authenticators_table',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         CREATE TABLE IF NOT EXISTS authenticators (
           id TEXT PRIMARY KEY,
           credential_id TEXT NOT NULL UNIQUE,
@@ -379,21 +348,21 @@ export const coreMigrations: Migration[] = [
           updated_at INTEGER NOT NULL
         )
       `);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_authenticators_user_id ON authenticators(user_id)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_authenticators_user_id ON authenticators(user_id)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_authenticators_credential_id ON authenticators(credential_id)`,
             );
         },
         down: async (db) => {
-            await db.execute(`DROP INDEX IF EXISTS idx_authenticators_credential_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_authenticators_user_id`);
-            await db.execute(`DROP TABLE IF EXISTS authenticators`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_authenticators_credential_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_authenticators_user_id`);
+            await db.executeRaw(`DROP TABLE IF EXISTS authenticators`);
         },
     },
     {
         name: '009_add_rbac_and_audit',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS roles (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
@@ -404,7 +373,7 @@ export const coreMigrations: Migration[] = [
                     updated_at INTEGER NOT NULL
                 )
             `);
-            await db.execute(`
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS permissions (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
@@ -415,7 +384,7 @@ export const coreMigrations: Migration[] = [
                     updated_at INTEGER NOT NULL
                 )
             `);
-            await db.execute(`
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS user_roles (
                     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
@@ -426,7 +395,7 @@ export const coreMigrations: Migration[] = [
                     PRIMARY KEY (user_id, role_id, organization_id)
                 )
             `);
-            await db.execute(`
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS audit_logs (
                     id TEXT PRIMARY KEY,
                     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
@@ -445,43 +414,43 @@ export const coreMigrations: Migration[] = [
                     created_at INTEGER NOT NULL
                 )
             `);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_permissions_resource_action ON permissions(resource, action)`,
             );
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_user_roles_organization_id ON user_roles(organization_id)`,
             );
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_audit_logs_organization_id ON audit_logs(organization_id)`,
             );
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_id ON audit_logs(resource_id)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_status ON audit_logs(status)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_app_id ON user_roles(app_id)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_id ON audit_logs(resource_id)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_status ON audit_logs(status)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_user_roles_app_id ON user_roles(app_id)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_user_roles_user_org ON user_roles(user_id, organization_id)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_user_roles_user_org_app ON user_roles(user_id, organization_id, app_id)`,
             );
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_app_id ON audit_logs(app_id)`);
-            await db.execute(
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_audit_logs_app_id ON audit_logs(app_id)`);
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_audit_logs_org_created ON audit_logs(organization_id, created_at)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS idx_audit_logs_user_org ON audit_logs(user_id, organization_id)`,
             );
-            await db.execute(`
+            await db.executeRaw(`
                 INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, created_at, updated_at) VALUES
                     (
                         '00000000-0000-0000-0000-000000000001',
@@ -511,7 +480,7 @@ export const coreMigrations: Migration[] = [
                         (unixepoch() * 1000)
                     )
             `);
-            await db.execute(`
+            await db.executeRaw(`
                 INSERT OR IGNORE INTO permissions (id, name, description, resource, action, created_at, updated_at) VALUES
                     (hex(randomblob(16)), 'users:read', 'Read users', 'users', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
                     (hex(randomblob(16)), 'users:create', 'Create users', 'users', 'create', (unixepoch() * 1000), (unixepoch() * 1000)),
@@ -528,30 +497,30 @@ export const coreMigrations: Migration[] = [
             `);
         },
         down: async (db) => {
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_status`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_action`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_created_at`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_resource_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_resource_type`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_organization_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_user_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_organization_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_role_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_user_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_permissions_resource_action`);
-            await db.execute(`DROP INDEX IF EXISTS idx_permissions_name`);
-            await db.execute(`DROP INDEX IF EXISTS idx_roles_name`);
-            await db.execute(`DROP TABLE IF EXISTS audit_logs`);
-            await db.execute(`DROP TABLE IF EXISTS user_roles`);
-            await db.execute(`DROP TABLE IF EXISTS permissions`);
-            await db.execute(`DROP TABLE IF EXISTS roles`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_status`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_action`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_created_at`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_resource_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_resource_type`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_organization_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_audit_logs_user_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_user_roles_organization_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_user_roles_role_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_user_roles_user_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_permissions_resource_action`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_permissions_name`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_roles_name`);
+            await db.executeRaw(`DROP TABLE IF EXISTS audit_logs`);
+            await db.executeRaw(`DROP TABLE IF EXISTS user_roles`);
+            await db.executeRaw(`DROP TABLE IF EXISTS permissions`);
+            await db.executeRaw(`DROP TABLE IF EXISTS roles`);
         },
     },
     {
         /** Implements: Tenant > App > User hierarchy  */
         name: '010_multi_tenant_system',
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS organizations (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -565,11 +534,11 @@ export const coreMigrations: Migration[] = [
                     updated_at INTEGER NOT NULL
                 )
             `);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_owner_id ON organizations(owner_id)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_status ON organizations(status)`);
-            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_plan ON organizations(plan)`);
-            await db.execute(`
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_organizations_owner_id ON organizations(owner_id)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_organizations_status ON organizations(status)`);
+            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_organizations_plan ON organizations(plan)`);
+            await db.executeRaw(`
                 CREATE TABLE IF NOT EXISTS organization_members (
                     id TEXT PRIMARY KEY,
                     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -585,30 +554,30 @@ export const coreMigrations: Migration[] = [
                     updated_at INTEGER NOT NULL
                 )
             `);
-            await db.execute(
+            await db.executeRaw(
                 `CREATE UNIQUE INDEX IF NOT EXISTS organization_members_org_user_unique ON organization_members(organization_id, user_id)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE UNIQUE INDEX IF NOT EXISTS organization_members_org_email_unique ON organization_members(organization_id, invited_email)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS organization_members_user_idx ON organization_members(user_id)`,
             );
-            await db.execute(
+            await db.executeRaw(
                 `CREATE INDEX IF NOT EXISTS organization_members_org_idx ON organization_members(organization_id)`,
             );
         },
         down: async (db) => {
-            await db.execute(`DROP INDEX IF EXISTS idx_org_members_status`);
-            await db.execute(`DROP INDEX IF EXISTS idx_org_members_role`);
-            await db.execute(`DROP INDEX IF EXISTS idx_org_members_organization_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_org_members_user_id`);
-            await db.execute(`DROP TABLE IF EXISTS organization_members`);
-            await db.execute(`DROP INDEX IF EXISTS idx_organizations_plan`);
-            await db.execute(`DROP INDEX IF EXISTS idx_organizations_status`);
-            await db.execute(`DROP INDEX IF EXISTS idx_organizations_owner_id`);
-            await db.execute(`DROP INDEX IF EXISTS idx_organizations_slug`);
-            await db.execute(`DROP TABLE IF EXISTS organizations`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_org_members_status`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_org_members_role`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_org_members_organization_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_org_members_user_id`);
+            await db.executeRaw(`DROP TABLE IF EXISTS organization_members`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_organizations_plan`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_organizations_status`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_organizations_owner_id`);
+            await db.executeRaw(`DROP INDEX IF EXISTS idx_organizations_slug`);
+            await db.executeRaw(`DROP TABLE IF EXISTS organizations`);
         },
     },
 ];

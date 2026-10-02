@@ -53,12 +53,6 @@ describe('ottablog models', () => {
             expect(fields.title.sortable).toBe(true);
         });
 
-        it('should have validation rules defined', () => {
-            const rules = (Post as any).validationRules;
-            expect(rules).toHaveProperty('title');
-            expect(rules.title.rules).toContain('required');
-        });
-
         it('should have viewCount in casts', () => {
             expect(Post.casts).toHaveProperty('viewCount');
             expect(Post.casts.viewCount).toBe('number');
@@ -462,12 +456,6 @@ describe('ottablog models', () => {
         it('should mark slug as unique', () => {
             const fields = PostTag.getFields();
             expect(fields.slug.unique).toBe(true);
-        });
-
-        it('should have validation rules for name', () => {
-            const rules = (PostTag as any).validationRules;
-            expect(rules).toHaveProperty('name');
-            expect(rules.name.rules).toContain('required');
         });
 
         it('should have static findBySlug method', () => {

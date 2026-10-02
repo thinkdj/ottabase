@@ -205,23 +205,6 @@ export class OttablogPlugin extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        pluginId: {
-            rules: 'required|min:1|max:100',
-            fieldName: 'Plugin ID',
-            messages: {
-                required: 'Plugin ID is required',
-            },
-        },
-        name: {
-            rules: 'required|min:1|max:200',
-            fieldName: 'Name',
-            messages: {
-                required: 'Plugin name is required',
-            },
-        },
-    };
-
     // ============================================================
     // QUERY HELPERS
     // ============================================================

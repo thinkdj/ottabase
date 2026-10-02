@@ -168,6 +168,33 @@ describe('RLS Registry', () => {
         });
     });
 
+    describe('post_versions policy filter (editor history)', () => {
+        const filter = MODEL_POLICIES.find((p) => p.model === 'post_versions')!.policy.filter!;
+
+        it('denies an anonymous caller — never the platform NULL-org partition', () => {
+            expect(filter({ appId: 'web' })).toBeNull();
+            expect(filter({ appId: 'web', organizationId: null })).toBeNull();
+        });
+
+        it('denies a signed-in non-platform-admin with no active org', () => {
+            expect(filter({ userId: 'u1', appId: 'web', organizationId: null })).toBeNull();
+        });
+
+        it('scopes a platform admin without an org to the platform partition', () => {
+            expect(filter({ userId: 'u1', appId: 'web', platformAdmin: true })).toEqual({
+                organizationId: null,
+                appId: 'web',
+            });
+        });
+
+        it('scopes a member to their org', () => {
+            expect(filter({ userId: 'u1', appId: 'web', organizationId: 'org-1' })).toEqual({
+                organizationId: 'org-1',
+                appId: 'web',
+            });
+        });
+    });
+
     describe('registerAllPolicies', () => {
         it('registers all policies into the global engine', () => {
             registerAllPolicies();

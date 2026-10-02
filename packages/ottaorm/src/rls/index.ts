@@ -7,15 +7,15 @@
  * @example
  * ```typescript
  * // Initialize RLS (in worker startup)
- * import { initRLS } from '@ottabase/ottaorm/rls';
+ * import { initRLS } from '@ottabase/ottaorm';
  * initRLS();
  *
  * // Use secure CRUD (in worker handler)
- * import { rlsMiddleware } from '@ottabase/ottaorm/rls';
+ * import { rlsMiddleware } from '@ottabase/ottaorm';
  * return rlsMiddleware(request, env);
  *
  * // Register custom model (requiredPermissions uses wildcards: *:*, brand:*)
- * import { registerPolicy, RLSPolicies } from '@ottabase/ottaorm/rls';
+ * import { registerPolicy, RLSPolicies } from '@ottabase/ottaorm';
  * registerPolicy({
  *   model: 'my_custom_model',
  *   policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },

@@ -135,10 +135,7 @@ function isSqlDriver(driver: any): driver is DbDriver {
  * - primaryKey: primary key field name
  * - connection: database connection name (default: 'default')
  * - casts: type casting rules
- * - connect: relationship definitions
- * - with: default eager loading
  * - fields: complete field metadata
- * - validationRules: validation rules
  * - defaults: default values
  *
  * @example
@@ -153,11 +150,6 @@ function isSqlDriver(driver: any): driver is DbDriver {
  *     createdAt: 'date',
  *     published: 'boolean'
  *   };
- *
- *   static connect = [
- *     'author:id{name,email}',
- *     'tags[]:id{name,slug}>join:tag,model:Tag'
- *   ];
  *
  *   static fields: ModelFields = {
  *     title: {

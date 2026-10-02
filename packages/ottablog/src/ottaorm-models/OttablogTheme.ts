@@ -220,23 +220,6 @@ export class OttablogTheme extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        themeId: {
-            rules: 'required|min:1|max:100',
-            fieldName: 'Theme ID',
-            messages: {
-                required: 'Theme ID is required',
-            },
-        },
-        name: {
-            rules: 'required|min:1|max:200',
-            fieldName: 'Name',
-            messages: {
-                required: 'Theme name is required',
-            },
-        },
-    };
-
     // ============================================================
     // QUERY HELPERS
     // ============================================================

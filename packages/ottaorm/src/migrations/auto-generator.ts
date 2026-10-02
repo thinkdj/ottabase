@@ -296,8 +296,8 @@ ${customSqlFiles
         const name = file.replace('.sql', '');
         return `  {
     name: '${name}',
-    up: async (db: any) => {
-      await db.execute(custom${i}Sql);
+    up: async (db) => {
+      await db.executeRaw(custom${i}Sql);
     },
   },`;
     })
@@ -307,8 +307,8 @@ ${generatedSqlFiles
         const name = file.replace('.sql', '');
         return `  {
     name: '${name}',
-    up: async (db: any) => {
-      await db.execute(generated${i}Sql);
+    up: async (db) => {
+      await db.executeRaw(generated${i}Sql);
     },
   },`;
     })

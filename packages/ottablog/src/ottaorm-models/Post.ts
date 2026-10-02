@@ -9,6 +9,7 @@ import {
     BaseModel,
     DomainValidationError,
     ModelFields,
+    User,
     type IModelConstructorParams,
     type PackageType,
     type UpdateMutationContext,
@@ -42,7 +43,10 @@ import {
     type PostStatus,
 } from '../types';
 import { postsTable } from './Post.schema';
-import { postCategoryLinksTable } from './PostCategoryLink';
+// Static on purpose: none of these modules imports Post, so there is no cycle to break
+// (dynamic imports stay only for PostTranslation/OttablogSettings below).
+import { PostCategory } from './PostCategory';
+import { PostCategoryLink, postCategoryLinksTable } from './PostCategoryLink';
 import { PostTag } from './PostTag';
 import { postTagLinksTable } from './PostTagLink';
 
@@ -1058,18 +1062,6 @@ export class Post extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        title: {
-            rules: 'required|min:3|max:200',
-            fieldName: 'Title',
-            messages: {
-                required: 'Title is required',
-                min: 'Title must be at least 3 characters',
-                max: 'Title must be less than 200 characters',
-            },
-        },
-    };
-
     /**
      * Content integrity for EVERY write path, per the Fat Models rule in AGENTS.MD.
      *
@@ -1079,7 +1071,7 @@ export class Post extends BaseModel {
      * validators are now defence in depth, not the only guard. A host app calling `Post.create()`
      * directly inherits identical rules.
      *
-     * Deliberately here rather than in `validationRules`: those are per-field string rules resolved
+     * Deliberately here rather than in field metadata: field rules are per-column and resolved
      * against a schema, and these are cross-field (a `contentType` decides which columns may carry
      * a value) with normalization attached (URLs come back sanitized, blank albums come back null).
      *
@@ -1306,8 +1298,6 @@ export class Post extends BaseModel {
      * Get the author of this post (BelongsTo User)
      */
     async author(select?: string[]) {
-        const { User } = await import('@ottabase/ottaorm');
-
         return this.belongsTo(User as any, 'authorId', {
             select: select || undefined,
         });
@@ -1338,7 +1328,6 @@ export class Post extends BaseModel {
         orderDirection?: 'asc' | 'desc';
         withPivot?: string[];
     }) {
-        const { PostCategory } = await import('./PostCategory');
         return this.belongsToMany(PostCategory, postCategoryLinksTable, {
             foreignKey: 'postId',
             otherKey: 'categoryId',
@@ -1785,7 +1774,6 @@ export class Post extends BaseModel {
         if (catIds.length > 0) {
             // Find other posts sharing any of the same categories — single
             // array-where query (inArray) instead of one query per category.
-            const { PostCategoryLink } = await import('./PostCategoryLink');
             const allCatLinks = await PostCategoryLink.where({ categoryId: catIds });
             const candidateIds = [
                 ...new Set(allCatLinks.map((l) => l.get('postId') as string).filter((id) => !seenIds.has(id))),

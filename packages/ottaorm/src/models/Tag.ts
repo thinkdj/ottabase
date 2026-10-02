@@ -15,10 +15,10 @@ export { tagsTable, type NewTagType, type TagType } from './Tag.schema';
  * @example
  * ```typescript
  * import { Tag } from "@ottabase/ottaorm/models";
- * import { setDriver } from "@ottabase/ottaorm";
+ * import { registerConnection } from "@ottabase/ottaorm";
  * import { createD1Driver } from "@ottabase/db/drizzle-d1";
  *
- * setDriver(createD1Driver(env.OBCF_D1));
+ * registerConnection('default', createD1Driver(env.OBCF_D1));
  *
  * // Find tag by slug
  * const tag = await Tag.first({ slug: "javascript" });
@@ -133,24 +133,6 @@ export class Tag extends BaseModel {
             },
             tableConfig: {
                 visible: false,
-            },
-        },
-    };
-
-    protected static validationRules = {
-        name: {
-            rules: 'required',
-            fieldName: 'Name',
-            messages: {
-                required: 'Name is required',
-            },
-        },
-        slug: {
-            rules: 'required',
-            fieldName: 'Slug',
-            messages: {
-                required: 'Slug is required',
-                unique: 'This slug already exists',
             },
         },
     };

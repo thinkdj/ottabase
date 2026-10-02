@@ -15,7 +15,6 @@ export { accountsTable, type AccountType, type NewAccountType } from './Account.
  * @example
  * ```typescript
  * import { Account } from "@ottabase/ottaorm";
- * import { setDriver } from "@ottabase/ottaorm";
  *
  * // Find accounts for a user
  * const accounts = await Account.where({ userId: "user-123" });

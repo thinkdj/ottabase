@@ -180,16 +180,6 @@ export class PostSeries extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        title: {
-            rules: 'required|min:3|max:200',
-            fieldName: 'Title',
-            messages: {
-                required: 'Series title is required',
-            },
-        },
-    };
-
     // ==================== Slug Lifecycle Config ====================
 
     private static readonly slugConfig: SlugLifecycleConfig = {

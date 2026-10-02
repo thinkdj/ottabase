@@ -121,10 +121,10 @@ const result = await autoInit({
 
 ```typescript
 import { Todo } from './models/Todo';
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 
 // Set driver once (in middleware or route)
-setDriver(createD1Driver(env.OBCF_D1));
+registerConnection('default', createD1Driver(env.OBCF_D1));
 
 // Use models anywhere
 const todo = await Todo.create({ title: 'Buy groceries' });
@@ -251,12 +251,12 @@ No environment variables needed! D1 binding is configured via `wrangler.jsonc` a
 
 ```typescript
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 
 export async function GET() {
     const { env } = getCloudflareContext();
     const driver = createD1Driver(env.OBCF_D1);
-    setDriver(driver);
+    registerConnection('default', driver);
 
     const users = await User.all();
     return Response.json(users);
@@ -269,7 +269,7 @@ export async function GET() {
 export default {
     async fetch(request: Request, env: Env) {
         const driver = createD1Driver(env.OBCF_D1);
-        setDriver(driver);
+        registerConnection('default', driver);
 
         const users = await User.all();
         return Response.json(users);
@@ -759,8 +759,9 @@ Credentials auth uses `users.password_hash` (PBKDF2) and `users.email_verified` 
 export const appMigrations: Migration[] = [
     {
         name: '0000_seed_admin',
+        // `db` is the DbDriver in both runMigrations() and autoInit()
         up: async (db) => {
-            await db.execute(`
+            await db.executeRaw(`
         INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
         VALUES ('admin-001', 'Admin', 'admin@example.com', ...)
       `);
@@ -871,6 +872,18 @@ The package includes these core models (in `@ottabase/ottaorm`):
 
 **Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
 enhanced features.
+
+### Role grants (`User` RBAC methods, `UserRole`)
+
+Role grants are org-scoped: `user_roles` is keyed by `userId + roleId + organizationId` (platform grants use the
+`'system'` org). Every `User` RBAC method — `assignRole`, `removeRole`, `hasRole`/`hasAnyRole`/`hasAllRoles`, `roles`,
+`getPermissions`, `hasPermission`/`hasAnyPermission`/`hasAllPermissions` — takes a **required** `organizationId` and
+throws without one, so a grant in one tenant never applies in another.
+
+`UserRole` instance `destroy()`/`save()` address the full composite key. The static single-key mutators (`update`,
+`updateConstrained`, `delete`, `deleteConstrained`, `forceDelete`) throw, because `primaryKey = 'userId'` would hit
+every grant the user holds. Use `UserRole.removeRole(userId, roleId, organizationId)` or
+`UserRole.revokeAllForOrganization(userId, organizationId)`.
 
 ## Multi-Tenant Models
 
@@ -1603,14 +1616,14 @@ export async function POST(request) {
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 import { Todo } from '../../../../ottabase/models/Todo';
 
 export const runtime = 'edge';
 
 export async function GET() {
     const { env } = getCloudflareContext();
-    setDriver(createD1Driver(env.OBCF_D1));
+    registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const todos = await Todo.all();
     return NextResponse.json({ todos: todos.map((t) => t.toJson()) });
@@ -1618,7 +1631,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     const { env } = getCloudflareContext();
-    setDriver(createD1Driver(env.OBCF_D1));
+    registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const body = await request.json();
     const todo = await Todo.create(body);

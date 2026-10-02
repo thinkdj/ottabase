@@ -228,24 +228,9 @@ export abstract class AbstractBaseModel {
     protected static casts: { [key: string]: ModelFieldType } = {};
 
     /**
-     * Relationship definitions (for future use)
-     */
-    protected static connect: string[] = [];
-
-    /**
-     * Default eager loading relationships (for future use)
-     */
-    protected static with: string[] = [];
-
-    /**
      * Complete field metadata for UI generation, forms, tables, etc.
      */
     protected static fields: ModelFields = {};
-
-    /**
-     * Validation rules
-     */
-    protected static validationRules: any = {};
 
     /**
      * Fields to hide from JSON output
@@ -289,7 +274,6 @@ export abstract class AbstractBaseModel {
             primaryKey: this.primaryKey,
             fields: this.fields,
             defaults: this.defaults,
-            validationRules: this.validationRules,
             // UI/Forms metadata
             displayName: this.displayName,
             displayNamePlural: this.displayNamePlural,

@@ -262,6 +262,7 @@ export class AuditLog extends BaseModel {
         userId?: string;
         userEmail?: string;
         organizationId?: string; // Organization/tenant context
+        appId?: string; // App context
         action: string;
         resourceType: string;
         resourceId?: string;

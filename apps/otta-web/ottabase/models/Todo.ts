@@ -13,9 +13,9 @@ export { todosTable, type NewTodoType, type TodoType } from './Todo.schema';
  * @example
  * ```typescript
  * import { Todo } from "./models/Todo";
- * import { setDriver } from "@ottabase/ottaorm";
+ * import { registerConnection } from "@ottabase/ottaorm";
  *
- * setDriver(createD1Driver(env.DB));
+ * registerConnection('default', createD1Driver(env.OBCF_D1));
  *
  * // Create todo
  * const todo = await Todo.create({
@@ -137,16 +137,6 @@ export class Todo extends BaseModel {
             },
             tableConfig: {
                 visible: false,
-            },
-        },
-    };
-
-    protected static validationRules = {
-        title: {
-            rules: 'required',
-            fieldName: 'Title',
-            messages: {
-                required: 'Title is required',
             },
         },
     };

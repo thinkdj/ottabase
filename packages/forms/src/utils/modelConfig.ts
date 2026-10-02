@@ -28,7 +28,6 @@ export interface OttaModelClass {
         primaryKey: string;
         fields: FormFields;
         defaults?: Record<string, unknown>;
-        validationRules?: Record<string, unknown>;
         // UI/Forms metadata
         displayName?: string;
         displayNamePlural?: string;

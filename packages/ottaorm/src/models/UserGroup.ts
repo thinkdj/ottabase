@@ -58,12 +58,6 @@ export class UserGroup extends BaseModel {
         updatedAt: { type: 'date', editable: false, sortable: true, uiConfig: { label: 'Updated' } },
     };
 
-    protected static validationRules = {
-        name: { rules: 'required', fieldName: 'Name' },
-        slug: { rules: 'required', fieldName: 'Slug' },
-        organizationId: { rules: 'required', fieldName: 'Organization' },
-    };
-
     /** All groups in an organization (optionally narrowed to one app), ordered by name. */
     static async forOrganization(organizationId: string, options?: { appId?: string | null }) {
         const where: Record<string, unknown> = { organizationId };
