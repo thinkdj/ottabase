@@ -11,8 +11,6 @@ export interface RenderMenuOptions {
     isAuthenticated?: boolean;
     /** Current pathname for active state */
     pathname?: string;
-    /** Optional width class for sidebar (w-48, w-56, w-64, w-80) */
-    widthClass?: string;
     /** Render all dropdowns expanded inline (useful for narrow preview panels) */
     expanded?: boolean;
 }

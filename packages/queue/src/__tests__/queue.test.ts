@@ -435,6 +435,39 @@ describe('Queue Package', () => {
             expect(secondCall[1]).toEqual({ delaySeconds: 60 });
         });
 
+        it('routes chained jobs to their own or the parent priority queue', async () => {
+            const registry = createRegistry().register('main-job', vi.fn());
+            const queues = {
+                high: { send: vi.fn().mockResolvedValue(undefined), sendBatch: vi.fn() },
+                normal: { send: vi.fn().mockResolvedValue(undefined), sendBatch: vi.fn() },
+                low: { send: vi.fn().mockResolvedValue(undefined), sendBatch: vi.fn() },
+            };
+            const processor = createProcessor(registry, { chainPriorityQueues: queues as any });
+
+            const mockMessage = {
+                body: {
+                    type: 'main-job',
+                    payload: {},
+                    meta: {
+                        priority: 'high',
+                        chain: [
+                            { type: 'inherits', payload: {} },
+                            { type: 'own', payload: {}, priority: 'low' },
+                        ],
+                    },
+                },
+                ack: vi.fn(),
+                retry: vi.fn(),
+                attempts: 1,
+            };
+
+            await processor.process({ messages: [mockMessage], queue: 'test' } as any, {});
+
+            expect(queues.high.send.mock.calls[0][0].type).toBe('inherits');
+            expect(queues.low.send.mock.calls[0][0].type).toBe('own');
+            expect(queues.normal.send).not.toHaveBeenCalled();
+        });
+
         it('should not dispatch chained jobs if handler fails', async () => {
             const handler = vi.fn().mockRejectedValue(new Error('Handler failed'));
             const registry = createRegistry().register('failing-job', handler);

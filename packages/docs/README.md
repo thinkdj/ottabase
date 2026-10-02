@@ -40,8 +40,6 @@ import { buildPageSlug, extractTitle, slugToTitle, fileNameToSlug, useDocs } fro
 import '@ottabase/docs/styles.css';
 
 const config = {
-    title: 'My Docs',
-    basePath: '/docs',
     theme: 'standard', // 'compact' | 'standard' | 'spacious'
     codeRenderMode: 'ui-code-highlight', // 'plain' | 'simple' | 'ui-code-highlight' (default)
     sources: [
@@ -89,9 +87,6 @@ const config = { sources: [guides, packages], theme: 'standard', codeRenderMode:
 
 ```typescript
 interface DocsConfig {
-    title?: string; // Docs site title
-    logo?: React.ReactNode; // Logo element for sidebar
-    basePath?: string; // Base URL path (e.g. "/docs")
     theme?: 'compact' | 'standard' | 'spacious'; // Layout theme
     codeRenderMode?: 'plain' | 'simple' | 'ui-code-highlight'; // Code block rendering
     sources: DocsSource[]; // Documentation sources

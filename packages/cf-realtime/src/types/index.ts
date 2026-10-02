@@ -65,6 +65,7 @@ export interface BroadcastMessage extends BaseMessage {
     data: any;
     metadata?: Record<string, any>;
     persistForOffline?: boolean; // Queue for offline clients
+    ttl?: number; // Offline-message TTL in seconds (defaults to ServerConfig.offlineMessageTTL)
 }
 
 /**
@@ -167,7 +168,7 @@ export interface BroadcastOptions {
     data: any;
     metadata?: Record<string, any>;
     persistForOffline?: boolean;
-    ttl?: number; // Time to live for offline messages in seconds
+    ttl?: number; // Time to live for offline messages in seconds (only with persistForOffline)
 }
 
 /**

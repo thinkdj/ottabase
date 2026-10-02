@@ -225,6 +225,7 @@ await broadcaster.broadcast({
         message: 'Check out our new dashboard',
     },
     persistForOffline: true, // Queue for offline users
+    ttl: 3600, // Optional: offline copies expire after 1h (default: ServerConfig.offlineMessageTTL)
     metadata: {
         priority: 'high',
     },
@@ -290,7 +291,7 @@ await broadcaster.send(
     },
     {
         persistForOffline: true,
-        metadata: { ttl: 86400 }, // 24 hours
+        ttl: 86400, // Offline copy expires after 24 hours
     },
 );
 
@@ -371,6 +372,19 @@ interface ServerConfig {
     enablePersistence?: boolean; // Enable offline message persistence (default: true)
 }
 ```
+
+The actor uses `DEFAULT_SERVER_CONFIG`. To change it, subclass and export your class as the Durable Object:
+
+```typescript
+import { DEFAULT_SERVER_CONFIG, RealtimeActor } from '@ottabase/cf-realtime/server';
+
+export class MyRealtimeActor extends RealtimeActor {
+    protected config = { ...DEFAULT_SERVER_CONFIG, maxConnectionsPerChannel: 50 };
+}
+```
+
+A subscribe beyond `maxConnectionsPerChannel` gets an `error` message. Queuing an offline message arms an hourly cleanup
+alarm, which re-arms itself only while queued messages remain.
 
 ## Examples
 

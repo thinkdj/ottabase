@@ -11,6 +11,14 @@ interface UseSplitPaneProps {
     onChange?: (size: number) => void;
 }
 
+/** '30%' → percent; 200, '200' or '200px' → pixels; anything unparseable → 50%. */
+export function parseDefaultSize(value: string | number): { size: number; isPercentage: boolean } {
+    if (typeof value === 'number') return { size: value, isPercentage: false };
+    const size = parseFloat(value);
+    if (!Number.isFinite(size)) return { size: 50, isPercentage: true };
+    return { size, isPercentage: value.trim().endsWith('%') };
+}
+
 export function useSplitPane({
     split,
     defaultSize,
@@ -23,30 +31,15 @@ export function useSplitPane({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const isDraggingRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [pane1Size, setPane1Size] = useState<number>(() => {
-        if (typeof defaultSize === 'string' && defaultSize.endsWith('%')) {
-            return parseFloat(defaultSize);
-        }
-        return typeof defaultSize === 'number' ? defaultSize : 50;
-    });
-    const [isPercentage, setIsPercentage] = useState(() => {
-        return typeof defaultSize === 'string' && defaultSize.endsWith('%');
-    });
+    const [pane1Size, setPane1Size] = useState<number>(() => parseDefaultSize(defaultSize).size);
+    const [isPercentage, setIsPercentage] = useState(() => parseDefaultSize(defaultSize).isPercentage);
 
-    // Sync isPercentage and pane1Size when defaultSize changes
+    // Sync isPercentage and pane1Size when defaultSize switches unit
     useEffect(() => {
-        const newIsPercentage = typeof defaultSize === 'string' && defaultSize.endsWith('%');
-
-        if (newIsPercentage !== isPercentage) {
-            setIsPercentage(newIsPercentage);
-
-            if (newIsPercentage) {
-                setPane1Size(parseFloat(defaultSize as string));
-            } else if (typeof defaultSize === 'number') {
-                setPane1Size(defaultSize);
-            } else {
-                setPane1Size(50);
-            }
+        const parsed = parseDefaultSize(defaultSize);
+        if (parsed.isPercentage !== isPercentage) {
+            setIsPercentage(parsed.isPercentage);
+            setPane1Size(parsed.size);
         }
     }, [defaultSize, isPercentage]);
 

@@ -57,17 +57,8 @@ export interface NotificationOptions {
     channels?: NotificationChannel[];
     /** Notification priority */
     priority?: NotificationPriority;
-    /** Schedule notification for later */
-    scheduledAt?: Date;
-    /** Expire notification after date */
-    expiresAt?: Date;
-    /** Send asynchronously via queue */
+    /** Send asynchronously via the queue set with `setQueue()` (retries are the queue's job) */
     async?: boolean;
-    /** Retry configuration */
-    retry?: {
-        attempts?: number;
-        delay?: number;
-    };
 }
 
 /**
@@ -142,19 +133,6 @@ export interface NotificationManagerConfig {
     defaultChannels?: NotificationChannel[];
     /** Default priority */
     defaultPriority?: NotificationPriority;
-    /** Enable async processing */
-    enableAsync?: boolean;
     /** Queue name for async processing */
     queueName?: string;
-    /** Email configuration */
-    email?: {
-        from: string;
-        replyTo?: string;
-    };
-    /** Websocket configuration */
-    websocket?: {
-        endpoint?: string;
-    };
-    /** System notification recipients */
-    systemAdmins?: string[];
 }

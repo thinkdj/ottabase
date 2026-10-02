@@ -20,7 +20,6 @@
  *
  * const manager = new NotificationManager({
  *   defaultChannels: ["email", "websocket"],
- *   email: { from: "noreply@example.com" }
  * });
  *
  * await manager.notify({

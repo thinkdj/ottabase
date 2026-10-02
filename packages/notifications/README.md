@@ -39,7 +39,6 @@ const wsChannel = createWebSocketChannel({
 // Create manager
 const manager = new NotificationManager({
     defaultChannels: ['email', 'websocket'],
-    email: { from: 'noreply@example.com' },
 });
 
 // Register channels
@@ -259,22 +258,6 @@ await manager.notify({
 });
 ```
 
-### Scheduled Notifications
-
-```typescript
-await manager.notify({
-    recipient: { userId: '123', email: 'user@example.com' },
-    payload: {
-        title: 'Reminder',
-        message: 'Meeting starts in 30 minutes',
-    },
-    options: {
-        scheduledAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    },
-});
-```
-
 ### Custom Metadata
 
 ```typescript
@@ -306,7 +289,6 @@ export default {
     async fetch(request: Request, env: Env) {
         const manager = new NotificationManager({
             defaultChannels: ['email'],
-            email: { from: 'noreply@example.com' },
         });
 
         // Setup channels...

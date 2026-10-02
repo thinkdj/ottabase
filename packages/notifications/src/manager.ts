@@ -24,7 +24,6 @@ import type {
  *
  * const manager = new NotificationManager({
  *   defaultChannels: ["email", "websocket"],
- *   email: { from: "noreply@example.com" }
  * });
  *
  * manager.registerChannel(emailChannel);
@@ -48,7 +47,6 @@ export class NotificationManager {
         this.config = {
             defaultChannels: config.defaultChannels || ['email'],
             defaultPriority: config.defaultPriority || 'normal',
-            enableAsync: config.enableAsync || false,
             queueName: config.queueName || 'notifications',
             ...config,
         };

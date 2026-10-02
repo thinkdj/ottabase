@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { DocsLayout } from '../components/DocsLayout';
 
 const mockConfig = {
-    title: 'Test Docs',
-    basePath: '/docs',
     theme: 'standard' as const,
     sources: [
         {

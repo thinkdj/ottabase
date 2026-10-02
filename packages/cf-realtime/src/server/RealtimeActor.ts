@@ -21,6 +21,25 @@ export interface RealtimeEnv {
     // Add any environment bindings here
 }
 
+/** Interval between expired-offline-message sweeps. */
+const CLEANUP_INTERVAL_MS = 3_600_000;
+
+/**
+ * Defaults for {@link RealtimeActor}. To change them, subclass and override `config`:
+ *
+ * ```typescript
+ * export class MyRealtimeActor extends RealtimeActor {
+ *     protected config = { ...DEFAULT_SERVER_CONFIG, maxConnectionsPerChannel: 50 };
+ * }
+ * ```
+ */
+export const DEFAULT_SERVER_CONFIG: Readonly<Required<ServerConfig>> = {
+    maxConnectionsPerChannel: 1000,
+    offlineMessageTTL: 86400, // 24 hours
+    maxOfflineMessages: 100,
+    enablePersistence: true,
+};
+
 /**
  * RealtimeActor handles pub/sub for a specific channel or set of channels
  * Uses Cloudflare Actors built on Durable Objects for state management
@@ -29,20 +48,13 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
     private connections: Map<string, WebSocket> = new Map();
     private clientInfo: Map<string, ClientConnection> = new Map();
     private offlineMessages: Map<string, OfflineMessage[]> = new Map();
-    private config: ServerConfig;
+    protected config: ServerConfig = { ...DEFAULT_SERVER_CONFIG };
     private actorState: DurableObjectState;
+    private initialized = false;
 
     constructor(state: DurableObjectState, env: RealtimeEnv) {
         super(state, env);
         this.actorState = state;
-
-        // Default configuration
-        this.config = {
-            maxConnectionsPerChannel: 1000,
-            offlineMessageTTL: 86400, // 24 hours
-            maxOfflineMessages: 100,
-            enablePersistence: true,
-        };
     }
 
     /**
@@ -65,6 +77,13 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
      * Handle incoming HTTP requests - primarily for WebSocket upgrades
      */
     async fetch(request: Request): Promise<Response> {
+        // This class overrides Actor.fetch, so the base class never runs onInit for us;
+        // without this, persisted offline messages are never reloaded after eviction.
+        if (!this.initialized) {
+            this.initialized = true;
+            await this.onInit();
+        }
+
         const url = new URL(request.url);
 
         // Handle WebSocket upgrade
@@ -201,6 +220,12 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
         const client = this.clientInfo.get(clientId);
         if (!client) return;
 
+        const max = this.config.maxConnectionsPerChannel;
+        if (max && !client.channels.has(message.channel) && this.getChannelSubscribers(message.channel).length >= max) {
+            this.sendError(clientId, `Channel "${message.channel}" is full`);
+            return;
+        }
+
         client.channels.add(message.channel);
 
         // Send acknowledgment
@@ -300,7 +325,7 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
 
                 // Store for offline clients if persistence is enabled
                 if (broadcast.persistForOffline && this.config.enablePersistence) {
-                    await this.storeOfflineMessage(message);
+                    await this.storeOfflineMessage(message, broadcast.ttl);
                 }
             }
 
@@ -389,7 +414,8 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
     /**
      * Store offline message for later delivery
      */
-    private async storeOfflineMessage(message: ChannelMessage) {
+    private async storeOfflineMessage(message: ChannelMessage, ttlSeconds?: number) {
+        const ttl = ttlSeconds ?? this.config.offlineMessageTTL ?? DEFAULT_SERVER_CONFIG.offlineMessageTTL;
         const offlineMsg: OfflineMessage = {
             id: message.id || this.generateMessageId(),
             channel: message.channel,
@@ -397,7 +423,7 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
             data: message.data,
             metadata: message.metadata,
             createdAt: Date.now(),
-            expiresAt: Date.now() + (this.config.offlineMessageTTL || 86400) * 1000,
+            expiresAt: Date.now() + ttl * 1000,
             delivered: false,
         };
 
@@ -419,6 +445,11 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
         }
 
         await this.persistOfflineMessages();
+
+        // Nothing else schedules the first sweep, so arm it whenever a message is queued.
+        if (this.offlineMessages.size > 0 && (await this.actorState.storage.getAlarm()) === null) {
+            await this.actorState.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+        }
     }
 
     /**
@@ -511,13 +542,22 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
     }
 
     /**
-     * Periodic alarm to clean up expired messages
+     * Durable Object alarm entry point. Overrides Actor.alarm, whose scheduler needs
+     * SQLite-backed storage this (KV-backed) class does not declare.
+     */
+    async alarm() {
+        await this.onAlarm();
+    }
+
+    /**
+     * Periodic alarm to clean up expired messages; re-arms only while messages remain.
      */
     async onAlarm() {
         this.cleanupExpiredMessages();
         await this.persistOfflineMessages();
 
-        // Schedule next cleanup in 1 hour
-        await this.actorState.storage.setAlarm(Date.now() + 3600000);
+        if (this.offlineMessages.size > 0) {
+            await this.actorState.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+        }
     }
 }

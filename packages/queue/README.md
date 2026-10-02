@@ -50,7 +50,7 @@ const registry = createRegistry<Env>()
         await sendEmail(to, subject);
     })
     .register('process-order', async (job, ctx) => {
-        await processOrder(job.payload.orderId, ctx.env.DB);
+        await processOrder(job.payload.orderId, ctx.env.OBCF_D1);
     });
 
 // Export in worker
@@ -106,7 +106,7 @@ await dispatch(
         then: [
             { type: 'send-receipt', payload: { orderId: 123 } },
             { type: 'notify-warehouse', payload: { orderId: 123 }, delay: 60 },
-            { type: 'schedule-followup', payload: { orderId: 123 }, delay: 86400 },
+            { type: 'schedule-followup', payload: { orderId: 123 }, delay: 86400, priority: 'low' },
         ],
     },
 );
@@ -119,6 +119,9 @@ const handler = createQueueHandler(registry, {
     chainQueue: env.MY_QUEUE, // Required for chaining
 });
 ```
+
+With `chainPriorityQueues`, a chained job goes to the queue for its own `priority`, else its parent's priority, else
+`normal`.
 
 ## Priority Queues
 

@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Mailer } from '@ottabase/email';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import type { Notification, NotificationChannelHandler, SendResult } from '../types';
 
 /**
@@ -15,8 +16,6 @@ export interface EmailChannelConfig {
     from: string;
     /** Default reply-to address */
     replyTo?: string;
-    /** Email template name (optional) */
-    template?: string;
 }
 
 /**
@@ -74,9 +73,9 @@ export class EmailChannel implements NotificationChannelHandler {
       `;
 
             if (payload.actionUrl && payload.actionText) {
-                // Validate URL scheme
-                const url = payload.actionUrl.trim();
-                if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                // sanitizeUrl blocks javascript: and protocol-relative (//evil.com) links
+                const url = sanitizeUrl(payload.actionUrl);
+                if (url !== '#') {
                     html += `
           <p>
             <a href="${escapeHtml(url)}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">

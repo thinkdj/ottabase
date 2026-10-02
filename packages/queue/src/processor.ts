@@ -10,6 +10,7 @@ import type {
     HandlerOptions,
     JobContext,
     JobHandler,
+    JobPriority,
     Message,
     MessageBatch,
     ProcessorOptions,
@@ -172,7 +173,7 @@ export class QueueProcessor<E = unknown> {
     /**
      * Dispatch chained jobs after successful processing
      */
-    private async dispatchChainedJobs(chainedJobs: ChainedJob[], env: E): Promise<void> {
+    private async dispatchChainedJobs(chainedJobs: ChainedJob[], env: E, parentPriority?: JobPriority): Promise<void> {
         const queue = this.options.chainQueue;
         const priorityQueues = this.options.chainPriorityQueues;
 
@@ -184,11 +185,12 @@ export class QueueProcessor<E = unknown> {
         for (const chainedJob of chainedJobs) {
             try {
                 // Determine which queue to use based on priority
+                const priority = chainedJob.priority ?? parentPriority;
                 let targetQueue: Queue | undefined = queue;
 
                 if (priorityQueues) {
-                    // For chained jobs, we don't have priority info, so use normal queue
-                    targetQueue = priorityQueues.normal ?? queue;
+                    // Chained job's own priority, else the parent's; fall back to normal, then chainQueue
+                    targetQueue = (priority && priorityQueues[priority]) || priorityQueues.normal || queue;
                 }
 
                 if (!targetQueue) {
@@ -205,6 +207,7 @@ export class QueueProcessor<E = unknown> {
                         id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
                         dispatchedAt: Date.now(),
                         attempts: 0,
+                        ...(priority && { priority }),
                     },
                 };
 
@@ -280,7 +283,7 @@ export class QueueProcessor<E = unknown> {
 
             // Dispatch chained jobs on success (only if not retrying)
             if (!handled && job.meta?.chain && job.meta.chain.length > 0) {
-                await this.dispatchChainedJobs(job.meta.chain, env);
+                await this.dispatchChainedJobs(job.meta.chain, env, job.meta.priority);
             }
 
             // Auto-ack only if handler didn't explicitly call ack/retry

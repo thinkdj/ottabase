@@ -81,8 +81,6 @@ const packageModules = import.meta.glob('/../../packages/*/README.md', {
 }) as Record<string, () => Promise<string>>;
 
 export const docsConfig: DocsConfig = {
-    title: 'Ottabase Docs',
-    basePath: '/docs',
     theme: 'spacious',
     codeRenderMode: 'ui-code-highlight',
     sources: [

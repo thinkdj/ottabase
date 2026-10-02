@@ -60,7 +60,6 @@ describe('NotificationManager', () => {
     beforeEach(() => {
         manager = new NotificationManager({
             defaultChannels: ['email'],
-            email: { from: 'noreply@test.com' },
         });
 
         emailChannel = new MockEmailChannel();

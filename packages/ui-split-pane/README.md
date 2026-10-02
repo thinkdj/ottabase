@@ -73,7 +73,7 @@ function App() {
 | Prop               | Type                         | Default      | Description                                     |
 | ------------------ | ---------------------------- | ------------ | ----------------------------------------------- |
 | `split`            | `'vertical' \| 'horizontal'` | `'vertical'` | Direction of the split                          |
-| `defaultSize`      | `string \| number`           | `'50%'`      | Initial size of the first pane                  |
+| `defaultSize`      | `string \| number`           | `'50%'`      | Initial size: `'30%'`, `'200px'` or `200` (px)  |
 | `minWidth`         | `number`                     | `50`         | Minimum width in pixels (for vertical split)    |
 | `maxWidth`         | `number`                     | `undefined`  | Maximum width in pixels (for vertical split)    |
 | `minHeight`        | `number`                     | `50`         | Minimum height in pixels (for horizontal split) |

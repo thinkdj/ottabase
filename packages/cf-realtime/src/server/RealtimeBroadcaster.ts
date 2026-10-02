@@ -37,6 +37,7 @@ export class RealtimeBroadcaster<T extends Rpc.DurableObjectBranded | undefined 
                     data: options.data,
                     metadata: options.metadata,
                     persistForOffline: options.persistForOffline || false,
+                    ttl: options.ttl,
                     timestamp: Date.now(),
                 }),
             });
@@ -58,7 +59,7 @@ export class RealtimeBroadcaster<T extends Rpc.DurableObjectBranded | undefined 
         channel: string,
         event: string,
         data: any,
-        options?: { persistForOffline?: boolean; metadata?: Record<string, any> },
+        options?: { persistForOffline?: boolean; metadata?: Record<string, any>; ttl?: number },
     ): Promise<{ success: boolean; error?: string }> {
         return this.broadcast({
             channels: [channel],
@@ -66,6 +67,7 @@ export class RealtimeBroadcaster<T extends Rpc.DurableObjectBranded | undefined 
             data,
             persistForOffline: options?.persistForOffline,
             metadata: options?.metadata,
+            ttl: options?.ttl,
         });
     }
 

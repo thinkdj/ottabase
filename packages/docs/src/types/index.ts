@@ -57,14 +57,8 @@ export type DocsCodeRenderMode =
 
 /** Configuration for the docs viewer */
 export interface DocsConfig {
-    /** Application or docs site title */
-    title?: string;
-    /** Logo element to render in sidebar header */
-    logo?: React.ReactNode;
-    /** Documentation sources */
+    /** Documentation sources. Slugs are relative; the host router owns the URL prefix (see onNavigate). */
     sources: DocsSource[];
-    /** Base URL path (e.g. "/docs") */
-    basePath?: string;
     /** Layout theme — 'compact' | 'standard' | 'spacious' */
     theme?: DocsTheme;
     /** Code block rendering: 'simple' or 'ui-code-highlight' (default) */

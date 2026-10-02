@@ -18,6 +18,8 @@ export interface ChainedJob<T = unknown> {
     payload: T;
     /** Delay in seconds before processing the chained job */
     delay?: number;
+    /** Priority queue for the chained job (defaults to the parent job's priority) */
+    priority?: JobPriority;
 }
 
 /**
