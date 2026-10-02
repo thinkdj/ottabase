@@ -303,6 +303,9 @@ const blogTagArchiveRoute = blogPublicRoute('/blog/tag/$slug', () =>
 const blogCategoryArchiveRoute = blogPublicRoute('/blog/category/$slug', () =>
     import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
 );
+const blogAuthorArchiveRoute = blogPublicRoute('/blog/author/$authorId', () =>
+    import('@/pages/blog/BlogAuthorArchivePage').then((m) => ({ default: m.BlogAuthorArchivePage })),
+);
 const blogSeriesArchiveRoute = blogPublicRoute('/blog/series/$slug', () =>
     import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
 );
@@ -817,6 +820,7 @@ const packageRoutes = [
     { route: blogTagArchiveRoute, pkg: 'ottablog' as const },
     { route: blogCategoryArchiveRoute, pkg: 'ottablog' as const },
     { route: blogSeriesArchiveRoute, pkg: 'ottablog' as const },
+    { route: blogAuthorArchiveRoute, pkg: 'ottablog' as const },
     { route: blogDateArchiveYearRoute, pkg: 'ottablog' as const },
     { route: blogDateArchiveMonthRoute, pkg: 'ottablog' as const },
     { route: adminBlogRoute, pkg: 'ottablog' as const },

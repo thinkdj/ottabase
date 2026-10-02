@@ -29,6 +29,9 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
   (and config) applied at init (see [STUDIO.md](./STUDIO.md))
 - **Multilingual publishing** - Configure supported BCP-47 languages per blog, assign each post a canonical language,
   and manage independent localized versions with fallback-aware public routing, RSS, and sitemap URLs
+- **Author Archives** - `/blog/author/$authorId` lists an author's published posts; post bylines link to it
+- **Import / Export** - One-file JSON backup of every post, and import from that file or from Markdown with front matter
+  (Jekyll, Hugo, Astro, Eleventy, Ghost exports) — see [Import / Export](#import--export)
 
 ## Installation
 
@@ -68,11 +71,11 @@ import { BlogRenderer } from '@ottabase/ottablog/renderer';
 
 ```typescript
 import { Post, PostCategory, PostTag, PostSeries } from '@ottabase/ottablog';
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 // Set up database connection
-setDriver(createD1Driver(env.OBCF_D1));
+registerConnection('default', createD1Driver(env.OBCF_D1));
 
 // Create a post
 const post = await Post.create({
@@ -866,10 +869,10 @@ When integrated with the app's worker routes, the blog system provides these pub
 ### List Posts
 
 ```http
-GET /api/blog/posts?page=1&perPage=10&contentType=blog&categoryId=xyz&tagId=abc&search=keyword&orderBy=publishedAt&orderDirection=desc
+GET /api/blog/posts?page=1&perPage=10&contentType=blog&categoryId=xyz&tagId=abc&authorId=u1&search=keyword&orderBy=publishedAt&orderDirection=desc
 ```
 
-Supports filtering by content type, category, tag, series, and full-text search. Responses include enriched tag,
+Supports filtering by content type, category, tag, series, author, and full-text search. Responses include enriched tag,
 category, series, and public author data (`id`, display `name`, and `image`). Account email and `privateNotes` are never
 included in public responses.
 
@@ -966,6 +969,16 @@ GET /api/blog/series/by-slug/{slug}
 
 Returns series metadata (id, title, slug, description, status). Supports query param: `appId` (optional, otherwise
 `X-App-Id`/config is used).
+
+### Author by Id
+
+```http
+GET /api/blog/authors/{authorId}
+```
+
+Returns the public author card (`id`, `name`, `image`) for the author archive page. It answers only for a user with at
+least one published, non-changelog post in this blog's scope; anyone else is a 404, so the route cannot be used to look
+up arbitrary accounts. Pair it with `GET /api/blog/posts?authorId={authorId}` for the posts.
 
 ### RSS Feed
 
@@ -1096,13 +1109,58 @@ The app includes admin pages for managing blog content:
 
 All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
 
+## Import / Export
+
+The admin content list has **Export** and **Import** buttons.
+
+**Export** (`GET /api/blog/export`, needs `posts:update`) downloads every post the caller can read through RLS — any
+status, body and private notes included — as one JSON file:
+
+```json
+{
+    "format": "ottablog",
+    "version": 1,
+    "exportedAt": "2026-10-02T…",
+    "posts": [{ "title": "…", "slug": "…", "tags": ["Travel"], "categories": ["Notes"], "series": "Japan", "…": "…" }]
+}
+```
+
+Tags, categories, and series travel **by name**, so the file imports into another app, organization, or database. Not
+exported: translations, version history, comments, view counts, and password hashes (`isProtected` is kept as
+information only).
+
+**Import** (`POST /api/blog/import`, needs `posts:create`) accepts that JSON file or Markdown files. Markdown is
+converted in the browser with `parseMarkdownPost` / `markdownToEditorJs` (headings, paragraphs, nested lists, fenced
+code, quotes, rules, images, bold/italic/code/links). Front matter is read for `title`, `slug`, `date`, `tags`,
+`categories`, `description`/`excerpt`/`summary`, `cover_image`/`image`, `series`, `lang`, and `draft` /
+`published: false` / `status`; a Jekyll `2020-01-31-slug.md` filename supplies the date and slug. Raw HTML in Markdown
+is escaped, not imported. Tables and indented code blocks arrive as plain text.
+
+The server takes at most `BLOG_IMPORT_BATCH_SIZE` (10) posts per request — the dialog batches for you — and applies the
+editor's rules:
+
+- Posts are created as the caller, in the caller's app/organization scope, through `Post.create` (full write
+  validation). `publishedAt` is kept for published posts, so archives keep their real dates.
+- A slug that already exists is **skipped**, never overwritten, so re-running an import is safe.
+- `published`/`scheduled` posts need `posts:publish`; without it they land as drafts with a note.
+- A password-protected post lands as an unprotected **draft** — passwords never leave the server, so it cannot stay
+  protected, and it must not go public by accident.
+- Tags, categories, and series are found by slug or created, but only for callers with `org:admin` or `taxonomy:manage`
+  (the same rule as generic CRUD); others get the post without taxonomy and a note.
+
+The response lists `created`, `skipped` (with reasons), and `warnings` per slug.
+
 ## Public Archive Pages
 
-| Page             | Route                  | Description                                           |
-| ---------------- | ---------------------- | ----------------------------------------------------- |
-| Tag Archive      | `/blog/tag/$slug`      | Shows tag info and all posts tagged with it           |
-| Category Archive | `/blog/category/$slug` | Shows category info and all posts in that category    |
-| Series Archive   | `/blog/series/$slug`   | Shows series info and ordered list of posts in series |
+| Page             | Route                    | Description                                           |
+| ---------------- | ------------------------ | ----------------------------------------------------- |
+| Tag Archive      | `/blog/tag/$slug`        | Shows tag info and all posts tagged with it           |
+| Category Archive | `/blog/category/$slug`   | Shows category info and all posts in that category    |
+| Series Archive   | `/blog/series/$slug`     | Shows series info and ordered list of posts in series |
+| Author Archive   | `/blog/author/$authorId` | Shows the author's name, avatar, and published posts  |
+
+The post page links its byline to the author archive through the renderer's `onAuthorClick` prop; the default theme
+renders the name as a button only when a host passes that handler.
 
 Archive pages are **theme-aware**: they use the active theme's `renderCard` for post cards and
 `archiveContainer`/`archiveTitle` classes for layout. Both built-in themes (Default and Minimal) provide distinct card

@@ -39,7 +39,7 @@ import {
     Skeleton,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostPath, localizedPostSearch } from './blogLinks';
 import {
     ArrowLeft,
@@ -314,6 +314,7 @@ export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
     const search = useSearch({ strict: false }) as { lang?: string };
+    const navigate = useNavigate();
     const requestedLanguage = search.lang || '';
     const { user } = useSession();
     const { isReady: studioReady } = useBlogStudio();
@@ -686,6 +687,9 @@ export function BlogDetailPage() {
                             showFootnotes
                             showSeries
                             formatDate={formatDate}
+                            onAuthorClick={(authorId) =>
+                                navigate({ to: '/blog/author/$authorId', params: { authorId } })
+                            }
                             renderSeriesNav={(_post) => {
                                 if (!series || seriesPosts.length <= 1) return null;
                                 return (

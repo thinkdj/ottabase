@@ -200,6 +200,9 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogTagBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogCategoryBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogSeriesBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
+    handleBlogAuthorById(ctx: BlogRequestContext<Env>, authorId: string): Promise<Response>;
+    handleBlogExport(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogImport(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogRelatedPosts(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogRssFeed(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogSitemap(ctx: BlogRequestContext<Env>): Promise<Response>;

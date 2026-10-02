@@ -111,16 +111,19 @@ export const defaultTheme: Theme = {
                                     className="h-6 w-6 rounded-full object-cover ring-1 ring-border"
                                 />
                             )}
-                            <span
-                                className={`text-sm font-medium normal-case tracking-normal text-foreground${
-                                    props.onAuthorClick ? ' cursor-pointer hover:underline' : ''
-                                }`}
-                                onClick={() =>
-                                    props.onAuthorClick && post.authorId && props.onAuthorClick(post.authorId)
-                                }
-                            >
-                                {post.author.name}
-                            </span>
+                            {props.onAuthorClick && post.authorId ? (
+                                <button
+                                    type="button"
+                                    className="rounded-sm text-sm font-medium normal-case tracking-normal text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    onClick={() => props.onAuthorClick!(post.authorId!)}
+                                >
+                                    {post.author.name}
+                                </button>
+                            ) : (
+                                <span className="text-sm font-medium normal-case tracking-normal text-foreground">
+                                    {post.author.name}
+                                </span>
+                            )}
                         </div>
                     )}
                     {post.publishedAt && (

@@ -27,11 +27,21 @@ import {
     PostTag,
     PostTagLink,
 } from '../ottaorm-models';
+import {
+    BLOG_EXPORT_FORMAT,
+    BLOG_EXPORT_VERSION,
+    BLOG_IMPORT_BATCH_SIZE,
+    type BlogExportFile,
+    type BlogExportPost,
+    type BlogImportResult,
+} from '../import-export';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
 import {
     ContentValidationError,
+    generateSlug,
     normalizeLanguageCode,
+    POST_STATUSES,
     type BlogLanguage,
     type BlogLanguageConfig,
     type EditorJSData,
@@ -120,6 +130,87 @@ async function chunkedFetch<M>(
         results.push(...(await fetch(chunk)));
     }
     return results;
+}
+
+/**
+ * Post columns an import may set, with their JSON type. Doubles as the export column list.
+ * Everything else — ids, scope, authorship, password hash, counters, timestamps the model owns —
+ * is derived server-side. Each value still passes the model's write validation.
+ */
+const IMPORT_FIELD_TYPES = {
+    title: 'string',
+    slug: 'string',
+    language: 'string',
+    contentType: 'string',
+    status: 'string',
+    excerpt: 'string',
+    content: 'object',
+    blurbText: 'string',
+    photoNote: 'string',
+    photoAlbum: 'object',
+    crossposts: 'object',
+    heroImage: 'object',
+    seoMeta: 'object',
+    originalDate: 'object',
+    meta: 'object',
+    footnotes: 'object',
+    privateNotes: 'object',
+    isFeatured: 'boolean',
+    allowComments: 'boolean',
+    publishAt: 'number',
+    publishedAt: 'number',
+    seriesOrder: 'number',
+} as const;
+
+const MAX_TERM_NAME_LENGTH = 100;
+
+interface ImportPostInput {
+    data: Record<string, unknown>;
+    tags: string[];
+    categories: string[];
+    series: string;
+    isProtected: boolean;
+}
+
+/** Shape-check one untrusted import item. Returns the reason as a string when it is unusable. */
+function readImportPost(raw: unknown): ImportPostInput | string {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'Each post must be an object';
+    const input = raw as Record<string, unknown>;
+    const data: Record<string, unknown> = {};
+    for (const [field, kind] of Object.entries(IMPORT_FIELD_TYPES)) {
+        const value = input[field];
+        if (value === undefined || value === null) continue;
+        if (typeof value !== kind) return `${field} must be a ${kind}`;
+        data[field] = value;
+    }
+    if (typeof data.title !== 'string' || !data.title.trim()) return 'Each post needs a title';
+    if (data.status !== undefined && !Object.prototype.hasOwnProperty.call(POST_STATUSES, data.status as string)) {
+        return `Unknown status "${String(data.status)}"`;
+    }
+    const names = (value: unknown) =>
+        Array.isArray(value)
+            ? value
+                  .filter((name): name is string => typeof name === 'string')
+                  .map((name) => name.trim())
+                  .filter((name) => name && name.length <= MAX_TERM_NAME_LENGTH)
+            : [];
+    return {
+        data,
+        tags: names(input.tags),
+        categories: names(input.categories),
+        series: names([input.series])[0] ?? '',
+        isProtected: input.isProtected === true,
+    };
+}
+
+// Letters and digits in any script, plus - and _: what `/blog/$slug` can carry without escaping
+// surprises. A provided slug that already fits is kept verbatim so URLs survive a migration.
+const IMPORT_SLUG = /^[\p{L}\p{N}_-]{1,200}$/u;
+
+function importSlug(slug: unknown, title: unknown): string {
+    const given = typeof slug === 'string' ? slug.trim().toLowerCase() : '';
+    if (IMPORT_SLUG.test(given)) return given;
+    return generateSlug(given || (typeof title === 'string' ? title : ''));
 }
 
 /**
@@ -1504,6 +1595,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const seriesId = url.searchParams.get('seriesId') || null;
         const categoryId = url.searchParams.get('categoryId') || null;
         const tagId = url.searchParams.get('tagId') || null;
+        const authorId = url.searchParams.get('authorId') || null;
         const search = url.searchParams.get('search') || null;
         const orderBy = url.searchParams.get('orderBy') || 'publishedAt';
         const orderDirection = (url.searchParams.get('orderDirection') || 'desc') as 'asc' | 'desc';
@@ -1524,6 +1616,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             where.contentType = { $ne: 'changelog' };
         }
         if (seriesId) where.seriesId = seriesId;
+        if (authorId) where.authorId = authorId;
 
         // Date archive filtering: publishedAt range for year/month
         if (yearParam) {
@@ -1900,6 +1993,33 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('Series not found', 404, { code: 'NOT_FOUND' });
         }
         return jsonResponse(series.toJson());
+    }
+
+    /**
+     * Public author card for the author archive page. Answers only for a user with a published
+     * post in this blog's scope, so the route cannot be used to look up arbitrary accounts by id,
+     * and only with the public author projection (never the account email).
+     */
+    async function handleBlogAuthorById(context: Ctx, authorId: string): Promise<Response> {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const where: Record<string, unknown> = {
+            authorId,
+            status: 'published',
+            appId: resolveAppId(context),
+            // Changelog entries live at /changelog, so they do not make someone a blog author.
+            contentType: { $ne: 'changelog' },
+        };
+        const organizationId = await resolveTenant(context);
+        if (organizationId !== undefined) where.organizationId = organizationId;
+
+        const post = await Post.first(where);
+        const author = post ? await post.author([...PUBLIC_AUTHOR_FIELDS]) : null;
+        if (!author) {
+            return errorResponse('Author not found', 404, { code: 'NOT_FOUND' });
+        }
+        return jsonResponse({ id: author.get('id'), name: author.get('name'), image: author.get('image') });
     }
 
     // ============================================================
@@ -2532,6 +2652,266 @@ ${urls}
         });
     }
 
+    // ============================================================
+    // IMPORT / EXPORT
+    // ============================================================
+
+    /**
+     * Full-fidelity backup of every post the caller can read (any status), with taxonomy carried
+     * by name so the file imports into another app, organization, or database. Translations,
+     * versions, and password hashes are not exported.
+     */
+    async function handleBlogExport(context: Ctx): Promise<Response> {
+        const guard = editorialGuard('update');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+
+        let filter: Record<string, unknown>;
+        try {
+            filter = globalRLS.getReadFilter(Post.entity, securityContext);
+        } catch {
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+        }
+
+        // ponytail: the whole blog in one response; page it if exports outgrow Worker memory.
+        const posts = await Post.where(filter, { orderBy: 'createdAt', orderDirection: 'asc', withDeferred: true });
+        const postIds = posts.map((post) => post.get('id') as string);
+        const unique = (values: unknown[]) => [...new Set(values.filter((v): v is string => typeof v === 'string'))];
+
+        const [tagLinks, categoryLinks] = await Promise.all([
+            chunkedFetch(postIds, (ids) => PostTagLink.whereIn('postId', ids)),
+            chunkedFetch(postIds, (ids) => PostCategoryLink.whereIn('postId', ids)),
+        ]);
+        const [tags, categories, series] = await Promise.all([
+            chunkedFetch(unique(tagLinks.map((link) => link.get('tagId'))), (ids) =>
+                PostTag.whereIn('id', ids, { select: ['id', 'name'] }),
+            ),
+            chunkedFetch(unique(categoryLinks.map((link) => link.get('categoryId'))), (ids) =>
+                PostCategory.whereIn('id', ids, { select: ['id', 'name'] }),
+            ),
+            chunkedFetch(unique(posts.map((post) => post.get('seriesId'))), (ids) =>
+                PostSeries.whereIn('id', ids, { select: ['id', 'title'] }),
+            ),
+        ]);
+        const nameById = new Map<string, string>();
+        for (const row of [...tags, ...categories]) nameById.set(row.get('id') as string, row.get('name') as string);
+        for (const row of series) nameById.set(row.get('id') as string, row.get('title') as string);
+
+        const namesByPost = (links: Array<{ get(field: string): unknown }>, termField: string) => {
+            const byPost = new Map<string, string[]>();
+            for (const link of links) {
+                const name = nameById.get(link.get(termField) as string);
+                if (!name) continue;
+                const postId = link.get('postId') as string;
+                byPost.set(postId, [...(byPost.get(postId) ?? []), name]);
+            }
+            return byPost;
+        };
+        const tagNames = namesByPost(tagLinks, 'tagId');
+        const categoryNames = namesByPost(categoryLinks, 'categoryId');
+
+        const file: BlogExportFile = {
+            format: BLOG_EXPORT_FORMAT,
+            version: BLOG_EXPORT_VERSION,
+            exportedAt: new Date().toISOString(),
+            posts: posts.map((post) => {
+                const id = post.get('id') as string;
+                const row: Record<string, unknown> = {};
+                for (const field of Object.keys(IMPORT_FIELD_TYPES)) {
+                    const value = post.get(field);
+                    row[field] = value instanceof Date ? value.getTime() : (value ?? null);
+                }
+                return {
+                    ...row,
+                    isProtected: post.get('isProtected') === true,
+                    tags: tagNames.get(id) ?? [],
+                    categories: categoryNames.get(id) ?? [],
+                    series: nameById.get(post.get('seriesId') as string) ?? null,
+                } as BlogExportPost;
+            }),
+        };
+        return jsonResponse(file, 200, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    /**
+     * Create posts from an export file or converted Markdown, at most BLOG_IMPORT_BATCH_SIZE per
+     * request. Every post is created as the caller, in the caller's scope, through the fat model.
+     * Same rules as the editor: published/scheduled rows need `posts:publish` (otherwise they land
+     * as drafts), and taxonomy is linked only for callers who may manage it. Existing slugs are
+     * skipped, never overwritten, so re-running an import is safe.
+     */
+    async function handleBlogImport(context: Ctx): Promise<Response> {
+        const guard = editorialGuard('create');
+        if (!guard) return editorialGuardMissing();
+        const auth = await guard(context);
+        if (auth instanceof Response) return auth;
+
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+
+        const securityContext = editorialWriteContext(auth, context);
+        if (securityContext instanceof Response) return securityContext;
+        if (securityContext.organizationId == null && !securityContext.platformAdmin) {
+            return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+        }
+
+        const body = await readJson<{ posts?: unknown }>(context.request);
+        if (!Array.isArray(body.posts) || body.posts.length === 0 || body.posts.length > BLOG_IMPORT_BATCH_SIZE) {
+            return errorResponse(`posts must be an array of 1-${BLOG_IMPORT_BATCH_SIZE} items`, 400, {
+                code: 'VALIDATION_ERROR',
+            });
+        }
+
+        const scope = {
+            organizationId: securityContext.organizationId ?? null,
+            appId: securityContext.appId as string,
+            userId: securityContext.userId as string,
+            authorId: securityContext.userId as string,
+        };
+        try {
+            globalRLS.validateWrite(Post.entity, securityContext, scope, 'create');
+        } catch (error) {
+            if (error instanceof RLSError) return errorResponse('Access denied', 403, { code: 'FORBIDDEN' });
+            throw error;
+        }
+
+        const permissions = securityContext.permissions;
+        const canPublish = Boolean(securityContext.platformAdmin) || hasGrantedPermission(permissions, 'posts:publish');
+        // Mirrors generic CRUD: blog taxonomy is shared vocabulary, so writes need a content administrator.
+        const canManageTaxonomy =
+            Boolean(securityContext.platformAdmin) ||
+            hasGrantedPermission(permissions, 'org:admin') ||
+            hasGrantedPermission(permissions, 'taxonomy:manage');
+        // Platform mode: one app-wide vocabulary and app-wide slugs. Org mode: per-organization.
+        const tenantOrg = resolveMode(context.env) === 'org' ? scope.organizationId : undefined;
+        const languageConfig = await languageConfigFor(context, scope.appId, tenantOrg);
+
+        const termIds = new Map<string, string>();
+        const ensureTerm = async (kind: 'tag' | 'category' | 'series', name: string): Promise<string> => {
+            const key = `${kind}:${name.toLowerCase()}`;
+            const cached = termIds.get(key);
+            if (cached) return cached;
+            const Model = (
+                kind === 'tag' ? PostTag : kind === 'category' ? PostCategory : PostSeries
+            ) as typeof PostTag;
+            const nameField = kind === 'series' ? 'title' : 'name';
+            const where: Record<string, unknown> = { appId: scope.appId };
+            if (kind !== 'series') where.type = 'post';
+            if (tenantOrg !== undefined) where.organizationId = tenantOrg;
+            const slug = generateSlug(name);
+            let term = await Model.first(slug ? { ...where, slug } : { ...where, [nameField]: name });
+            if (!term) {
+                const data = { ...where, organizationId: tenantOrg ?? null, [nameField]: name };
+                globalRLS.validateWrite(Model.entity, securityContext, data, 'create');
+                term = await Model.create(data);
+            }
+            const id = term.get('id') as string;
+            termIds.set(key, id);
+            return id;
+        };
+
+        const result: BlogImportResult = { created: [], skipped: [], warnings: [] };
+        for (const raw of body.posts) {
+            const item = readImportPost(raw);
+            if (typeof item === 'string') {
+                result.skipped.push({ slug: '', reason: item });
+                continue;
+            }
+            const slug = importSlug(item.data.slug, item.data.title);
+            if (!slug) {
+                result.skipped.push({ slug: String(item.data.title), reason: 'Needs a title or slug usable in a URL' });
+                continue;
+            }
+            const slugWhere: Record<string, unknown> = { appId: scope.appId, slug };
+            if (tenantOrg !== undefined) slugWhere.organizationId = tenantOrg;
+            if (await Post.first(slugWhere)) {
+                result.skipped.push({ slug, reason: 'A post with this slug already exists' });
+                continue;
+            }
+
+            let status = (item.data.status as PostStatus | undefined) ?? 'draft';
+            if (item.isProtected) {
+                status = 'draft';
+                result.warnings.push({
+                    slug,
+                    message:
+                        'Was password-protected: imported as an unprotected draft. Set a new password before publishing.',
+                });
+            } else if ((status === 'published' || status === 'scheduled') && !canPublish) {
+                status = 'draft';
+                result.warnings.push({
+                    slug,
+                    message: 'Imported as a draft: publishing needs the posts:publish permission.',
+                });
+            }
+
+            const hasTaxonomy = item.tags.length > 0 || item.categories.length > 0 || Boolean(item.series);
+            if (hasTaxonomy && !canManageTaxonomy) {
+                result.warnings.push({
+                    slug,
+                    message: 'Tags, categories, and series were not linked: they need taxonomy:manage.',
+                });
+            }
+            const linkTaxonomy = hasTaxonomy && canManageTaxonomy;
+
+            let post: Post;
+            try {
+                const seriesId = linkTaxonomy && item.series ? await ensureTerm('series', item.series) : undefined;
+                post = await Post.create({
+                    ...item.data,
+                    slug,
+                    status,
+                    language: item.data.language ?? languageConfig.defaultLanguage,
+                    ...(seriesId ? { seriesId } : {}),
+                    ...scope,
+                });
+            } catch (error) {
+                if (error instanceof ContentValidationError || error instanceof DomainValidationError) {
+                    result.skipped.push({ slug, reason: error.message });
+                    continue;
+                }
+                if (error instanceof RLSError) {
+                    result.skipped.push({ slug, reason: 'Access denied' });
+                    continue;
+                }
+                throw error;
+            }
+            const postId = post.get('id') as string;
+            result.created.push({ slug, id: postId });
+
+            if (!linkTaxonomy) continue;
+            try {
+                // A Set: "JS" and "js" resolve to one tag, and the link tables are unique per pair.
+                const tagIds = new Set<string>();
+                for (const name of item.tags) tagIds.add(await ensureTerm('tag', name));
+                for (const tagId of tagIds) {
+                    const link = { postId, tagId };
+                    globalRLS.validateWrite(PostTagLink.entity, securityContext, link, 'create');
+                    await PostTagLink.create(link);
+                }
+                const categoryIds = new Set<string>();
+                for (const name of item.categories) categoryIds.add(await ensureTerm('category', name));
+                for (const categoryId of categoryIds) {
+                    const link = { postId, categoryId };
+                    globalRLS.validateWrite(PostCategoryLink.entity, securityContext, link, 'create');
+                    await PostCategoryLink.create(link);
+                }
+            } catch (error) {
+                if (!(error instanceof RLSError)) throw error;
+                result.warnings.push({ slug, message: 'Tags or categories could not be linked: access denied.' });
+            }
+        }
+
+        return jsonResponse(result);
+    }
+
     return {
         handleBlogStudioState,
         handleBlogStudioLanguages,
@@ -2552,6 +2932,7 @@ ${urls}
         handleBlogTagBySlug,
         handleBlogCategoryBySlug,
         handleBlogSeriesBySlug,
+        handleBlogAuthorById,
         handleBlogRelatedPosts,
         handleBlogRssFeed,
         handleBlogSitemap,
@@ -2559,5 +2940,7 @@ ${urls}
         handleBlogDemoSeed,
         handleBlogPreviewTokenMint,
         handleBlogStudioThemeTokens,
+        handleBlogExport,
+        handleBlogImport,
     };
 }

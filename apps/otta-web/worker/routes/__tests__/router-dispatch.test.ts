@@ -113,6 +113,9 @@ vi.mock('../blog', () => ({
     handleBlogRelatedPosts: handlerMock('handleBlogRelatedPosts'),
     handleBlogRssFeed: handlerMock('handleBlogRssFeed'),
     handleBlogSeriesBySlug: handlerMock('handleBlogSeriesBySlug'),
+    handleBlogAuthorById: handlerMock('handleBlogAuthorById'),
+    handleBlogExport: handlerMock('handleBlogExport'),
+    handleBlogImport: handlerMock('handleBlogImport'),
     handleBlogSitemap: handlerMock('handleBlogSitemap'),
     handleBlogStudioActivateTheme: handlerMock('handleBlogStudioActivateTheme'),
     handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
@@ -289,6 +292,9 @@ import {
     handleBlogRelatedPosts,
     handleBlogRssFeed,
     handleBlogSeriesBySlug,
+    handleBlogAuthorById,
+    handleBlogExport,
+    handleBlogImport,
     handleBlogSitemap,
     handleBlogStudioActivateTheme,
     handleBlogStudioPluginConfig,
@@ -412,6 +418,9 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleBlogRelatedPosts,
     handleBlogRssFeed,
     handleBlogSeriesBySlug,
+    handleBlogAuthorById,
+    handleBlogExport,
+    handleBlogImport,
     handleBlogSitemap,
     handleBlogStudioActivateTheme,
     handleBlogStudioPluginConfig,
@@ -667,6 +676,17 @@ describe('router dispatch parity', () => {
                 'p1',
             );
             expect(await response!.text()).toBe('handleBlogPhotoJournalUpdate');
+        });
+
+        it('GET /api/blog/authors/u1 dispatches to the author card with "u1"', async () => {
+            const { response } = await dispatch('GET', '/api/blog/authors/u1');
+            expect(handleBlogAuthorById).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }), 'u1');
+            expect(await response!.text()).toBe('handleBlogAuthorById');
+        });
+
+        it('GET /api/blog/export and POST /api/blog/import dispatch to import/export', async () => {
+            expect(await (await dispatch('GET', '/api/blog/export')).response!.text()).toBe('handleBlogExport');
+            expect(await (await dispatch('POST', '/api/blog/import')).response!.text()).toBe('handleBlogImport');
         });
 
         it('GET /api/blog/posts/by-slug/hello%20world decodes the slug', async () => {

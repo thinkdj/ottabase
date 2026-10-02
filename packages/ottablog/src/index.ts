@@ -153,6 +153,17 @@ export {
 export { normalizeSlugInput, resolveUniqueSlug } from './slug-utils';
 export type { SlugLifecycleConfig, SlugScope } from './slug-utils';
 
+// Import / export file format + Markdown reader (pure)
+export {
+    BLOG_EXPORT_FORMAT,
+    BLOG_EXPORT_VERSION,
+    BLOG_IMPORT_BATCH_SIZE,
+    markdownToEditorJs,
+    parseMarkdownPost,
+    readBlogImportFile,
+} from './import-export';
+export type { BlogExportFile, BlogExportPost, BlogImportResult } from './import-export';
+
 // Migrations (org-mode index swap; register conditionally in the app's migration registry)
 export { ottablogMigrations, ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
 

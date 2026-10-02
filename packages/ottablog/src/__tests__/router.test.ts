@@ -24,11 +24,41 @@ vi.mock('../ottaorm-models', () => ({
         createBlurb: vi.fn(),
         createPhotoJournal: vi.fn(),
     },
-    PostCategory: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
-    PostCategoryLink: { where: vi.fn(async () => []) },
-    PostSeries: { find: vi.fn(async () => null), findBySlug: vi.fn(async () => null) },
-    PostTag: { findBySlug: vi.fn(async () => null) },
-    PostTagLink: { where: vi.fn(async () => []) },
+    PostCategory: {
+        entity: 'categories',
+        find: vi.fn(async () => null),
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        whereIn: vi.fn(async () => []),
+        create: vi.fn(),
+    },
+    PostCategoryLink: {
+        entity: 'post_category_links',
+        where: vi.fn(async () => []),
+        whereIn: vi.fn(async () => []),
+        create: vi.fn(),
+    },
+    PostSeries: {
+        entity: 'series',
+        find: vi.fn(async () => null),
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        whereIn: vi.fn(async () => []),
+        create: vi.fn(),
+    },
+    PostTag: {
+        entity: 'post_tags',
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        whereIn: vi.fn(async () => []),
+        create: vi.fn(),
+    },
+    PostTagLink: {
+        entity: 'post_tag_links',
+        where: vi.fn(async () => []),
+        whereIn: vi.fn(async () => []),
+        create: vi.fn(),
+    },
     OttablogSettings: {
         forScope: vi.fn(async () => null),
         forScopeOrPlatform: vi.fn(async () => null),
@@ -66,7 +96,16 @@ vi.mock('../studio', () => ({
     },
 }));
 
-import { OttablogSettings, Post, PostTag, PostTranslation } from '../ottaorm-models';
+import {
+    OttablogSettings,
+    Post,
+    PostCategory,
+    PostCategoryLink,
+    PostSeries,
+    PostTag,
+    PostTagLink,
+    PostTranslation,
+} from '../ottaorm-models';
 import { StudioManager } from '../studio';
 
 type Env = { marker: string };
@@ -94,6 +133,9 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogTagBySlug: named('tag-by-slug'),
         handleBlogCategoryBySlug: named('category-by-slug'),
         handleBlogSeriesBySlug: named('series-by-slug'),
+        handleBlogAuthorById: named('author-by-id'),
+        handleBlogExport: named('export'),
+        handleBlogImport: named('import'),
         handleBlogRelatedPosts: named('related'),
         handleBlogRssFeed: named('rss'),
         handleBlogSitemap: named('sitemap'),
@@ -150,6 +192,9 @@ describe('buildBlogRouter', () => {
             ['GET', '/tags/by-slug/t', 'tag-by-slug'],
             ['GET', '/categories/by-slug/c', 'category-by-slug'],
             ['GET', '/series/by-slug/s', 'series-by-slug'],
+            ['GET', '/authors/u1', 'author-by-id'],
+            ['GET', '/export', 'export'],
+            ['POST', '/import', 'import'],
             ['POST', '/studio/theme/activate', 'theme-activate'],
             ['POST', '/studio/theme/tokens', 'theme-tokens'],
             ['POST', '/studio/plugin/enable', 'plugin-enable'],
@@ -1916,5 +1961,208 @@ describe('org-mode migrations', () => {
         expect(dropped).toHaveLength(6);
         const nullPartials = executed.filter((s) => s.includes('WHERE organization_id IS NULL'));
         expect(nullPartials).toHaveLength(6);
+    });
+});
+
+describe('author archive, export, and import', () => {
+    const editorContext = {
+        userId: 'u1',
+        organizationId: 'org-1',
+        appId: 'test-app',
+        permissions: ['posts:create', 'posts:update'],
+    };
+    const configFor = (securityContext: Record<string, unknown>) => ({
+        connect: vi.fn(() => null),
+        defaultAppId: () => 'test-app',
+        requireAdmin: vi.fn(async () => ({ session: null })),
+        checkCronAuth: vi.fn(() => false),
+        verifyPassword: vi.fn(async () => false),
+        requireContentCreator: vi.fn(async () => ({ session: { user: { id: 'u1' } }, securityContext })),
+        requireContentEditor: vi.fn(async () => ({ session: { user: { id: 'u1' } }, securityContext })),
+    });
+    const record = (fields: Record<string, unknown>) => ({ get: (field: string) => fields[field] ?? null });
+    const importRequest = (posts: unknown[]) =>
+        ctxFor('/import', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ posts }),
+        });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(Post.first).mockResolvedValue(null as any);
+        vi.mocked(Post.paginate).mockResolvedValue({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 } as any);
+        vi.mocked(Post.create).mockImplementation(async (data: any) => record({ id: `id-${data.slug}` }) as any);
+        vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
+        vi.spyOn(globalRLS, 'getReadFilter').mockReturnValue({ organizationId: 'org-1' });
+    });
+
+    it('filters the public list by author', async () => {
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+        await handlers.handleBlogPostsList(ctxFor('/posts?authorId=a1'));
+        const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
+        expect(where).toMatchObject({ authorId: 'a1', status: 'published', appId: 'test-app' });
+    });
+
+    it('answers for an author only through one of their published posts, with the public projection', async () => {
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+        expect((await handlers.handleBlogAuthorById(ctxFor('/authors/stranger'), 'stranger')).status).toBe(404);
+
+        const author = record({ id: 'a1', name: 'Ada', image: '/ada.png', email: 'private@example.com' });
+        const post = { author: vi.fn(async () => author) };
+        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        const response = await handlers.handleBlogAuthorById(ctxFor('/authors/a1'), 'a1');
+
+        expect(await response.json()).toEqual({ id: 'a1', name: 'Ada', image: '/ada.png' });
+        expect(post.author).toHaveBeenCalledWith(['id', 'name', 'image']);
+        expect(Post.first).toHaveBeenLastCalledWith({
+            authorId: 'a1',
+            status: 'published',
+            appId: 'test-app',
+            contentType: { $ne: 'changelog' },
+        });
+    });
+
+    it('exports readable posts with taxonomy names and never a password hash', async () => {
+        vi.mocked(Post.where).mockResolvedValueOnce([
+            record({
+                id: 'p1',
+                title: 'Hello',
+                slug: 'hello',
+                status: 'published',
+                seriesId: 's1',
+                isProtected: true,
+                passwordHash: 'secret-hash',
+                publishedAt: 1700000000000,
+            }),
+        ] as any);
+        vi.mocked(PostTagLink.whereIn).mockResolvedValueOnce([record({ postId: 'p1', tagId: 't1' })] as any);
+        vi.mocked(PostTag.whereIn).mockResolvedValueOnce([record({ id: 't1', name: 'Travel' })] as any);
+        vi.mocked(PostSeries.whereIn).mockResolvedValueOnce([record({ id: 's1', title: 'Japan' })] as any);
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+
+        const response = await handlers.handleBlogExport(ctxFor('/export'));
+        const file = (await response.json()) as { format: string; version: number; posts: Record<string, unknown>[] };
+
+        expect(Post.where).toHaveBeenCalledWith(
+            { organizationId: 'org-1' },
+            expect.objectContaining({ withDeferred: true }),
+        );
+        expect(response.headers.get('Cache-Control')).toBe('no-store');
+        expect(file).toMatchObject({ format: 'ottablog', version: 1 });
+        expect(file.posts[0]).toMatchObject({
+            title: 'Hello',
+            slug: 'hello',
+            publishedAt: 1700000000000,
+            isProtected: true,
+            tags: ['Travel'],
+            categories: [],
+            series: 'Japan',
+        });
+        expect(file.posts[0]).not.toHaveProperty('passwordHash');
+        expect(file.posts[0]).not.toHaveProperty('id');
+    });
+
+    it('imports as the caller, keeps the original date, and skips existing slugs', async () => {
+        const handlers = createBlogHandlers<Env>(
+            configFor({ ...editorContext, permissions: ['posts:create', 'posts:publish'] }),
+        );
+        vi.mocked(Post.first).mockImplementation(
+            async (where: any) => (where?.slug === 'taken' ? record({}) : null) as any,
+        );
+
+        const response = await handlers.handleBlogImport(
+            importRequest([
+                {
+                    title: 'Old post',
+                    slug: 'Old-Post',
+                    status: 'published',
+                    publishedAt: 1500000000000,
+                    authorId: 'spoofed',
+                },
+                { title: 'Taken', slug: 'taken' },
+            ]),
+        );
+
+        expect(await response.json()).toEqual({
+            created: [{ slug: 'old-post', id: 'id-old-post' }],
+            skipped: [{ slug: 'taken', reason: 'A post with this slug already exists' }],
+            warnings: [],
+        });
+        expect(Post.create).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(Post.create).mock.calls[0][0]).toMatchObject({
+            slug: 'old-post',
+            status: 'published',
+            publishedAt: 1500000000000,
+            language: 'en',
+            authorId: 'u1',
+            userId: 'u1',
+            organizationId: 'org-1',
+            appId: 'test-app',
+        });
+    });
+
+    it('lands live and protected posts as drafts when the caller cannot publish them safely', async () => {
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+
+        const response = await handlers.handleBlogImport(
+            importRequest([
+                { title: 'Live', status: 'published' },
+                { title: 'Locked', status: 'draft', isProtected: true },
+            ]),
+        );
+        const result = (await response.json()) as { warnings: Array<{ slug: string }> };
+
+        const calls = vi.mocked(Post.create).mock.calls.map(([data]) => data as Record<string, unknown>);
+        expect(calls.map((data) => data.status)).toEqual(['draft', 'draft']);
+        expect(result.warnings.map((warning) => warning.slug)).toEqual(['live', 'locked']);
+        for (const data of calls) {
+            expect(data).not.toHaveProperty('isProtected');
+            expect(data).not.toHaveProperty('passwordHash');
+        }
+    });
+
+    it('links taxonomy only for callers who may manage it, reusing terms and de-duplicating links', async () => {
+        const taxonomyAdmin = { ...editorContext, permissions: ['posts:create', 'taxonomy:manage'] };
+        vi.mocked(PostTag.first).mockResolvedValueOnce(record({ id: 't-existing' }) as any);
+        vi.mocked(PostCategory.create).mockResolvedValueOnce(record({ id: 'c-new' }) as any);
+        const handlers = createBlogHandlers<Env>(configFor(taxonomyAdmin));
+
+        await handlers.handleBlogImport(
+            importRequest([{ title: 'Tagged', tags: ['Travel', 'travel'], categories: ['Notes'] }]),
+        );
+
+        expect(PostTag.create).not.toHaveBeenCalled();
+        expect(PostTagLink.create).toHaveBeenCalledTimes(1);
+        expect(PostTagLink.create).toHaveBeenCalledWith({ postId: 'id-tagged', tagId: 't-existing' });
+        expect(PostCategory.create).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Notes', appId: 'test-app', type: 'post', organizationId: null }),
+        );
+        expect(PostCategoryLink.create).toHaveBeenCalledWith({ postId: 'id-tagged', categoryId: 'c-new' });
+
+        vi.mocked(PostTagLink.create).mockClear();
+        const plainHandlers = createBlogHandlers<Env>(configFor(editorContext));
+        const response = await plainHandlers.handleBlogImport(importRequest([{ title: 'Second', tags: ['Travel'] }]));
+        const result = (await response.json()) as { created: unknown[]; warnings: Array<{ message: string }> };
+        expect(result.created).toHaveLength(1);
+        expect(result.warnings[0].message).toMatch(/taxonomy:manage/);
+        expect(PostTagLink.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects oversized batches and reports malformed items without writing them', async () => {
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+        const tooMany = Array.from({ length: 11 }, (_, i) => ({ title: `Post ${i}` }));
+        expect((await handlers.handleBlogImport(importRequest(tooMany))).status).toBe(400);
+
+        const response = await handlers.handleBlogImport(
+            importRequest([{ title: 42 }, { title: 'Bad status', status: 'live' }, 'nope']),
+        );
+        const result = (await response.json()) as { skipped: Array<{ reason: string }> };
+        expect(result.skipped.map((item) => item.reason)).toEqual([
+            'title must be a string',
+            'Unknown status "live"',
+            'Each post must be an object',
+        ]);
+        expect(Post.create).not.toHaveBeenCalled();
     });
 });

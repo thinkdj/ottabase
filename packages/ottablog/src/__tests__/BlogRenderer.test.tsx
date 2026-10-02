@@ -22,6 +22,22 @@ const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
 });
 
 describe('BlogRenderer', () => {
+    describe('Author byline', () => {
+        it('renders the author as a keyboard-reachable button only when the host handles the click', async () => {
+            const clicks: string[] = [];
+            const { getByRole, rerender, container } = render(
+                <BlogRenderer post={createMockPost()} onAuthorClick={(id) => clicks.push(id)} />,
+            );
+            const button = await waitFor(() => getByRole('button', { name: 'Test Author' }));
+            act(() => button.click());
+            expect(clicks).toEqual(['author-1']);
+
+            rerender(<BlogRenderer post={createMockPost()} />);
+            expect(container.textContent).toContain('Test Author');
+            expect(container.querySelector('button')).toBeNull();
+        });
+    });
+
     describe('Blurb auto-linking', () => {
         const linkPost = () =>
             createMockPost({

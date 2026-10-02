@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
+import { BlogImportExport } from './BlogImportExport';
 import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
 
 /** Debounce delay for search input (ms) */
@@ -268,7 +269,8 @@ export function AdminBlogListPage() {
                         announcements.
                     </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <BlogImportExport />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button>
