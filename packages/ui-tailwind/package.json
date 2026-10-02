@@ -27,8 +27,8 @@
         "build": "pnpm pack --dry-run",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "license": "MIT",
     "repository": {

@@ -37,8 +37,8 @@
         "clean": "rm -rf .turbo node_modules",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@ottabase/db": "workspace:*",

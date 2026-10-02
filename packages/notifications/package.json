@@ -39,8 +39,8 @@
         "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [
         "notifications",
@@ -59,6 +59,7 @@
         "@ottabase/email": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/queue": "workspace:*",
+        "@ottabase/utils": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "drizzle-orm": "catalog:"
     },

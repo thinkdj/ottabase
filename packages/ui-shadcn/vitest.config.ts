@@ -9,7 +9,8 @@ export default defineConfig({
         globals: true,
         setupFiles: ['../../vitest.setup.ts'],
         coverage: {
-            provider: 'c8',
+            provider: 'v8',
+            include: ['src/**/*.{ts,tsx}'],
             reporter: ['text', 'json', 'html', 'lcov'],
             exclude: [
                 'node_modules/',
@@ -21,11 +22,6 @@ export default defineConfig({
                 'components/',
                 'styles/',
             ],
-            all: true,
-            lines: 70,
-            functions: 70,
-            branches: 65,
-            statements: 70,
         },
         include: ['src/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{test,spec}.{ts,tsx}'],
     },

@@ -43,8 +43,9 @@
         "dev": "tsup --watch",
         "clean": "rimraf dist",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "lint": "eslint src"
     },
     "keywords": [
         "upload",

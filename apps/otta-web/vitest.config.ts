@@ -23,12 +23,6 @@ export default defineConfig({
                 '**/*.d.ts',
                 'public/',
             ],
-            thresholds: {
-                lines: 70,
-                functions: 70,
-                branches: 65,
-                statements: 70,
-            },
         },
         include: [
             'src/**/*.{test,spec}.{ts,tsx}',

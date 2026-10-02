@@ -13,7 +13,10 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
-        "clean": "rm -rf dist .turbo node_modules"
+        "clean": "rm -rf dist .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
         "@ottabase/db": "workspace:*",
@@ -25,7 +28,8 @@
     "devDependencies": {
         "@ottabase/config": "workspace:*",
         "drizzle-orm": "catalog:",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     },
     "license": "MIT",
     "repository": {

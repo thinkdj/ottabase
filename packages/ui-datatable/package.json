@@ -28,9 +28,10 @@
         "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest"
+        "test": "vitest run"
     },
     "dependencies": {
+        "@ottabase/utils": "workspace:*",
         "@tanstack/react-table": "^8.21.3"
     },
     "peerDependencies": {

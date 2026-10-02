@@ -55,7 +55,7 @@ describe('@ottabase/ui-tailwind package boundary', () => {
             build: 'pnpm pack --dry-run',
             lint: 'eslint src',
             'type-check': 'tsc --noEmit',
-            test: 'vitest',
+            test: 'vitest run',
         });
     });
 });

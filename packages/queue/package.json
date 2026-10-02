@@ -51,9 +51,10 @@
     "scripts": {
         "build": "tsup src/index.ts src/job.ts src/processor.ts src/adapters/index.ts --format cjs,esm --dts --clean",
         "dev": "tsup src/index.ts src/job.ts src/processor.ts src/adapters/index.ts --format cjs,esm --dts --watch",
+        "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@ottabase/cf": "workspace:*"

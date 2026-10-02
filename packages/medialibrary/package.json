@@ -20,7 +20,9 @@
     "sideEffects": false,
     "scripts": {
         "clean": "rm -rf .turbo node_modules",
-        "test": "vitest"
+        "test": "vitest run",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit"
     },
     "peerDependencies": {
         "@ottabase/ottaorm": "workspace:*",

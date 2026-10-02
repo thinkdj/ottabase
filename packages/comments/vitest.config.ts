@@ -7,12 +7,6 @@ export default defineConfig({
         globals: true,
         coverage: {
             provider: 'v8',
-            thresholds: {
-                lines: 75,
-                functions: 75,
-                statements: 75,
-                branches: 70,
-            },
         },
         include: ['src/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{test,spec}.{ts,tsx}'],
     },

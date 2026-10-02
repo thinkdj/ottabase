@@ -84,5 +84,7 @@ catalog:
     vite: ^7.3.1
     vite-tsconfig-paths: ^5.1.4
     vitest: ^4.0.18
+    # Must match the installed vitest version exactly (it imports vitest/node internals).
+    "@vitest/coverage-v8": 4.0.18
     wrangler: ^4.144.0
     zod: ^3.24.1

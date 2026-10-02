@@ -307,8 +307,8 @@
         "clean": "rimraf dist",
         "lint": "eslint src components providers",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [
         "shadcn",

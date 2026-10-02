@@ -9,7 +9,7 @@ The testing infrastructure includes:
 
 - **Vitest** for fast, modern testing with ESM support
 - **@testing-library** for component and DOM testing
-- **c8** for code coverage reporting
+- **V8 coverage** (Vitest `coverage.provider: 'v8'`) for code coverage reporting
 - **Cloudflare Bindings Mocks** for local testing of Worker code
 - **Root + Package-level configs** for flexible, isolated testing
 
@@ -27,12 +27,15 @@ pnpm test:apps           # Run only app tests
 ### Run Tests for Specific Targets
 
 ```bash
-pnpm test:vite       # Test Vite template app
-pnpm test:next       # Test Next.js template app
-turbo test --filter=@ottabase/utils  # Test specific package
+pnpm test:otta-web      # Test the Vite + Workers app
+pnpm test:otta-landing  # Test the Next.js landing app
+pnpm test --filter=@ottabase/utils  # Test specific package
 ```
 
 ### Coverage Reports
+
+Coverage uses `@vitest/coverage-v8`, a root dev dependency pinned in the catalog to the exact installed `vitest` version
+(the provider imports `vitest/node` internals, so a version mismatch fails at startup). Bump both together.
 
 ```bash
 pnpm test:coverage              # Run tests with coverage (all)
@@ -51,7 +54,8 @@ pnpm test:ui             # Open Vitest UI for interactive testing
 
 ### Root Configuration
 
-- **vitest.config.ts** - Main Vitest config with workspace support
+- **vitest.config.ts** - Root Vitest config (jsdom, shared coverage defaults). Per-package configs take precedence;
+  `pnpm test` runs each workspace's own `test` script through Turbo, not the root config
 - **vitest.setup.ts** - Global setup for DOM APIs, mocks, etc.
 
 ### Package-Level Configs
@@ -177,11 +181,13 @@ import { vi } from 'vitest';
 
 ## Coverage Configuration
 
-### Targets by Type
+### Thresholds
 
-- **Packages**: 75% lines, 75% functions, 70% branches, 75% statements
-- **Apps**: 70% lines, 70% functions, 65% branches, 70% statements
-- **Utils**: 80% lines, 80% functions, 75% branches, 80% statements
+Coverage is a report, not a CI gate (CI runs `test`, never `--coverage`). A package sets `coverage.thresholds` in its
+own `vitest.config.ts` only for a floor it currently meets, so a threshold failure means a real regression. Packages
+with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `premium-webhooks`, `ui-tailwind`.
+Every config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
+`coverage.all`).
 
 ### Excluded from Coverage
 
@@ -211,7 +217,7 @@ Each package and app includes test scripts:
 ```json
 {
     "scripts": {
-        "test": "vitest", // Run tests
+        "test": "vitest run", // One-shot run (watch: pnpm --filter <pkg> exec vitest)
         "test:coverage": "vitest --coverage" // With coverage
     }
 }
@@ -225,8 +231,8 @@ Each package and app includes test scripts:
 | `test:all`               | Explicit: test packages + apps |
 | `test:packages`          | Test all packages only         |
 | `test:apps`              | Test all apps only             |
-| `test:vite`              | Test Vite app                  |
-| `test:next`              | Test Next.js app               |
+| `test:otta-web`          | Test the Vite + Workers app    |
+| `test:otta-landing`      | Test the Next.js landing app   |
 | `test:coverage`          | All tests with coverage        |
 | `test:coverage:packages` | Packages with coverage         |
 | `test:coverage:apps`     | Apps with coverage             |
@@ -238,8 +244,8 @@ Each package and app includes test scripts:
 Test task in `turbo.json`:
 
 - **Depends On**: `^build` (packages must build first)
-- **Inputs**: Test files, configs, setup files
-- **Outputs**: Coverage reports, vitest caches
+- **Inputs**: `$TURBO_DEFAULT$` plus `vitest.config.*`, `vitest.setup.*`
+- **Outputs**: none (coverage reports are not cached)
 - **Environment**: NODE_ENV=test
 
 ## Best Practices
@@ -323,14 +329,14 @@ it('should delay', async () => {
 
 ## CI/CD Integration
 
-Tests run in GitHub Actions:
+Tests run in GitHub Actions (`.github/workflows/ci.yml`):
 
-- **Trigger**: On push and pull requests
-- **Platforms**: Ubuntu, Windows, macOS
-- **Node Version**: 24.x
-- **Status**: Required for PR merge
+- **Trigger**: pull requests to `main` / `develop`, and manual dispatch
+- **Platform**: `ubuntu-24.04`
+- **Node Version**: 24
+- **Command**: `pnpm run ci:check` (`turbo run lint type-check test build`) — a failing test fails the job
 
-Test failures are tracked but don't block CI (currently `continue-on-error: true`).
+Turbo silently skips a workspace that does not declare a `test` script, so every package and app must define one.
 
 ## Debugging Tests
 
@@ -379,7 +385,7 @@ Add to `.vscode/launch.json`:
 
 1. Check `vitest.config.ts` exists and is valid
 2. Verify test files match pattern (_.test.ts, _.test.tsx)
-3. Ensure package.json has test script: `"test": "vitest"`
+3. Ensure package.json has test script: `"test": "vitest run"`
 
 ### Module Not Found Errors
 
@@ -421,5 +427,5 @@ Add to `.vscode/launch.json`:
 
 - [Vitest Documentation](https://vitest.dev/)
 - [Testing Library](https://testing-library.com/)
-- [c8 Coverage](https://github.com/bcoe/c8)
+- [Vitest Coverage](https://vitest.dev/guide/coverage)
 - [Turbo Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)

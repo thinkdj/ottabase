@@ -28,8 +28,8 @@
         "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest --passWithNoTests",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run --passWithNoTests",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [
         "brand",

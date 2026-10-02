@@ -26,7 +26,7 @@
         "clean": "rimraf dist .wrangler",
         "lint": "eslint worker __tests__",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
+        "test": "vitest run",
         "wrangler": "wrangler"
     },
     "dependencies": {

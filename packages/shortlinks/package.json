@@ -11,8 +11,10 @@
     },
     "scripts": {
         "clean": "rm -rf .turbo node_modules",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "peerDependencies": {
         "drizzle-orm": "catalog:"

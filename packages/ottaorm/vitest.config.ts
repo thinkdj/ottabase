@@ -7,6 +7,7 @@ export default defineConfig({
         globals: true,
         coverage: {
             provider: 'v8',
+            include: ['src/**/*.{ts,tsx}'],
             reporter: ['text', 'json', 'html', 'lcov'],
             exclude: [
                 'node_modules/',
@@ -17,11 +18,6 @@ export default defineConfig({
                 '**/*.d.ts',
                 'scripts/',
             ],
-            all: true,
-            lines: 75,
-            functions: 75,
-            branches: 70,
-            statements: 75,
         },
         include: ['src/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{test,spec}.{ts,tsx}'],
     },

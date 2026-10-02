@@ -42,7 +42,8 @@
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "type-check": "tsc --noEmit",
-        "test": "vitest"
+        "test": "vitest run",
+        "lint": "eslint src"
     },
     "devDependencies": {
         "@types/node": "catalog:",

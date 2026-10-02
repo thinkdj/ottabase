@@ -21,9 +21,10 @@
         "build": "tsup src/index.ts --format cjs,esm --dts",
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
         "clean": "rimraf .turbo dist",
-        "typecheck": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "lint": "eslint src"
     },
     "dependencies": {
         "@ottabase/utils": "workspace:*",

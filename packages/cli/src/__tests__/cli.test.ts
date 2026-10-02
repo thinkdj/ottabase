@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { program } from '../cli.js';
 
 describe('CLI Commands', () => {
-    it('runs the workspace executable with current compiled output', () => {
+    // Spawns a real node process; the 5s default is too tight when turbo runs suites in parallel.
+    it('runs the workspace executable with current compiled output', { timeout: 20_000 }, () => {
         const result = spawnSync(process.execPath, [path.join(process.cwd(), 'bin', 'otta.mjs'), '--version'], {
             cwd: process.cwd(),
             encoding: 'utf8',

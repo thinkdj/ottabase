@@ -49,8 +49,8 @@
         "cloudflare-validate": "node bin/cloudflare-validate.cjs",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [
         "scripts",
