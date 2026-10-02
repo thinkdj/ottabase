@@ -1,5 +1,6 @@
 'use client';
 
+import { BUILTIN_THEME_NAMES } from '@ottabase/brand-engine';
 import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github, Rocket } from 'lucide-react';
 import Link from 'next/link';
@@ -74,8 +75,8 @@ export function AboutDefault({ title, description, githubUrl = DEFAULT_GITHUB_UR
                         <code className="bg-muted text-foreground px-2 py-0.5 rounded text-sm font-mono">
                             config/brand.config.ts
                         </code>{' '}
-                        to configure your brand settings. Choose from 8 built-in theme presets or create your own custom
-                        theme.
+                        to configure your brand settings. Choose from {BUILTIN_THEME_NAMES.length} built-in theme
+                        presets or create your own custom theme.
                     </p>
 
                     <h2 className="text-2xl font-semibold mb-4 mt-8">Deployment</h2>

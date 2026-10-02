@@ -36,7 +36,7 @@ type ThemePresetSwitcherProps = {
 
 /**
  * Visual theme preset picker.
- * Shows all 8 built-in presets as selectable cards with live color swatches.
+ * Shows every built-in preset (BUILTIN_THEME_NAMES) as selectable cards with live color swatches.
  * Selecting a preset applies its CSS variables instantly (no page reload).
  */
 export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {}) {

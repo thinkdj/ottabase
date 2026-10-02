@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@ottabase/ottalayout', () => ({ DEFAULT_LAYOUT: {} }));
 
 // Mock brand-engine: only mock the functions components actually call
-vi.mock('@ottabase/brand-engine', () => ({
+vi.mock('@ottabase/brand-engine', async (importOriginal) => ({
     applyBrandTheme: vi.fn(),
     registerBuiltInThemes: vi.fn(),
     getThemeByName: vi.fn(() => ({ name: 'default', colors: {} })),
@@ -21,7 +21,8 @@ vi.mock('@ottabase/brand-engine', () => ({
         },
         radius: '0.5rem',
     })),
-    BUILTIN_THEME_NAMES: ['default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'],
+    // Real list, so preset-count copy and tests can never drift from the engine.
+    BUILTIN_THEME_NAMES: (await importOriginal<typeof import('@ottabase/brand-engine')>()).BUILTIN_THEME_NAMES,
     PRESET_MAP: {
         default: {
             colors: {
@@ -275,12 +276,11 @@ describe('ThemePresetSwitcher', () => {
         ({ ThemePresetSwitcher } = await import('../components/ThemePresetSwitcher'));
     });
 
-    it('renders all 8 preset buttons', () => {
+    it('renders one button per built-in preset', async () => {
+        const { BUILTIN_THEME_NAMES } = await import('@ottabase/brand-engine');
         render(<ThemePresetSwitcher />);
-        expect(screen.getByText('default')).toBeDefined();
-        expect(screen.getByText('neo')).toBeDefined();
-        expect(screen.getByText('artisan')).toBeDefined();
-        expect(screen.getByText('midnight')).toBeDefined();
+        expect(screen.getAllByRole('button', { name: /theme preset$/ })).toHaveLength(BUILTIN_THEME_NAMES.length);
+        for (const name of BUILTIN_THEME_NAMES) expect(screen.getByText(name)).toBeDefined();
     });
 
     it('calls onSwitch when a preset is selected', async () => {

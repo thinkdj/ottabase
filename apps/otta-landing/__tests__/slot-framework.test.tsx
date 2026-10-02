@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ottabase/ottalayout', () => ({ DEFAULT_LAYOUT: {} }));
 
-vi.mock('@ottabase/brand-engine', () => ({
+vi.mock('@ottabase/brand-engine', async (importOriginal) => ({
     applyBrandTheme: vi.fn(),
     registerBuiltInThemes: vi.fn(),
     getThemeByName: vi.fn(() => ({ name: 'default', colors: {} })),
@@ -19,7 +19,8 @@ vi.mock('@ottabase/brand-engine', () => ({
         },
         radius: '0.5rem',
     })),
-    BUILTIN_THEME_NAMES: ['default'],
+    // Real list, so preset-count copy can never drift from the engine.
+    BUILTIN_THEME_NAMES: (await importOriginal<typeof import('@ottabase/brand-engine')>()).BUILTIN_THEME_NAMES,
     PRESET_MAP: {},
     buildCriticalCSS: vi.fn(() => ''),
 }));
@@ -423,6 +424,15 @@ describe('About Variants', () => {
         expect(screen.getByText(/About/)).toBeDefined();
         expect(screen.getByText('Tech Stack')).toBeDefined();
         expect(screen.getByText('Edge-First')).toBeDefined();
+    });
+
+    it('derives the preset count from BUILTIN_THEME_NAMES, not a literal', async () => {
+        const { BUILTIN_THEME_NAMES } = await import('@ottabase/brand-engine');
+        const count = `${BUILTIN_THEME_NAMES.length} built-in`;
+        render(<AboutDetailed />);
+        expect(screen.getByText(new RegExp(`^${count} Brand Engine presets`))).toBeDefined();
+        render(<AboutDefault />);
+        expect(screen.getByText(new RegExp(`Choose from ${count} theme presets`))).toBeDefined();
     });
 
     it('AboutDefault accepts custom githubUrl', () => {

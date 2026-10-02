@@ -30,8 +30,8 @@ const config: OpenNextConfig = {
     },
 };
 
-// Note: Durable Object classes must be exported from the Wrangler `main` entry.
-// We do that in `cloudflare-worker.ts` so OpenNext's build step doesn't try to bundle
-// `@cloudflare/actors` (which imports `cloudflare:workers`, only available at runtime).
+// Note: wrangler.jsonc `main` is OpenNext's generated `.open-next/worker.js`; this app
+// has no custom worker entry and exports no Durable Objects. Built-in brand themes are
+// registered where they are used (app/providers.tsx, lib/brand-server.ts).
 
 export default config;

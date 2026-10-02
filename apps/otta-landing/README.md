@@ -1,7 +1,7 @@
 # Ottabase Next.js Homepage Template
 
-Next.js 16 homepage template deployed to Cloudflare Workers via OpenNext. Uses Brand Engine for theming with 8 presets
-and live switching, plus an **extensible slot framework** for hot-swappable homepage sections.
+Next.js 16 homepage template deployed to Cloudflare Workers via OpenNext. Uses Brand Engine for theming with its
+built-in presets and live switching, plus an **extensible slot framework** for hot-swappable homepage sections.
 
 > **Monorepo note:** The main Vite app (`otta-web`) drives its brand config from a D1 database, editable via the admin
 > UI at `/admin/brand-engine`. This homepage is intentionally **config-first** — no DB, no API call; the preset is set
@@ -252,7 +252,7 @@ Edit `config/brand.config.ts`:
 ```typescript
 import type { BrandTheme } from '@ottabase/brand-engine';
 
-// Pick one of the 8 built-in presets
+// Pick one of the built-in presets (BUILTIN_THEME_NAMES from @ottabase/brand-engine)
 export const themePreset = 'crisp'; // default | neo | crisp | funky | artisan | midnight | rose | verdant
 
 // Optionally override individual tokens — merged on top of the preset
@@ -270,7 +270,7 @@ Changes take effect on the next server render — no migration or API call neede
 persists the choice to `localStorage` (`ottabase.homepage.theme-preset`). On the next page load `providers.tsx` reads
 this key and re-applies the preset before paint.
 
-Visit `/theme-demo` to try all 8 presets live.
+Visit `/theme-demo` to try every built-in preset live.
 
 ### Dark mode
 

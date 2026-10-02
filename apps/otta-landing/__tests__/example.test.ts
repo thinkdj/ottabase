@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // Mock transitive deps that Vite cannot resolve in test environment
 vi.mock('@ottabase/ottalayout', () => ({ DEFAULT_LAYOUT: {} }));
-vi.mock('@ottabase/brand-engine', () => ({
+vi.mock('@ottabase/brand-engine', async (importOriginal) => ({
     registerBuiltInThemes: vi.fn(),
     getThemeByName: vi.fn(() => ({ name: 'artisan', colors: {} })),
     resolveTheme: vi.fn(() => ({
@@ -15,7 +15,7 @@ vi.mock('@ottabase/brand-engine', () => ({
         radius: '0.5rem',
     })),
     buildCriticalCSS: vi.fn(() => ''),
-    BUILTIN_THEME_NAMES: ['default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'],
+    BUILTIN_THEME_NAMES: (await importOriginal<typeof import('@ottabase/brand-engine')>()).BUILTIN_THEME_NAMES,
     PRESET_MAP: {},
     applyBrandTheme: vi.fn(),
 }));
@@ -27,7 +27,7 @@ vi.mock('@ottabase/brand-engine-react', () => ({
 describe('Brand Configuration', () => {
     it('exports a valid theme preset', async () => {
         const { themePreset } = await import('../config/brand.config');
-        const valid = ['default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'];
+        const { BUILTIN_THEME_NAMES: valid } = await import('@ottabase/brand-engine');
         expect(valid).toContain(themePreset);
     });
 

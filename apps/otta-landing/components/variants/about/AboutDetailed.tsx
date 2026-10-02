@@ -1,5 +1,6 @@
 'use client';
 
+import { BUILTIN_THEME_NAMES } from '@ottabase/brand-engine';
 import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github, Rocket } from 'lucide-react';
 import Link from 'next/link';
@@ -18,7 +19,7 @@ export function AboutDetailed({ title, description, githubUrl = DEFAULT_GITHUB_U
         },
         {
             heading: 'Themeable',
-            body: '8 built-in Brand Engine presets with live switching and dark mode support.',
+            body: `${BUILTIN_THEME_NAMES.length} built-in Brand Engine presets with live switching and dark mode support.`,
         },
         {
             heading: 'Modern Stack',
