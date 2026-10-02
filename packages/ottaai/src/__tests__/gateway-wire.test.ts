@@ -433,7 +433,7 @@ describe('request bodies match the dialect, and `extra` cannot fight the URL', (
         });
     });
 
-    it('shapes a Gemini body: contents + system_instruction, same-role turns merged', async () => {
+    it('shapes a Gemini body: contents + systemInstruction (camelCase), same-role turns merged', async () => {
         const captured = await callOnce(
             { provider: 'google-ai-studio', model: 'google-ai-studio/gemini-2.5-flash' },
             {
@@ -448,7 +448,7 @@ describe('request bodies match the dialect, and `extra` cannot fight the URL', (
             { candidates: [] },
         );
         expect(captured.body).toMatchObject({
-            system_instruction: { parts: [{ text: 'be terse' }] },
+            systemInstruction: { parts: [{ text: 'be terse' }] },
             contents: [{ role: 'user', parts: [{ text: 'one' }, { text: 'two' }] }],
             generationConfig: { maxOutputTokens: 64 },
         });
@@ -734,5 +734,366 @@ describe('SSE framing follows the spec, not one provider habits', () => {
         expect(events.find((e) => e.type === 'error')).toMatchObject({
             error: { statusCode: 401, providerCode: 'bad_key' },
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Images + JSON output — each provider's own spelling
+// ---------------------------------------------------------------------------
+// Transcribed from each provider's API reference (cited beside its `supports` entry in
+// `transports/providers.ts`). These are the strings a provider reads; a wrong one is not
+// an error on most providers — it is an image the model never saw, or prose where JSON
+// was expected.
+
+/** 1x1 transparent PNG. */
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const DATA_URL = `data:image/png;base64,${PNG}`;
+const SCHEMA = {
+    type: 'object',
+    properties: { total: { type: 'number' } },
+    required: ['total'],
+    additionalProperties: false,
+};
+const AZURE = { resourceName: 'res', deploymentName: 'dep', apiVersion: '2024-10-21' };
+
+const withImage = (count = 1) => ({
+    messages: [
+        {
+            role: 'user' as const,
+            content: [
+                { type: 'text' as const, text: 'read this' },
+                ...Array.from({ length: count }, () => ({
+                    type: 'image' as const,
+                    mimeType: 'image/png' as const,
+                    data: PNG,
+                })),
+            ],
+        },
+    ],
+});
+
+const json = (format: Record<string, unknown> = {}) => ({
+    messages: [{ role: 'user' as const, content: 'total?' }],
+    responseFormat: { type: 'json' as const, ...format },
+});
+
+/** The system text the transport sent, whichever dialect carried it. */
+function systemText(body: Record<string, unknown>): string {
+    if (typeof body.system === 'string') return body.system;
+    const google = body.systemInstruction as { parts: Array<{ text: string }> } | undefined;
+    if (google) return google.parts.map((p) => p.text).join('\n');
+    const messages = body.messages as Array<{ role: string; content: string }>;
+    return messages
+        .filter((m) => m.role === 'system')
+        .map((m) => m.content)
+        .join('\n');
+}
+
+const OPENAI_SHAPED: Array<[string, Partial<MergedTransportConfig>]> = [
+    ['openai', { provider: 'openai', model: 'openai/gpt-4o-mini' }],
+    ['groq', { provider: 'groq', model: 'groq/meta-llama/llama-4-scout-17b-16e-instruct' }],
+    ['mistral', { provider: 'mistral', model: 'mistral/pixtral-12b-latest' }],
+    ['deepseek', { provider: 'deepseek', model: 'deepseek/deepseek-chat' }],
+    ['perplexity', { provider: 'perplexity', model: 'perplexity/sonar' }],
+    ['azure', { provider: 'azure', model: 'azure/gpt-4o', transportConfig: AZURE }],
+];
+
+describe('image parts are spelled in each dialect', () => {
+    it.each(OPENAI_SHAPED)('%s: an `image_url` part carrying a base64 data URL', async (_name, config) => {
+        const captured = await callOnce(config, withImage());
+        expect(captured.body.messages).toEqual([
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'read this' },
+                    { type: 'image_url', image_url: { url: DATA_URL } },
+                ],
+            },
+        ]);
+    });
+
+    it('anthropic: a base64 `image` block with `media_type`', async () => {
+        const captured = await callOnce({ provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' }, withImage());
+        expect(captured.body.messages).toEqual([
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: 'read this' },
+                    { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG } },
+                ],
+            },
+        ]);
+    });
+
+    it('google-ai-studio: a camelCase `inlineData` part, merged into the same user turn', async () => {
+        const captured = await callOnce(
+            { provider: 'google-ai-studio', model: 'google-ai-studio/gemini-2.5-flash-lite' },
+            withImage(),
+        );
+        expect(captured.body.contents).toEqual([
+            { role: 'user', parts: [{ text: 'read this' }, { inlineData: { mimeType: 'image/png', data: PNG } }] },
+        ]);
+    });
+
+    it('keeps a plain string message a string — no needless part array', async () => {
+        const captured = await callOnce({});
+        expect(captured.body.messages).toEqual([{ role: 'user', content: 'hi' }]);
+    });
+});
+
+describe('images are refused where a route does not take them, before any request', () => {
+    async function refused(config: Partial<MergedTransportConfig>, count = 1) {
+        const captured: Captured[] = [];
+        const client = makeClient({ ...config, fetch: capturingFetch(captured) });
+        const result = await client.complete(withImage(count));
+        expect(captured).toHaveLength(0);
+        expect(result.ok).toBe(false);
+        return result.ok ? null : result.error;
+    }
+
+    it('over the provider image count (Groq: 3)', async () => {
+        const error = await refused({ provider: 'groq', model: 'groq/meta-llama/llama-4-scout-17b-16e-instruct' }, 4);
+        expect(error).toMatchObject({ code: 'UNSUPPORTED_OPERATION', retryable: false });
+        expect(error!.message).toMatch(/at most 3 images/);
+    });
+
+    it('on a dynamic route — Cloudflare documents no image input on the compat endpoint', async () => {
+        const error = await refused({ model: 'dynamic/support' });
+        expect(error).toMatchObject({ code: 'UNSUPPORTED_OPERATION' });
+    });
+
+    it('on Unified Billing — the REST endpoint documents no image input', async () => {
+        const error = await refused({ secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' });
+        expect(error).toMatchObject({ code: 'UNSUPPORTED_OPERATION' });
+    });
+
+    it('accepts exactly the provider maximum', async () => {
+        const captured = await callOnce(
+            { provider: 'groq', model: 'groq/meta-llama/llama-4-scout-17b-16e-instruct' },
+            withImage(3),
+        );
+        expect((captured.body.messages as Array<{ content: unknown[] }>)[0]!.content).toHaveLength(4);
+    });
+});
+
+describe('JSON output: default tier is JSON MODE, strict tier is PROVIDER-ENFORCED where supported', () => {
+    it('always asks for JSON in the system instruction — OpenAI-shaped JSON mode requires it', async () => {
+        const captured = await callOnce({}, json());
+        const messages = captured.body.messages as Array<{ role: string; content: string }>;
+        expect(messages[0]!.role).toBe('system');
+        expect(messages[0]!.content).toMatch(/JSON object/);
+        expect(captured.body.response_format).toEqual({ type: 'json_object' });
+    });
+
+    it('puts the caller system message AFTER the JSON instruction, not instead of it', async () => {
+        const captured = await callOnce(
+            {},
+            {
+                ...json(),
+                messages: [
+                    { role: 'system', content: 'be terse' },
+                    { role: 'user', content: 'total?' },
+                ],
+            },
+        );
+        const roles = (captured.body.messages as Array<{ role: string; content: string }>).map(
+            (m) => `${m.role}:${m.content.slice(0, 8)}`,
+        );
+        expect(roles).toEqual(['system:Respond ', 'system:be terse', 'user:total?']);
+    });
+
+    it('default tier: the schema is INSTRUCTED, never sent as an enforced schema', async () => {
+        const captured = await callOnce({}, json({ schema: SCHEMA }));
+        expect(captured.body.response_format).toEqual({ type: 'json_object' });
+        expect(systemText(captured.body)).toContain(JSON.stringify(SCHEMA));
+    });
+
+    it('openai strict: `json_schema` with a name and strict:true, and no duplicate schema in the prompt', async () => {
+        const captured = await callOnce({}, json({ schema: SCHEMA, strict: true, name: 'receipt' }));
+        expect(captured.body.response_format).toEqual({
+            type: 'json_schema',
+            json_schema: { name: 'receipt', schema: SCHEMA, strict: true },
+        });
+        expect(systemText(captured.body)).not.toContain('"properties"');
+    });
+
+    it('defaults the schema name to `response`', async () => {
+        const captured = await callOnce({}, json({ schema: SCHEMA, strict: true }));
+        expect(captured.body.response_format).toMatchObject({ json_schema: { name: 'response' } });
+    });
+
+    it.each([
+        ['mistral', { provider: 'mistral', model: 'mistral/mistral-large-latest' }, 'json_schema'],
+        ['deepseek', { provider: 'deepseek', model: 'deepseek/deepseek-chat' }, 'json_object'],
+        ['groq', { provider: 'groq', model: 'groq/llama-3.3-70b-versatile' }, 'json_object'],
+        ['azure', { provider: 'azure', model: 'azure/gpt-4o', transportConfig: AZURE }, 'json_object'],
+        ['perplexity', { provider: 'perplexity', model: 'perplexity/sonar' }, 'json_schema'],
+    ] as Array<[string, Partial<MergedTransportConfig>, string]>)('%s strict → `%s`', async (_name, config, type) => {
+        const captured = await callOnce(config, json({ schema: SCHEMA, strict: true }));
+        expect((captured.body.response_format as { type: string }).type).toBe(type);
+        // Where the provider does not enforce the schema, the prompt carries it.
+        expect(systemText(captured.body).includes(JSON.stringify(SCHEMA))).toBe(type === 'json_object');
+    });
+
+    it('perplexity default: NO response_format — it has no `json_object` type', async () => {
+        const captured = await callOnce({ provider: 'perplexity', model: 'perplexity/sonar' }, json());
+        expect(captured.body.response_format).toBeUndefined();
+        expect(systemText(captured.body)).toMatch(/JSON object/);
+    });
+
+    it('anthropic default: instructed only — Anthropic has no schema-less JSON mode', async () => {
+        const captured = await callOnce({ provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' }, json());
+        expect(captured.body.output_config).toBeUndefined();
+        expect(captured.body.tool_choice).toBeUndefined();
+        expect(captured.body.system).toMatch(/JSON object/);
+    });
+
+    it('anthropic strict: `output_config.format`, NOT forced tool use (400s on the newest models)', async () => {
+        const captured = await callOnce(
+            { provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' },
+            json({ schema: SCHEMA, strict: true }),
+        );
+        expect(captured.body.output_config).toEqual({ format: { type: 'json_schema', schema: SCHEMA } });
+        expect(captured.body.tools).toBeUndefined();
+        expect(captured.body.tool_choice).toBeUndefined();
+    });
+
+    it('google default: `responseMimeType`; strict: `responseFormat` ALONE (the only non-deprecated schema field)', async () => {
+        const google = { provider: 'google-ai-studio', model: 'google-ai-studio/gemini-2.5-flash' };
+        const loose = await callOnce(google, json({ schema: SCHEMA }));
+        expect(loose.body.generationConfig).toEqual({ responseMimeType: 'application/json' });
+        expect(systemText(loose.body)).toContain(JSON.stringify(SCHEMA));
+
+        // Never both styles: `responseMimeType` beside `responseFormat` is the mixed form
+        // Google's docs warn against, and `responseJsonSchema` is deprecated on v1.
+        const strict = await callOnce(google, json({ schema: SCHEMA, strict: true }));
+        expect(strict.body.generationConfig).toEqual({
+            responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: SCHEMA } },
+        });
+    });
+
+    it.each([
+        ['a dynamic route', { model: 'dynamic/support' }],
+        ['Unified Billing', { secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' }],
+    ] as Array<[string, Partial<MergedTransportConfig>]>)(
+        '%s: instructed only — no documented `response_format`',
+        async (_name, config) => {
+            const captured = await callOnce(config, json({ schema: SCHEMA, strict: true }));
+            expect(captured.body.response_format).toBeUndefined();
+            expect(systemText(captured.body)).toContain(JSON.stringify(SCHEMA));
+        },
+    );
+
+    it('`extra` cannot override the output format the caller asked for', async () => {
+        const openai = await callOnce(
+            {},
+            { ...json(), extra: { response_format: { type: 'text' }, tools: [{}], tool_choice: 'required' } },
+        );
+        expect(openai.body.response_format).toEqual({ type: 'json_object' });
+        expect(openai.body.tools).toBeUndefined();
+        expect(openai.body.tool_choice).toBeUndefined();
+
+        const anthropic = await callOnce(
+            { provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' },
+            { ...json(), extra: { output_config: { format: { type: 'text' } }, system: 'override' } },
+        );
+        expect(anthropic.body.output_config).toBeUndefined();
+        expect(anthropic.body.system).toMatch(/JSON object/);
+
+        const google = await callOnce(
+            { provider: 'google-ai-studio', model: 'google-ai-studio/gemini-2.5-flash' },
+            { ...json(), extra: { generationConfig: { responseMimeType: 'text/plain', topP: 0.5 } } },
+        );
+        expect(google.body.generationConfig).toEqual({ responseMimeType: 'application/json', topP: 0.5 });
+    });
+});
+
+describe('output budget field', () => {
+    it('openai: `max_completion_tokens` — `max_tokens` 400s on reasoning models', async () => {
+        const captured = await callOnce({}, { messages: [{ role: 'user', content: 'hi' }], maxTokens: 512 });
+        expect(captured.body.max_completion_tokens).toBe(512);
+        expect(captured.body.max_tokens).toBeUndefined();
+    });
+
+    it('OpenAI-compatible providers, dynamic routes and Unified Billing keep `max_tokens`', async () => {
+        const options = { messages: [{ role: 'user' as const, content: 'hi' }], maxTokens: 512 };
+        for (const config of [
+            { provider: 'groq', model: 'groq/llama-3.3-70b-versatile' },
+            { model: 'dynamic/support' },
+            { secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' as const },
+        ] as Array<Partial<MergedTransportConfig>>) {
+            const captured = await callOnce(config, options);
+            expect(captured.body.max_tokens).toBe(512);
+            expect(captured.body.max_completion_tokens).toBeUndefined();
+        }
+    });
+
+    it('`extra` cannot set either budget field behind `maxTokens`', async () => {
+        const captured = await callOnce(
+            {},
+            { messages: [{ role: 'user', content: 'hi' }], maxTokens: 64, extra: { max_tokens: 9999 } },
+        );
+        expect(captured.body).toMatchObject({ max_completion_tokens: 64 });
+        expect(captured.body.max_tokens).toBeUndefined();
+    });
+});
+
+describe('anthropic `extra.system` is merged, never dropped', () => {
+    const anthropic = { provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' };
+
+    it('keeps cache-controlled system BLOCKS, after the JSON instruction', async () => {
+        const cached = { type: 'text', text: 'long reusable context', cache_control: { type: 'ephemeral' } };
+        const captured = await callOnce(anthropic, { ...json(), extra: { system: [cached] } });
+        const system = captured.body.system as Array<{ type: string; text: string }>;
+        expect(system[0]!.text).toMatch(/JSON object/);
+        expect(system[1]).toEqual(cached);
+    });
+
+    it('appends a string `extra.system` to the system messages', async () => {
+        const captured = await callOnce(anthropic, {
+            messages: [
+                { role: 'system', content: 'be terse' },
+                { role: 'user', content: 'hi' },
+            ],
+            extra: { system: 'house style' },
+        });
+        expect(captured.body.system).toBe('be terse\nhouse style');
+    });
+});
+
+describe('route support: reported per route, overridable by the operator', () => {
+    it('reports `vision` unsupported where the route documents no image input', () => {
+        const transport = createGatewayTransport();
+        expect(transport.unsupportedCapabilitiesFor!(configFor())).toEqual([]);
+        expect(transport.unsupportedCapabilitiesFor!(configFor({ model: 'dynamic/support' }))).toEqual(['vision']);
+        expect(
+            transport.unsupportedCapabilitiesFor!(
+                configFor({ secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' }),
+            ),
+        ).toEqual(['vision']);
+    });
+
+    it('lets an operator assert a fact about THEIR deployment', async () => {
+        const transport = createGatewayTransport({
+            routeSupport: { azure: { jsonSchema: true }, dynamic: { images: { max: 4 } } },
+        });
+        const captured: Captured[] = [];
+        const azure = transport.createClient(
+            configFor({
+                provider: 'azure',
+                model: 'azure/gpt-4o',
+                transportConfig: AZURE,
+                fetch: capturingFetch(captured),
+            }),
+        );
+        await azure.complete(json({ schema: SCHEMA, strict: true }));
+        expect((captured[0]!.body.response_format as { type: string }).type).toBe('json_schema');
+
+        expect(transport.unsupportedCapabilitiesFor!(configFor({ model: 'dynamic/support' }))).toEqual([]);
+        const dynamic = transport.createClient(
+            configFor({ model: 'dynamic/support', fetch: capturingFetch(captured) }),
+        );
+        const result = await dynamic.complete(withImage(2));
+        expect(result.ok).toBe(true);
     });
 });

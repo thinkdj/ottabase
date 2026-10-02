@@ -9,17 +9,58 @@
 // contract testable without a network or a fake fetch — see
 // `__tests__/gateway-wire.test.ts`.
 //
-// SCOPE: text chat completion ONLY. See `AiCallOptions` — message content is a
-// bare string, so images, audio, tool calls and embeddings have no representation
-// to serialise. A dialect here therefore never grows a multimodal branch without
-// the call contract growing first.
+// SCOPE: chat completion with text and inline-image input, text or JSON output.
+// How each dialect spells an image part and a JSON request is decided HERE; WHETHER
+// a route may receive them is the route's `GatewayRouteSupport` (see `./providers`),
+// which the gateway adapter checks before this file is ever reached.
 // ============================================================
 
+import { messageText, type AiContentPart, type AiMessage, type AiResponseFormat } from '../content';
 import type { AiCallOptions, AiCallResult, AiStreamEvent } from '../resolver/transport';
-import type { GatewayWire } from './providers';
+import type { GatewayRouteSupport, GatewayWire } from './providers';
 
-/** Fields the transport owns. `extra` may never set them — see `buildBody`. */
-const RESERVED_BODY_KEYS = ['model', 'messages', 'stream', 'contents', 'system_instruction'] as const;
+/**
+ * Fields the transport owns. `extra` may never set them — see `buildBody`.
+ *
+ * The output-format fields are here because `responseFormat` owns them: an `extra` that set
+ * `response_format` would silently override (or contradict) the JSON tier the caller asked
+ * for, and `tools`/`tool_choice` have no representation in the call contract at all. Both
+ * output-budget spellings are here because `maxTokens` owns them.
+ *
+ * Anthropic's `system` is NOT reserved: a caller may pass system BLOCKS through `extra.system`
+ * (e.g. with `cache_control` for prompt caching), and the Anthropic builder MERGES them after
+ * the system messages instead of letting either side drop the other.
+ */
+const RESERVED_BODY_KEYS = [
+    'model',
+    'messages',
+    'stream',
+    'contents',
+    'system_instruction',
+    'systemInstruction',
+    'response_format',
+    'output_config',
+    'output_format',
+    'tools',
+    'tool_choice',
+    'max_tokens',
+    'max_completion_tokens',
+] as const;
+
+/** Gemini output-format keys inside `generationConfig`, owned by `responseFormat` likewise. */
+const RESERVED_GENERATION_CONFIG_KEYS = [
+    'responseMimeType',
+    'response_mime_type',
+    'responseSchema',
+    'response_schema',
+    'responseJsonSchema',
+    'response_json_schema',
+    '_responseJsonSchema',
+    'responseFormat',
+    'response_format',
+    'maxOutputTokens',
+    'max_output_tokens',
+];
 
 export interface BuildBodyInput {
     wire: GatewayWire;
@@ -27,6 +68,10 @@ export interface BuildBodyInput {
     model: string | null;
     options: AiCallOptions;
     stream: boolean;
+    /** What this route accepts — decides HOW a JSON request is spelled. */
+    support: GatewayRouteSupport;
+    /** Output-budget field on the OpenAI wire. Default `max_tokens`; OpenAI itself uses `max_completion_tokens`. */
+    maxTokensField?: 'max_tokens' | 'max_completion_tokens';
 }
 
 /**
@@ -35,19 +80,21 @@ export interface BuildBodyInput {
  * `extra` IS SPREAD FIRST, ON PURPOSE. Spreading it last lets a caller overwrite `messages`,
  * `model` or `stream` — and the URL was already chosen from those same values, so the
  * request would be routed for one call and bodied for another. Provider-specific knobs
- * (`top_p`, `stop`, `response_format`, …) still pass through untouched; only the fields the
- * transport is responsible for are protected.
+ * (`top_p`, `stop`, …) still pass through untouched; only the fields the transport is
+ * responsible for are protected.
  */
 export function buildBody(input: BuildBodyInput): Record<string, unknown> {
-    const { wire, model, options, stream } = input;
+    const { wire, model, options, stream, support } = input;
     const extra = sanitizeExtra(options.extra);
+    const json = options.responseFormat ? planJson(options.responseFormat, support) : null;
+    const messages = json?.instruction ? withSystemInstruction(options.messages, json.instruction) : options.messages;
 
-    if (wire === 'anthropic') return buildAnthropicBody(model, options, stream, extra);
-    if (wire === 'google') return buildGoogleBody(options, extra);
-    return buildOpenAiBody(model, options, stream, extra);
+    if (wire === 'anthropic') return buildAnthropicBody(model, messages, options, stream, extra, json);
+    if (wire === 'google') return buildGoogleBody(messages, options, extra, json);
+    return buildOpenAiBody(model, messages, options, stream, extra, json, input.maxTokensField ?? 'max_tokens');
 }
 
-/** Strip the fields the transport owns, so `extra` cannot fight the URL. */
+/** Strip the fields the transport owns, so `extra` cannot fight the URL or the JSON tier. */
 function sanitizeExtra(extra: Record<string, unknown> | undefined): Record<string, unknown> {
     if (!extra) return {};
     const clean = { ...extra };
@@ -55,18 +102,93 @@ function sanitizeExtra(extra: Record<string, unknown> | undefined): Record<strin
     return clean;
 }
 
+// ---------------------------------------------------------------------------
+// JSON output
+// ---------------------------------------------------------------------------
+
+/**
+ * How one call's JSON request is spelled on one route.
+ *
+ *  • `enforced` — the provider enforces `schema` (strict tier, route supports it).
+ *  • `object`   — the provider's JSON mode: valid JSON, schema not enforced.
+ *  • `instructed` — no native support at all; the system instruction is the whole mechanism,
+ *    and the instrumented client's parse is the only check.
+ *
+ * The SYSTEM INSTRUCTION IS ADDED IN EVERY MODE. OpenAI, DeepSeek, Groq and Mistral all
+ * require the prompt itself to ask for JSON when JSON mode is on (OpenAI's spec warns of "an
+ * unending stream of whitespace" otherwise), and it is the only mechanism on an instructed
+ * route. It carries the schema whenever the provider is not enforcing it.
+ */
+export interface JsonPlan {
+    mode: 'enforced' | 'object' | 'instructed';
+    format: AiResponseFormat;
+    instruction: string;
+}
+
+export function planJson(format: AiResponseFormat, support: GatewayRouteSupport): JsonPlan {
+    const mode: JsonPlan['mode'] =
+        format.strict && format.schema && support.jsonSchema
+            ? 'enforced'
+            : support.jsonObject
+              ? 'object'
+              : 'instructed';
+    const lines = ['Respond with a single JSON object and nothing else — no prose, no Markdown code fences.'];
+    if (format.schema && mode !== 'enforced') {
+        lines.push(`The object must conform to this JSON Schema:\n${JSON.stringify(format.schema)}`);
+    }
+    return { mode, format, instruction: lines.join('\n') };
+}
+
+/** Prepend the JSON instruction as the FIRST system message, ahead of the caller's own. */
+function withSystemInstruction(messages: AiMessage[], instruction: string): AiMessage[] {
+    return [{ role: 'system', content: instruction }, ...messages];
+}
+
+// ---------------------------------------------------------------------------
+// Dialects
+// ---------------------------------------------------------------------------
+
+/** OpenAI-shaped content: a string stays a string; parts become `text` / `image_url` parts. */
+function openAiContent(content: AiMessage['content']): unknown {
+    if (typeof content === 'string') return content;
+    return content.map((part: AiContentPart) =>
+        part.type === 'text'
+            ? { type: 'text', text: part.text }
+            : // Data URL, not a hosted URL — see `AiContentPart`. `detail` is left to the
+              // provider default: its accepted values differ across OpenAI, Azure and Groq.
+              { type: 'image_url', image_url: { url: `data:${part.mimeType};base64,${part.data}` } },
+    );
+}
+
 function buildOpenAiBody(
     model: string | null,
+    messages: AiMessage[],
     options: AiCallOptions,
     stream: boolean,
     extra: Record<string, unknown>,
+    json: JsonPlan | null,
+    maxTokensField: 'max_tokens' | 'max_completion_tokens',
 ): Record<string, unknown> {
     return {
         ...extra,
         ...(model ? { model } : {}),
-        messages: options.messages,
-        ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+        messages: messages.map((m) => ({
+            role: m.role,
+            content: openAiContent(m.content),
+            ...(m.name !== undefined ? { name: m.name } : {}),
+        })),
+        ...(options.maxTokens !== undefined ? { [maxTokensField]: options.maxTokens } : {}),
         ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+        ...(json?.mode === 'enforced'
+            ? {
+                  response_format: {
+                      type: 'json_schema',
+                      json_schema: { name: json.format.name ?? 'response', schema: json.format.schema, strict: true },
+                  },
+              }
+            : json?.mode === 'object'
+              ? { response_format: { type: 'json_object' } }
+              : {}),
         ...(stream
             ? {
                   stream: true,
@@ -82,32 +204,85 @@ function buildOpenAiBody(
     };
 }
 
+/** Anthropic content: `text` blocks and base64 `image` blocks. */
+function anthropicContent(content: AiMessage['content']): unknown {
+    if (typeof content === 'string') return content;
+    return content.map((part: AiContentPart) =>
+        part.type === 'text'
+            ? { type: 'text', text: part.text }
+            : { type: 'image', source: { type: 'base64', media_type: part.mimeType, data: part.data } },
+    );
+}
+
 function buildAnthropicBody(
     model: string | null,
+    messages: AiMessage[],
     options: AiCallOptions,
     stream: boolean,
     extra: Record<string, unknown>,
+    json: JsonPlan | null,
 ): Record<string, unknown> {
-    const system = options.messages
-        .filter((m) => m.role === 'system')
-        .map((m) => m.content)
-        .join('\n');
-
-    // `max_tokens` is REQUIRED by Anthropic, so it always ends up present — but a caller who
-    // set it through `extra` must not have it stomped by the default.
-    const extraMaxTokens = typeof extra.max_tokens === 'number' ? extra.max_tokens : undefined;
+    const { system: extraSystem, ...rest } = extra;
+    const system = mergeAnthropicSystem(
+        messages
+            .filter((m) => m.role === 'system')
+            .map((m) => messageText(m.content))
+            .join('\n'),
+        extraSystem,
+    );
 
     return {
-        ...extra,
+        ...rest,
         ...(model ? { model } : {}),
         ...(system ? { system } : {}),
-        messages: options.messages
+        messages: messages
             .filter((m) => m.role !== 'system')
-            .map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-        max_tokens: options.maxTokens ?? extraMaxTokens ?? 1024,
+            .map((m) => ({
+                role: m.role === 'assistant' ? 'assistant' : 'user',
+                content: anthropicContent(m.content),
+            })),
+        // REQUIRED by Anthropic, so a call with no budget (and a task with none) still gets one.
+        max_tokens: options.maxTokens ?? 1024,
         ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+        // Structured outputs, GA with no beta header. Anthropic has no schema-less JSON mode,
+        // so the default tier is instructed only. NOT forced tool use: `tool_choice:
+        // {type:'tool'}` returns 400 on the newest Claude models, and assistant prefill is
+        // gone from 4.6 onwards.
+        ...(json?.mode === 'enforced'
+            ? { output_config: { format: { type: 'json_schema', schema: json.format.schema } } }
+            : {}),
         ...(stream ? { stream: true } : {}),
     };
+}
+
+/**
+ * Anthropic `system`: the system messages (JSON instruction first), then whatever the caller
+ * passed in `extra.system`.
+ *
+ * A BLOCK ARRAY is kept as blocks — that is how prompt caching is expressed (`cache_control`
+ * on a block), and flattening it to a string would silently disable the cache. The messages'
+ * text becomes a leading text block. A string is appended. Anything else is dropped.
+ */
+function mergeAnthropicSystem(text: string, extraSystem: unknown): string | unknown[] | undefined {
+    if (Array.isArray(extraSystem)) {
+        return text ? [{ type: 'text', text }, ...extraSystem] : extraSystem.length ? extraSystem : undefined;
+    }
+    const parts = [text, typeof extraSystem === 'string' ? extraSystem : ''].filter(Boolean);
+    return parts.length ? parts.join('\n') : undefined;
+}
+
+/**
+ * Gemini parts: `{ text }` and `{ inlineData }`.
+ *
+ * CAMELCASE, as the v1 discovery document names every field. Proto-JSON also accepts
+ * snake_case, but the discovery document carries a deprecated `_responseJsonSchema` beside
+ * `responseJsonSchema`, so snake_case names are not guaranteed to map to the field meant.
+ */
+function googleParts(content: AiMessage['content']): Array<Record<string, unknown>> {
+    if (typeof content === 'string') return [{ text: content }];
+    return content.map((part: AiContentPart) =>
+        part.type === 'text' ? { text: part.text } : { inlineData: { mimeType: part.mimeType, data: part.data } },
+    );
 }
 
 /**
@@ -116,32 +291,51 @@ function buildAnthropicBody(
  * The model id is NOT here — it is a path segment (see the `google-ai-studio` adapter), so
  * putting it in the body too is at best ignored and at worst a 400.
  */
-function buildGoogleBody(options: AiCallOptions, extra: Record<string, unknown>): Record<string, unknown> {
-    const system = options.messages
+function buildGoogleBody(
+    messages: AiMessage[],
+    options: AiCallOptions,
+    extra: Record<string, unknown>,
+    json: JsonPlan | null,
+): Record<string, unknown> {
+    // `systemInstruction` is "currently text only" on v1 — image parts never reach it, because
+    // `validateCallContent` refuses images outside user turns.
+    const system = messages
         .filter((m) => m.role === 'system')
-        .map((m) => m.content)
+        .map((m) => messageText(m.content))
         .join('\n');
 
     // Gemini rejects consecutive turns with the same role, which a `[user, user]` history
     // (perfectly legal in this package's call options) would otherwise produce.
-    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-    for (const message of options.messages) {
+    const contents: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
+    for (const message of messages) {
         if (message.role === 'system') continue;
         const role = message.role === 'assistant' ? 'model' : 'user';
+        const parts = googleParts(message.content);
         const last = contents[contents.length - 1];
         if (last && last.role === role) {
-            last.parts.push({ text: message.content });
+            last.parts.push(...parts);
             continue;
         }
-        contents.push({ role, parts: [{ text: message.content }] });
+        contents.push({ role, parts });
     }
 
+    const callerConfig =
+        typeof extra.generationConfig === 'object' && extra.generationConfig !== null
+            ? { ...(extra.generationConfig as Record<string, unknown>) }
+            : {};
+    for (const key of RESERVED_GENERATION_CONFIG_KEYS) delete callerConfig[key];
+
     const generationConfig: Record<string, unknown> = {
-        ...(typeof extra.generationConfig === 'object' && extra.generationConfig !== null
-            ? (extra.generationConfig as Record<string, unknown>)
-            : {}),
+        ...callerConfig,
         ...(options.maxTokens !== undefined ? { maxOutputTokens: options.maxTokens } : {}),
         ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+        // Default tier: JSON mode. Strict tier: `responseFormat`, the ONLY non-deprecated schema
+        // field on v1 (`responseSchema` and `responseJsonSchema` are both "Deprecated. Use
+        // response_format instead"). It takes a standard JSON Schema. Never both styles at once.
+        ...(json?.mode === 'object' ? { responseMimeType: 'application/json' } : {}),
+        ...(json?.mode === 'enforced'
+            ? { responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: json.format.schema } } }
+            : {}),
     };
 
     const rest = { ...extra };
@@ -149,7 +343,7 @@ function buildGoogleBody(options: AiCallOptions, extra: Record<string, unknown>)
 
     return {
         ...rest,
-        ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
+        ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents,
         ...(Object.keys(generationConfig).length > 0 ? { generationConfig } : {}),
     };

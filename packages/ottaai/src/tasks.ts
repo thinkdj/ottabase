@@ -109,8 +109,21 @@ export interface AiTaskPolicy {
     pinnedModels?: Record<string, string>;
     /** Task default model, used when neither a per-call model nor a credential model applies. */
     defaultModel?: string;
-    /** Capabilities the serving model must have. Checked as an ELIGIBILITY FILTER, not post-selection. */
+    /**
+     * Capabilities the serving model must have. Checked as an ELIGIBILITY FILTER, not
+     * post-selection — and `vision` / `json` are also CALL contracts: a call sending images or
+     * `responseFormat` is refused unless its task declares them.
+     */
     requiredCapabilities?: AiCapability[];
+    /**
+     * Default output budget for this task's calls; a per-call `maxTokens` still wins.
+     *
+     * Declare it on every task. Without one, OpenAI-shaped providers default to "until the
+     * context runs out" — an unbounded bill — and a structured reply needs real room: a JSON
+     * object cut off by its budget does not parse and returns `INVALID_RESPONSE`. Thinking
+     * models (Gemini 2.5, OpenAI reasoning models) spend part of this budget on reasoning.
+     */
+    maxTokens?: number;
     /**
      * What to do with a model the registry has never seen when `requiredCapabilities` is set.
      * Default `deny` — fail closed, because a free-text model silently admitted to a vision

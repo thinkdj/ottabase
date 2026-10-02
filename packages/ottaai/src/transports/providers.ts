@@ -37,6 +37,34 @@
  */
 export type GatewayWire = 'openai' | 'anthropic' | 'google';
 
+/**
+ * What a route can do beyond text chat, VERIFIED against the provider's own API reference.
+ *
+ * Separate from the dialect: Groq, DeepSeek and Mistral share OpenAI's wire but not its
+ * image-count limit or its structured-output support. `null`/`false` means "not documented",
+ * and the transport then refuses (images) or falls back to an instructed JSON reply (JSON) —
+ * never an OpenAI-shaped guess.
+ */
+export interface GatewayRouteSupport {
+    /** Inline base64 images in user messages, and how many one request may carry. Null = refused. */
+    images: { max: number } | null;
+    /** JSON mode without a schema (`json_object`, Gemini `responseMimeType`). */
+    jsonObject: boolean;
+    /** Provider-ENFORCED schema, used when the caller sets `responseFormat.strict`. */
+    jsonSchema: boolean;
+}
+
+/**
+ * The support a route WITHOUT a provider adapter gets: Cloudflare's `compat` endpoint (dynamic
+ * routes) and the Unified Billing REST endpoint. Neither documents image parts or
+ * `response_format`, so images are refused and JSON is instructed only.
+ */
+export const UNDOCUMENTED_ROUTE_SUPPORT: GatewayRouteSupport = Object.freeze({
+    images: null,
+    jsonObject: false,
+    jsonSchema: false,
+});
+
 /** Where the model id belongs for a given provider. */
 export type ModelPlacement = 'body' | 'path';
 
@@ -61,6 +89,17 @@ export interface GatewayProviderAdapter {
     auth: { header: string; prefix: string };
     /** Headers the provider REQUIRES on every call (Anthropic's API version, for example). */
     staticHeaders?: Record<string, string>;
+    /** Images and JSON output on this route. Each entry cites its source beside it. */
+    supports: GatewayRouteSupport;
+    /**
+     * Body field carrying the output budget on OpenAI-shaped wires. Default `max_tokens`.
+     *
+     * OpenAI's own API deprecated `max_tokens` for `max_completion_tokens`, and its reasoning
+     * models (o-series, GPT-5 class) REJECT `max_tokens` with a 400 — so a tenant whose default
+     * model is one of them fails every call. `max_completion_tokens` is accepted by every
+     * current OpenAI chat model. OpenAI-compatible providers keep `max_tokens`.
+     */
+    maxTokensField?: 'max_tokens' | 'max_completion_tokens';
     /** Everything after `/<slug>`, including a leading slash. */
     path(input: GatewayPathInput): GatewayPathResult;
     /** The Cloudflare page this entry was transcribed from. Keep it — it is the review trail. */
@@ -98,6 +137,10 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         // NO `/v1`. The gateway already proxies to api.openai.com/v1.
         path: openAiCompatPath,
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/openai/',
+        // Image parts and both JSON forms: openai/openai-openapi `openapi.yaml`.
+        supports: { images: { max: 20 }, jsonObject: true, jsonSchema: true },
+        // `max_tokens` is deprecated and 400s on reasoning models (same spec).
+        maxTokensField: 'max_completion_tokens',
     },
 
     anthropic: {
@@ -111,6 +154,11 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         staticHeaders: { 'anthropic-version': '2023-06-01' },
         path: () => ({ ok: true, path: '/v1/messages' }),
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/anthropic/',
+        // Base64 image blocks: platform.claude.com/docs/en/build-with-claude/vision. NO JSON
+        // MODE — only enforced `output_config.format` (GA, no beta header):
+        // platform.claude.com/docs/en/build-with-claude/structured-outputs. Forced tool use is
+        // NOT an alternative: `tool_choice: {type:'tool'}` 400s on the newest models.
+        supports: { images: { max: 20 }, jsonObject: false, jsonSchema: true },
     },
 
     'google-ai-studio': {
@@ -132,6 +180,11 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
             return { ok: true, path: `/v1/models/${encodeURIComponent(model)}:${method}${suffix}` };
         },
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/google-ai-studio/',
+        // `inlineData`, `responseMimeType` and `responseFormat` are on the v1 discovery document
+        // (generativelanguage.googleapis.com/$discovery/rest?version=v1); `responseFormat` is
+        // the only NON-deprecated schema field there (`responseSchema` / `_responseJsonSchema`
+        // are both marked "Deprecated. Use response_format instead").
+        supports: { images: { max: 20 }, jsonObject: true, jsonSchema: true },
     },
 
     groq: {
@@ -142,6 +195,10 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'Authorization', prefix: 'Bearer ' },
         path: openAiCompatPath,
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/groq/',
+        // 3 images per request: console.groq.com/docs/vision. `json_schema` is model-dependent
+        // and documented as unsupported with streaming, so strict falls back to `json_object`:
+        // console.groq.com/docs/structured-outputs.
+        supports: { images: { max: 3 }, jsonObject: true, jsonSchema: false },
     },
 
     mistral: {
@@ -153,6 +210,9 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         // WITH `/v1` — the gateway proxies to api.mistral.ai, which is versionless.
         path: () => ({ ok: true, path: '/v1/chat/completions' }),
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/mistral/',
+        // 8 images per request: docs.mistral.ai/capabilities/vision. `image_url` accepts the
+        // OpenAI `{url}` object, and `json_schema` is in docs.mistral.ai/openapi.yaml.
+        supports: { images: { max: 8 }, jsonObject: true, jsonSchema: true },
     },
 
     deepseek: {
@@ -163,6 +223,9 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'Authorization', prefix: 'Bearer ' },
         path: openAiCompatPath,
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/deepseek/',
+        // Vision: api-docs.deepseek.com/guides/vision. `response_format` is `text` or
+        // `json_object` only: api-docs.deepseek.com/guides/json_mode.
+        supports: { images: { max: 20 }, jsonObject: true, jsonSchema: false },
     },
 
     perplexity: {
@@ -174,6 +237,9 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'Authorization', prefix: 'Bearer ' },
         path: openAiCompatPath,
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/perplexity/',
+        // `response_format` is `text` or `json_schema` — NO `json_object`:
+        // docs.perplexity.ai/openapi.json.
+        supports: { images: { max: 20 }, jsonObject: false, jsonSchema: true },
     },
 
     azure: {
@@ -206,6 +272,11 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
             };
         },
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/azureopenai/',
+        // 10 images per request: learn.microsoft.com/azure/ai-foundry/openai/how-to/gpt-with-vision.
+        // `json_schema` depends on BOTH the operator's api-version (≥ 2024-08-01-preview) and
+        // the deployed model, neither of which a tenant controls — so strict falls back to
+        // `json_object` (≥ 2023-12-01-preview) rather than 400 on an older deployment.
+        supports: { images: { max: 10 }, jsonObject: true, jsonSchema: false },
     },
 } satisfies Record<string, GatewayProviderAdapter>);
 

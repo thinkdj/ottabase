@@ -34,7 +34,10 @@ export const AI_ERROR_CODES = {
     FORBIDDEN: 'FORBIDDEN',
     /** Verification budget exhausted for this actor. */
     VERIFY_RATE_LIMITED: 'VERIFY_RATE_LIMITED',
-    /** Write-path validation failure (bad provider, bad model ref, blank secret, …). */
+    /**
+     * Input validation failure: the write path (bad provider, bad model ref, blank secret, …)
+     * or call content (a malformed image part, an oversized image, a non-object schema).
+     */
     VALIDATION: 'VALIDATION',
     /** Composition / boot misconfiguration a developer must fix. */
     CONFIGURATION: 'CONFIGURATION',
@@ -46,6 +49,12 @@ export const AI_ERROR_CODES = {
     NO_ENCRYPTION_KEY: 'NO_ENCRYPTION_KEY',
     /** Crypto: the runtime exposes no Web Crypto subtle implementation. */
     NO_WEB_CRYPTO: 'NO_WEB_CRYPTO',
+    /**
+     * The provider answered, but not with what the call asked for — a `responseFormat` call
+     * whose reply does not parse to a JSON object (often a reply cut off by `maxTokens`).
+     * The key is healthy and the tokens were spent; a larger `maxTokens` may help.
+     */
+    INVALID_RESPONSE: 'INVALID_RESPONSE',
     /** Anything else — message is REDACTED passthrough. */
     ERROR: 'ERROR',
 } as const;
@@ -103,6 +112,7 @@ export const AI_ERROR_HTTP_STATUS: Record<AiErrorCode, number> = {
     DECRYPT_FAILED: 500,
     NO_ENCRYPTION_KEY: 500,
     NO_WEB_CRYPTO: 500,
+    INVALID_RESPONSE: 502,
     ERROR: 502,
 };
 
@@ -130,6 +140,7 @@ export const AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
     DECRYPT_FAILED: 'The stored credential could not be decrypted.',
     NO_ENCRYPTION_KEY: 'Credential encryption is not configured on this deployment.',
     NO_WEB_CRYPTO: 'This runtime does not provide Web Crypto.',
+    INVALID_RESPONSE: 'The AI reply was not in the expected format. Try again.',
     ERROR: 'The provider request failed.',
 };
 

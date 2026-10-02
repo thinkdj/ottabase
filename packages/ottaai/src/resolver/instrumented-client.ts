@@ -15,7 +15,9 @@
 // dedupe — and the second adapter becomes the bulk of the work.
 // ============================================================
 
+import { capabilitiesForCall, parseJsonObject, validateCallContent } from '../content';
 import { AI_ERROR_CODES, classifyUpstreamStatus, isAbortError, type AiErrorCode } from '../errors';
+import type { AiCapability } from '../registry';
 import { redactSecrets } from '../secret';
 import type { DegradationPolicy, MergedTransportConfig, ResolutionSource } from '../types';
 import type { EventSink } from './events';
@@ -62,6 +64,21 @@ export interface InstrumentedClientDeps {
     config: MergedTransportConfig;
     source: Exclude<ResolutionSource, null>;
     taskKey: string;
+    /**
+     * The task's `requiredCapabilities`. A call needing a capability the task did not declare
+     * (an image without `vision`, `responseFormat` without `json`) is refused — the
+     * declaration is what filtered the credential and the platform model during resolution.
+     */
+    taskCapabilities: readonly AiCapability[];
+    /** The task's default output budget, applied when a call sets none. */
+    taskMaxTokens?: number;
+    /**
+     * Capabilities of a per-call model ref under this config's provider, or null when the
+     * registry does not know it. Used to re-check a per-call `model` against the task.
+     */
+    capabilitiesForModel?: (modelRef: string) => readonly AiCapability[] | null;
+    /** The task's `unknownModelPolicy`, applied to a per-call model the registry does not know. */
+    unknownModelPolicy?: 'deny' | 'allow';
     degradation: DegradationPolicy;
     emit: EventSink;
     defer: (promise: Promise<unknown>) => void;
@@ -126,6 +143,11 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
     }
 
     function classify(error: AiCallError): { code: AiErrorCode; message: string } {
+        // A failure the adapter classified itself, with no upstream response (a route refusing
+        // images it cannot carry). Read from `code`, never from the provider's `providerCode`.
+        if (error.code) {
+            return { code: error.code, message: redactSecrets(error.message, deps.redactionSentinels) };
+        }
         if (error.statusCode === undefined && /abort|timeout/i.test(error.message)) {
             return { code: AI_ERROR_CODES.TIMEOUT, message: 'The request to the provider timed out.' };
         }
@@ -169,13 +191,18 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             outputTokens: tokens && 'output' in tokens ? (tokens.output ?? null) : null,
             cachedTokens: tokens && 'cached' in tokens ? (tokens.cached ?? null) : null,
             latencyMs: now() - input.startedAt,
-            outcome: input.result ? 'success' : 'error',
+            // Keyed on the CODE, not on the result: an `INVALID_RESPONSE` call carries both — the
+            // provider was paid for the tokens, and the caller still got an error.
+            outcome: input.code ? 'error' : 'success',
             ...(input.code ? { errorCode: input.code } : {}),
         });
     }
 
     function writeHealth(ok: boolean, code?: AiErrorCode): void {
         if (!deps.recordOutcome || !provenance.credentialId) return;
+        // A request the route refused before sending says nothing about the KEY. Counting it
+        // would mark a healthy credential as failing because a caller attached an image.
+        if (code === AI_ERROR_CODES.UNSUPPORTED_OPERATION) return;
         // Best-effort NEEDS A MECHANISM, not an adjective: on a Workers-style runtime a
         // fire-and-forget promise is either cancelled at response or it delays the call.
         deps.defer(deps.recordOutcome({ ok, at: now(), errorCode: code ?? null }).catch(() => {}));
@@ -193,6 +220,93 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                 userId: provenance.userId,
             });
         }
+    }
+
+    /**
+     * Refuse a call that can never be served correctly, BEFORE quota and before any request.
+     *
+     * Validation is the package's, not each adapter's, so a malformed image is the same
+     * `VALIDATION` error on every transport. The capability checks are developer errors, hence
+     * `CONFIGURATION`: the fix is one line in the task declaration or the call, not a
+     * different input.
+     */
+    function preflight(options: AiCallOptions): { code: AiErrorCode; message: string } | null {
+        const valid = validateCallContent(options);
+        if (!valid.ok) return { code: AI_ERROR_CODES.VALIDATION, message: valid.message };
+        const undeclared = capabilitiesForCall(options).filter((c) => !deps.taskCapabilities.includes(c));
+        if (undeclared.length > 0) {
+            return {
+                code: AI_ERROR_CODES.CONFIGURATION,
+                message:
+                    `Task "${deps.taskKey}" must declare requiredCapabilities: [${undeclared.map((c) => `'${c}'`).join(', ')}] ` +
+                    'to send this call — the declaration is what makes resolution pick a model that can serve it.',
+            };
+        }
+        // A per-call model bypasses the eligibility filter resolution ran on ANOTHER model, so
+        // the task's capabilities are re-checked against it here.
+        if (options.model?.trim() && deps.taskCapabilities.length > 0 && deps.capabilitiesForModel) {
+            const capabilities = deps.capabilitiesForModel(options.model);
+            const missing =
+                capabilities === null
+                    ? deps.unknownModelPolicy === 'allow'
+                        ? []
+                        : [...deps.taskCapabilities]
+                    : deps.taskCapabilities.filter((c) => !capabilities.includes(c));
+            if (missing.length > 0) {
+                return {
+                    code: AI_ERROR_CODES.CONFIGURATION,
+                    message:
+                        capabilities === null
+                            ? `Model "${options.model}" is not in the provider registry, so it cannot be shown to ` +
+                              `serve task "${deps.taskKey}" (needs ${deps.taskCapabilities.join(', ')}).`
+                            : `Model "${options.model}" lacks ${missing.join(', ')}, which task "${deps.taskKey}" requires.`,
+                };
+            }
+        }
+        return null;
+    }
+
+    /** The call as sent: the task's output budget unless the call set its own, and the cache TTL. */
+    function prepare(options: AiCallOptions): AiCallOptions {
+        return {
+            ...options,
+            maxTokens: options.maxTokens ?? deps.taskMaxTokens,
+            cacheTtlSeconds: resolveCacheTtl(options),
+        };
+    }
+
+    /**
+     * The JSON guarantee: a `responseFormat` call returns a parsed object or an error, never
+     * `ok` with nothing to read. Parsed HERE rather than in each adapter, so every transport
+     * gives the same answer for the same reply.
+     */
+    function withJson(
+        options: AiCallOptions,
+        result: AiCallResult,
+    ): { ok: true; result: AiCallResult } | { ok: false; code: AiErrorCode; message: string } {
+        if (!options.responseFormat) return { ok: true, result };
+        const json = result.json ?? parseJsonObject(result.text);
+        if (json) return { ok: true, result: { ...result, json } };
+        return {
+            ok: false,
+            code: AI_ERROR_CODES.INVALID_RESPONSE,
+            message:
+                'The provider reply was not a JSON object. It may have been cut off — consider a larger maxTokens.',
+        };
+    }
+
+    /** Settle a successful upstream response: health, JSON guarantee, metering. */
+    function settleSuccess(
+        options: AiCallOptions,
+        result: AiCallResult,
+        correlationId: string,
+        startedAt: number,
+        source: Exclude<ResolutionSource, null>,
+    ): { ok: true; result: AiCallResult } | { ok: false; code: AiErrorCode; message: string } {
+        const settled = withJson(options, result);
+        // Metered either way — the provider billed for the tokens even when the reply is unusable.
+        emitCompleted({ correlationId, startedAt, result, source, ...(settled.ok ? {} : { code: settled.code }) });
+        return settled;
     }
 
     /**
@@ -221,6 +335,12 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const correlationId = newCorrelationId();
             const startedAt = now();
 
+            const refused = preflight(options);
+            if (refused) {
+                emitCompleted({ correlationId, startedAt, code: refused.code, source: deps.source });
+                return { ok: false, ...refused };
+            }
+
             if (deps.quota) {
                 const allowed = await deps.quota({
                     source: deps.source,
@@ -244,10 +364,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                 }
             }
 
-            const call: AiCallOptions = {
-                ...options,
-                cacheTtlSeconds: resolveCacheTtl(options),
-            };
+            const call = prepare(options);
 
             let response;
             try {
@@ -266,9 +383,9 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             }
 
             if (response.ok) {
+                // The KEY worked even when the reply is unusable JSON — health is about the key.
                 writeHealth(true);
-                emitCompleted({ correlationId, startedAt, result: response.result, source: deps.source });
-                return response;
+                return settleSuccess(options, response.result, correlationId, startedAt, deps.source);
             }
 
             const { code, message } = classify(response.error);
@@ -289,8 +406,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                 const retry = await deps.platformFallback!.complete(call);
                 if (retry.ok) {
                     // Usage is attributed to the PLATFORM, not the tenant.
-                    emitCompleted({ correlationId, startedAt, result: retry.result, source: 'platform' });
-                    return retry;
+                    return settleSuccess(options, retry.result, correlationId, startedAt, 'platform');
                 }
                 const retryClassified = classify(retry.error);
                 emitCompleted({ correlationId, startedAt, code: retryClassified.code, source: 'platform' });
@@ -423,6 +539,18 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const correlationId = newCorrelationId();
             const startedAt = now();
 
+            // A stream does NOT get the JSON guarantee — it ends in deltas, not a reply. Collect
+            // the text and run `parseJsonObject` on it.
+            const refused = preflight(options);
+            if (refused) {
+                emitCompleted({ correlationId, startedAt, code: refused.code, source: deps.source });
+                yield {
+                    type: 'error',
+                    error: { retryable: false, message: refused.message, code: refused.code },
+                };
+                return;
+            }
+
             if (deps.quota) {
                 const allowed = await deps.quota({
                     source: deps.source,
@@ -443,17 +571,14 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                         error: {
                             retryable: false,
                             message: 'Your AI usage quota for this period has been reached.',
-                            providerCode: AI_ERROR_CODES.RATE_LIMITED,
+                            code: AI_ERROR_CODES.RATE_LIMITED,
                         },
                     };
                     return;
                 }
             }
 
-            const call: AiCallOptions = {
-                ...options,
-                cacheTtlSeconds: resolveCacheTtl(options),
-            };
+            const call = prepare(options);
 
             let tokens: AiCallResult['tokens'] = null;
             let failed: AiErrorCode | undefined;

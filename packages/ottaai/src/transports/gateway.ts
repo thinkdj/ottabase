@@ -20,6 +20,7 @@
 // available failure mode.
 // ============================================================
 
+import { AI_ERROR_CODES } from '../errors';
 import { DYNAMIC_MODEL_PREFIX, parseModelRef } from '../model-ref';
 import { createProviderRegistry, type AiProviderRegistry } from '../registry';
 import { redactSecrets } from '../secret';
@@ -33,11 +34,18 @@ import type {
     RawAiClient,
     TransportAdapter,
 } from '../resolver/transport';
-import { GATEWAY_PROVIDERS, gatewayAdapterFor, type GatewayProviderAdapter, type GatewayWire } from './providers';
+import {
+    GATEWAY_PROVIDERS,
+    gatewayAdapterFor,
+    UNDOCUMENTED_ROUTE_SUPPORT,
+    type GatewayProviderAdapter,
+    type GatewayRouteSupport,
+    type GatewayWire,
+} from './providers';
 import { buildBody, createStreamReader, normalizeResult } from './wire';
 
 export { GATEWAY_PROVIDERS, GATEWAY_SUPPORTED_PROVIDERS, gatewayAdapterFor } from './providers';
-export type { GatewayProviderAdapter, GatewayWire } from './providers';
+export type { GatewayProviderAdapter, GatewayRouteSupport, GatewayWire } from './providers';
 
 const GATEWAY_BASE = 'https://gateway.ai.cloudflare.com/v1';
 const UNIFIED_BILLING_BASE = 'https://api.cloudflare.com/client/v4/accounts';
@@ -75,7 +83,22 @@ export interface GatewayAdapterOptions {
      * operator explicitly needs payload debugging; metrics and fixed provenance remain.
      */
     collectLogPayload?: boolean;
+    /**
+     * Operator overrides for a route's image / JSON support, merged over the verified defaults
+     * in `./providers`. Keys are provider ids, plus `dynamic` (the compat endpoint) and
+     * `unified-billing` (the REST endpoint).
+     *
+     * For a fact about YOUR deployment the shipped table cannot know — an Azure deployment on
+     * an api-version and model that support `json_schema` (`{ azure: { jsonSchema: true } }`),
+     * or a dynamic route you have verified accepts images. Flipping one on for a route that
+     * does not support it turns a clean local refusal into a provider 400; run the smoke test.
+     */
+    routeSupport?: Partial<Record<string, Partial<GatewayRouteSupport>>>;
 }
+
+/** Route keys for {@link GatewayAdapterOptions.routeSupport} that are not provider ids. */
+const DYNAMIC_ROUTE_KEY = 'dynamic';
+const UNIFIED_BILLING_ROUTE_KEY = 'unified-billing';
 
 /**
  * Cloudflare's OpenAI-compatible unified endpoint, which is how a dynamic route is called.
@@ -93,6 +116,18 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
     const dynamicPath = options.dynamicPath ?? DEFAULT_DYNAMIC_PATH;
     const defaultTimeout = options.defaultTimeoutMs ?? 60_000;
     const collectLogPayload = options.collectLogPayload === true;
+    const supportFor = (route: string, base: GatewayRouteSupport): GatewayRouteSupport => {
+        const override = options.routeSupport?.[route];
+        return override ? { ...base, ...override } : base;
+    };
+
+    /** The support of the route a merged config travels on — the same choice `target()` makes. */
+    function routeSupportOf(config: MergedTransportConfig): GatewayRouteSupport {
+        if (config.billing === 'unified') return supportFor(UNIFIED_BILLING_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT);
+        if (isDynamicRef(config.model)) return supportFor(DYNAMIC_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT);
+        const adapter = config.provider ? gatewayAdapterFor(config.provider) : undefined;
+        return adapter ? supportFor(adapter.id, adapter.supports) : UNDOCUMENTED_ROUTE_SUPPORT;
+    }
 
     return {
         // Surfaced in `configSummary.transport` and in every emitted event. Named for the
@@ -156,6 +191,15 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
             return unservable;
         },
 
+        /**
+         * What the route cannot carry, asked at RESOLUTION so status and the gate never offer a
+         * task its route would refuse. Only `vision` can be unsupported: JSON always has the
+         * instructed fallback.
+         */
+        unsupportedCapabilitiesFor(config) {
+            return routeSupportOf(config).images ? [] : ['vision'];
+        },
+
         createClient(config) {
             return createGatewayClient(config, {
                 registry,
@@ -163,9 +207,19 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
                 dynamicPath,
                 defaultTimeout,
                 collectLogPayload,
+                supportFor,
             });
         },
     };
+}
+
+function countImages(options: AiCallOptions): number {
+    let count = 0;
+    for (const message of options.messages) {
+        if (typeof message.content === 'string') continue;
+        for (const part of message.content) if (part.type === 'image') count += 1;
+    }
+    return count;
 }
 
 function isDynamicRef(model: string | null | undefined): boolean {
@@ -178,6 +232,8 @@ interface ClientDeps {
     dynamicPath: string;
     defaultTimeout: number;
     collectLogPayload: boolean;
+    /** Verified route support with the operator's overrides applied. */
+    supportFor: (route: string, base: GatewayRouteSupport) => GatewayRouteSupport;
 }
 
 /**
@@ -208,6 +264,8 @@ type Target =
           wire: GatewayWire;
           adapter: GatewayProviderAdapter | null;
           unifiedBilling: boolean;
+          /** What this route accepts beyond text — images, and how JSON is spelled. */
+          support: GatewayRouteSupport;
       }
     | { ok: false; message: string };
 
@@ -245,6 +303,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 wire: 'openai',
                 adapter: null,
                 unifiedBilling: true,
+                support: deps.supportFor(UNIFIED_BILLING_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT),
             };
         }
 
@@ -270,6 +329,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 wire: 'openai',
                 adapter: null,
                 unifiedBilling: false,
+                support: deps.supportFor(DYNAMIC_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT),
             };
         }
 
@@ -318,6 +378,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             wire: adapter.wire,
             adapter,
             unifiedBilling: false,
+            support: deps.supportFor(adapter.id, adapter.supports),
         };
     }
 
@@ -371,6 +432,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 wire: 'openai',
                 adapter: null,
                 unifiedBilling: true,
+                support: UNDOCUMENTED_ROUTE_SUPPORT,
             };
         }
 
@@ -392,6 +454,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             wire: adapter.wire,
             adapter,
             unifiedBilling: false,
+            support: adapter.supports,
         };
     }
 
@@ -488,6 +551,27 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             return { ok: false, error: { retryable: false, message: resolved.message } };
         }
 
+        // IMAGES ONLY WHERE THE ROUTE DOCUMENTS THEM. A route that does not (Cloudflare's
+        // compat endpoint, Unified Billing REST) or a request over the provider's image count
+        // is refused here, before a billable request — a provider that silently drops an
+        // image part answers about a picture it never saw.
+        const images = countImages(options);
+        if (images > 0) {
+            const accepted = resolved.support.images;
+            if (!accepted || images > accepted.max) {
+                return {
+                    ok: false,
+                    error: {
+                        retryable: false,
+                        code: AI_ERROR_CODES.UNSUPPORTED_OPERATION,
+                        message: accepted
+                            ? `Provider "${resolved.provider}" accepts at most ${accepted.max} images per request; this call has ${images}.`
+                            : `This AI Gateway route (provider "${resolved.provider}") has no documented image input, so images are refused.`,
+                    },
+                };
+            }
+        }
+
         // AN ALREADY-ABORTED SIGNAL MUST NOT REACH THE NETWORK. `addEventListener('abort')`
         // never fires on a signal that is already aborted, so without this check a caller who
         // cancelled before the call still issues a full upstream request — billed, logged,
@@ -520,7 +604,16 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             const response = await doFetch(resolved.url, {
                 method: 'POST',
                 headers: buildHeaders(resolved, options),
-                body: JSON.stringify(buildBody({ wire: resolved.wire, model: resolved.modelId, options, stream })),
+                body: JSON.stringify(
+                    buildBody({
+                        wire: resolved.wire,
+                        model: resolved.modelId,
+                        options,
+                        stream,
+                        support: resolved.support,
+                        maxTokensField: resolved.adapter?.maxTokensField ?? 'max_tokens',
+                    }),
+                ),
                 signal: controller.signal,
             });
 

@@ -17,6 +17,7 @@
 // ============================================================
 
 export * from './errors';
+export * from './content';
 export * from './secret';
 export * from './registry';
 export * from './model-ref';

@@ -46,6 +46,7 @@ import {
     type CredentialRecord,
     type CredentialView,
     type DegradationPolicy,
+    type MergedTransportConfig,
     type PlatformAiConfig,
     type ResolutionReason,
     type ResolutionSource,
@@ -421,6 +422,12 @@ export function createAiProvisioning<HostContext = unknown>(
                 AI_ERROR_CODES.CONFIGURATION,
             );
         }
+        if (task.maxTokens !== undefined && (!Number.isInteger(task.maxTokens) || task.maxTokens < 1)) {
+            throw new AiProvisioningError(
+                `Task "${task.key}" declares maxTokens ${String(task.maxTokens)}; it must be a positive integer.`,
+                AI_ERROR_CODES.CONFIGURATION,
+            );
+        }
         tasks.set(task.key, task);
     }
 
@@ -605,17 +612,43 @@ export function createAiProvisioning<HostContext = unknown>(
         return options.platform.model ?? null;
     }
 
-    function buildPlatformClient(taskKey: string, context: AiContext, model: string | null): RawAiClient | null {
+    /**
+     * Whether the ROUTE this merged config travels on can serve the task's capabilities.
+     *
+     * The registry check (`capabilitiesSatisfied` / `resolvedModelCapabilitiesSatisfied`) asks
+     * the MODEL; this asks the WIRE. Both must pass, on every path, or status and the gate
+     * report a task as available while every call is refused.
+     */
+    function routeServes(task: ResolvedTaskPolicy, merged: MergedTransportConfig): boolean {
+        const required = task.requiredCapabilities;
+        if (!required?.length || !options.transport.unsupportedCapabilitiesFor) return true;
+        const unsupported = options.transport.unsupportedCapabilitiesFor(merged);
+        return !required.some((capability) => unsupported.includes(capability));
+    }
+
+    /** Registry capabilities of a model ref, resolved against `provider` when the ref is bare. */
+    function capabilitiesOfRef(ref: string, provider: string | null | undefined) {
+        const parsed = parseModelRef(ref, registry);
+        if (parsed.dynamic) return null;
+        const owner = parsed.form === 'qualified' ? parsed.provider : provider;
+        return owner ? registry.capabilitiesFor(owner, parsed.model) : null;
+    }
+
+    function buildPlatformClient(
+        task: ResolvedTaskPolicy,
+        context: AiContext,
+        model: string | null,
+    ): RawAiClient | null {
         const merged = mergeConfig({
             platform: options.platform,
             registry,
             credential: null,
             tenantSecret: null,
             model,
-            taskKey,
+            taskKey: task.key,
             context,
         });
-        if (!options.transport.isComplete(merged)) return null;
+        if (!options.transport.isComplete(merged) || !routeServes(task, merged)) return null;
         return options.transport.createClient(merged);
     }
 
@@ -739,6 +772,17 @@ export function createAiProvisioning<HostContext = unknown>(
                     tenantSecretPresent: false,
                 });
             }
+            if (!routeServes(task, merged)) {
+                return finish({
+                    source: null,
+                    reason: 'CAPABILITY_UNMET',
+                    tenantReason,
+                    credential: null,
+                    client: null,
+                    model,
+                    tenantSecretPresent: false,
+                });
+            }
             const client = buildClient
                 ? createInstrumentedClient({
                       raw: options.transport.createClient(merged),
@@ -746,6 +790,10 @@ export function createAiProvisioning<HostContext = unknown>(
                       config: merged,
                       source: 'platform',
                       taskKey,
+                      taskCapabilities: task.requiredCapabilities ?? [],
+                      taskMaxTokens: task.maxTokens,
+                      capabilitiesForModel: (ref) => capabilitiesOfRef(ref, merged.provider),
+                      unknownModelPolicy: task.unknownModelPolicy,
                       degradation: 'strict',
                       emit,
                       defer,
@@ -1016,6 +1064,24 @@ export function createAiProvisioning<HostContext = unknown>(
             return { resolution: fallThrough('MERGE_INCOMPLETE'), candidates: explanations };
         }
 
+        // The model qualified at stage 4; the ROUTE may still not carry what the task needs.
+        if (!routeServes(task, merged)) {
+            emit('credential.skipped', {
+                credentialId: winner.id,
+                source: null,
+                reason: 'CAPABILITY_UNMET',
+                tenantReason: 'CAPABILITY_UNMET',
+                provider: winner.provider,
+                model,
+                taskKey,
+                verdict: 'CAPABILITY_UNMET',
+                appId: context.appId,
+                organizationId: context.organizationId,
+                userId: context.userId,
+            });
+            return { resolution: fallThrough('CAPABILITY_UNMET'), candidates: explanations };
+        }
+
         const tenantSecretPresent = winner.secret.kind !== 'none';
 
         // ONE effective degradation policy, read once. Gating the fallback CLIENT on the
@@ -1028,9 +1094,20 @@ export function createAiProvisioning<HostContext = unknown>(
         // override — so a deployment with no platform default sends a request with NO model
         // field at all, and a caller-requested model is silently swapped for another.
         const fallbackModel = resolveModel({ task, credential: null, perCall: resolveOptions.model });
+        // The degraded retry must satisfy the task's capabilities exactly like the fall-through
+        // path does (stage 9). Without this, a vision task whose tenant key 401s would retry
+        // the SAME image on a text-only platform model.
         const platformFallback =
-            effectiveDegradation === 'platform-on-auth-error' && bits.mayUsePlatformKey && buildClient
-                ? buildPlatformClient(taskKey, context, fallbackModel)
+            effectiveDegradation === 'platform-on-auth-error' &&
+            bits.mayUsePlatformKey &&
+            buildClient &&
+            resolvedModelCapabilitiesSatisfied({
+                registry,
+                task,
+                provider: options.platform.provider,
+                model: fallbackModel,
+            })
+                ? buildPlatformClient(task, context, fallbackModel)
                 : null;
 
         const client = buildClient
@@ -1046,6 +1123,10 @@ export function createAiProvisioning<HostContext = unknown>(
                   config: merged,
                   source: 'byok',
                   taskKey,
+                  taskCapabilities: task.requiredCapabilities ?? [],
+                  taskMaxTokens: task.maxTokens,
+                  capabilitiesForModel: (ref) => capabilitiesOfRef(ref, merged.provider),
+                  unknownModelPolicy: task.unknownModelPolicy,
                   degradation: effectiveDegradation,
                   emit,
                   defer,

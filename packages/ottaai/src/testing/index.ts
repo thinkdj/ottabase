@@ -6,7 +6,10 @@
 // integration-test problem — but flag it as a NEW CONVENTION when reviewing.
 // ====================================================================
 
+import { hasImages } from '../content';
 import { createKeyring, type Keyring } from '../crypto';
+import { AI_ERROR_CODES } from '../errors';
+import type { AiCapability } from '../registry';
 import type { CredentialStore, StoreScope } from '../resolver/store';
 import type {
     AiCallError,
@@ -198,6 +201,13 @@ export interface MockTransportScript {
     tokens?: AiCallResult['tokens'];
     /** Reject as if the request timed out. */
     timeout?: boolean;
+    /**
+     * Capabilities the mock's ROUTE cannot carry — what the gateway reports for Unified Billing
+     * or a dynamic route. Reported to the resolver through `unsupportedCapabilitiesFor` (so a
+     * task needing them resolves `CAPABILITY_UNMET`), and a call that still sends images is
+     * refused with `UNSUPPORTED_OPERATION`, exactly as the real transport does.
+     */
+    unsupported?: AiCapability[];
 }
 
 export interface MockTransport extends TransportAdapter {
@@ -236,6 +246,15 @@ export function createMockTransport(initial: MockTransportScript = {}): MockTran
         return null;
     }
 
+    function routeRefusal(options: AiCallOptions): AiCallError | null {
+        if (!scripted.unsupported?.includes('vision') || !hasImages(options.messages)) return null;
+        return {
+            retryable: false,
+            code: AI_ERROR_CODES.UNSUPPORTED_OPERATION,
+            message: 'The mock route has no image input.',
+        };
+    }
+
     return {
         name: 'mock',
         configs,
@@ -249,11 +268,14 @@ export function createMockTransport(initial: MockTransportScript = {}): MockTran
             calls.length = 0;
         },
         isComplete: (config) => Boolean(config.provider),
+        unsupportedCapabilitiesFor: () => scripted.unsupported ?? [],
         createClient(config): RawAiClient {
             configs.push(config);
             return {
                 async complete(options) {
                     calls.push({ kind: 'complete', options });
+                    const refused = routeRefusal(options);
+                    if (refused) return { ok: false, error: refused };
                     const error = failure();
                     if (error) return { ok: false, error };
                     return {
@@ -282,7 +304,7 @@ export function createMockTransport(initial: MockTransportScript = {}): MockTran
                 },
                 async *stream(options): AsyncIterable<AiStreamEvent> {
                     calls.push({ kind: 'stream', options });
-                    const error = failure();
+                    const error = routeRefusal(options) ?? failure();
                     if (error) {
                         yield { type: 'error', error };
                         return;

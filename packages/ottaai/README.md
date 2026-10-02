@@ -6,11 +6,12 @@ deterministically, gated server-side, and shipped with the settings UI.
 The tenant's key pays for the tenant's inference — which is what lets you offer strong AI on a free plan, removes the
 per-tenant cost ceiling, and answers "can we use your data" with the tenant's own provider contract.
 
-> **Scope: text chat completion plus embeddings.** Chat uses `AiCallOptions`, whose message `content` is a plain string,
-> and normalises to `text` plus token counts. Embeddings use the separate `AiEmbedOptions` / `client.embed()` contract,
-> returning ordered numeric vectors and input-token accounting. Images, audio, tool calls and structured provider
-> outputs still have **no representation to serialise**, so they are not supported however capable the chosen model is.
-> The registry's `capabilities` decide which credential is eligible for a task; they do not widen either call contract.
+> **Scope: chat with text and image input, text or JSON output — plus embeddings.** Chat uses `AiCallOptions`: message
+> `content` is a string or an array of `text` / inline base64 `image` parts, and `responseFormat` asks for a JSON object
+> (see [Images and JSON output](#images-and-json-output)). Embeddings use the separate `AiEmbedOptions` /
+> `client.embed()` contract, returning ordered numeric vectors and input-token accounting. Audio, tool calls and image
+> _output_ have **no representation to serialise**, so they are not supported however capable the chosen model is.
+> Images and JSON are capability-gated: a call using them is refused unless its task declares `vision` / `json`.
 
 > **Cloudflare Unified Billing supports chat and OpenAI embeddings in OttaAI.** Chat uses the OpenAI-compatible REST
 > endpoint; embeddings use AI Gateway's universal `/ai/run` endpoint. Other embedding providers remain refused until
@@ -67,6 +68,49 @@ provider whose every call would resolve `MERGE_INCOMPLETE`. The boot summary nam
 
 Any transport may implement `unservableProviders(platform)` for the same reason: a provider it supports in principle but
 cannot route under _this_ operator's configuration.
+
+### Images and JSON per route
+
+Each route's support is a verified fact on its `supports` entry in `src/transports/providers.ts`, with the provider's
+API reference cited beside it. Where a route documents nothing, the transport refuses images and falls back to an
+instructed JSON reply — it never sends an OpenAI-shaped guess.
+
+| Route              | Image part                               | Max images | JSON (default tier)                | JSON (`strict: true`)                |
+| ------------------ | ---------------------------------------- | ---------- | ---------------------------------- | ------------------------------------ |
+| `openai`           | `image_url` data URL                     | 20         | `json_object`                      | `json_schema`, `strict: true`        |
+| `anthropic`        | `image` + base64 `source`                | 20         | instructed (no JSON mode exists)   | `output_config.format` `json_schema` |
+| `google-ai-studio` | `inlineData`                             | 20         | `responseMimeType`                 | `responseFormat` (alone)             |
+| `mistral`          | `image_url` data URL                     | 8          | `json_object`                      | `json_schema`                        |
+| `groq`             | `image_url` data URL                     | 3          | `json_object`                      | `json_object` + instructed schema    |
+| `deepseek`         | `image_url` data URL                     | 20         | `json_object`                      | `json_object` + instructed schema    |
+| `perplexity`       | `image_url` data URL                     | 20         | instructed (no `json_object` type) | `json_schema`                        |
+| `azure`            | `image_url` data URL                     | 10         | `json_object`                      | `json_object` + instructed schema    |
+| dynamic route      | refused (not documented on `compat`)     | —          | instructed                         | instructed                           |
+| Unified Billing    | refused (not documented on the REST API) | —          | instructed                         | instructed                           |
+
+**Anthropic is not forced tool use.** `tool_choice: { type: 'tool' }` returns 400 on the newest Claude models and
+assistant prefill is gone from 4.6 onwards; native structured outputs (`output_config`, GA, no beta header) are the
+supported path. **Gemini's strict tier is `responseFormat`**, the only schema field the v1 discovery document does not
+mark deprecated, sent without `responseMimeType` (never both styles); the Gemini body is camelCase throughout. **Groq
+and Azure strict falls back on purpose:** Groq documents `json_schema` as model-dependent and unsupported with
+streaming; Azure's depends on the operator's `api-version` and the deployed model, neither of which a tenant controls.
+
+**The route is checked at RESOLUTION, not just at call time.** The transport reports what each route cannot carry
+(`unsupportedCapabilitiesFor`), and a task requiring it resolves `CAPABILITY_UNMET` on that path — tenant, platform
+fall-through or degraded retry. So `status()` and the gate never offer a vision task its route would refuse (for example
+`scan` on a Unified Billing platform floor).
+
+**Operator overrides.** The table is the verified default. A fact about _your_ deployment goes in
+`createGatewayTransport({ routeSupport })`, keyed by provider id plus `dynamic` and `unified-billing`:
+
+```ts
+createGatewayTransport({ routeSupport: { azure: { jsonSchema: true } } }); // api-version ≥ 2024-08-01-preview
+```
+
+**Output budget field.** OpenAI gets `max_completion_tokens` (its reasoning models reject `max_tokens` with a 400);
+OpenAI-compatible providers, dynamic routes and Unified Billing keep `max_tokens`. Neither can be set through `extra` —
+use `maxTokens`, or the task's `maxTokens`. On Anthropic, `extra.system` is MERGED after the system messages, and a
+block array (e.g. with `cache_control` for prompt caching) stays a block array.
 
 ### Request metadata
 
@@ -313,6 +357,54 @@ if (!resolution.client) {
 const result = await resolution.client.complete({ messages: [{ role: 'user', content: prompt }] });
 ```
 
+### Images and JSON output
+
+Declare what a task sends and expects — the declaration is what makes resolution pick a credential **and** a platform
+model that can serve it, so a call using an image or `responseFormat` on a task that did not declare `vision` / `json`
+is refused with `CONFIGURATION` before anything is sent:
+
+```ts
+// `maxTokens` is the task's default output budget. Declare it on every chat task: without one,
+// OpenAI-shaped providers default to "until the context runs out", and a JSON reply cut off by
+// its budget does not parse. Thinking models spend part of it on reasoning.
+tasks: [{ key: 'scan', requiredCapabilities: ['vision', 'json'], maxTokens: 4096 }];
+```
+
+```ts
+const result = await resolution.client.complete({
+    messages: [
+        {
+            role: 'user',
+            content: [
+                { type: 'text', text: 'Extract the merchant, date and total.' },
+                { type: 'image', mimeType: 'image/jpeg', data: base64Jpeg }, // no `data:` prefix
+            ],
+        },
+    ],
+    responseFormat: { type: 'json', schema: receiptSchema },
+});
+if (!result.ok) return errorResponse(result.message, AI_ERROR_HTTP_STATUS[result.code], { code: result.code });
+const receipt = ReceiptSchema.parse(result.result.json); // validate the shape yourself
+```
+
+- **Images** are inline base64 only (JPEG, PNG, GIF, WebP — the set every image-capable route accepts), in `user`
+  messages only. `validateCallContent` enforces `AI_CONTENT_LIMITS` before any request: 5 MB per image, 14 MB per
+  request (Gemini caps the _whole_ inline request at 20 MB), 20 images — narrower per provider where documented (table
+  above). Set a tighter product budget in your route (otta-web: `features.ottaai.images`, 4 images of 4 MB), and give
+  images their own route with its own body cap — see otta-web's `/api/ai/vision`.
+- **A per-call `model` is re-checked.** Resolution filtered a different model, so the instrumented client checks the
+  task's `requiredCapabilities` against a per-call `model` (honouring `unknownModelPolicy`) before sending.
+- **JSON** has two tiers. The default uses the provider's JSON mode and writes `schema` into the system instruction —
+  any JSON Schema works on every provider. `strict: true` asks the provider to **enforce** `schema` where its route
+  supports that; the schema must then fit the shared strict subset (every property `required`,
+  `additionalProperties: false` on every object). The root is always an object.
+- **The JSON guarantee.** On `complete()`, a `responseFormat` call returns `result.json` as a parsed object, or
+  `INVALID_RESPONSE` (502) — never `ok` with prose. The tokens of an unusable reply are still metered (the provider
+  billed for them) and the key's health is untouched. The most common cause is a reply cut off by `maxTokens`. A
+  `stream()` call gets deltas only: join them and run `parseJsonObject`.
+- **The package does not validate against your schema.** It checks that the reply parses to an object. Validate the
+  shape (zod, valibot, …) before trusting it.
+
 ### 8. Generate embeddings
 
 Embeddings use the exact same resolution, credential custody, source-aware quota and outcome pipeline as chat. Give the
@@ -492,7 +584,8 @@ The suite runs in `node` (Web Crypto fidelity for the envelope tests) with one f
 | `resolver.test.ts`           | every stage and reason of the state machine, fail-closed decrypt, dry-run vs force-platform          |
 | `model-write-path.test.ts`   | the four secret rules through direct and RLS-constrained model writes, plus every scope rung         |
 | `review-regressions.test.ts` | defects found by adversarial review — wrong cost attribution, inert dials, lost metering             |
-| `gateway-wire.test.ts`       | the literal URL, headers, body and SSE framing per provider — see below                              |
+| `gateway-wire.test.ts`       | the literal URL, headers, body and SSE framing per provider — incl. image parts and JSON fields      |
+| `content.test.ts`            | image/JSON validation, the capability-declaration rule, the JSON guarantee, metering a bad reply     |
 | `gateway-smoke.test.ts`      | **opt-in**: a real call to a real gateway. Skipped unless `OTTAAI_SMOKE_*` is set                    |
 | `react/…`                    | "leave blank keeps the key", the fail-closed gate, org-scope following server truth                  |
 

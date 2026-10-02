@@ -27,9 +27,11 @@
 // Optional:
 //   OTTAAI_SMOKE_GATEWAY_TOKEN   an authenticated gateway's cf-aig-authorization token
 //   OTTAAI_SMOKE_DYNAMIC_ROUTE   a configured dynamic route name, to cover that path too
+//   OTTAAI_SMOKE_MULTIMODAL=1    also send an image + strict JSON schema (vision model only)
 // ============================================================
 
 import { describe, expect, it } from 'vitest';
+import { parseJsonObject } from '../content';
 import { SecretValue } from '../secret';
 import type { MergedTransportConfig } from '../types';
 import { createGatewayTransport } from '../transports/gateway';
@@ -48,6 +50,11 @@ const MODEL = ENV.OTTAAI_SMOKE_MODEL;
 const KEY = ENV.OTTAAI_SMOKE_KEY;
 const GATEWAY_TOKEN = ENV.OTTAAI_SMOKE_GATEWAY_TOKEN;
 const DYNAMIC_ROUTE = ENV.OTTAAI_SMOKE_DYNAMIC_ROUTE;
+/** Set to `1` when the smoke model reads images and supports enforced JSON (gpt-4o-mini, Gemini, Claude). */
+const MULTIMODAL = ENV.OTTAAI_SMOKE_MULTIMODAL === '1';
+
+/** 1x1 transparent PNG. */
+const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 const CONFIGURED = Boolean(ACCOUNT_ID && GATEWAY && PROVIDER && MODEL && KEY);
 
@@ -77,7 +84,8 @@ function config(overrides: Partial<MergedTransportConfig> = {}): MergedTransport
 const PING = {
     messages: [{ role: 'user' as const, content: 'ping' }],
     maxTokens: 1,
-    temperature: 0,
+    // NO `temperature`: Anthropic models after Opus 4.6 and OpenAI reasoning models reject any
+    // value other than the default with a 400, which would read as "the wire is broken".
     // A cached success would "prove" a contract that no longer holds.
     skipCache: true,
     timeout: 20_000,
@@ -114,6 +122,39 @@ describe.skipIf(!CONFIGURED)('REAL Cloudflare AI Gateway', () => {
         // OpenAI-shaped providers omit usage on streams unless asked; this is the live proof
         // that `stream_options.include_usage` is still the way to ask.
         expect(usageSeen).toBe(true);
+    });
+
+    it.skipIf(!MULTIMODAL)('accepts an inline image AND an enforced JSON schema in one call', async () => {
+        // The image part and the structured-output field are the two shapes most likely to be
+        // spelled differently per provider (`inline_data` vs `image`, `responseJsonSchema` vs
+        // `output_config`) — and a provider that ignores either still answers 200, so this
+        // asserts the reply PARSED, not just that it arrived.
+        const result = await transport.createClient(config()).complete({
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: 'Report the width of this image in pixels.' },
+                        { type: 'image', mimeType: 'image/png', data: PNG_1X1 },
+                    ],
+                },
+            ],
+            responseFormat: {
+                type: 'json',
+                strict: true,
+                schema: {
+                    type: 'object',
+                    properties: { width: { type: 'number' } },
+                    required: ['width'],
+                    additionalProperties: false,
+                },
+            },
+            maxTokens: 64,
+            skipCache: true,
+            timeout: 30_000,
+        });
+        if (!result.ok) throw new Error(`Gateway rejected the image + JSON request: ${result.error.message}`);
+        expect(parseJsonObject(result.result.text)).toHaveProperty('width');
     });
 
     it.skipIf(!DYNAMIC_ROUTE)('invokes a dynamic route through the compat endpoint', async () => {

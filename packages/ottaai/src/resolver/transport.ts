@@ -10,11 +10,21 @@
 // exactly where the vendor-neutrality claim gets qualified.
 // ============================================================
 
+import type { AiMessage, AiResponseFormat } from '../content';
+import type { AiErrorCode } from '../errors';
 import type { AiCapability, MergedTransportConfig, PlatformAiConfig } from '../types';
 
 /** A normalised, non-streaming completion. */
 export interface AiCallResult {
+    /** The reply text. Under `responseFormat`, the JSON as the provider sent it. */
     text: string;
+    /**
+     * The parsed reply, present exactly when the call set `responseFormat`.
+     *
+     * The instrumented client guarantees it: a JSON call whose reply does not parse to an
+     * object is returned as `INVALID_RESPONSE`, never as `ok` with this missing.
+     */
+    json?: Record<string, unknown>;
     /** Token accounting. `null` when the provider genuinely did not report it. */
     tokens: { input: number; output: number; cached?: number } | null;
     model: string;
@@ -38,8 +48,14 @@ export interface AiEmbeddingResult {
 export interface AiCallError {
     /** Upstream HTTP status, when there was one. */
     statusCode?: number;
-    /** Provider-specific code string, when the provider supplies one. */
+    /** Provider-specific code string, when the provider supplies one. Never interpreted by the core. */
     providerCode?: string;
+    /**
+     * The package's own classification, for a failure decided WITHOUT an upstream response —
+     * a route refusing images, a quota refusal, a preflight refusal. Kept apart from
+     * `providerCode` so a provider's string can never be mistaken for one of these.
+     */
+    code?: AiErrorCode;
     /** Whether the adapter believes a retry could succeed. Advisory only. */
     retryable: boolean;
     /** Already redacted by the adapter. */
@@ -56,27 +72,36 @@ export type AiStreamEvent =
 /**
  * A single call.
  *
- * THE SUPPORTED SURFACE IS TEXT CHAT COMPLETION, and `content: string` is where that is
- * decided. Images, audio, tool calls, embeddings and structured provider outputs have no
- * representation here, so no adapter can send them however capable the selected model is.
+ * THE SUPPORTED SURFACE IS CHAT COMPLETION WITH TEXT AND IMAGE INPUT, AND TEXT OR JSON
+ * OUTPUT. Audio, tool calls and image OUTPUT have no representation here, so no adapter can
+ * send them however capable the selected model is.
  *
- * That is NOT the same axis as the registry's `AiCapability` list. Capabilities are
- * MODEL-SELECTION METADATA — they decide which credential is eligible for a task. They do
- * not widen this type, and declaring `requiredCapabilities: ['vision']` on a task buys a
- * stricter eligibility filter, not the ability to attach an image.
- *
- * Widening this is a real project: every wire dialect in `transports/wire.ts` needs a
- * multimodal branch, `AiCallResult` needs non-text parts, and the stream events need
- * non-text deltas. Do all of it in one change, or the capability claim outruns the contract
- * again.
+ * Images and JSON are CAPABILITY-GATED. A call carrying an image part needs `vision`, a call
+ * with `responseFormat` needs `json`, and the instrumented client refuses either one unless
+ * the TASK declares it in `requiredCapabilities` — that declaration is what filtered the
+ * credential and the platform model during resolution, so without it the call could be sent
+ * to a model that cannot read the image.
  */
 export interface AiCallOptions {
-    messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; name?: string }>;
+    messages: AiMessage[];
+    /** Ask for a JSON object. See `AiResponseFormat` — validate the shape yourself. */
+    responseFormat?: AiResponseFormat;
     temperature?: number;
+    /** Output budget. Falls back to the task's `maxTokens`. A JSON reply cut off by it is `INVALID_RESPONSE`. */
     maxTokens?: number;
-    /** Per-call model override — beats every other rung of the model chain. */
+    /**
+     * Per-call model override — beats every other rung of the model chain. The instrumented
+     * client re-checks the task's `requiredCapabilities` against it, because resolution
+     * filtered a DIFFERENT model.
+     */
     model?: string;
-    /** Extra provider-specific body fields. */
+    /**
+     * Extra provider-specific body fields.
+     *
+     * Cannot set what the transport owns — model, messages, stream, and every output-format
+     * field (`response_format`, Anthropic `tools`/`tool_choice`, Gemini `responseMimeType` /
+     * `responseSchema`). Use `responseFormat` for JSON.
+     */
     extra?: Record<string, unknown>;
     /** Milliseconds. */
     timeout?: number;
@@ -158,8 +183,20 @@ export interface TransportAdapter {
     /** Build the raw client. Called once per resolution, never cached across requests. */
     createClient(config: MergedTransportConfig): RawAiClient;
 
-    /** Capabilities the adapter itself cannot serve, regardless of provider. Optional. */
-    readonly unsupportedCapabilities?: readonly AiCapability[];
+    /**
+     * Capabilities this merged config's ROUTE cannot serve, whatever the model can do.
+     *
+     * The registry says what a MODEL can do; this says what the WIRE carrying it can. They
+     * differ: `openai/gpt-4o-mini` reads images, but Cloudflare's Unified Billing REST endpoint
+     * documents no image input. Without this, status and the gate report a vision task as
+     * available while every call is refused.
+     *
+     * The resolver checks a task's `requiredCapabilities` against it on every path (tenant,
+     * platform fall-through, degraded retry), so an unservable route resolves
+     * `CAPABILITY_UNMET` instead of producing a client that can never succeed. Optional: a
+     * transport whose every route serves everything omits it.
+     */
+    unsupportedCapabilitiesFor?(config: MergedTransportConfig): readonly AiCapability[];
 
     /**
      * Provider ids this transport cannot serve UNDER THIS OPERATOR'S CONFIGURATION.

@@ -17,11 +17,12 @@ import type { HintSource } from './secret';
 /**
  * Capabilities a task may require of the model that will serve it.
  *
- * MODEL-SELECTION METADATA, NOT A CALL CONTRACT. These decide which credential is ELIGIBLE
- * for a task; they do not describe what you can send. The package's call contract is text
- * chat completion — `AiCallOptions` message content is a plain string — so requiring
- * `vision` or `audio` today buys a stricter eligibility filter and nothing else. See the
- * note on `AiCallOptions`.
+ * MODEL-SELECTION METADATA FIRST. These decide which credential (and which platform model) is
+ * ELIGIBLE for a task. Two of them are also call contracts: `vision` (image parts in
+ * `AiCallOptions.messages`) and `json` (`AiCallOptions.responseFormat`) — and a call using
+ * either is refused unless its task declares the capability, so selection and call agree.
+ * The rest (`audio`, `image` output, `tools`, `reasoning`) buy an eligibility filter only;
+ * the call contract has no way to use them.
  */
 export type AiCapability = 'text' | 'vision' | 'audio' | 'embedding' | 'image' | 'tools' | 'json' | 'reasoning';
 
