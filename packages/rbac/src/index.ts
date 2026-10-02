@@ -9,6 +9,8 @@ export type { PermissionCheckResult, RBACCheckOptions, RBACContext } from './typ
 // Utils
 export {
     createRBACContext,
+    evaluatePermission,
+    evaluateRole,
     formatPermission,
     getAllowedActions,
     hasPermission,
@@ -20,9 +22,6 @@ export {
 // Middleware
 export { checkPermission, checkRole, requirePermission, requireRole, withRBAC } from './middleware';
 
-// Context (React)
-export type { RBACContextValue } from './context';
-
 // Cache
 export { RBACCache, clearRBACCache, getRBACCache, initRBACCache } from './cache';
 export type { RBACCacheConfig } from './cache';
@@ -32,13 +31,11 @@ export {
     buildAppContext,
     hasPermission as contextHasPermission,
     createAuditData,
-    extractAppId,
-    extractOrganizationId,
     hasAllRoles,
     hasAnyRole,
     isOwnerOrAdmin,
 } from './app-context';
-export type { AppContext, BuildAppContextOptions, ExtractAppOptions, ExtractOrgOptions } from './app-context';
+export type { AppContext, BuildAppContextOptions } from './app-context';
 
 // Request context + admin guard
 export { assertAdmin, assertBrandEditAccess, isOrgAdmin, isPlatformAdmin, requireAdminAccess } from './admin-guard';

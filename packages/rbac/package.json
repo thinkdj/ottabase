@@ -21,11 +21,6 @@
             "import": "./dist/utils.mjs",
             "require": "./dist/utils.js"
         },
-        "./context": {
-            "types": "./dist/context.d.ts",
-            "import": "./dist/context.mjs",
-            "require": "./dist/context.js"
-        },
         "./request-context": {
             "types": "./dist/request-context.d.ts",
             "import": "./dist/request-context.mjs",
@@ -47,8 +42,8 @@
         "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [
         "rbac",

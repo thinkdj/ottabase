@@ -347,6 +347,14 @@ export async function getSecurityContext(
         organizationId = null;
     }
 
+    // An ANONYMOUS caller has no membership to validate against, so a header/subdomain/query org
+    // would otherwise reach RLS unverified and scope tenant-filtered reads to whichever org the
+    // caller named. Anonymous requests never get an org partition; routes that legitimately serve
+    // anonymous org-owned data (comments) derive the org from the target row instead.
+    if (!userId) {
+        organizationId = null;
+    }
+
     // Group IDs the user can access (active memberships + groups they created). Powers the
     // membership-scoped RLS for user_groups / user_group_members, resolved against the final
     // organizationId so it is scoped to the active org.

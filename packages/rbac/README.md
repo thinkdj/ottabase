@@ -229,9 +229,12 @@ at every enforcement layer.
 ```typescript
 const user = await User.find('user-id');
 
-// Role management (org-scoped)
-await user.assignRole(roleId, assignedBy?, organizationId?);
-await user.removeRole(roleId, organizationId?);
+// Every method below takes a REQUIRED organizationId ('system' for platform grants) and throws
+// without one — an org-less call used to merge the user's grants from every tenant.
+
+// Role management (org-scoped; idempotent on userId + roleId + organizationId)
+await user.assignRole(roleId, assignedBy, organizationId, { cache }); // bumps the org's cache version
+await user.removeRole(roleId, organizationId, { cache });
 
 // Role checks
 await user.hasRole('admin', organizationId);
@@ -251,39 +254,20 @@ const roles = await user.roles({ organizationId, cache });
 
 ## Context Utilities
 
+There is deliberately no "read the org from the request" helper: `X-Org-Id`, `?organizationId=` and subdomains are
+client-controlled. Resolve the org with `getRequestContext` (session org, or a request hint verified against active
+membership) and the app id from server config.
+
 ```typescript
-import {
-    buildAppContext,
-    extractOrganizationId,
-    extractAppId,
-    hasPermission,
-    hasAnyRole,
-    hasAllRoles,
-    isOwnerOrAdmin,
-} from '@ottabase/rbac';
+import { buildAppContext, getRequestContext, hasPermission, hasAnyRole, isOwnerOrAdmin } from '@ottabase/rbac';
 
-// Extract tenant ID from request
-const orgId = await extractOrganizationId({
-    request,
-    headerName: 'X-Org-Id', // Default
-    queryParam: 'organizationId', // Default
-    subdomainPrefix: 'org-', // acme.app.com → org-acme
-});
+const reqCtx = await getRequestContext(request, env, { getAuthOptions });
 
-// Extract app ID from request
-const appId = extractAppId({
-    request,
-    headerName: 'X-App-Id',
-    queryParam: 'appId',
-    env,
-    defaultAppId: 'web',
-});
-
-// Build context
+// Build context (no organizationId → no roles/permissions are loaded)
 const context = await buildAppContext({
-    organizationId: orgId,
-    appId,
-    user,
+    organizationId: reqCtx.organizationId,
+    appId: reqCtx.appId,
+    user: reqCtx.user,
     cache,
     ipAddress: request.headers.get('cf-connecting-ip'),
     userAgent: request.headers.get('user-agent'),
@@ -297,6 +281,10 @@ if (hasAnyRole(context, ['admin', 'editor'])) {
 if (isOwnerOrAdmin(context)) {
 }
 ```
+
+`hasPermission` / `hasRole` return booleans, so `if (!hasPermission(...))` denies as expected. When you need the reason
+or the missing list, use `evaluatePermission` / `evaluateRole`, which return
+`{ allowed, reason, missingPermissions | missingRoles }` (always truthy, so never put that object in an `if`).
 
 ## Default Roles
 
@@ -340,11 +328,11 @@ await user.hasPermission('posts:edit', {
 
 ### Single Founder
 
+Grants still live in an org — the founder's personal org, or `'system'` for platform-level grants. There is no org-less
+"global" check; omitting `organizationId` throws.
+
 ```typescript
-// No org required (set organizationId: null or omit)
-await user.hasPermission('posts:edit', {
-    organizationId: null, // Global context
-});
+await user.hasPermission('posts:edit', { organizationId: 'system' });
 ```
 
 ## Integration Examples
@@ -355,14 +343,13 @@ await user.hasPermission('posts:edit', {
 // Cloudflare Worker
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
-        // Build context
-        const orgId = await extractOrganizationId({ request });
-        const user = await getCurrentUser(request, env);
+        // Membership-verified org + server-configured app id
+        const reqCtx = await getRequestContext(request, env, { getAuthOptions });
 
         const context = await buildAppContext({
-            organizationId: orgId,
-            appId: 'web',
-            user,
+            organizationId: reqCtx.organizationId,
+            appId: reqCtx.appId,
+            user: reqCtx.user,
             cache: initRBACCache({ kv: createKVClient({ namespace: env.RBAC_KV }) }),
         });
 
@@ -374,6 +361,25 @@ export default {
         // ... handle request
     },
 };
+```
+
+### `withRBAC` / `checkPermission`
+
+`withRBAC` has no default user resolver (it never reads an `x-user-id` header): `getUserFromRequest` and
+`getOrganizationId` are both required, and grants are evaluated only in that organization. A missing resolver is a 401;
+an unresolved organization grants nothing (403). `checkPermission` / `checkRole` / the decorators evaluate in
+`options.organizationId` (decorators fall back to the first argument's `organizationId`).
+
+```typescript
+import { withRBAC, checkPermission } from '@ottabase/rbac';
+
+export const handler = withRBAC(handle, {
+    permissions: 'posts:create',
+    getUserFromRequest: async (request) => (await getRequestContext(request, env, { getAuthOptions })).user,
+    getOrganizationId: async (request) => (await getRequestContext(request, env, { getAuthOptions })).organizationId,
+});
+
+await checkPermission(user, 'posts:edit', { organizationId });
 ```
 
 ### Audit Integration

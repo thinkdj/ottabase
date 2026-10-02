@@ -2,24 +2,35 @@
 // @ottabase/rbac - Middleware
 // ============================================================
 
-import { User } from '@ottabase/ottaorm/models';
+import type { User } from '@ottabase/ottaorm/models';
+import { errorResponse } from '@ottabase/utils/http-errors';
 import { RBACError, type RBACCheckOptions } from './types';
-import { createRBACContext, hasPermission, hasRole } from './utils';
+import { createRBACContext, evaluatePermission, evaluateRole, hasPermission, hasRole } from './utils';
 import { getRBACCache, type RBACCache } from './cache';
 
 /**
- * RBAC Middleware for Next.js API routes
+ * RBAC middleware for Request → Response handlers.
+ *
+ * Both resolvers are REQUIRED and must be server-trusted: resolve the user from a verified session
+ * (never a client header) and the organization from the session or a membership-verified request
+ * value. Grants are org-scoped, so a missing organization evaluates to no roles/permissions (403).
  *
  * @example
  * ```typescript
+ * import { getSession } from '@ottabase/auth/backend';
+ * import { User } from '@ottabase/ottaorm/models';
  * import { withRBAC } from '@ottabase/rbac/middleware';
  *
- * export const GET = withRBAC(
- *   async (request, context) => {
- *     // Your handler code
- *     return Response.json({ success: true });
- *   },
- *   { permissions: ['users:read'] }
+ * export const handler = withRBAC(
+ *     async (request: Request) => Response.json({ success: true }),
+ *     {
+ *         permissions: ['users:read'],
+ *         getUserFromRequest: async (request) => {
+ *             const session = await getSession(request, env);
+ *             return session ? User.find(session.user.id) : null;
+ *         },
+ *         getOrganizationId: async (request) => (await getSession(request, env))?.user.organizationId ?? null,
+ *     },
  * );
  * ```
  */
@@ -29,96 +40,46 @@ export function withRBAC<T extends (...args: any[]) => Promise<Response>>(
         permissions?: string | string[];
         roles?: string | string[];
         requireAll?: boolean;
-        getUserFromRequest?: (request: Request) => Promise<User | null>;
+        getUserFromRequest: (request: Request) => Promise<User | null>;
+        getOrganizationId: (request: Request) => Promise<string | null | undefined> | string | null | undefined;
         cache?: RBACCache | boolean; // Pass cache instance or true to use global cache
     },
 ): T {
     return (async (...args: any[]) => {
         const request = args[0] as Request;
 
-        try {
-            // Get user from request (custom getter or default)
-            const user = config.getUserFromRequest
-                ? await config.getUserFromRequest(request)
-                : await getUserFromRequest(request);
+        // No trusted user resolver means no way to authenticate — never fall back to a header.
+        if (typeof config.getUserFromRequest !== 'function') {
+            return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
+        }
 
-            // Get cache instance
+        try {
+            const user = await config.getUserFromRequest(request);
+            const organizationId = (await config.getOrganizationId?.(request)) ?? undefined;
             const cache = config.cache === true ? getRBACCache() : config.cache || undefined;
 
-            // Create RBAC context with cache support
-            const rbacContext = await createRBACContext(user, cache);
+            const rbacContext = await createRBACContext(user, cache, { organizationId });
 
-            // Check if user is authenticated
             if (!rbacContext.isAuthenticated) {
-                return new Response(
-                    JSON.stringify({
-                        error: 'Unauthorized',
-                        message: 'Authentication required',
-                    }),
-                    {
-                        status: 401,
-                        headers: { 'Content-Type': 'application/json' },
-                    },
-                );
+                return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
             }
 
-            // Check permissions
             if (config.permissions) {
-                const result = hasPermission(rbacContext, config.permissions, {
-                    requireAll: config.requireAll,
-                });
-
-                if (!result.allowed) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Forbidden',
-                            message: result.reason || 'Insufficient permissions',
-                            missingPermissions: result.missingPermissions,
-                        }),
-                        {
-                            status: 403,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
-                }
+                if (!hasPermission(rbacContext, config.permissions, { requireAll: config.requireAll }))
+                    return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
             }
 
-            // Check roles
             if (config.roles) {
-                const result = hasRole(rbacContext, config.roles, {
-                    requireAll: config.requireAll,
-                });
-
-                if (!result.allowed) {
-                    return new Response(
-                        JSON.stringify({
-                            error: 'Forbidden',
-                            message: result.reason || 'Insufficient roles',
-                            missingRoles: result.missingRoles,
-                        }),
-                        {
-                            status: 403,
-                            headers: { 'Content-Type': 'application/json' },
-                        },
-                    );
-                }
+                if (!hasRole(rbacContext, config.roles, { requireAll: config.requireAll }))
+                    return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
             }
 
-            // Call the handler
             return await handler(...args);
         } catch (error) {
             if (error instanceof RBACError) {
-                return new Response(
-                    JSON.stringify({
-                        error: error.code,
-                        message: error.message,
-                        details: error.details,
-                    }),
-                    {
-                        status: error.code === 'UNAUTHORIZED' ? 401 : 403,
-                        headers: { 'Content-Type': 'application/json' },
-                    },
-                );
+                return error.code === 'UNAUTHORIZED'
+                    ? errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' })
+                    : errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
             }
 
             // Re-throw other errors
@@ -128,50 +89,19 @@ export function withRBAC<T extends (...args: any[]) => Promise<Response>>(
 }
 
 /**
- * Default user getter from request
- * Extracts user from session or JWT
- */
-async function getUserFromRequest(request: Request): Promise<User | null> {
-    // Try to get user ID from header (custom auth)
-    const userId = request.headers.get('x-user-id');
-    if (userId) {
-        return User.find(userId);
-    }
-
-    // Try to get from auth session
-    // This is a simplified example - in real usage, you'd use the auth session
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        // Decode JWT and get user ID
-        // This is simplified - you'd use your JWT library here
-        // For now, return null
-    }
-
-    return null;
-}
-
-/**
- * Require permission decorator
+ * Require permission decorator. The first argument must carry `user` and (unless passed in
+ * `options.organizationId`) the `organizationId` to evaluate grants in.
  */
 export function requirePermission(permission: string | string[], options: RBACCheckOptions = {}) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {
-            // Assuming first arg is context with user
             const context = args[0];
-            const rbacContext = await createRBACContext(context.user);
-
-            const result = hasPermission(rbacContext, permission, options);
-            if (!result.allowed) {
-                throw new RBACError(
-                    result.reason || 'Insufficient permissions',
-                    'FORBIDDEN',
-                    result.missingPermissions,
-                );
-            }
-
+            await checkPermission(context.user, permission, {
+                ...options,
+                organizationId: options.organizationId ?? context.organizationId,
+            });
             return originalMethod.apply(this, args);
         };
 
@@ -180,22 +110,18 @@ export function requirePermission(permission: string | string[], options: RBACCh
 }
 
 /**
- * Require role decorator
+ * Require role decorator. Org resolution as in `requirePermission`.
  */
 export function requireRole(role: string | string[], options: RBACCheckOptions = {}) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {
-            // Assuming first arg is context with user
             const context = args[0];
-            const rbacContext = await createRBACContext(context.user);
-
-            const result = hasRole(rbacContext, role, options);
-            if (!result.allowed) {
-                throw new RBACError(result.reason || 'Insufficient roles', 'FORBIDDEN', result.missingRoles);
-            }
-
+            await checkRole(context.user, role, {
+                ...options,
+                organizationId: options.organizationId ?? context.organizationId,
+            });
             return originalMethod.apply(this, args);
         };
 
@@ -204,15 +130,16 @@ export function requireRole(role: string | string[], options: RBACCheckOptions =
 }
 
 /**
- * Check permission in async function
+ * Check permission in async function. Evaluated in `options.organizationId`; without one the user
+ * holds no permissions and this throws FORBIDDEN.
  */
 export async function checkPermission(
     user: User | null,
     permission: string | string[],
     options: RBACCheckOptions = {},
 ): Promise<void> {
-    const context = await createRBACContext(user);
-    const result = hasPermission(context, permission, options);
+    const context = await createRBACContext(user, undefined, { organizationId: options.organizationId });
+    const result = evaluatePermission(context, permission, options);
 
     if (!result.allowed) {
         throw new RBACError(result.reason || 'Insufficient permissions', 'FORBIDDEN', result.missingPermissions);
@@ -220,15 +147,15 @@ export async function checkPermission(
 }
 
 /**
- * Check role in async function
+ * Check role in async function. Evaluated in `options.organizationId` (see checkPermission).
  */
 export async function checkRole(
     user: User | null,
     role: string | string[],
     options: RBACCheckOptions = {},
 ): Promise<void> {
-    const context = await createRBACContext(user);
-    const result = hasRole(context, role, options);
+    const context = await createRBACContext(user, undefined, { organizationId: options.organizationId });
+    const result = evaluateRole(context, role, options);
 
     if (!result.allowed) {
         throw new RBACError(result.reason || 'Insufficient roles', 'FORBIDDEN', result.missingRoles);

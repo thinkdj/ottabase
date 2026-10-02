@@ -9,6 +9,27 @@ import { usersTable } from './User.schema';
 export { usersTable, type NewUserType, type UserType } from './User.schema';
 
 /**
+ * Role grants are org-scoped (`user_roles.organization_id` is NOT NULL; platform grants use the
+ * 'system' org). An omitted org must throw rather than silently widen a query to every tenant.
+ */
+function requireOrganizationId(organizationId: string | undefined | null, method: string): string {
+    if (!organizationId) {
+        throw new Error(`${method}: organizationId is required (use 'system' for platform-scoped grants)`);
+    }
+    return organizationId;
+}
+
+/** Bump the org's RBAC cache version after a grant change. Cache failures never fail the write. */
+async function invalidateOrgCache(cache: any, organizationId: string): Promise<void> {
+    if (!cache) return;
+    try {
+        await cache.invalidateOrganization(organizationId);
+    } catch {
+        // Cache is an optimization only; its version expires naturally.
+    }
+}
+
+/**
  * User model - Simple fat model example
  *
  * @example
@@ -183,25 +204,6 @@ export class User extends BaseModel {
         },
     };
 
-    protected static validationRules = {
-        name: {
-            rules: 'required',
-            fieldName: 'Name',
-            messages: {
-                required: 'Name is required',
-            },
-        },
-        email: {
-            rules: 'required|email|unique:users,email',
-            fieldName: 'Email',
-            messages: {
-                required: 'Email is required',
-                email: 'Must be a valid email',
-                unique: 'Email already exists',
-            },
-        },
-    };
-
     // ============================================================
     // RELATIONSHIPS
     // ============================================================
@@ -217,18 +219,20 @@ export class User extends BaseModel {
     }
 
     /**
-     * Get user's roles (ManyToMany through UserRole)
-     * Optimized with optional caching support and organization scoping
+     * Get user's roles IN ONE ORGANIZATION (ManyToMany through UserRole).
+     * `organizationId` is REQUIRED: grants are org-scoped, and an org-less read would merge the
+     * user's roles from every tenant into one set. Pass `SYSTEM_ORGANIZATION_ID` ('system') for
+     * platform-level grants.
      */
-    async roles(options?: {
+    async roles(options: {
         select?: string[];
         orderBy?: string;
         orderDirection?: 'asc' | 'desc';
         cache?: any;
-        organizationId?: string;
+        organizationId: string;
     }) {
         const userId = this.get('id') as string;
-        const organizationId = options?.organizationId;
+        const organizationId = requireOrganizationId(options?.organizationId, 'User.roles');
         const { UserRole } = await import('./UserRole');
         const { Role } = await import('./Role');
 
@@ -250,12 +254,7 @@ export class User extends BaseModel {
             }
         }
 
-        // Optimized query: Get UserRole records for this user (with org filter if provided)
-        const whereClause: any = { userId };
-        if (organizationId) {
-            whereClause.organizationId = organizationId;
-        }
-        const userRoles = await UserRole.where(whereClause);
+        const userRoles = await UserRole.where({ userId, organizationId });
         const roleIds = userRoles.map((ur) => ur.get('roleId'));
 
         if (roleIds.length === 0) {
@@ -346,24 +345,22 @@ export class User extends BaseModel {
     // ============================================================
 
     /**
-     * Assign a role to the user
-     * Automatically invalidates cache if provided
+     * Assign a role to the user in one organization (idempotent on the full grant key).
+     * `organizationId` is REQUIRED — use `SYSTEM_ORGANIZATION_ID` ('system') for platform grants.
+     * Bumps the org's RBAC cache version when a cache is provided.
      */
     async assignRole(
         roleId: string,
-        assignedBy?: string,
-        organizationId?: string,
+        assignedBy: string | undefined,
+        organizationId: string,
         options?: { cache?: any },
     ): Promise<void> {
+        requireOrganizationId(organizationId, 'User.assignRole');
         const { UserRole } = await import('./UserRole');
         const userId = this.get('id') as string;
 
-        // Check if already assigned
-        const existing = await UserRole.first({
-            userId,
-            roleId,
-            ...(organizationId ? { organizationId } : {}),
-        });
+        // Full composite key: a grant of the same role in ANOTHER org must not count as "assigned".
+        const existing = await UserRole.first({ userId, roleId, organizationId });
 
         if (!existing) {
             await UserRole.create({
@@ -372,42 +369,27 @@ export class User extends BaseModel {
                 assignedBy,
                 organizationId,
             });
-
-            // Invalidate cache
-            if (options?.cache) {
-                try {
-                    await options.cache.invalidateUser(userId);
-                } catch (error) {
-                    // Ignore cache errors
-                }
-            }
+            await invalidateOrgCache(options?.cache, organizationId);
         }
     }
 
     /**
-     * Remove a role from the user
-     * Automatically invalidates cache if provided
+     * Remove a role from the user in one organization. `organizationId` is REQUIRED.
+     * Bumps the org's RBAC cache version when a cache is provided.
      */
-    async removeRole(roleId: string, organizationId?: string, options?: { cache?: any }): Promise<void> {
+    async removeRole(roleId: string, organizationId: string, options?: { cache?: any }): Promise<void> {
         const { UserRole } = await import('./UserRole');
         const userId = this.get('id') as string;
 
         await UserRole.removeRole(userId, roleId, organizationId);
-
-        // Invalidate cache
-        if (options?.cache) {
-            try {
-                await options.cache.invalidateUser(userId);
-            } catch (error) {
-                // Ignore cache errors
-            }
-        }
+        await invalidateOrgCache(options?.cache, organizationId);
     }
 
     /**
-     * Check if user has a specific role
+     * Check if user has a specific role in one organization. `organizationId` is REQUIRED.
      */
-    async hasRole(roleName: string, organizationId?: string): Promise<boolean> {
+    async hasRole(roleName: string, organizationId: string): Promise<boolean> {
+        requireOrganizationId(organizationId, 'User.hasRole');
         const { Role } = await import('./Role');
         const role = await Role.findByName(roleName);
         if (!role) return false;
@@ -419,7 +401,7 @@ export class User extends BaseModel {
     /**
      * Check if user has any of the specified roles
      */
-    async hasAnyRole(roleNames: string[], organizationId?: string): Promise<boolean> {
+    async hasAnyRole(roleNames: string[], organizationId: string): Promise<boolean> {
         for (const roleName of roleNames) {
             if (await this.hasRole(roleName, organizationId)) {
                 return true;
@@ -431,7 +413,7 @@ export class User extends BaseModel {
     /**
      * Check if user has all of the specified roles
      */
-    async hasAllRoles(roleNames: string[], organizationId?: string): Promise<boolean> {
+    async hasAllRoles(roleNames: string[], organizationId: string): Promise<boolean> {
         for (const roleName of roleNames) {
             if (!(await this.hasRole(roleName, organizationId))) {
                 return false;
@@ -441,12 +423,12 @@ export class User extends BaseModel {
     }
 
     /**
-     * Get all permissions for the user (from all roles)
-     * Optimized with optional caching support and organization scoping
+     * Get all permissions the user holds in one organization (from its roles there).
+     * `organizationId` is REQUIRED — see `roles()`.
      */
-    async getPermissions(options?: { cache?: any; organizationId?: string }): Promise<string[]> {
+    async getPermissions(options: { cache?: any; organizationId: string }): Promise<string[]> {
         const userId = this.get('id') as string;
-        const organizationId = options?.organizationId;
+        const organizationId = requireOrganizationId(options?.organizationId, 'User.getPermissions');
 
         // Try cache first if provided
         if (options?.cache) {
@@ -486,17 +468,17 @@ export class User extends BaseModel {
      * Supports wildcard matching: users:* matches users:read, users:create, etc.
      * Optimized with optional caching support and organization scoping
      */
-    async hasPermission(permission: string, options?: { cache?: any; organizationId?: string }): Promise<boolean> {
+    async hasPermission(permission: string, options: { cache?: any; organizationId: string }): Promise<boolean> {
         const permissions = await this.getPermissions(options);
         return hasGrantedPermission(permissions, permission);
     }
 
     /**
-     * Check if user has any of the specified permissions
+     * Check if user has any of the specified permissions in one organization
      */
-    async hasAnyPermission(permissions: string[]): Promise<boolean> {
+    async hasAnyPermission(permissions: string[], options: { cache?: any; organizationId: string }): Promise<boolean> {
         for (const permission of permissions) {
-            if (await this.hasPermission(permission)) {
+            if (await this.hasPermission(permission, options)) {
                 return true;
             }
         }
@@ -504,11 +486,11 @@ export class User extends BaseModel {
     }
 
     /**
-     * Check if user has all of the specified permissions
+     * Check if user has all of the specified permissions in one organization
      */
-    async hasAllPermissions(permissions: string[]): Promise<boolean> {
+    async hasAllPermissions(permissions: string[], options: { cache?: any; organizationId: string }): Promise<boolean> {
         for (const permission of permissions) {
-            if (!(await this.hasPermission(permission))) {
+            if (!(await this.hasPermission(permission, options))) {
                 return false;
             }
         }

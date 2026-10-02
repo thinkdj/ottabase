@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RBACContext } from '../types';
 import {
     createRBACContext,
+    evaluatePermission,
+    evaluateRole,
     formatPermission,
     getAllowedActions,
     hasPermission,
@@ -40,8 +42,8 @@ describe('hasPermission', () => {
             permissions: [],
             isAuthenticated: false,
         };
-        expect(hasPermission(ctx, 'posts:read').allowed).toBe(false);
-        expect(hasPermission(ctx, 'posts:read').reason).toMatch(/not authenticated/);
+        expect(hasPermission(ctx, 'posts:read')).toBe(false);
+        expect(evaluatePermission(ctx, 'posts:read').reason).toMatch(/not authenticated/);
     });
 
     it('returns allowed: true when user has exact permission', () => {
@@ -51,8 +53,8 @@ describe('hasPermission', () => {
             permissions: ['posts:read', 'posts:write'],
             isAuthenticated: true,
         };
-        expect(hasPermission(ctx, 'posts:read').allowed).toBe(true);
-        expect(hasPermission(ctx, 'posts:write').allowed).toBe(true);
+        expect(hasPermission(ctx, 'posts:read')).toBe(true);
+        expect(hasPermission(ctx, 'posts:write')).toBe(true);
     });
 
     it('returns allowed: false when user lacks permission', () => {
@@ -62,7 +64,7 @@ describe('hasPermission', () => {
             permissions: ['posts:read'],
             isAuthenticated: true,
         };
-        const result = hasPermission(ctx, 'posts:delete');
+        const result = evaluatePermission(ctx, 'posts:delete');
         expect(result.allowed).toBe(false);
         expect(result.missingPermissions).toEqual(['posts:delete']);
     });
@@ -74,8 +76,8 @@ describe('hasPermission', () => {
             permissions: ['*:read'],
             isAuthenticated: true,
         };
-        expect(hasPermission(ctx, 'posts:read').allowed).toBe(true);
-        expect(hasPermission(ctx, 'users:read').allowed).toBe(true);
+        expect(hasPermission(ctx, 'posts:read')).toBe(true);
+        expect(hasPermission(ctx, 'users:read')).toBe(true);
     });
 
     it('allows with wildcard action (e.g. posts:*)', () => {
@@ -85,8 +87,8 @@ describe('hasPermission', () => {
             permissions: ['posts:*'],
             isAuthenticated: true,
         };
-        expect(hasPermission(ctx, 'posts:read').allowed).toBe(true);
-        expect(hasPermission(ctx, 'posts:write').allowed).toBe(true);
+        expect(hasPermission(ctx, 'posts:read')).toBe(true);
+        expect(hasPermission(ctx, 'posts:write')).toBe(true);
     });
 
     it('allows with *:*', () => {
@@ -96,7 +98,7 @@ describe('hasPermission', () => {
             permissions: ['*:*'],
             isAuthenticated: true,
         };
-        expect(hasPermission(ctx, 'any:action').allowed).toBe(true);
+        expect(hasPermission(ctx, 'any:action')).toBe(true);
     });
 
     it('requireAll: requires all permissions when array passed', () => {
@@ -106,8 +108,8 @@ describe('hasPermission', () => {
             permissions: ['posts:read', 'posts:write'],
             isAuthenticated: true,
         };
-        expect(hasPermission(ctx, ['posts:read', 'posts:write'], { requireAll: true }).allowed).toBe(true);
-        expect(hasPermission(ctx, ['posts:read', 'posts:delete'], { requireAll: true }).allowed).toBe(false);
+        expect(hasPermission(ctx, ['posts:read', 'posts:write'], { requireAll: true })).toBe(true);
+        expect(hasPermission(ctx, ['posts:read', 'posts:delete'], { requireAll: true })).toBe(false);
     });
 });
 
@@ -119,7 +121,7 @@ describe('hasRole', () => {
             permissions: [],
             isAuthenticated: false,
         };
-        expect(hasRole(ctx, 'admin').allowed).toBe(false);
+        expect(hasRole(ctx, 'admin')).toBe(false);
     });
 
     it('returns allowed: true when user has role', () => {
@@ -129,8 +131,8 @@ describe('hasRole', () => {
             permissions: [],
             isAuthenticated: true,
         };
-        expect(hasRole(ctx, 'admin').allowed).toBe(true);
-        expect(hasRole(ctx, 'member').allowed).toBe(true);
+        expect(hasRole(ctx, 'admin')).toBe(true);
+        expect(hasRole(ctx, 'member')).toBe(true);
     });
 
     it('returns allowed: true when user has one of roles (array, requireAll false)', () => {
@@ -140,7 +142,7 @@ describe('hasRole', () => {
             permissions: [],
             isAuthenticated: true,
         };
-        expect(hasRole(ctx, ['admin', 'member']).allowed).toBe(true);
+        expect(hasRole(ctx, ['admin', 'member'])).toBe(true);
     });
 
     it('returns allowed: false when user lacks role', () => {
@@ -150,7 +152,7 @@ describe('hasRole', () => {
             permissions: [],
             isAuthenticated: true,
         };
-        const result = hasRole(ctx, 'admin');
+        const result = evaluateRole(ctx, 'admin');
         expect(result.allowed).toBe(false);
         expect(result.missingRoles).toEqual(['admin']);
     });
@@ -162,8 +164,8 @@ describe('hasRole', () => {
             permissions: [],
             isAuthenticated: true,
         };
-        expect(hasRole(ctx, ['admin', 'member'], { requireAll: true }).allowed).toBe(true);
-        expect(hasRole(ctx, ['admin', 'owner'], { requireAll: true }).allowed).toBe(false);
+        expect(hasRole(ctx, ['admin', 'member'], { requireAll: true })).toBe(true);
+        expect(hasRole(ctx, ['admin', 'owner'], { requireAll: true })).toBe(false);
     });
 });
 
@@ -280,10 +282,34 @@ describe('createRBACContext', () => {
             roles: vi.fn().mockResolvedValue(mockRoles),
             getPermissions: vi.fn().mockResolvedValue(['posts:read']),
         } as any;
-        const ctx = await createRBACContext(mockUser);
+        const ctx = await createRBACContext(mockUser, undefined, { organizationId: 'org-1' });
         expect(ctx.isAuthenticated).toBe(true);
         expect(ctx.roles).toEqual(['member']);
         expect(ctx.permissions).toEqual(['posts:read']);
         expect(ctx.user).toBe(mockUser);
+        expect(mockUser.roles).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-1' }));
+    });
+
+    it('grants NOTHING to an authenticated user when no organization is given (no cross-org merge)', async () => {
+        const mockUser = {
+            get: vi.fn((key: string) => (key === 'id' ? 'user-1' : null)),
+            roles: vi.fn(),
+            getPermissions: vi.fn(),
+        } as any;
+        const ctx = await createRBACContext(mockUser);
+        expect(ctx.isAuthenticated).toBe(true);
+        expect(ctx.roles).toEqual([]);
+        expect(ctx.permissions).toEqual([]);
+        expect(mockUser.roles).not.toHaveBeenCalled();
+        expect(mockUser.getPermissions).not.toHaveBeenCalled();
+    });
+});
+
+describe('hasPermission / hasRole return booleans', () => {
+    // A result object is always truthy, so `if (!hasPermission(...))` would never deny.
+    it('denies through a negated check', () => {
+        const ctx: RBACContext = { user: { id: 'u1' } as any, roles: [], permissions: [], isAuthenticated: true };
+        expect(!hasPermission(ctx, 'posts:delete')).toBe(true);
+        expect(!hasRole(ctx, 'admin')).toBe(true);
     });
 });

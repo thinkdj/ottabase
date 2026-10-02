@@ -12,8 +12,8 @@ export interface RBACContext {
     roles: string[];
     permissions: string[];
     isAuthenticated: boolean;
-    organizationId?: string; // Organization/tenant context
-    tenantId?: string; // Alternative tenant identifier
+    organizationId?: string | null; // Organization/tenant context
+    tenantId?: string | null; // Alternative tenant identifier
 }
 
 /**
@@ -21,7 +21,7 @@ export interface RBACContext {
  */
 export interface RBACCheckOptions {
     requireAll?: boolean; // Require all permissions/roles (default: false)
-    organizationId?: string; // Optional organization scoping
+    organizationId?: string; // Org to evaluate grants in ('system' = platform). Omitted = no grants apply.
 }
 
 /**

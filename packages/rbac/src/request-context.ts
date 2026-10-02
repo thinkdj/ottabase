@@ -128,15 +128,6 @@ export async function getRequestContext(
         };
     }
 
-    const resolvedOrg = resolveOrganizationId(request, session, allowNullTenant);
-    const requestedOrganizationId =
-        options?.organizationIdOverride !== undefined ? options.organizationIdOverride : resolvedOrg;
-    const organizationId =
-        requestedOrganizationId === SYSTEM_ORGANIZATION_ID ||
-        (requestedOrganizationId &&
-            (await OrganizationMember.isMember(String(session.user.id), requestedOrganizationId)))
-            ? requestedOrganizationId
-            : null;
     const appId = resolveAppId(env, options?.appId);
     const cache = options?.cache;
 
@@ -145,6 +136,22 @@ export async function getRequestContext(
         organizationId: SYSTEM_ORGANIZATION_ID,
         tenantId: SYSTEM_ORGANIZATION_ID,
     });
+
+    // The requested org is only a request: a tenant org needs active membership, and the
+    // 'system' scope needs at least one system-scope grant — otherwise any caller could send
+    // `x-org-id: system` and be reported as isSystemScope.
+    const resolvedOrg = resolveOrganizationId(request, session, allowNullTenant);
+    const requestedOrganizationId =
+        options?.organizationIdOverride !== undefined ? options.organizationIdOverride : resolvedOrg;
+    const organizationId =
+        requestedOrganizationId === SYSTEM_ORGANIZATION_ID
+            ? (systemContext.roles?.length ?? 0) > 0
+                ? requestedOrganizationId
+                : null
+            : requestedOrganizationId &&
+                (await OrganizationMember.isMember(String(session.user.id), requestedOrganizationId))
+              ? requestedOrganizationId
+              : null;
 
     // Load scoped context for the requested org (if any)
     const scopedContext = organizationId

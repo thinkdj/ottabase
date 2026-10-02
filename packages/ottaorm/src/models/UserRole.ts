@@ -2,6 +2,8 @@
 // @ottabase/ottaorm - UserRole Model
 // ============================================================
 
+import type { DbDriver } from '@ottabase/db/drizzle';
+import { and, eq } from 'drizzle-orm';
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
 import { userRolesTable } from './UserRole.schema';
 
@@ -18,17 +20,21 @@ export { userRolesTable, type NewUserRoleType, type UserRoleType } from './UserR
  * await UserRole.create({
  *   userId: "user-id",
  *   roleId: "role-id",
+ *   organizationId: "org-id", // 'system' for platform grants
  *   assignedBy: "admin-user-id"
  * });
  *
- * // Get all roles for a user
- * const userRoles = await UserRole.where({ userId: "user-id" });
+ * // Get a user's roles in one organization
+ * const userRoles = await UserRole.getUserRoles("user-id", "org-id");
  * ```
  */
 export class UserRole extends BaseModel {
     static entity = 'user_roles';
     static table = userRolesTable;
-    static primaryKey = 'userId'; // Composite key, but we need to specify one
+    // The REAL key is composite (userId + roleId + organizationId). BaseModel needs one column, but
+    // every single-key write would hit ALL of a user's grants — so destroy()/save() are overridden to
+    // use the full key and the static single-key mutators below are blocked.
+    static primaryKey = 'userId';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
 
@@ -178,21 +184,89 @@ export class UserRole extends BaseModel {
     }
 
     // ============================================================
+    // COMPOSITE-KEY PERSISTENCE
+    // ============================================================
+
+    /** WHERE clause for exactly this grant (userId + roleId + organizationId). */
+    private grantKey() {
+        const userId = this.get('userId');
+        const roleId = this.get('roleId');
+        const organizationId = this.get('organizationId');
+        if (!userId || !roleId || !organizationId) {
+            throw new Error('UserRole: userId, roleId and organizationId are all required to address a grant');
+        }
+        return and(
+            eq(userRolesTable.userId, userId),
+            eq(userRolesTable.roleId, roleId),
+            eq(userRolesTable.organizationId, organizationId),
+        );
+    }
+
+    /** Delete exactly this grant — never the user's grants in other roles/orgs. */
+    async destroy(driver?: DbDriver): Promise<boolean> {
+        const where = this.grantKey();
+        await UserRole.getDriver(driver).getDb().delete(userRolesTable).where(where);
+        return true;
+    }
+
+    /**
+     * Update this grant's mutable fields (appId, assignedBy) by its full key, or insert it when it
+     * does not exist yet. The key columns themselves are immutable: revoke + re-grant instead.
+     */
+    async save(driver?: DbDriver): Promise<this> {
+        const updated = await UserRole.getDriver(driver)
+            .getDb()
+            .update(userRolesTable)
+            .set({ appId: this.get('appId') ?? null, assignedBy: this.get('assignedBy') ?? null })
+            .where(this.grantKey())
+            .returning();
+        if (updated.length > 0) {
+            this.fill(updated[0]);
+            return this;
+        }
+        const created = await UserRole.create(this.attributes, driver);
+        this.fill(created.attributes);
+        return this;
+    }
+
+    /**
+     * Single-key static mutators address rows by `userId` alone, i.e. EVERY grant the user holds.
+     * Blocked: use an instance's destroy()/save(), removeRole(), or revokeAllForOrganization().
+     */
+    static async update(..._args: unknown[]): Promise<never> {
+        throw new Error('UserRole.update(id) is blocked: user_roles has a composite key; use instance save()');
+    }
+
+    static async updateConstrained(..._args: unknown[]): Promise<never> {
+        throw new Error('UserRole.updateConstrained(id) is blocked: user_roles has a composite key');
+    }
+
+    static async delete(..._args: unknown[]): Promise<never> {
+        throw new Error('UserRole.delete(id) is blocked: user_roles has a composite key; use removeRole()');
+    }
+
+    static async deleteConstrained(..._args: unknown[]): Promise<never> {
+        throw new Error('UserRole.deleteConstrained(id) is blocked: user_roles has a composite key');
+    }
+
+    static async forceDelete(..._args: unknown[]): Promise<never> {
+        throw new Error('UserRole.forceDelete(id) is blocked: user_roles has a composite key; use removeRole()');
+    }
+
+    // ============================================================
     // HELPER METHODS
     // ============================================================
 
     /**
-     * Remove a role from a user
+     * Remove a role from a user in one organization
      * @param userId User ID
      * @param roleId Role ID
-     * @param organizationId Organization ID (REQUIRED for multi-tenant security)
+     * @param organizationId Organization ID (REQUIRED — 'system' for platform grants)
      * @param appId Optional app ID (null = remove from all apps)
      */
-    static async removeRole(userId: string, roleId: string, organizationId?: string | null, appId?: string | null) {
-        const where: Record<string, any> = { userId, roleId };
-        if (organizationId !== undefined && organizationId !== null) {
-            where.organizationId = organizationId;
-        }
+    static async removeRole(userId: string, roleId: string, organizationId: string, appId?: string | null) {
+        if (!organizationId) throw new Error('UserRole.removeRole: organizationId is required');
+        const where: Record<string, any> = { userId, roleId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;
         }
@@ -239,22 +313,20 @@ export class UserRole extends BaseModel {
     }
 
     /**
-     * Check if user has role
+     * Check if user has role in one organization
      * @param userId User ID
      * @param roleId Role ID
-     * @param organizationId Organization ID (REQUIRED for multi-tenant security)
+     * @param organizationId Organization ID (REQUIRED — 'system' for platform grants)
      * @param appId Optional app ID (if not provided, checks across all apps)
      */
     static async hasRole(
         userId: string,
         roleId: string,
-        organizationId?: string | null,
+        organizationId: string,
         appId?: string | null,
     ): Promise<boolean> {
-        const where: Record<string, any> = { userId, roleId };
-        if (organizationId !== undefined && organizationId !== null) {
-            where.organizationId = organizationId;
-        }
+        if (!organizationId) throw new Error('UserRole.hasRole: organizationId is required');
+        const where: Record<string, any> = { userId, roleId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;
         }

@@ -120,13 +120,14 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
         metadata,
     };
 
-    // Load RBAC if user is authenticated
-    if (context.userId && user) {
+    // Load RBAC if user is authenticated. Grants are org-scoped: with no organization there is
+    // nothing to load (an org-less read would merge the user's grants from every tenant).
+    if (context.userId && user && organizationId) {
         try {
             // Get user roles (scoped by organization and optionally app)
             const roles = await user.roles({
                 cache,
-                organizationId: organizationId ?? undefined,
+                organizationId,
                 // Note: We don't filter by appId here to get all roles
                 // Roles with specific appId will be filtered during permission checks
             });
@@ -136,7 +137,7 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
             // Get user permissions (scoped by organization)
             const permissions = await user.getPermissions({
                 cache,
-                organizationId: organizationId ?? undefined,
+                organizationId,
             });
 
             context.permissions = permissions;
@@ -150,116 +151,6 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
     }
 
     return context;
-}
-
-/**
- * Extract organization ID from request
- * Supports multiple strategies:
- * 1. Subdomain: acme.yourapp.com -> org-acme
- * 2. Header: X-Org-Id
- * 3. Query param: ?organizationId=org-acme
- * 4. JWT claim: token.organizationId
- */
-export interface ExtractOrgOptions {
-    request: Request;
-    subdomainPrefix?: string; // Default: 'org-'
-    headerName?: string; // Default: 'X-Org-Id'
-    queryParam?: string; // Default: 'organizationId'
-    jwtClaim?: string; // Default: 'organizationId'
-    getJWT?: (request: Request) => Promise<any>; // Custom JWT decoder
-}
-
-export async function extractOrganizationId(options: ExtractOrgOptions): Promise<string | null> {
-    const {
-        request,
-        subdomainPrefix = 'org-',
-        headerName = 'X-Org-Id',
-        queryParam = 'organizationId',
-        jwtClaim = 'organizationId',
-        getJWT,
-    } = options;
-
-    // Strategy 1: Check header
-    const headerValue = request.headers.get(headerName);
-    if (headerValue) {
-        return headerValue;
-    }
-
-    // Strategy 2: Check query parameter
-    const url = new URL(request.url);
-    const queryValue = url.searchParams.get(queryParam);
-    if (queryValue) {
-        return queryValue;
-    }
-
-    // Strategy 3: Extract from subdomain
-    const hostname = url.hostname;
-    const parts = hostname.split('.');
-    if (parts.length >= 3) {
-        // Assume first part is subdomain
-        const subdomain = parts[0];
-        if (subdomain && subdomain !== 'www') {
-            return `${subdomainPrefix}${subdomain}`;
-        }
-    }
-
-    // Strategy 4: Check JWT claim
-    if (getJWT) {
-        try {
-            const jwt = await getJWT(request);
-            if (jwt && jwt[jwtClaim]) {
-                return jwt[jwtClaim];
-            }
-        } catch (error: any) {
-            logger.error(
-                'Failed to extract organizationId from JWT',
-                error instanceof Error ? error : new Error(String(error)),
-            );
-        }
-    }
-
-    return null;
-}
-
-/**
- * Extract app ID from request
- * Supports multiple strategies:
- * 1. Header: X-App-Id
- * 2. Query param: ?appId=web
- * 3. Environment variable: APP_ID
- * 4. Default: 'web'
- */
-export interface ExtractAppOptions {
-    request: Request;
-    headerName?: string; // Default: 'X-App-Id'
-    queryParam?: string; // Default: 'appId'
-    env?: Record<string, any>; // Environment variables
-    defaultAppId?: string; // Default: 'web'
-}
-
-export function extractAppId(options: ExtractAppOptions): string {
-    const { request, headerName = 'X-App-Id', queryParam = 'appId', env, defaultAppId = 'web' } = options;
-
-    // Strategy 1: Check header
-    const headerValue = request.headers.get(headerName);
-    if (headerValue) {
-        return headerValue;
-    }
-
-    // Strategy 2: Check query parameter
-    const url = new URL(request.url);
-    const queryValue = url.searchParams.get(queryParam);
-    if (queryValue) {
-        return queryValue;
-    }
-
-    // Strategy 3: Check environment variable
-    if (env && env.APP_ID) {
-        return env.APP_ID;
-    }
-
-    // Strategy 4: Return default
-    return defaultAppId;
 }
 
 /**

@@ -7,7 +7,7 @@ import { makeSlug } from '@ottabase/utils/url';
 type ProvisionRoleName = 'owner' | 'admin' | 'member' | 'viewer';
 type UserLike = {
     get: (key: string) => unknown;
-    assignRole: (roleId: string, assignedBy?: string, organizationId?: string) => Promise<void>;
+    assignRole: (roleId: string, assignedBy: string | undefined, organizationId: string) => Promise<void>;
 };
 
 function logProvisioningFailure(event: string, error: unknown): void {

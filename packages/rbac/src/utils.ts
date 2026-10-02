@@ -7,8 +7,9 @@ import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 
 /**
- * Create RBAC context from user with multi-tenant support
- * Optimized with optional caching support
+ * Create the RBAC context for a user IN ONE ORGANIZATION (`options.organizationId`, or 'system' for
+ * platform grants). An authenticated user with no organizationId gets no roles/permissions.
+ * Optimized with optional caching support.
  */
 export async function createRBACContext(
     user: User | null,
@@ -29,6 +30,12 @@ export async function createRBACContext(
     const userId = user.get('id') as string;
     const organizationId = options?.organizationId;
     const tenantId = options?.tenantId;
+
+    // Grants are org-scoped. Without an org there is nothing to evaluate — fail closed with no
+    // roles/permissions rather than merging the user's grants from every tenant.
+    if (!organizationId) {
+        return { user, roles: [], permissions: [], isAuthenticated: true, organizationId, tenantId };
+    }
 
     // Try to get full context from cache first (tenant-aware)
     if (cache) {
@@ -79,9 +86,10 @@ export async function createRBACContext(
 }
 
 /**
- * Check if context has permission
+ * Evaluate a permission check and explain the outcome (`allowed`, `reason`, `missingPermissions`).
+ * For a plain yes/no use `hasPermission` — this result object is always truthy.
  */
-export function hasPermission(
+export function evaluatePermission(
     context: RBACContext,
     permission: string | string[],
     options: RBACCheckOptions = {},
@@ -122,9 +130,9 @@ export function hasPermission(
 }
 
 /**
- * Check if context has role
+ * Evaluate a role check and explain the outcome. For a plain yes/no use `hasRole`.
  */
-export function hasRole(
+export function evaluateRole(
     context: RBACContext,
     role: string | string[],
     options: RBACCheckOptions = {},
@@ -162,6 +170,20 @@ export function hasRole(
         reason: 'No matching roles found',
         missingRoles: roles,
     };
+}
+
+/** True when the context holds the permission(s). Safe to use in `if (!hasPermission(...))`. */
+export function hasPermission(
+    context: RBACContext,
+    permission: string | string[],
+    options: RBACCheckOptions = {},
+): boolean {
+    return evaluatePermission(context, permission, options).allowed;
+}
+
+/** True when the context holds the role(s). Safe to use in `if (!hasRole(...))`. */
+export function hasRole(context: RBACContext, role: string | string[], options: RBACCheckOptions = {}): boolean {
+    return evaluateRole(context, role, options).allowed;
 }
 
 /**

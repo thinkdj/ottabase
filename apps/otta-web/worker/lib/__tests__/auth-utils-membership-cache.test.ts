@@ -154,6 +154,22 @@ describe('getSecurityContext — membership caching', () => {
         expect(groupIdsForUser).toHaveBeenCalledWith('user-1', undefined);
     });
 
+    it('never gives an anonymous caller an org from header, query, or subdomain', async () => {
+        const env = { OBCF_KV: makeKv() } as any;
+        const viaHeader = await getSecurityContext(makeRequest('org-victim'), null, env);
+        const viaQuery = await getSecurityContext(
+            new Request('http://localhost/api/test?organizationId=org-victim'),
+            null,
+            env,
+        );
+        const viaSubdomain = await getSecurityContext(new Request('http://victim.example.com/api/test'), null, env);
+
+        expect(viaHeader.organizationId).toBeNull();
+        expect(viaQuery.organizationId).toBeNull();
+        expect(viaSubdomain.organizationId).toBeNull();
+        expect(organizationIdsForUser).not.toHaveBeenCalled();
+    });
+
     it('works without KV (direct lookups every time)', async () => {
         const ctx = await getSecurityContext(makeRequest('org-a'), session, { OBCF_KV: undefined } as any);
         expect(ctx.memberOrganizationIds).toEqual(['org-a']);
