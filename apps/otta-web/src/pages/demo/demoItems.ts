@@ -61,6 +61,15 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
+        to: '/demo/layout',
+        icon: Layout,
+        label: 'Layout Engine (Dynamic)',
+        title: 'Dynamic Layout Engine',
+        description:
+            'Live-preview every layout preset per route, and test path-to-layout resolution with priority rules.',
+        buttonVariant: 'outline',
+    },
+    {
         to: '/demo/medialibrary',
         icon: Blocks,
         label: 'Media Library',
@@ -277,15 +286,6 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Brand Engine',
         title: 'Brand Engine',
         description: 'View active brand config and test route mapping resolution from @ottabase/brand-engine-react.',
-        buttonVariant: 'outline',
-    },
-    {
-        to: '/demo/layout',
-        icon: Layout,
-        label: 'Layout System',
-        title: 'Layout System',
-        description:
-            'Live-preview every layout preset per route, and test path-to-layout resolution with priority rules.',
         buttonVariant: 'outline',
     },
     {

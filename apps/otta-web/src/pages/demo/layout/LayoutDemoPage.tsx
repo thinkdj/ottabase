@@ -43,7 +43,7 @@ export function LayoutDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Layout"
+                title="Dynamic Layout Engine"
                 description={
                     <>
                         Preset and route-resolution playground for <code>@ottabase/ottalayout</code>.
