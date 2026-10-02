@@ -320,5 +320,22 @@ describe('Shortlink Page Renderers', () => {
 
             expect(html).toContain(sanitizeJsonForScript(url));
         });
+
+        it('never emits a javascript: target into href or the redirect script', async () => {
+            const html = await renderShortlinkInterstitialPage({ url: 'javascript:alert(1)' }).text();
+
+            expect(html).not.toContain('javascript:');
+            expect(html).toContain('href="#"');
+        });
+
+        it('escapes markup in the target URL and theme key', async () => {
+            const html = await renderShortlinkInterstitialPage({
+                url: 'https://example.com/"><img src=x onerror=alert(1)>',
+                themeStorageKey: '</script><script>alert(1)</script>',
+            }).text();
+
+            expect(html).not.toContain('"><img');
+            expect(html).not.toContain('</script><script>alert(1)');
+        });
     });
 });

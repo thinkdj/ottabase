@@ -48,11 +48,11 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.create).toContain('targetType');
             expect(Comment.writable.create).toContain('targetId');
             expect(Comment.writable.create).toContain('parentId');
+            // depth passes the writable check, but Comment.create() always recomputes it.
             expect(Comment.writable.create).toContain('depth');
             // userId and organizationId are in writable.create so the server-side
             // injection passes through the sanitizer; the route handler always
-            // overwrites them (and depth) from session/server-computed context to
-            // prevent impersonation and forged nesting depth.
+            // overwrites them from the session to prevent impersonation.
             expect(Comment.writable.create).toContain('userId');
             expect(Comment.writable.create).toContain('organizationId');
             // status must NOT be writable on create (defaults to 'active')
@@ -297,6 +297,27 @@ describe('@ottabase/comments', () => {
             const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
             const depth = await Comment.computeDepthForParent('parent-id');
             expect(depth).toBe(2);
+            findSpy.mockRestore();
+        });
+    });
+
+    describe('Comment.create', () => {
+        it('ignores a supplied depth and derives it from the parent', async () => {
+            const parentStub = Object.create(Comment.prototype);
+            (parentStub as any).get = (key: string) => (key === 'depth' ? 1 : undefined);
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const baseCreate = vi
+                .spyOn(Object.getPrototypeOf(Comment), 'create')
+                .mockImplementation(async (data: unknown) => data as never);
+
+            const created = (await Comment.create({ body: 'hi', parentId: 'p1', depth: 99 })) as unknown as {
+                depth: number;
+            };
+            const topLevel = (await Comment.create({ body: 'hi', depth: 7 })) as unknown as { depth: number };
+
+            expect(created.depth).toBe(2);
+            expect(topLevel.depth).toBe(0);
+            baseCreate.mockRestore();
             findSpy.mockRestore();
         });
     });

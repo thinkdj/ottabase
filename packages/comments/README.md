@@ -68,8 +68,8 @@ const reply = await Comment.create({
     targetId: 'post-abc-123',
     parentId: comment.get('id'),
     userId: 'user-456',
-    depth: 1,
 });
+// depth is computed by Comment.create() from the parent (parent depth + 1); a supplied depth is ignored.
 ```
 
 ### Toggling reactions

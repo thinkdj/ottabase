@@ -16,6 +16,7 @@ import Map from './components/Map';
 import MediaEmbed from './components/MediaEmbed';
 import MediaGallery from './components/MediaGallery';
 import Quote from './components/Quote';
+import Raw from './components/Raw';
 import References from './components/References';
 import Review from './components/Review';
 import Spoiler from './components/Spoiler';
@@ -34,6 +35,7 @@ export const baseRenderers = {
     code: Code,
     warning: Warning,
     quote: Quote,
+    raw: Raw,
     spoiler: Spoiler,
     cta: CTA,
     disclosure: Disclosure,

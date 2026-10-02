@@ -1,5 +1,5 @@
 import { getShortlinkPageCss } from './styles';
-import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
+import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
 
 /** Default localStorage key for theme (must match app's theme provider) */
 export const DEFAULT_THEME_STORAGE_KEY = 'ottabase.theme';
@@ -32,7 +32,8 @@ function escapeHtml(value: string): string {
 
 export function renderShortlinkInterstitialPage(options: InterstitialOptions): Response {
     const seconds = Math.max(1, Math.min(60, options.seconds ?? 10));
-    const targetUrl = options.url;
+    // Scheme allowlist: a stored `javascript:`/`data:` target must never reach href or location.href.
+    const targetUrl = sanitizeUrl(options.url);
     const displayUrl = escapeHtml(truncateUrl(targetUrl));
     const targetUrlAttribute = escapeHtml(targetUrl);
     const themeKey = options.themeStorageKey ?? DEFAULT_THEME_STORAGE_KEY;

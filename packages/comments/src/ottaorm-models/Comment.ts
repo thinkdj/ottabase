@@ -24,9 +24,10 @@ export class Comment extends BaseModel {
     };
 
     // User-supplied fields plus server-injected context fields (userId, organizationId, depth).
-    // The route handler MUST overwrite userId, organizationId, and depth from session/server-side
-    // computation to prevent client impersonation and forged nesting depth — they are listed here
-    // only so the sanitizer doesn't strip them after server-side injection.
+    // The route handler MUST overwrite userId and organizationId from the session to prevent
+    // client impersonation — they are listed here only so the writable check (which rejects
+    // unlisted keys) accepts them after server-side injection. `depth` is accepted but never
+    // trusted: Comment.create() always recomputes it from parentId.
     static writable = {
         create: ['body', 'targetType', 'targetId', 'parentId', 'depth', 'userId', 'organizationId'],
         update: ['body', 'status'],
@@ -216,19 +217,24 @@ export class Comment extends BaseModel {
     // ─── Static helpers ────────────────────────────────────────
 
     /**
+     * Create a comment. `depth` is always recomputed from `parentId` (parent depth + 1, or 0),
+     * ignoring any supplied value, so no write path — generic CRUD or app code — can forge nesting.
+     */
+    static override async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, unknown>,
+        driver?: Parameters<typeof BaseModel.create>[1],
+    ): Promise<InstanceType<T>> {
+        const parentId = typeof data.parentId === 'string' && data.parentId ? data.parentId : null;
+        const depth = await Comment.computeDepthForParent(parentId);
+        return super.create.call(this, { ...data, depth }, driver) as Promise<InstanceType<T>>;
+    }
+
+    /**
      * Compute the nesting depth for a new comment given its parent ID.
      * Returns 0 for top-level comments.
      *
-     * Route handlers must call this and inject the result as an
-     * `allowedWritableFields` entry (e.g. set depth on the body before
-     * forwarding to handleCrud) so depth stays correct even though it is
-     * excluded from the generic CRUD writable allowlist.
-     *
-     * @example
-     * ```ts
-     * const depth = await Comment.computeDepthForParent(body.parentId ?? null);
-     * // then pass depth alongside userId via allowedWritableFields or pre-set body
-     * ```
+     * `Comment.create()` calls this itself; call it directly only to preview a reply's depth.
      */
     static async computeDepthForParent(parentId: string | null): Promise<number> {
         if (!parentId) return 0;

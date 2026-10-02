@@ -82,6 +82,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `MediaEmbed`         | Embedded media (video, audio, PDF, document) with native playback via `MediaPreview`              |
 | `MediaGallery`       | Gallery block with 5 presets (`grid-balanced`, `grid-featured`, `masonry`, `filmstrip`, `mosaic`) |
 | `Quote`              | Styled pull-quote with attribution                                                                |
+| `Raw`                | Raw HTML block (`raw`); `data.html` is passed through `sanitizeBlockHtml` before rendering        |
 | `Review`             | Product/service review card with star rating, pros/cons, CTA link, and verdict                    |
 | `Spoiler`            | Click-to-reveal blurred text                                                                      |
 | `Steps`              | Minimal numbered timeline for tutorials, onboarding, and walkthroughs                             |

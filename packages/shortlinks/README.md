@@ -92,6 +92,9 @@ return renderShortlinkInterstitialPage({
 });
 ```
 
+The interstitial passes `url` through `sanitizeUrl` (non-`http(s)`/`mailto`/`tel`/`sms` targets become `#`) and escapes
+it for HTML and inline script, so a stored `javascript:` target cannot execute.
+
 **Theme detection:** Both page helpers read `localStorage` for `'ottabase.theme'` (or your custom key) to apply
 light/dark mode. The value should be `'light'`, `'dark'`, or `'system'`.
 
