@@ -7,22 +7,48 @@ export interface SpotlightProviderProps extends SpotlightConfig {
     children: React.ReactNode;
 }
 
-function parseShortcut(shortcut: string): (e: KeyboardEvent) => boolean {
+/** Physical-key codes (US layout) for symbol keys, used when Shift changes `e.key` ('/' → '?'). */
+const SYMBOL_CODES: Record<string, string> = {
+    '/': 'Slash',
+    '.': 'Period',
+    ',': 'Comma',
+    ';': 'Semicolon',
+    "'": 'Quote',
+    '[': 'BracketLeft',
+    ']': 'BracketRight',
+    '\\': 'Backslash',
+    '-': 'Minus',
+    '=': 'Equal',
+    '`': 'Backquote',
+};
+
+function codeFor(key: string): string | undefined {
+    if (/^[a-z]$/.test(key)) return `Key${key.toUpperCase()}`;
+    if (/^[0-9]$/.test(key)) return `Digit${key}`;
+    return SYMBOL_CODES[key];
+}
+
+/**
+ * Compile a shortcut such as `'mod+k'`, `'/'` or `'shift+/'` into a KeyboardEvent matcher.
+ * `mod` is Cmd or Ctrl. Mod and Alt must match exactly, so `'/'` does not fire on Ctrl+/.
+ */
+export function parseShortcut(shortcut: string): (e: KeyboardEvent) => boolean {
     const parts = shortcut
         .toLowerCase()
         .split('+')
         .map((s) => s.trim());
-    return (e: KeyboardEvent) => {
-        const hasMod = parts.includes('mod') && (e.metaKey || e.ctrlKey);
-        const hasShift = parts.includes('shift') && e.shiftKey;
-        const hasAlt = parts.includes('alt') && e.altKey;
-        const keyMatch = parts.some((part) => {
-            if (part === 'mod' || part === 'shift' || part === 'alt') return false;
-            return e.key.toLowerCase() === part || e.key === part;
-        });
+    const mod = parts.includes('mod');
+    const shift = parts.includes('shift');
+    const alt = parts.includes('alt');
+    const key = parts.find((part) => part !== 'mod' && part !== 'shift' && part !== 'alt');
+    const code = key ? codeFor(key) : undefined;
 
-        const modCount = [hasMod, hasShift, hasAlt, keyMatch].filter(Boolean).length;
-        return modCount === parts.length;
+    return (e: KeyboardEvent) => {
+        if (!key) return false;
+        if (mod !== (e.metaKey || e.ctrlKey) || alt !== e.altKey || (shift && !e.shiftKey)) return false;
+        if (e.key.toLowerCase() === key) return true;
+        // With Shift held, `e.key` is the shifted character ('?' for '/'); match the physical key.
+        return shift && code !== undefined && e.code === code;
     };
 }
 

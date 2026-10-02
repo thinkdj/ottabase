@@ -467,7 +467,6 @@ Creates a new logger instance.
 - `name?: string` - Logger name/identifier
 - `transports?: Transport[]` - Transports to use (default: `[ConsoleTransport]`)
 - `context?: Record<string, unknown>` - Additional context for all logs
-- `includeTimestamp?: boolean` - Include timestamps (default: `true`)
 
 ### `ILogger`
 

@@ -336,26 +336,26 @@ function App() {
 
 ### Props
 
-| Prop               | Type                                                                                       | Default                  | Description                            |
-| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------ | -------------------------------------- |
-| `enabled`          | `boolean`                                                                                  | `true`                   | Enable/disable spotlight               |
-| `shortcuts`        | `string[]`                                                                                 | `["/"]`                  | Keyboard shortcuts to trigger          |
-| `placeholder`      | `string`                                                                                   | `"Search..."`            | Input placeholder text                 |
-| `emptyMessage`     | `string`                                                                                   | `"No results found"`     | Message when no results                |
-| `loadingMessage`   | `string`                                                                                   | `"Searching..."`         | Loading message                        |
-| `errorMessage`     | `string`                                                                                   | `"An error occurred..."` | Error message                          |
-| `onSearch`         | `(query: string, signal?: AbortSignal) => Promise<SpotlightResult[]> \| SpotlightResult[]` | -                        | Search function with abort support     |
-| `renderResult`     | `(result, index, isSelected) => ReactNode`                                                 | -                        | Custom result renderer                 |
-| `renderLoading`    | `() => ReactNode`                                                                          | -                        | Custom loading renderer                |
-| `renderEmpty`      | `() => ReactNode`                                                                          | -                        | Custom empty state renderer            |
-| `renderError`      | `(error: Error) => ReactNode`                                                              | -                        | Custom error renderer                  |
-| `maxResults`       | `number`                                                                                   | `50`                     | Maximum results to display             |
-| `searchDebounceMs` | `number`                                                                                   | `300`                    | Debounce delay in milliseconds         |
-| `minQueryLength`   | `number`                                                                                   | `0`                      | Minimum query length to trigger search |
-| `onQueryChange`    | `(query: string) => void`                                                                  | -                        | Callback when query changes            |
-| `onResultSelect`   | `(result: SpotlightResult) => void`                                                        | -                        | Callback when result is selected       |
-| `onOpenChange`     | `(open: boolean) => void`                                                                  | -                        | Callback when spotlight opens/closes   |
-| `defaultResults`   | `SpotlightResult[]`                                                                        | `[]`                     | Results shown when query is empty      |
+| Prop               | Type                                                                                       | Default                  | Description                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `enabled`          | `boolean`                                                                                  | `true`                   | Enable/disable spotlight                                                                              |
+| `shortcuts`        | `string[]`                                                                                 | `["/"]`                  | Shortcuts: `mod` (Cmd/Ctrl), `shift`, `alt` + one key, e.g. `shift+/`. Mod and Alt must match exactly |
+| `placeholder`      | `string`                                                                                   | `"Search..."`            | Input placeholder text                                                                                |
+| `emptyMessage`     | `string`                                                                                   | `"No results found"`     | Message when no results                                                                               |
+| `loadingMessage`   | `string`                                                                                   | `"Searching..."`         | Loading message                                                                                       |
+| `errorMessage`     | `string`                                                                                   | `"An error occurred..."` | Error message                                                                                         |
+| `onSearch`         | `(query: string, signal?: AbortSignal) => Promise<SpotlightResult[]> \| SpotlightResult[]` | -                        | Search function with abort support                                                                    |
+| `renderResult`     | `(result, index, isSelected) => ReactNode`                                                 | -                        | Custom result renderer                                                                                |
+| `renderLoading`    | `() => ReactNode`                                                                          | -                        | Custom loading renderer                                                                               |
+| `renderEmpty`      | `() => ReactNode`                                                                          | -                        | Custom empty state renderer                                                                           |
+| `renderError`      | `(error: Error) => ReactNode`                                                              | -                        | Custom error renderer                                                                                 |
+| `maxResults`       | `number`                                                                                   | `50`                     | Maximum results to display                                                                            |
+| `searchDebounceMs` | `number`                                                                                   | `300`                    | Debounce delay in milliseconds                                                                        |
+| `minQueryLength`   | `number`                                                                                   | `0`                      | Minimum query length to trigger search                                                                |
+| `onQueryChange`    | `(query: string) => void`                                                                  | -                        | Callback when query changes                                                                           |
+| `onResultSelect`   | `(result: SpotlightResult) => void`                                                        | -                        | Callback when result is selected                                                                      |
+| `onOpenChange`     | `(open: boolean) => void`                                                                  | -                        | Callback when spotlight opens/closes                                                                  |
+| `defaultResults`   | `SpotlightResult[]`                                                                        | `[]`                     | Results shown when query is empty                                                                     |
 
 ### Keyboard Shortcuts Format
 

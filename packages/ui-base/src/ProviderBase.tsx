@@ -36,7 +36,7 @@ const DEFAULT_FONT_FAMILIES: Required<ProviderUIBaseFontFamilies> = {
     monospace: `var(--font-mono, ${FONT_STACKS.monospace})`,
 };
 
-interface ProviderUIBaseProps {
+export interface ProviderUIBaseProps {
     children: ReactNode;
     preventFOUC?: boolean;
     preventFOUCInsideIframe?: boolean;

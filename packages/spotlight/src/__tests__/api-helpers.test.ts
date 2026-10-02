@@ -119,6 +119,23 @@ describe('createApiSearchHandlerWithSignal', () => {
         );
     });
 
+    it('accepts a relative baseUrl, resolved against the page origin', async () => {
+        const fetchMock = vi.mocked(fetch).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve([]),
+        } as Response);
+        const handler = createApiSearchHandlerWithSignal({
+            endpoint: 'search',
+            baseUrl: '/api/v1/',
+            transform: (item: any) => ({ id: item.id, label: item.label }),
+        });
+        await handler('q1');
+        expect(fetchMock).toHaveBeenCalledWith(
+            `${window.location.origin}/api/v1/search?q=q1`,
+            expect.objectContaining({ method: 'GET' }),
+        );
+    });
+
     it('merges additional params into URL', async () => {
         const fetchMock = vi.mocked(fetch).mockResolvedValue({
             ok: true,

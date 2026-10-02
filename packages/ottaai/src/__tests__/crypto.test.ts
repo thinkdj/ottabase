@@ -188,8 +188,13 @@ describe('key hint encoding is a cross-package contract', () => {
         expect(deriveKeyHint('')).toBe('');
         expect(deriveKeyHint('abc')).toBe(KEY_HINT_MASK);
         expect(deriveKeyHint('abc')).toHaveLength(4);
-        expect(deriveKeyHint('sk-abcdefgh')).toBe(`${KEY_HINT_MASK}efgh`);
-        expect(deriveKeyHint('sk-abcdefgh')).toHaveLength(8);
+        expect(deriveKeyHint('sk-abcdefghi')).toBe(`${KEY_HINT_MASK}fghi`);
+        expect(deriveKeyHint('sk-abcdefghi')).toHaveLength(8);
+    });
+
+    it('never reveals the tail of a short secret (a 4-char key must not be shown in full)', () => {
+        expect(deriveKeyHint('abcd')).toBe(KEY_HINT_MASK);
+        expect(deriveKeyHint('sk-abcdefgh')).toBe(KEY_HINT_MASK); // 11 chars: only 7 would stay hidden
     });
 
     it('honours a provider-aware hintSource', () => {

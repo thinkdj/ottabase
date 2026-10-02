@@ -12,7 +12,7 @@
  *
  * const scheduler = createScheduler<Env>()
  *   .handler("cleanup:sessions", async ({ env }) => {
- *     await env.DB.execute("DELETE FROM sessions WHERE expires < ?", [Date.now()]);
+ *     await env.OBCF_D1.prepare("DELETE FROM sessions WHERE expires < ?").bind(Date.now()).run();
  *   });
  *
  * // In your worker's scheduled handler:
@@ -176,10 +176,18 @@ export class Scheduler<E = unknown> {
             this.logger.info(`Found ${dueTasks.length} task(s) due to run`);
 
             for (const task of dueTasks) {
-                const execution = await this.executeTask(task, env, repository, true);
-                if (execution.status === 'completed') result.executed++;
-                else if (execution.status === 'failed') result.failed++;
-                else result.skipped++;
+                try {
+                    const execution = await this.executeTask(task, env, repository, true);
+                    if (execution.status === 'completed') result.executed++;
+                    else if (execution.status === 'failed') result.failed++;
+                    else result.skipped++;
+                } catch (error) {
+                    // A bookkeeping throw (lock/reload/markFailed hitting the DB) is this task's
+                    // failure, not the tick's: count it and keep running the other due tasks.
+                    result.failed++;
+                    const redacted = redactErrorForLog(error, 500);
+                    this.logger.error(`Task "${task.name}" bookkeeping failed: ${redacted.message}`);
+                }
             }
 
             return result;

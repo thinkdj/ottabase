@@ -507,8 +507,14 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         // runtime allows, with the tenant's request (and, on a stream, the tenant's key)
         // pinned open. The caller signals completion via `done()` instead; only the error
         // paths below clear it here.
-        const done = () => clearTimeout(timer);
-        if (options.signal) options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+        // Detach from the CALLER's signal too: it may be long-lived and shared across many
+        // calls, and a listener left behind pins this request's controller for its lifetime.
+        const onCallerAbort = () => controller.abort();
+        const done = () => {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', onCallerAbort);
+        };
+        if (options.signal) options.signal.addEventListener('abort', onCallerAbort, { once: true });
 
         try {
             const response = await doFetch(resolved.url, {
@@ -593,8 +599,14 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         const controller = new AbortController();
         const timeoutMs = options.timeout ?? deps.defaultTimeout;
         const timer = setTimeout(() => controller.abort(), timeoutMs);
-        const done = () => clearTimeout(timer);
-        if (options.signal) options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+        // Detach from the CALLER's signal too: it may be long-lived and shared across many
+        // calls, and a listener left behind pins this request's controller for its lifetime.
+        const onCallerAbort = () => controller.abort();
+        const done = () => {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', onCallerAbort);
+        };
+        if (options.signal) options.signal.addEventListener('abort', onCallerAbort, { once: true });
 
         try {
             const response = await doFetch(resolved.url, {

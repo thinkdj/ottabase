@@ -61,7 +61,7 @@ export const aiProviderCredentialsTable = sqliteTable(
 
         /**
          * The ONLY key-related value the UI ever sees. NEVER client-writable.
-         * '' = no secret · '••••' (4 chars) = secret shorter than 4 · '••••xxxx' = last four.
+         * '' = no secret · '••••' (4 chars) = secret shorter than 12 · '••••xxxx' = last four.
          */
         keyHint: text('key_hint').notNull().default(''),
 

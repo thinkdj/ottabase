@@ -127,10 +127,12 @@ export class OttaEditor implements IOttaEditor {
         const isCtrlOrMeta = e.ctrlKey || e.metaKey;
         if (!isCtrlOrMeta) return;
 
-        if (e.key === 'z' && !e.shiftKey) {
+        // Shift (or Caps Lock) reports 'Z', not 'z' — compare case-insensitively or redo never fires.
+        const key = e.key.toLowerCase();
+        if (key === 'z' && !e.shiftKey) {
             e.preventDefault();
             this.undo().catch(console.error);
-        } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        } else if ((key === 'z' && e.shiftKey) || key === 'y') {
             e.preventDefault();
             this.redo().catch(console.error);
         }

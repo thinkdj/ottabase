@@ -621,6 +621,42 @@ describe('the transport refuses what it cannot do correctly', () => {
         // explicit check the request goes out anyway — billed, logged, key held open.
         expect(captured).toHaveLength(0);
     });
+
+    it('detaches its listener from the caller signal once a call or stream settles', async () => {
+        const controller = new AbortController();
+        const added: unknown[] = [];
+        const removed: unknown[] = [];
+        const signal = controller.signal;
+        const add = signal.addEventListener.bind(signal);
+        const remove = signal.removeEventListener.bind(signal);
+        signal.addEventListener = ((type: string, listener: EventListener, opts?: AddEventListenerOptions) => {
+            added.push(listener);
+            add(type, listener, opts);
+        }) as typeof signal.addEventListener;
+        signal.removeEventListener = ((type: string, listener: EventListener) => {
+            removed.push(listener);
+            remove(type, listener);
+        }) as typeof signal.removeEventListener;
+
+        await makeClient({ fetch: capturingFetch([]) }).complete({
+            messages: [{ role: 'user', content: 'hi' }],
+            signal,
+        });
+
+        const sseFetch = (async () =>
+            new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n', {
+                status: 200,
+            })) as unknown as typeof fetch;
+        for await (const _event of makeClient({ fetch: sseFetch }).stream({
+            messages: [{ role: 'user', content: 'hi' }],
+            signal,
+        })) {
+            // drain
+        }
+
+        expect(added).toHaveLength(2);
+        expect(removed).toEqual(added);
+    });
 });
 
 // ---------------------------------------------------------------------------

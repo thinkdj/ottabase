@@ -111,9 +111,12 @@ export type HintSource = 'tail' | 'none' | { path: string };
  * | value                          | means                                             |
  * | ------------------------------ | ------------------------------------------------- |
  * | `''`                           | no secret                                         |
- * | `'••••'` exactly (4 chars)     | secret set, shorter than 4 chars — nothing shown  |
+ * | `'••••'` exactly (4 chars)     | secret set, shorter than 12 chars — nothing shown |
  * | `'••••' + last4` (8 chars)     | secret set, last four revealed                    |
  */
+/** Shortest secret whose last four characters may be shown (4 shown, 8+ hidden). */
+export const MIN_TAIL_HINT_LENGTH = 12;
+
 export function deriveKeyHint(trimmedPlaintext: string, source: HintSource = 'tail'): string {
     if (!trimmedPlaintext) return '';
     if (source === 'none') return KEY_HINT_MASK;
@@ -124,7 +127,9 @@ export function deriveKeyHint(trimmedPlaintext: string, source: HintSource = 'ta
         if (!material) return KEY_HINT_MASK;
     }
 
-    if (material.length < 4) return KEY_HINT_MASK;
+    // Reveal the tail only when at least 8 characters stay hidden: a 4-char secret would
+    // otherwise be shown in full, and a 6-char one would be two-thirds disclosed.
+    if (material.length < MIN_TAIL_HINT_LENGTH) return KEY_HINT_MASK;
     return KEY_HINT_MASK + material.slice(-4);
 }
 

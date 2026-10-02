@@ -26,7 +26,7 @@ import { createCronHandler } from '@ottabase/cron';
 const cron = createCronHandler<Env>()
     .on('0 0 * * *', async ({ env }) => {
         // Daily at midnight
-        await cleanupSessions(env.DB);
+        await cleanupSessions(env.OBCF_D1);
     })
     .on('0 * * * *', async ({ env }) => {
         // Every hour
@@ -132,6 +132,11 @@ export default {
 The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task
 even when multiple workers are triggered simultaneously.
 
+`tick()` runs due tasks one after another and resolves with final counts once they have all settled:
+`{ executed, failed, skipped }`. `failed` includes a task whose bookkeeping (lock, reload, status write) threw; the
+remaining due tasks still run. `skipped` covers lost locks and superseded executions. Only a failure to list due tasks
+rejects the tick.
+
 ### 2. Add Tasks to Database
 
 ```typescript
@@ -189,7 +194,7 @@ import { dispatch } from '@ottabase/queue';
 const scheduler = createScheduler<Env>()
     // Light work: run directly
     .handler('cleanup:sessions', async ({ env }) => {
-        await env.DB.execute('DELETE FROM sessions WHERE expires < ?', [Date.now()]);
+        await env.OBCF_D1.prepare('DELETE FROM sessions WHERE expires < ?').bind(Date.now()).run();
     })
     // Heavy work: push to queue for async processing with retries
     .handler('process:reports', async ({ env, payload }) => {
@@ -201,7 +206,7 @@ const scheduler = createScheduler<Env>()
     })
     // Batch work: fan out to multiple queue jobs
     .handler('daily:notifications', async ({ env }) => {
-        const users = await getActiveUsers(env.DB);
+        const users = await getActiveUsers(env.OBCF_D1);
         for (const user of users) {
             await dispatch(env.QUEUE, 'send-notification', { userId: user.id });
         }

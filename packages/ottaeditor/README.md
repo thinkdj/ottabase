@@ -285,7 +285,7 @@ See `ImageHotspotsTool` and `BeforeAfterTool` for examples.
 Standalone export functions:
 
 ```typescript
-import { exportToJSON, exportToMarkdown, convertInlineHTML } from '@ottabase/ottaeditor';
+import { exportToJSON, exportToMarkdown } from '@ottabase/ottaeditor';
 
 const json = exportToJSON(outputData); // Pretty-print JSON
 const md = exportToMarkdown(outputData); // Convert to Markdown

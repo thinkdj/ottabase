@@ -10,8 +10,10 @@ export { LogLevel as LogLevelEnum } from './types.js';
 
 // Re-export common transports and formatters
 export {
+    BufferedTransport,
     ConsoleTransport,
     FileTransport,
+    FilterTransport,
     HttpTransport,
     MemoryTransport,
     MultiTransport,

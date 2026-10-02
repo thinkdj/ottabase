@@ -50,37 +50,22 @@ const Loading = ({
     skeletonType?: SkeletonVariant;
     width?: string | number;
 }): React.JSX.Element => {
-    // Helper function to process width - add px if numeric, otherwise use as is
-    // Type guard for processing width values
-    const processWidth = (width?: string | number): string => {
-        if (!width) {
-            return 'w-full';
-        }
-
-        // Handle numeric values (convert to arbitrary width)
-        if (typeof width === 'number') {
-            return `w-[${width}px]`;
-        }
-
-        // Handle percentage values (convert to arbitrary width)
-        if (width.includes('%')) {
-            return `w-[${width}]`;
-        }
-
-        // Handle pixel values (convert to arbitrary width)
-        if (width.includes('px')) {
-            return `w-[${width}]`;
-        }
-
-        // Return as-is for Tailwind classes
-        return width;
-    };
     if (skeletonType === 'skeleton') {
-        const containerWidth = processWidth(width);
+        // Tailwind only generates classes it finds in source, so a runtime `w-[300px]` never
+        // exists. CSS lengths (300, '300px', '50%', '20rem') go inline; anything else is
+        // treated as a Tailwind class (e.g. 'w-96').
+        const isLength = typeof width === 'number' || (typeof width === 'string' && /^[\d.]/.test(width));
+        const widthClass = !width ? 'w-full' : isLength ? '' : width;
+        const widthStyle = width && isLength ? { width: typeof width === 'number' ? `${width}px` : width } : undefined;
         const isFullWidth = !width;
 
         return (
-            <div className={`flex flex-col items-center gap-4 ${containerWidth}`} role="status" aria-live="polite">
+            <div
+                className={`flex flex-col items-center gap-4 ${widthClass}`}
+                style={widthStyle}
+                role="status"
+                aria-live="polite"
+            >
                 {/* Icon placeholder */}
                 <div className="h-12 w-12 rounded-lg bg-muted animate-pulse flex-shrink-0" />
 

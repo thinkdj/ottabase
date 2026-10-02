@@ -9,14 +9,12 @@ export class Logger implements ILogger {
     private name?: string;
     private transports: Transport[];
     private context: Record<string, unknown>;
-    private includeTimestamp: boolean;
 
     constructor(options: LoggerOptions = {}) {
         this.level = options.level ?? 1; // Default to INFO
         this.name = options.name;
         this.transports = options.transports ?? [new ConsoleTransport()];
         this.context = options.context ?? {};
-        this.includeTimestamp = options.includeTimestamp ?? true;
     }
 
     /**
@@ -118,7 +116,6 @@ export class Logger implements ILogger {
             name: this.name,
             transports: this.transports,
             context: { ...this.context, ...context },
-            includeTimestamp: this.includeTimestamp,
         });
     }
 

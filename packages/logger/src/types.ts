@@ -78,12 +78,6 @@ export interface LoggerOptions {
      * Additional context to include in all log entries
      */
     context?: Record<string, unknown>;
-
-    /**
-     * Whether to include timestamps in log entries
-     * @default true
-     */
-    includeTimestamp?: boolean;
 }
 
 /**

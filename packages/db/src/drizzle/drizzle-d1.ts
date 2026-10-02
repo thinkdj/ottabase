@@ -40,8 +40,8 @@ export class D1Driver extends BaseDbDriver {
         this.log(`Executing query`, 'query');
 
         try {
-            // Execute using Drizzle
-            const result = await this.db.execute(query);
+            // Drizzle's D1 database has no `execute()`; `all()` runs the SQL and returns its rows.
+            const result = await this.db.all(query);
             return result as T[];
         } catch (error) {
             this.log(`Query error: ${error instanceof Error ? error.message : String(error)}`, 'error');

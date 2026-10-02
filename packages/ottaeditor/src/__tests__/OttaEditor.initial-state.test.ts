@@ -78,4 +78,23 @@ describe('OttaEditor initial undo baseline', () => {
 
         await editor.destroy();
     });
+
+    it('maps Ctrl/Cmd+Shift+Z to redo (e.key is uppercase with Shift) and Ctrl+Z to undo', async () => {
+        mockSave.mockResolvedValue({ time: 1, blocks: [], version: '2.30.0' });
+        const holder = document.createElement('div');
+        document.body.appendChild(holder);
+        const editor = new OttaEditor({ holder });
+        await editor.init();
+        const undo = vi.spyOn(editor, 'undo').mockResolvedValue();
+        const redo = vi.spyOn(editor, 'redo').mockResolvedValue();
+
+        holder.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', ctrlKey: true, shiftKey: true }));
+        holder.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', metaKey: true, shiftKey: true }));
+        holder.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }));
+
+        expect(redo).toHaveBeenCalledTimes(2);
+        expect(undo).toHaveBeenCalledTimes(1);
+
+        await editor.destroy();
+    });
 });

@@ -10,7 +10,7 @@ Best for Cloudflare D1 and modern edge deployments with better type safety and p
 // Use in Cloudflare Worker with D1
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
-const driver = createD1Driver(env.DB);
+const driver = createD1Driver(env.OBCF_D1);
 const db = driver.getDb();
 
 // Use with your Drizzle schema
@@ -24,7 +24,7 @@ Execute custom SQL when you need more control:
 ```typescript
 import { createD1Driver, raw } from '@ottabase/db/drizzle-d1';
 
-const driver = createD1Driver(env.DB);
+const driver = createD1Driver(env.OBCF_D1);
 
 // Simple query
 const result = await raw(driver, 'SELECT * FROM users WHERE active = 1');

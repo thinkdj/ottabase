@@ -157,6 +157,35 @@ describe('Scheduler', () => {
             expect(result.executed).toBe(2);
         });
 
+        it('returns final counts per outcome and keeps going after a bookkeeping throw', async () => {
+            const tasks = [
+                createMockTask({ id: 'ok', task: 'ok' }),
+                createMockTask({ id: 'boom', task: 'boom' }),
+                createMockTask({ id: 'locked', task: 'ok' }),
+                createMockTask({ id: 'db-down', task: 'ok' }),
+                createMockTask({ id: 'ok-2', task: 'ok' }),
+            ];
+            const repository = createMockRepository(tasks);
+            vi.mocked(repository.acquireLock).mockImplementation(async (id: string) => {
+                if (id === 'locked') return false;
+                if (id === 'db-down') throw new Error('D1 unavailable');
+                return true;
+            });
+            const ok = vi.fn();
+
+            const scheduler = createScheduler<TestEnv>({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } })
+                .handler('ok', ok)
+                .handler('boom', () => {
+                    throw new Error('handler failed');
+                });
+
+            const result = await scheduler.tick(mockEnv, repository);
+
+            expect(result).toEqual({ executed: 2, failed: 2, skipped: 1 });
+            // The task after the bookkeeping throw still ran.
+            expect(ok).toHaveBeenCalledTimes(2);
+        });
+
         it('should return empty result when no tasks due', async () => {
             const repository = createMockRepository([]);
 

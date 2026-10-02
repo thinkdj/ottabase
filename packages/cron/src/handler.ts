@@ -104,7 +104,7 @@ export class CronHandler<E = unknown> {
  * ```typescript
  * const cron = createCronHandler<Env>()
  *   .on("0 0 * * *", async ({ env }) => {
- *     await cleanupSessions(env.DB);
+ *     await cleanupSessions(env.OBCF_D1);
  *   })
  *   .on("0 * * * *", async ({ env }) => {
  *     await sendHourlyDigest(env);

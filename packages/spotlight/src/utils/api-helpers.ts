@@ -104,7 +104,9 @@ export function createApiSearchHandlerWithSignal<T = unknown>({
 }) {
     return async (query: string, signal?: AbortSignal): Promise<SpotlightResult[]> => {
         // Build URL
-        const url = new URL(endpoint, baseUrl || window.location.origin);
+        // Resolve baseUrl against the page origin first, so a relative baseUrl ("/api") works;
+        // `new URL(endpoint, "/api")` throws "Invalid base URL".
+        const url = new URL(endpoint, new URL(baseUrl, window.location.origin));
         url.searchParams.set(queryParamName, query);
         Object.entries(params).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
