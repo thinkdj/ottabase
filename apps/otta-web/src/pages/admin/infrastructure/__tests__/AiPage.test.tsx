@@ -62,6 +62,20 @@ vi.mock('@ottabase/ottaorm/client', () => ({
                     defaultModel: null,
                     requiredCapabilities: [],
                     pinnedModels: null,
+                    maxTokens: 1024,
+                    platformRouteGaps: [],
+                },
+                {
+                    key: 'scan',
+                    label: 'Image extraction',
+                    mode: null,
+                    gate: 'soft',
+                    modelPolicy: 'tenant-preferred',
+                    defaultModel: null,
+                    requiredCapabilities: ['vision', 'json'],
+                    pinnedModels: null,
+                    maxTokens: 4096,
+                    platformRouteGaps: ['vision'],
                 },
             ],
             providers: [
@@ -126,5 +140,13 @@ describe('AdminAiPage', () => {
         expect(screen.getByText('CFAI_GATEWAY_TOKEN')).toBeTruthy();
         expect(screen.getAllByText(/production/).length).toBeGreaterThan(0);
         expect(screen.queryByText(/sk-/)).toBeNull();
+    });
+
+    it("shows each task's output budget and flags a task its platform route cannot carry", () => {
+        render(<AdminAiPage />);
+        expect(screen.getByText(/4,096 max tokens/)).toBeTruthy();
+        expect(screen.getByText(/platform route cannot carry vision/)).toBeTruthy();
+        // Only the task with a gap is flagged.
+        expect(screen.getAllByText(/platform route cannot carry/)).toHaveLength(1);
     });
 });

@@ -107,28 +107,37 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
             task.modelPolicy === 'task-pinned' && platformProvider ? task.pinnedModels?.[platformProvider] : undefined;
         return pinned ?? task.defaultModel ?? platformModel ?? null;
     };
-    const transportRouteUsable = resolvedTasks.some((task) => {
-        return transport.isComplete({
-            provider: platformProvider ?? '',
-            model: effectiveTaskModel(task),
-            secret: null,
-            alias: null,
-            accountId: accountId ?? undefined,
-            gateway: gateway ?? undefined,
-            gatewayToken: vars.CFAI_GATEWAY_TOKEN?.trim() || undefined,
-            apiToken: vars.CFAI_API_TOKEN?.trim() || undefined,
-            billing,
-            transportConfig,
-            provenance: {
-                source: 'platform',
-                credentialId: null,
-                taskKey: task.key,
-                appId: config.appId,
-                organizationId: null,
-                userId: null,
-            },
-        });
+    /** The merged config a task's platform-path call would travel on. */
+    const platformRouteFor = (task: (typeof resolvedTasks)[number]) => ({
+        provider: platformProvider ?? '',
+        model: effectiveTaskModel(task),
+        secret: null,
+        alias: null,
+        accountId: accountId ?? undefined,
+        gateway: gateway ?? undefined,
+        gatewayToken: vars.CFAI_GATEWAY_TOKEN?.trim() || undefined,
+        apiToken: vars.CFAI_API_TOKEN?.trim() || undefined,
+        billing,
+        transportConfig,
+        provenance: {
+            source: 'platform' as const,
+            credentialId: null,
+            taskKey: task.key,
+            appId: config.appId,
+            organizationId: null,
+            userId: null,
+        },
     });
+    const transportRouteUsable = resolvedTasks.some((task) => transport.isComplete(platformRouteFor(task)));
+    /**
+     * Capabilities a task REQUIRES that its platform ROUTE cannot carry — e.g. `vision` on
+     * Unified Billing. The resolver turns these into CAPABILITY_UNMET; this names them for the
+     * operator, so "why does scan never run on the platform floor?" is answerable here.
+     */
+    const platformRouteGaps = (task: (typeof resolvedTasks)[number]) => {
+        const unsupported = transport.unsupportedCapabilitiesFor?.(platformRouteFor(task)) ?? [];
+        return (task.requiredCapabilities ?? []).filter((capability) => unsupported.includes(capability));
+    };
     const provisioningConfigured = packageEnabled && (!feature.byokEnabled || keyringPresent);
     // Match getAiProvisioning(): a valid platform transport is not callable while the
     // package is disabled or BYOK is enabled without encryption custody.
@@ -165,6 +174,18 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
                     'Give those tasks an explicit REST model or use provider-native Gateway authentication.',
             );
         }
+    }
+    // Only meaningful when a platform route exists at all — otherwise "missing route" says it.
+    const routeGapTasks = transportRouteUsable
+        ? resolvedTasks
+              .map((task) => ({ key: task.key, gaps: platformRouteGaps(task) }))
+              .filter((task) => task.gaps.length > 0)
+        : [];
+    if (routeGapTasks.length > 0) {
+        missing.push(
+            `The platform route cannot carry ${routeGapTasks.map((t) => `${t.gaps.join('+')} for ${t.key}`).join(', ')} — ` +
+                'those tasks run only on a tenant key. Use a provider-native platform route (a provider key) to serve them.',
+        );
     }
     if (!platformModel?.startsWith('dynamic/') && !platformProvider)
         missing.push('Set features.ottaai.platformProvider, or use a dynamic/<route> model.');
@@ -343,6 +364,8 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
                 defaultModel: resolved.defaultModel ?? null,
                 requiredCapabilities: resolved.requiredCapabilities ?? [],
                 pinnedModels: resolved.pinnedModels ?? null,
+                maxTokens: resolved.maxTokens ?? null,
+                platformRouteGaps: transportRouteUsable ? platformRouteGaps(resolved) : [],
             };
         }),
         providers,

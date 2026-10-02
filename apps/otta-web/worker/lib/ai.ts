@@ -64,6 +64,8 @@ export const AI_TASKS = {
     summarize: 'summarize',
     /** Long-document extraction — expensive, tenant-key only. */
     extract: 'extract',
+    /** Read an image (receipt, invoice, form) into a JSON object. */
+    scan: 'scan',
     /** Vectorise text for semantic search, similarity and recommendations. */
     embed: 'embed',
 } as const;
@@ -75,6 +77,9 @@ export const AI_TASK_POLICIES: AiTaskPolicy[] = [
         key: AI_TASKS.assist,
         label: 'Assistant',
         gate: 'soft',
+        // EVERY chat task declares its output budget: without one, OpenAI-shaped providers
+        // default to "until the context runs out", which is an unbounded bill per call.
+        maxTokens: 1024,
     },
     {
         key: AI_TASKS.summarize,
@@ -82,6 +87,7 @@ export const AI_TASK_POLICIES: AiTaskPolicy[] = [
         gate: 'soft',
         // Cheap text work. The tenant is paying when they bring a key, so their model wins.
         modelPolicy: 'tenant-preferred',
+        maxTokens: 1024,
     },
     {
         key: AI_TASKS.extract,
@@ -90,16 +96,25 @@ export const AI_TASK_POLICIES: AiTaskPolicy[] = [
         // RESOLVER, not the browser.
         mode: 'byok',
         gate: 'required',
-        // NO `requiredCapabilities: ['vision']` — DELIBERATE, do not "restore" it.
-        //
-        // @ottabase/ottaai's call contract is TEXT CHAT: `AiCallOptions` message content is
-        // a plain string, so there is no way to actually send an image. Requiring `vision`
-        // therefore filtered out perfectly usable text credentials in exchange for a
-        // capability this route cannot exercise — a stricter gate that buys nothing and
-        // blocks tenants whose key would have worked.
-        //
-        // If multimodal content types are ever added to `AiCallOptions`, add the requirement
-        // back in the SAME change.
+        // TEXT IN, TEXT OUT — no `vision`, deliberately. Images go through `scan`. Requiring
+        // `vision` here would make every text-only key (DeepSeek, Groq, Mistral) ineligible
+        // for long-document work it can do perfectly well.
+        maxTokens: 4096,
+    },
+    {
+        key: AI_TASKS.scan,
+        label: 'Image extraction',
+        // Soft: a vision-capable platform floor (e.g. Gemini Flash-Lite) reads a receipt for
+        // a fraction of a cent, and a tenant key upgrades the model.
+        gate: 'soft',
+        // CALL CONTRACTS, not just selection filters. `/api/ai/vision` attaches images to
+        // this task and asks it for a JSON object, and the package refuses both unless they
+        // are declared here — the declaration is what makes resolution pick a credential, a
+        // platform model AND a route that can read an image and return JSON.
+        requiredCapabilities: ['vision', 'json'],
+        // Room for an itemised receipt: a JSON reply cut off by its budget does not parse
+        // (`INVALID_RESPONSE`), and thinking models spend part of this on reasoning.
+        maxTokens: 4096,
     },
     {
         key: AI_TASKS.embed,

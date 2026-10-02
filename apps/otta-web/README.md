@@ -187,11 +187,31 @@ shipped embeddings route is intentionally OpenAI-only and uses the task-pinned `
 returns vectors but does not persist them; connect a real retrieval feature to Vectorize deliberately rather than
 treating the playground as a vector store.
 
-Unified Billing supports both shipped tasks: chat uses Cloudflare's OpenAI-compatible REST endpoint and the OpenAI
-embedding task uses AI Gateway's universal `/ai/run` endpoint. For BYOK deployments, configure the Gateway's Unified
-Billing fallback as `byok_only`; OttaAI additionally sends `cf-aig-no-wholesale: true` on tenant-key requests. The
-browser sends only a task and prompt; model/provider selection remains task- and server-owned. The route rejects a
-request-body `model` override so client input cannot bypass capability, tenancy, or spend policy. See Cloudflare's
+Chat is split across two routes **by body size**, because the task is only known after the body is parsed:
+
+| Route                   | Tasks                    | Body cap                              | Before the body is read                    |
+| ----------------------- | ------------------------ | ------------------------------------- | ------------------------------------------ |
+| `POST /api/ai/complete` | text tasks               | 512 KB, counted in bytes read         | session check                              |
+| `POST /api/ai/vision`   | tasks declaring `vision` | image budget × 4/3 + 512 KB (≈ 11 MB) | session check + per-user throttle (10/min) |
+
+The `scan` task reads an image into a JSON object (receipts, invoices, forms). `/api/ai/vision` takes
+`{ task?, prompt, system?, images: [{ mimeType, data }] }` — base64 with no `data:` prefix, JPEG/PNG/GIF/WebP — and
+answers with a parsed `json` object for tasks declaring `json`. What a task accepts, returns and spends (`maxTokens`) is
+read from its declaration in `worker/lib/ai.ts`, never from the request. The image budget is `features.ottaai.images`
+(`maxCount` 4, `maxBytes` 4 MB, `maxTotalBytes` 8 MB, `perUserPerMinute` 10), clamped to the package's provider floor.
+The playground resizes photos to a 2048px edge before upload.
+
+It needs a vision-capable model on a route that carries images: a tenant key for OpenAI, Anthropic or Google, or a
+provider-key platform floor (for example `google-ai-studio` / `gemini-2.5-flash-lite`). A reply that does not parse
+returns `502 INVALID_RESPONSE`.
+
+Unified Billing supports chat and embeddings: chat uses Cloudflare's OpenAI-compatible REST endpoint and the OpenAI
+embedding task uses AI Gateway's universal `/ai/run` endpoint. Cloudflare documents no image input on that endpoint, so
+on a Unified Billing platform floor `scan` resolves `CAPABILITY_UNMET` (it runs on tenant keys only), and the admin AI
+page says so per task. For BYOK deployments, configure the Gateway's Unified Billing fallback as `byok_only`; OttaAI
+additionally sends `cf-aig-no-wholesale: true` on tenant-key requests. The browser sends only a task, a prompt and (for
+`scan`) images; model/provider selection remains task- and server-owned. The route rejects a request-body `model`
+override so client input cannot bypass capability, tenancy, or spend policy. See Cloudflare's
 [REST API](https://developers.cloudflare.com/ai-gateway/usage/rest-api/) and
 [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) docs when changing the
 transport contract.

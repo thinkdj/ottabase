@@ -1,11 +1,13 @@
 /**
  * OttaAI playground — real app routes, not a parallel demo client.
  *
- * Chat calls `/api/ai/complete`; vectors call `/api/ai/embed`. Both resolve the signed-in
+ * Chat calls `/api/ai/complete` (the `scan` task attaches an image and returns JSON); vectors
+ * call `/api/ai/embed`. Both resolve the signed-in
  * tenant's selected credential before the platform fallback, enforce their task policy on
  * the server, and expose only redacted provenance back to this page.
  */
 import { api, isApiError } from '@/lib/api';
+import { OTTAAI_CONFIG } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import {
     Badge,
@@ -29,7 +31,19 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { ArrowRight, Bot, Braces, Check, Cloud, KeyRound, Layers3, MessageSquareText, Sparkles } from 'lucide-react';
+import {
+    ArrowRight,
+    Bot,
+    Braces,
+    Check,
+    Cloud,
+    ImageIcon,
+    KeyRound,
+    Layers3,
+    MessageSquareText,
+    Sparkles,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -47,6 +61,8 @@ interface AiStatus {
 
 interface CompleteResponse {
     text: string;
+    /** Present for tasks that answer in JSON (`scan`). */
+    json?: Record<string, unknown>;
     source: 'byok' | 'platform' | null;
     provider: string | null;
     model: string | null;
@@ -73,7 +89,79 @@ const TASKS = [
         label: 'Document extraction',
         note: 'Requires a tenant key. The platform never pays for this task.',
     },
+    {
+        key: 'scan',
+        label: 'Image extraction',
+        note: 'Attach a photo of a receipt, invoice or form. Answers with a JSON object from a vision-capable model.',
+    },
 ] as const;
+
+const CHAT_PROMPT = 'What makes a good multi-tenant AI boundary?';
+const SCAN_PROMPT = 'Extract the merchant, date, currency, line items and total. Use null for anything unreadable.';
+
+/** `/api/ai/vision`'s per-image budget (`features.ottaai.images`), so an oversized photo fails here. */
+const MAX_IMAGE_BYTES = OTTAAI_CONFIG.images.maxBytes;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+/**
+ * Longest edge sent to the model. Vision models downscale large images anyway (to roughly
+ * 1.5–2k px), so sending a 12 MP phone photo only spends upload time, Worker memory and input
+ * tokens on pixels the model never sees.
+ */
+const MAX_IMAGE_EDGE = 2048;
+/** A file already under this size and edge length is sent untouched. */
+const PASSTHROUGH_BYTES = 1.5 * 1024 * 1024;
+
+interface AttachedImage {
+    name: string;
+    mimeType: string;
+    /** Base64 without the `data:` prefix — the shape the route expects. */
+    data: string;
+    previewUrl: string;
+}
+
+function readAsDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read that file'));
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(blob);
+    });
+}
+
+/**
+ * Downscale and re-encode a photo in the browser before upload.
+ *
+ * GIFs are sent as-is (re-encoding drops animation, and they are rarely large). Anything else
+ * over {@link MAX_IMAGE_EDGE} or {@link PASSTHROUGH_BYTES} becomes a JPEG at that edge, which
+ * typically turns a 4–8 MB phone photo into a few hundred KB.
+ */
+async function prepareImage(file: File): Promise<{ blob: Blob; mimeType: string }> {
+    if (file.type === 'image/gif' || typeof createImageBitmap !== 'function') {
+        return { blob: file, mimeType: file.type };
+    }
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= PASSTHROUGH_BYTES) {
+        bitmap.close();
+        return { blob: file, mimeType: file.type };
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    return blob ? { blob, mimeType: 'image/jpeg' } : { blob: file, mimeType: file.type };
+}
+
+async function readImage(file: File): Promise<AttachedImage> {
+    const { blob, mimeType } = await prepareImage(file);
+    if (blob.size > MAX_IMAGE_BYTES) {
+        throw new Error(`Images are limited to ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))} MB after resizing.`);
+    }
+    const dataUrl = await readAsDataUrl(blob);
+    return { name: file.name, mimeType, data: dataUrl.slice(dataUrl.indexOf(',') + 1), previewUrl: dataUrl };
+}
 
 function sourceLabel(source: 'byok' | 'platform' | null): string {
     if (source === 'byok') return 'tenant key';
@@ -98,7 +186,8 @@ export function CloudflareAIDemoPage() {
     const [surface, setSurface] = useState<Surface>('chat');
 
     const [task, setTask] = useState<string>('assist');
-    const [prompt, setPrompt] = useState('What makes a good multi-tenant AI boundary?');
+    const [prompt, setPrompt] = useState(CHAT_PROMPT);
+    const [image, setImage] = useState<AttachedImage | null>(null);
     const [systemPrompt, setSystemPrompt] = useState('Answer in three concise bullets.');
     const [response, setResponse] = useState<CompleteResponse | null>(null);
     const [chatError, setChatError] = useState<string | null>(null);
@@ -114,6 +203,33 @@ export function CloudflareAIDemoPage() {
 
     const signedIn = isInitialized && !authLoading && isAuthenticated;
     const activeTask = TASKS.find((entry) => entry.key === task);
+    const scanning = task === 'scan';
+
+    const changeTask = useCallback((next: string) => {
+        setTask(next);
+        // Swap only the untouched sample prompt — never overwrite what the user typed.
+        setPrompt((current) =>
+            next === 'scan' && current === CHAT_PROMPT
+                ? SCAN_PROMPT
+                : next !== 'scan' && current === SCAN_PROMPT
+                  ? CHAT_PROMPT
+                  : current,
+        );
+    }, []);
+
+    const attachImage = useCallback(async (file: File | undefined) => {
+        if (!file) return;
+        if (!IMAGE_TYPES.includes(file.type)) {
+            setChatError('Use a JPEG, PNG, GIF or WebP image.');
+            return;
+        }
+        try {
+            setImage(await readImage(file));
+            setChatError(null);
+        } catch (err) {
+            setChatError(err instanceof Error ? err.message : 'Could not read that file');
+        }
+    }, []);
     const embeddingInputs = useMemo(
         () =>
             embeddingText
@@ -137,17 +253,20 @@ export function CloudflareAIDemoPage() {
     }, [signedIn]);
 
     const send = useCallback(async () => {
-        if (!signedIn || !prompt.trim()) return;
+        if (!signedIn || !prompt.trim() || (scanning && !image)) return;
         setSending(true);
         setChatError(null);
         setResponse(null);
         try {
-            const data = await api<CompleteResponse>('/api/ai/complete', {
+            // Image tasks have their own route: it accepts the large body a photo needs, which
+            // the text route deliberately does not.
+            const data = await api<CompleteResponse>(scanning ? '/api/ai/vision' : '/api/ai/complete', {
                 method: 'POST',
                 body: {
                     task,
                     prompt: prompt.trim(),
                     ...(systemPrompt.trim() ? { system: systemPrompt.trim() } : {}),
+                    ...(scanning && image ? { images: [{ mimeType: image.mimeType, data: image.data }] } : {}),
                 },
             });
             setResponse(data);
@@ -156,7 +275,7 @@ export function CloudflareAIDemoPage() {
         } finally {
             setSending(false);
         }
-    }, [prompt, signedIn, systemPrompt, task]);
+    }, [image, prompt, scanning, signedIn, systemPrompt, task]);
 
     const createEmbedding = useCallback(async () => {
         if (!signedIn || embeddingInputs.length === 0) return;
@@ -312,7 +431,7 @@ export function CloudflareAIDemoPage() {
                         <CardContent className="space-y-5">
                             <div className="space-y-2">
                                 <Label>Task</Label>
-                                <Select value={task} onValueChange={setTask}>
+                                <Select value={task} onValueChange={changeTask}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a task" />
                                     </SelectTrigger>
@@ -342,6 +461,44 @@ export function CloudflareAIDemoPage() {
                                 />
                             </div>
 
+                            {scanning ? (
+                                <div className="space-y-2">
+                                    <Label htmlFor="ai-image">Image</Label>
+                                    {image ? (
+                                        <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-2">
+                                            <img
+                                                src={image.previewUrl}
+                                                alt=""
+                                                className="h-14 w-14 rounded-md object-cover ring-1 ring-border"
+                                            />
+                                            <span className="min-w-0 flex-1 truncate text-sm">{image.name}</span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label="Remove image"
+                                                onClick={() => setImage(null)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            id="ai-image"
+                                            type="file"
+                                            accept={IMAGE_TYPES.join(',')}
+                                            onChange={(event) => {
+                                                void attachImage(event.target.files?.[0]);
+                                                event.target.value = '';
+                                            }}
+                                        />
+                                    )}
+                                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <ImageIcon className="h-3.5 w-3.5" /> JPEG, PNG, GIF or WebP. Large photos are
+                                        resized before upload.
+                                    </p>
+                                </div>
+                            ) : null}
+
                             <div className="space-y-2">
                                 <Label htmlFor="ai-system">
                                     System instruction <span className="text-muted-foreground">(optional)</span>
@@ -355,7 +512,10 @@ export function CloudflareAIDemoPage() {
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">
-                                <Button onClick={() => void send()} disabled={sending || !prompt.trim() || !signedIn}>
+                                <Button
+                                    onClick={() => void send()}
+                                    disabled={sending || !prompt.trim() || !signedIn || (scanning && !image)}
+                                >
                                     {sending ? 'Thinking…' : 'Send message'}
                                 </Button>
                                 <span className="text-xs text-muted-foreground">
@@ -387,9 +547,15 @@ export function CloudflareAIDemoPage() {
                                             <span className="text-xs text-muted-foreground">{response.model}</span>
                                         ) : null}
                                     </div>
-                                    <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm leading-6 ring-1 ring-border">
-                                        {response.text}
-                                    </div>
+                                    {response.json ? (
+                                        <pre className="overflow-x-auto rounded-lg bg-background p-4 font-mono text-xs leading-6 ring-1 ring-border">
+                                            {JSON.stringify(response.json, null, 2)}
+                                        </pre>
+                                    ) : (
+                                        <div className="whitespace-pre-wrap rounded-lg bg-background p-4 text-sm leading-6 ring-1 ring-border">
+                                            {response.text}
+                                        </div>
+                                    )}
                                     {response.usage ? (
                                         <p className="text-xs text-muted-foreground">
                                             {response.usage.input} input · {response.usage.output} output

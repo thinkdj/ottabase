@@ -306,7 +306,14 @@ export function AdminAiPage() {
                                         {task.requiredCapabilities.length
                                             ? ` · needs ${task.requiredCapabilities.join(', ')}`
                                             : ''}
+                                        {task.maxTokens ? ` · ${task.maxTokens.toLocaleString()} max tokens` : ''}
                                     </p>
+                                    {task.platformRouteGaps.length ? (
+                                        <p className="mt-1 text-xs text-warning">
+                                            The platform route cannot carry {task.platformRouteGaps.join(', ')} — this
+                                            task runs on tenant keys only.
+                                        </p>
+                                    ) : null}
                                 </div>
                             ))}
                         </CardContent>

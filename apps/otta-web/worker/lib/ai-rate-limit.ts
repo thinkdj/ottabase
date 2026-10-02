@@ -234,3 +234,45 @@ export function platformSpendWarning(
 
     return null;
 }
+
+export interface RequestThrottleOptions {
+    store: RateLimitStore | null;
+    /** Isolation prefix, as for the inference limiter. */
+    appId: string;
+    /** Bucket name, so two throttled routes never share a budget. */
+    name: string;
+    /** Requests per user per minute. */
+    perMinute: number;
+    now?: () => number;
+}
+
+/**
+ * A per-user fixed-window throttle for work done BEFORE resolution.
+ *
+ * The inference limiter above is the package's `quota` hook, so it runs after the body is
+ * parsed and the credential resolved. That is right for SPEND, and wrong for a route whose
+ * expensive step comes first: `/api/ai/vision` reads and parses up to ~12 MB of base64 before
+ * the quota hook is ever reached. This bounds how often one account can make the Worker do
+ * that.
+ *
+ * FAILS OPEN on a missing or failing store, unlike the spend limiter: no money is at stake
+ * here (platform spend still fails closed in the quota hook), and the hard body cap still
+ * bounds each request. Approximate under concurrency for the same reasons as above.
+ */
+export function createRequestThrottle(options: RequestThrottleOptions): (userId: string) => Promise<boolean> {
+    const now = options.now ?? (() => Date.now());
+    return async (userId) => {
+        if (!options.store || options.perMinute <= 0) return true;
+        const window = Math.floor(now() / 1000 / WINDOW_SECONDS);
+        const key = `${KEY_PREFIX}${options.appId}:${options.name}:user:${userId}:${window}`;
+        try {
+            const count = Number((await options.store.get(key)) ?? '0');
+            const current = Number.isFinite(count) && count > 0 ? count : 0;
+            if (current >= options.perMinute) return false;
+            await options.store.put(key, String(current + 1), { expirationTtl: WINDOW_SECONDS * 2 });
+            return true;
+        } catch {
+            return true;
+        }
+    };
+}

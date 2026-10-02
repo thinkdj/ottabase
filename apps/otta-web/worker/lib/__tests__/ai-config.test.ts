@@ -112,6 +112,31 @@ describe('getAiConfigSnapshot', () => {
         expect(snapshot.platform.missing).toContainEqual(expect.stringMatching(/cannot serve dynamic routes/));
     });
 
+    it('names a task whose platform ROUTE cannot carry what it needs (scan on Unified Billing)', () => {
+        const unified = getAiConfigSnapshot(
+            env({
+                CFAI_OPENAI_API_KEY: undefined,
+                CFAI_GATEWAY_TOKEN: undefined,
+                CFAI_API_TOKEN: 'cf-api-token',
+                OTTAAI_PLATFORM_BILLING: 'unified',
+            }),
+        );
+        expect(unified.tasks.find((task) => task.key === 'scan')?.platformRouteGaps).toEqual(['vision']);
+        expect(unified.tasks.find((task) => task.key === 'assist')?.platformRouteGaps).toEqual([]);
+        expect(unified.platform.missing).toContainEqual(expect.stringMatching(/cannot carry vision for scan/));
+
+        // The provider-native route reads images, so there is nothing to report.
+        const native = getAiConfigSnapshot(env());
+        expect(native.tasks.find((task) => task.key === 'scan')?.platformRouteGaps).toEqual([]);
+        expect(native.platform.missing).not.toContainEqual(expect.stringMatching(/cannot carry/));
+    });
+
+    it("surfaces each task's output budget", () => {
+        const snapshot = getAiConfigSnapshot(env());
+        expect(snapshot.tasks.find((task) => task.key === 'scan')?.maxTokens).toBe(4096);
+        expect(snapshot.tasks.find((task) => task.key === 'embed')?.maxTokens).toBeNull();
+    });
+
     it('marks Azure servable only when all three destination values are set', () => {
         const incomplete = getAiConfigSnapshot(env({ CFAI_AZURE_RESOURCE_NAME: 'res' }));
         expect(incomplete.platform.azure.configured).toBe(false);

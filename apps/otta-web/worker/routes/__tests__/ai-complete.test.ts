@@ -30,7 +30,7 @@ vi.mock('../../lib/auth-utils', () => ({
 
 import { clearConnection, registerConnection } from '@ottabase/ottaorm';
 import { resetCredentialWrites } from '@ottabase/ottaai/ottaorm';
-import { handleAiComplete, handleAiEmbed } from '../ai';
+import { handleAiComplete, handleAiEmbed, handleAiVision } from '../ai';
 
 // ---------------------------------------------------------------------------
 // Stubs for the three external boundaries
@@ -449,7 +449,7 @@ describe('inference is rate limited, and platform spend fails CLOSED without a l
         // chunked bodies. The real bound is the per-task character limit on the parsed value.
         const request = new Request('http://localhost/api/ai/complete', {
             method: 'POST',
-            headers: { 'content-type': 'application/json', 'content-length': String(2 * 1024 * 1024) },
+            headers: { 'content-type': 'application/json', 'content-length': String(13 * 1024 * 1024) },
             body: JSON.stringify({ prompt: 'hi' }),
         });
 
@@ -473,5 +473,175 @@ describe('an incomplete platform config degrades honestly', () => {
         expect(res.status).toBe(501);
         expect(await res.json()).toMatchObject({ code: 'NOT_CONFIGURED' });
         expect(outbound).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Images in, JSON out — POST /api/ai/vision
+// ---------------------------------------------------------------------------
+
+/** 1x1 transparent PNG. */
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const image = { mimeType: 'image/png', data: PNG };
+
+function visionPost(body: unknown, envOverrides: Record<string, unknown> = {}) {
+    return {
+        request: new Request('http://localhost/api/ai/vision', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: typeof body === 'string' ? body : JSON.stringify(body),
+        }),
+        env: env(envOverrides),
+    } as never;
+}
+
+/** A body with NO Content-Length — the case a header check alone never sees. */
+function chunkedRequest(url: string, bytes: number) {
+    const chunk = new TextEncoder().encode('x'.repeat(64 * 1024));
+    let sent = 0;
+    return new Request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: new ReadableStream<Uint8Array>({
+            pull(controller) {
+                if (sent >= bytes) return controller.close();
+                sent += chunk.byteLength;
+                controller.enqueue(chunk);
+            },
+        }),
+        // @ts-expect-error — required by undici for a streamed request body
+        duplex: 'half',
+    });
+}
+
+describe('POST /api/ai/vision: images in, a JSON object out', () => {
+    it('sends the image and asks for JSON on the documented OpenAI wire, then returns the parsed object', async () => {
+        vi.stubGlobal('fetch', stubFetch({ choices: [{ message: { content: '{"total":12.5}' } }], usage: {} }));
+
+        const res = await handleAiVision(visionPost({ prompt: 'Read the total', images: [image] }));
+
+        expect(res.status).toBe(200);
+        expect(await res.json()).toMatchObject({ json: { total: 12.5 }, source: 'platform', provider: 'openai' });
+
+        const body = outbound[0]!.body as { messages: Array<{ role: string; content: unknown }> } & Record<
+            string,
+            unknown
+        >;
+        expect(body.response_format).toEqual({ type: 'json_object' });
+        // The TASK's budget (scan: 4096), on OpenAI's non-deprecated field.
+        expect(body.max_completion_tokens).toBe(4096);
+        expect(body.max_tokens).toBeUndefined();
+        expect(body.messages.at(-1)).toEqual({
+            role: 'user',
+            content: [
+                { type: 'text', text: 'Read the total' },
+                { type: 'image_url', image_url: { url: `data:image/png;base64,${PNG}` } },
+            ],
+        });
+    });
+
+    it('502s a reply that is not a JSON object instead of returning prose as data', async () => {
+        vi.stubGlobal('fetch', stubFetch({ choices: [{ message: { content: 'I cannot read this.' } }], usage: {} }));
+        const res = await handleAiVision(visionPost({ prompt: 'Read the total', images: [image] }));
+        expect(res.status).toBe(502);
+        expect(await res.json()).toMatchObject({ code: 'INVALID_RESPONSE' });
+    });
+
+    it('refuses a task that does not read images', async () => {
+        const res = await handleAiVision(visionPost({ task: 'assist', prompt: 'hi', images: [image] }));
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: expect.stringMatching(/does not read images/) });
+        expect(outbound).toHaveLength(0);
+    });
+
+    it('validates untrusted image payloads with constant-time checks before any resolution', async () => {
+        const bad = [
+            undefined,
+            [],
+            'not-an-array',
+            [{ mimeType: 'image/png', data: `data:image/png;base64,${PNG}` }],
+            [{ mimeType: 'image/svg+xml', data: PNG }],
+            [{ mimeType: 'image/png', data: 42 }],
+            [null],
+            Array.from({ length: 5 }, () => image),
+        ];
+        for (const images of bad) {
+            const res = await handleAiVision(visionPost({ prompt: 'Read the total', images }));
+            expect(res.status).toBe(400);
+        }
+        expect(outbound).toHaveLength(0);
+    });
+
+    it('leaves the full base64 scan to the package — malformed data is VALIDATION, still before any request', async () => {
+        const res = await handleAiVision(
+            visionPost({ prompt: 'Read the total', images: [{ mimeType: 'image/png', data: 'not base64!!' }] }),
+        );
+        expect(res.status).toBe(422);
+        expect(await res.json()).toMatchObject({ code: 'VALIDATION' });
+        expect(outbound).toHaveLength(0);
+    });
+
+    it('enforces the configured per-image byte budget', async () => {
+        // 4,194,306 decoded bytes (4 MB + 2), as unpadded base64.
+        const big = 'A'.repeat(5_592_408);
+        const res = await handleAiVision(
+            visionPost({ prompt: 'Read the total', images: [{ mimeType: 'image/png', data: big }] }),
+        );
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: expect.stringMatching(/limited to 4 MB/) });
+        expect(outbound).toHaveLength(0);
+    });
+
+    it('throttles each user BEFORE the body is read', async () => {
+        vi.stubGlobal('fetch', stubFetch({ choices: [{ message: { content: '{"ok":true}' } }], usage: {} }));
+        // features.ottaai.images.perUserPerMinute defaults to 10.
+        for (let i = 0; i < 10; i++) {
+            expect((await handleAiVision(visionPost({ prompt: 'Read', images: [image] }))).status).toBe(200);
+        }
+        // The 11th is refused without parsing: an unparseable body still gets the 429.
+        const refused = await handleAiVision(visionPost('{not json'));
+        expect(refused.status).toBe(429);
+        expect(await refused.json()).toMatchObject({ code: 'RATE_LIMITED' });
+    });
+
+    it('caps a body with no Content-Length by the bytes actually read', async () => {
+        const res = await handleAiVision({
+            request: chunkedRequest('http://localhost/api/ai/vision', 16 * 1024 * 1024),
+            env: env(),
+        } as never);
+        expect(res.status).toBe(413);
+    });
+});
+
+describe('POST /api/ai/complete stays a small, text-only body', () => {
+    it('refuses images and points at /vision', async () => {
+        const res = await handleAiComplete(post({ task: 'assist', prompt: 'hi', images: [image] }));
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: expect.stringMatching(/\/api\/ai\/vision/) });
+        expect(outbound).toHaveLength(0);
+    });
+
+    it('refuses an image task, which belongs on /vision', async () => {
+        const res = await handleAiComplete(post({ task: 'scan', prompt: 'hi' }));
+        expect(res.status).toBe(400);
+    });
+
+    it('caps the body at 512 KB again — by bytes read, not only by Content-Length', async () => {
+        const declared = new Request('http://localhost/api/ai/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'content-length': String(600 * 1024) },
+            body: JSON.stringify({ prompt: 'hi' }),
+        });
+        expect((await handleAiComplete({ request: declared, env: env() } as never)).status).toBe(413);
+
+        const chunked = chunkedRequest('http://localhost/api/ai/complete', 600 * 1024);
+        expect((await handleAiComplete({ request: chunked, env: env() } as never)).status).toBe(413);
+        expect(outbound).toHaveLength(0);
+    });
+
+    it("sends the TASK's output budget, not a route constant", async () => {
+        await handleAiComplete(post({ task: 'assist', prompt: 'hi' }));
+        expect(outbound[0]!.body.max_completion_tokens).toBe(1024);
+        expect(outbound[0]!.body.response_format).toBeUndefined();
     });
 });
