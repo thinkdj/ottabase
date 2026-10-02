@@ -10,6 +10,10 @@ name: Build and Cache Packages
 on:
     workflow_dispatch: # Allow manual triggers
     workflow_call: # Allow being called from other workflows
+        secrets:
+            TURBO_API: { required: false }
+            TURBO_TOKEN: { required: false }
+            TURBO_REMOTE_CACHE_SIGNATURE_KEY: { required: false }
         outputs:
             cache-key:
                 description: "The cache key for the built packages"
@@ -20,13 +24,6 @@ on:
 
 permissions:
     contents: read
-
-# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
-env:
-    TURBO_API: ${{ secrets.TURBO_API }}
-    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-    TURBO_TEAM: ottabase
-    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
 jobs:
     build-packages:
@@ -80,8 +77,6 @@ jobs:
                       packages/*/dist
                       .turbo
                   key: ${{ steps.cache-info.outputs.cache-key }}
-                  restore-keys: |
-                      packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
 
             # Only install and build if cache miss
             - name: Install dependencies
@@ -95,6 +90,11 @@ jobs:
                   pnpm run build:pkg
               env:
                   NODE_ENV: production
+                  # Turborepo remote cache (apps/otta-cache): only the step that runs turbo sees these.
+                  TURBO_API: ${{ secrets.TURBO_API }}
+                  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+                  TURBO_TEAM: ottabase
+                  TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
             # Save to cache if we built
             - name: Save packages cache

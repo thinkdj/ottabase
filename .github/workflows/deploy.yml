@@ -15,13 +15,6 @@ on:
 permissions:
     contents: read
 
-# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
-env:
-    TURBO_API: ${{ secrets.TURBO_API }}
-    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-    TURBO_TEAM: ottabase
-    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
-
 # Prevent overlapping production deploys: queue rather than cancel a mid-flight deploy
 concurrency:
     group: production-deploy-${{ github.ref }}
@@ -47,13 +40,18 @@ jobs:
                     echo "✅ No #skipdeploy – deployment will run"
                   fi
 
-    # Build and cache packages first (reusable workflow)
+    # Build and cache packages (reusable workflow) — only when the matrix has something to deploy,
+    # so docs-only / #skipdeploy pushes don't spend a runner on a build nobody consumes.
     build-packages:
-        needs: check-skip-deploy
-        if: needs.check-skip-deploy.outputs.skip_deploy != 'true'
+        needs: prepare-deployment
+        if: needs.prepare-deployment.outputs.has-apps == 'true'
         name: Build Packages
         uses: ./.github/workflows/build-packages.yml
-        secrets: inherit # TURBO_* must reach the reusable workflow, else it builds with no remote cache
+        # Only the remote-cache secrets; absent (fork PRs) => turbo runs local-only.
+        secrets:
+            TURBO_API: ${{ secrets.TURBO_API }}
+            TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+            TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
     # Prepare deployment matrix based on target apps and code changes
     prepare-deployment:
@@ -314,8 +312,6 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v7
-              with:
-                  fetch-depth: 0 # Need full history for Turbo change detection
 
             - name: Load app configuration
               id: config
@@ -401,6 +397,21 @@ jobs:
                   echo ""
                   echo "✅ All required secrets are configured"
 
+            # Generate production wrangler config: substitutes env.production placeholders from GitHub Secrets.
+            # Runs before install/build on purpose: SECRETS_JSON is the whole secrets bag, so it must
+            # only reach the repo's own script, before any dependency or build code can touch the tree.
+            - name: Generate production wrangler config
+              if: github.ref == 'refs/heads/main'
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  echo "🔧 Generating production wrangler configuration..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
+              env:
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  OUTPUT_FILE: wrangler.production.jsonc
+                  TARGET_ENV: production
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+
             - name: Setup pnpm
               uses: pnpm/action-setup@v6
 
@@ -423,7 +434,7 @@ jobs:
                       ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-
                       ${{ runner.os }}-turbo-
 
-            # Cache framework-specific build outputs
+            # Next.js incremental build cache (vite build always empties dist, so it has no equivalent)
             - name: Cache Next.js builds
               if: steps.config.outputs.app-type == 'nextjs'
               uses: actions/cache@v6
@@ -440,22 +451,6 @@ jobs:
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-
-
-            - name: Cache Vite builds
-              if: steps.config.outputs.app-type == 'vite'
-              uses: actions/cache@v6
-              with:
-                  path: |
-                      apps/${{ matrix.folder }}/dist
-                      apps/${{ matrix.folder }}/node_modules/.vite
-                  key:
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
-                      hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
-                  restore-keys: |
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-
 
             # Verify build tools are accessible
             - name: Verify build tools
@@ -480,8 +475,6 @@ jobs:
             # Restore pre-built packages from cache (built by build-packages job).
             # Uses the key emitted by build-packages directly — no hash recomputation here.
             # This is the single source of truth: same key that was saved = guaranteed hit.
-            # Fallback restore-key covers the edge case where build-packages was skipped
-            # (e.g. workflow_dispatch without build-packages running).
             - name: Restore cached packages
               uses: actions/cache/restore@v6
               with:
@@ -489,8 +482,6 @@ jobs:
                       packages/*/dist
                       .turbo
                   key: ${{ needs.build-packages.outputs.cache-key }}
-                  restore-keys: |
-                      packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
                   fail-on-cache-miss: true # Fail if cache not found (should always exist from build-packages job)
 
             # Build the app and all its dependencies
@@ -682,20 +673,6 @@ jobs:
                   fi
 
                   echo "✅ Worker bundle structure verified - all required paths exist"
-
-            # Generate production wrangler config from template
-            # Auto-detects placeholders in env.production and substitutes from GitHub Secrets
-            - name: Generate production wrangler config
-              if: github.ref == 'refs/heads/main'
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔧 Generating production wrangler configuration..."
-                  python ../../.github/scripts/substitute-wrangler-secrets.py
-              env:
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  OUTPUT_FILE: wrangler.production.jsonc
-                  TARGET_ENV: production
-                  SECRETS_JSON: ${{ toJson(secrets) }}
 
             # Verify generated config exists (substitution runs before deploy)
             - name: Verify production wrangler config

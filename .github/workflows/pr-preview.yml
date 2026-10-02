@@ -19,13 +19,6 @@ concurrency:
 permissions:
     contents: read
 
-# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
-env:
-    TURBO_API: ${{ secrets.TURBO_API }}
-    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-    TURBO_TEAM: ottabase
-    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
-
 jobs:
     # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview
     check-preview-requested:
@@ -63,16 +56,20 @@ jobs:
                     echo "⏭️  Skipping PR preview: add #deploy or #preview to PR title/description, or run manually"
                   fi
 
-    # Build and cache packages first (reusable workflow)
+    # Build and cache packages (reusable workflow) — only when the preview matrix has something to deploy
     build-packages:
-        needs: check-preview-requested
-        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
+        needs: prepare-deployment
+        if: needs.prepare-deployment.outputs.has-apps == 'true'
         uses: ./.github/workflows/build-packages.yml
-        secrets: inherit # TURBO_* must reach the reusable workflow, else it builds with no remote cache
+        # Only the remote-cache secrets; absent (fork PRs) => turbo runs local-only.
+        secrets:
+            TURBO_API: ${{ secrets.TURBO_API }}
+            TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+            TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
     # Prepare deployment matrix for preview environments (runs only when preview is requested)
     prepare-deployment:
-        needs: [build-packages, check-preview-requested]
+        needs: check-preview-requested
         if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
         runs-on: ubuntu-24.04
         timeout-minutes: 5
@@ -227,13 +224,16 @@ jobs:
 
             - name: Compute preview worker name
               id: preview-name
+              env:
+                  PR_NUMBER_INPUT: ${{ inputs.pr_number }} # free text: never interpolate into the script
               run: |
                   BASE_NAME="${{ matrix.config.workerName || matrix.folder }}"
 
                   if [ "${{ github.event_name }}" = "pull_request" ]; then
                     SUFFIX="pr-${{ github.event.pull_request.number }}"
-                  elif [ -n "${{ inputs.pr_number }}" ]; then
-                    SUFFIX="pr-${{ inputs.pr_number }}"
+                  elif [ -n "$PR_NUMBER_INPUT" ]; then
+                    [[ "$PR_NUMBER_INPUT" =~ ^[0-9]+$ ]] || { echo "❌ pr_number must be numeric"; exit 1; }
+                    SUFFIX="pr-${PR_NUMBER_INPUT}"
                   else
                     SUFFIX="manual-${{ github.run_number }}"
                   fi
@@ -314,6 +314,19 @@ jobs:
                   echo ""
                   echo "✅ All required secrets are configured"
 
+            # Runs before install/build on purpose: SECRETS_JSON is the whole secrets bag, so it must
+            # only reach the repo's own script, before any dependency or build code can touch the tree.
+            - name: Generate preview wrangler config
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  echo "🔧 Generating preview wrangler config..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
+              env:
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  OUTPUT_FILE: wrangler.preview.jsonc
+                  TARGET_ENV: preview
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+
             - name: Setup pnpm
               uses: pnpm/action-setup@v6
 
@@ -352,22 +365,6 @@ jobs:
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-
 
-            - name: Cache Vite builds
-              if: steps.config.outputs.app-type == 'vite'
-              uses: actions/cache@v6
-              with:
-                  path: |
-                      apps/${{ matrix.folder }}/dist
-                      apps/${{ matrix.folder }}/node_modules/.vite
-                  key:
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
-                      hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
-                  restore-keys: |
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-vite-${{ matrix.folder }}-
-
             - name: Verify build tools
               run: |
                   echo "🔍 Verifying build tool installation..."
@@ -384,32 +381,14 @@ jobs:
 
                   echo "✅ Build tools verified"
 
-            - name: Restore packages cache
-              id: restore-packages
-              run: |
-                  echo "📦 Restoring pre-built packages from cache..."
-
-                  # Must match build-packages.yml key: LOCK + ROOT + PACKAGE hashes
-                  PACKAGE_HASH=$(find packages -type f \
-                    -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
-                    | sort | xargs cat | sha256sum | cut -d' ' -f1)
-
-                  LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
-                  ROOT_HASH=$(cat turbo.json package.json pnpm-workspace.yaml | sha256sum | cut -d' ' -f1)
-                  CACHE_KEY="packages-build-${LOCK_HASH}-${ROOT_HASH}-${PACKAGE_HASH}"
-
-                  echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
-                  echo "📦 Cache key: ${CACHE_KEY}"
-
+            # Same key build-packages saved under (as deploy.yml does) — no recomputation to drift.
             - name: Restore cached packages
               uses: actions/cache/restore@v6
               with:
                   path: |
                       packages/*/dist
                       .turbo
-                  key: ${{ steps.restore-packages.outputs.cache-key }}
-                  restore-keys: |
-                      packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
+                  key: ${{ needs.build-packages.outputs.cache-key }}
                   fail-on-cache-miss: true
 
             - name: Build application
@@ -502,17 +481,6 @@ jobs:
                   fi
 
                   echo "✅ Worker bundle structure verified - all required paths exist"
-
-            - name: Generate preview wrangler config
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔧 Generating preview wrangler config..."
-                  python ../../.github/scripts/substitute-wrangler-secrets.py
-              env:
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  OUTPUT_FILE: wrangler.preview.jsonc
-                  TARGET_ENV: preview
-                  SECRETS_JSON: ${{ toJson(secrets) }}
 
             - name: Verify preview wrangler config
               working-directory: apps/${{ matrix.folder }}

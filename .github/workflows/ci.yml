@@ -10,12 +10,10 @@ on:
 permissions:
     contents: read
 
-# Turborepo remote cache (apps/otta-cache). Absent secrets (fork PRs) => turbo runs local-only.
-env:
-    TURBO_API: ${{ secrets.TURBO_API }}
-    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-    TURBO_TEAM: ottabase
-    TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+# A new push to the same PR supersedes the running check.
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
     # Build & Test on ubuntu-latest
@@ -61,32 +59,15 @@ jobs:
 
             - name: Run CI (Lint, Type-Check, Build, Test)
               run: pnpm run ci:check
+              # Turborepo remote cache (apps/otta-cache): only the step that runs turbo sees these.
+              # Absent secrets (fork PRs) => turbo runs local-only.
+              env:
+                  TURBO_API: ${{ secrets.TURBO_API }}
+                  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+                  TURBO_TEAM: ottabase
+                  TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
-    # Validate Cloudflare configuration
-    validate-cloudflare:
-        name: Validate Cloudflare Config
-        runs-on: ubuntu-24.04
-        needs: test
-        timeout-minutes: 10
-
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v7
-
-            - name: Install pnpm
-              uses: pnpm/action-setup@v6
-              with:
-                  version: 10.27.0
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v7
-              with:
-                  node-version: "24"
-                  cache: "pnpm"
-
-            - name: Install Dependencies
-              run: pnpm install --frozen-lockfile
-
+            # Same job (not a separate one): reuses the install above instead of paying for a second runner + install.
             - name: Validate Cloudflare Configuration
               id: cf-validate
               run: pnpm cf:validate -- --force
