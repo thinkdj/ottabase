@@ -5,22 +5,32 @@
 
 import { logAudit, extractRequestContext } from '@ottabase/audit';
 
+/** The acting user behind a brand mutation, as resolved by the app's admin guard. */
+export interface BrandAuditUser {
+    userId?: string;
+    userEmail?: string;
+    /** Org the actor was authorized in; recorded so tenant-scoped audit views can see the row. */
+    organizationId?: string;
+}
+
 /**
  * Log brand-related action to audit. Non-blocking – failures are caught.
- * Pass userId/userEmail from the logged-in user; omit when unauthenticated (stores NULL, avoids FK violation).
+ * Pass the logged-in actor; omit when unauthenticated (stores NULL, avoids FK violation).
+ * `appId` scopes the row to the app the brand kit belongs to (null = system default kit).
  */
 export async function logBrandAudit(
     action: 'brand.update' | 'brand.apply' | 'brand.logo.upload' | 'brand.kit.update' | 'brand.kit.logo.upload',
     request: Request,
-    metadata: Record<string, unknown>,
-    userId?: string,
-    userEmail?: string,
+    metadata: { appId: string | null } & Record<string, unknown>,
+    actor?: BrandAuditUser,
 ): Promise<void> {
     try {
-        const ctx = extractRequestContext(request, userId, userEmail);
+        const ctx = extractRequestContext(request, actor?.userId, actor?.userEmail);
         await logAudit({
             userId: ctx.userId,
             userEmail: ctx.userEmail,
+            organizationId: actor?.organizationId,
+            appId: metadata.appId ?? undefined,
             action,
             resourceType: 'brand',
             metadata: {

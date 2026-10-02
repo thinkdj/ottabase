@@ -248,8 +248,16 @@ const analyticsRoute = new Route({
                   ? 'shortlinks'
                   : 'core',
     }),
+    // Analytics Engine totals are platform-wide (no org), so the worker APIs are system-admin only;
+    // this gate just avoids rendering a page whose data would 403.
     component: lazyRouteComponent(() =>
-        import('@/pages/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+        import('@/pages/analytics/AnalyticsPage').then(({ AnalyticsPage }) => ({
+            default: () => (
+                <ProtectedRoute requirePlatformAdmin fallback={<AdminPrivilegeFallback />}>
+                    <AnalyticsPage />
+                </ProtectedRoute>
+            ),
+        })),
     ),
 });
 

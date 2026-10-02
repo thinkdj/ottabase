@@ -30,17 +30,19 @@ import {
     handleUpdateMenu,
     handleUpdateMenuItem,
     handleUploadBrandKitLogo,
+    type BrandAuditUser,
 } from '@ottabase/brand-engine/handlers';
 import { requireBrandEditAccess, type AdminContext } from '../lib/admin-guard';
 import { brandEnv, getAppId } from '../lib/brand-utils';
 import type { ApiRouteContext } from './router';
 
-function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string } | undefined {
+function toAuditUser(guard: AdminContext): BrandAuditUser | undefined {
     const u = guard.user;
     if (!u) return undefined;
     return {
         userId: (typeof u.get === 'function' ? u.get('id') : u.id) ?? undefined,
         userEmail: (typeof u.get === 'function' ? u.get('email') : u.email) ?? undefined,
+        organizationId: guard.organizationId ?? undefined,
     };
 }
 

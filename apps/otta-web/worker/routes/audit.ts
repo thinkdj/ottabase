@@ -3,7 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
-import { isDevEnvironment, requireSessionOrDev } from '../lib/utils';
+import { requireSignedIn } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 export interface AuditRouteContext {
@@ -23,9 +23,8 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     const userId = session?.user?.id;
-    const isDev = isDevEnvironment(env);
 
-    const authError = requireSessionOrDev(userId, env);
+    const authError = requireSignedIn(userId);
     if (authError) return authError;
 
     const sessionUser = session?.user as any | undefined;
@@ -33,19 +32,19 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
 
     // Admin status is validated against the live RBAC context, not the session snapshot's
     // role names — role names alone are ambiguous ('owner' exists in every personal org).
-    // Non-admins fall through to seeing their own rows only.
-    const adminAuth = isDev
-        ? null
-        : await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'either' });
+    // Non-admins fall through to seeing their own rows only. No dev bypass: wrangler.jsonc's
+    // top-level ENVIRONMENT is 'development', so a deploy without --env would otherwise hand
+    // every signed-in user every tenant's audit rows.
+    const adminAuth = await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'either' });
     const adminContext = adminAuth && !(adminAuth instanceof Response) ? adminAuth : null;
-    const isAdmin = isDev || adminContext !== null;
+    const isAdmin = adminContext !== null;
 
     // Audit rows are tenant data: admins — the platform owner included — only see rows for
     // organizations they are an active member of. A system-scope admin additionally sees
     // platform-level rows (organization_id 'system' or NULL, e.g. migrations), but never
-    // another tenant's rows. allowedOrgIds === null means unconstrained (dev only).
+    // another tenant's rows.
     const isSystemAdmin = adminContext?.organizationId === SYSTEM_ORGANIZATION_ID;
-    let allowedOrgIds: string[] | null = null;
+    let allowedOrgIds: string[] = [];
     if (adminContext && userId) {
         const memberships = await env.OBCF_D1.prepare(
             `SELECT organization_id FROM organization_members WHERE user_id = ? AND status = 'active'`,
@@ -79,11 +78,6 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
         if (userOrgId) {
             conditions.push('organization_id = ?');
             values.push(userOrgId);
-        }
-    } else if (allowedOrgIds === null) {
-        if (requestedOrgId) {
-            conditions.push('organization_id = ?');
-            values.push(requestedOrgId);
         }
     } else if (requestedOrgId) {
         if (!allowedOrgIds.includes(requestedOrgId)) {

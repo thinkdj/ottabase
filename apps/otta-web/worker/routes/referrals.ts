@@ -1,5 +1,5 @@
 import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@ottabase/analytics/query';
-import { trackEvent } from '@ottabase/analytics/track';
+import { getRequestCountry, trackEvent } from '@ottabase/analytics/track';
 import { getSession } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
@@ -8,8 +8,10 @@ import { ReferralTracking } from '@ottabase/referrals';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
-import { readJson, requireSessionOrDev } from '../lib/utils';
+import { readJson } from '../lib/utils';
+import type { ApiRouteContext } from './router';
 
 export interface ReferralRouteContext {
     request: Request;
@@ -52,7 +54,7 @@ export async function handleReferralTrack(context: ReferralRouteContext): Promis
             dataset: env.OBCF_ANALYTICS_REFERRALS,
             index: body.referralCode,
             blobs: [
-                request.headers.get('cf-connecting-country') ?? 'unknown',
+                getRequestCountry(request),
                 (request.headers.get('user-agent') ?? '').slice(0, 200),
                 (body.referer || request.headers.get('Referer') || '').slice(0, 500),
                 referrer.get('id') ?? '',
@@ -223,16 +225,15 @@ export async function handleReferralTrackingList(context: ReferralRouteContext):
 
 /**
  * Handle GET /api/referrals/analytics - query WAE for referral click analytics
- * Requires auth. Params: referralCode (optional), days (default 7), groupBy (country|referralCode|day)
+ * Requires a system-scope admin. Params: referralCode (optional), days (default 7), groupBy (country|referralCode|day)
  */
 export async function handleReferralsAnalytics(context: ReferralRouteContext): Promise<Response> {
-    const { env, request, url } = context;
+    const { env, url } = context;
 
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    const userId = session?.user?.id;
-
-    const authError = requireSessionOrDev(userId, env);
-    if (authError) return authError;
+    // Analytics Engine rows carry no organization, so these totals are platform-wide:
+    // only a system-scope admin may read them.
+    const auth = await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,

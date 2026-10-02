@@ -65,10 +65,22 @@ export interface AuditRequestContext {
 }
 
 /**
+ * Who performed an audited request. Resolve it from a verified session — never from request headers.
+ */
+export interface AuditActor {
+    userId?: string;
+    userEmail?: string;
+    organizationId?: string;
+    appId?: string;
+}
+
+/**
  * Audit middleware options
  */
 export interface AuditMiddlewareOptions {
     resourceType: string;
+    /** Resolves the acting user from a verified session. Omit to log without a user. */
+    getActor?: (request: Request) => AuditActor | null | undefined | Promise<AuditActor | null | undefined>;
     action?: AuditAction | string;
     getResourceId?: (request: Request, params?: any) => string | Promise<string | undefined>;
     getChanges?: (request: Request, params?: any) => Record<string, any> | Promise<Record<string, any> | undefined>;

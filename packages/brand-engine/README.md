@@ -99,21 +99,25 @@ const primary = getToken(DEFAULT_COLORS_LIGHT, 'colors.primary.500');
 
 ### Preset Expansion (Server-Side)
 
+Preset expansion is internal to the brand-kit handlers (`handleCreateBrandKit` / `handleUpdateBrandKit` in
+`@ottabase/brand-engine/handlers`): when a request sets `themePresetId`, the preset is expanded to full tokens and
+merged with any custom `tokensJson` overrides (cursors, which presets don't define, are preserved) before the kit is
+saved. Send the preset id through the brand-kit API rather than expanding it yourself:
+
 ```typescript
-import { expandPresetToTokens } from '@ottabase/brand-engine/handlers';
-
-// When user selects a preset, expand it to full tokens and save to DB
-const tokensJson = expandPresetToTokens('verdant', null);
-await brandKit.set('tokensJson', tokensJson).save();
-
-// Custom color overrides are merged; cursors (not in presets) are preserved
-const customTokensJson = expandPresetToTokens('verdant', existingTokensJson);
+// PUT /api/brand/kits/:id — the handler expands the preset and merges overrides
+// (api = useApiClient() from @ottabase/ottaorm/client; customOverrides = partial tokens object or null)
+await api(`/api/brand/kits/${kitId}`, {
+    method: 'PUT',
+    body: { themePresetId: 'verdant', tokensJson: customOverrides },
+});
 ```
 
 ### Load and Apply Theme (Client & Server)
 
 ```typescript
-import { brandKitToTheme, applyBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme } from '@ottabase/brand-engine';
+import { brandKitToTheme } from '@ottabase/brand-engine/persistence';
 
 // Load brand kit from DB
 const kit = await BrandKit.findByAppId(appId);
@@ -186,12 +190,16 @@ Wire in your Cloudflare Worker via handlers from `@ottabase/brand-engine/handler
 | POST   | `/api/brand/kits/:id/clone` | Clone brand kit                               |
 | POST   | `/api/brand/kits/:id/logo`  | Upload logo (logo, logo-dark, icon, og-image) |
 | GET    | `/api/brand/layouts`        | List layout templates                         |
-| PUT    | `/api/brand/layouts`        | Create/update layout template                 |
+| PUT    | `/api/brand/layouts`        | Create/update layout template (own app only)  |
 | GET    | `/api/brand/mappings`       | List route mappings                           |
-| PUT    | `/api/brand/mappings`       | Replace route mappings                        |
+| PUT    | `/api/brand/mappings`       | Replace route mappings (all-or-nothing)       |
 | GET    | `/api/brand/menu-slots`     | Resolved menu slot assignments (with menus)   |
 | GET    | `/api/brand/menu-slots/raw` | Raw slot assignments (admin editing)          |
 | PUT    | `/api/brand/menu-slots`     | Replace all slot assignments                  |
+
+Updating a layout template that belongs to another app returns 404. `PUT /api/brand/mappings` validates every entry
+(`mappings` array; `pathPattern`, `layoutTemplateId`, `brandKitId` strings; `tokenOverridesJson` valid JSON) before it
+deletes anything, so a bad request leaves the existing mappings intact.
 
 ### Menu Slot Endpoints
 

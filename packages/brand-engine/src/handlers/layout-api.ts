@@ -40,7 +40,10 @@ export async function handlePutLayout(request: Request, env: BrandApiEnv, appId?
     let template: LayoutTemplate;
     if (body.id) {
         template = (await LayoutTemplate.find(body.id)) as LayoutTemplate;
-        if (!template) return errorResponse('Layout template not found', 404);
+        // Another app's template is indistinguishable from a missing one.
+        if (!template || (template.get('appId') ?? null) !== (appId ?? null)) {
+            return errorResponse('Layout template not found', 404);
+        }
         template.set('name', body.name);
         template.set('componentKey', body.componentKey);
         template.set('configJson', JSON.stringify(body.config));
@@ -124,15 +127,41 @@ export async function handleGetMappings(
  * Each mapping must include brandKitId.
  */
 export async function handlePutMappings(request: Request, env: BrandApiEnv, appId?: string | null): Promise<Response> {
-    const body = (await request.json()) as {
-        mappings: Array<{
-            pathPattern: string;
-            layoutTemplateId: string;
-            brandKitId: string;
-            priority?: number;
-            tokenOverridesJson?: string | null;
-        }>;
-    };
+    const body = (await request.json().catch(() => null)) as { mappings?: unknown } | null;
+    const mappings = body?.mappings;
+    if (!Array.isArray(mappings)) return errorResponse('mappings must be an array', 400);
+
+    // Validate EVERYTHING before touching the table: this is a delete-then-recreate replace,
+    // so failing halfway would wipe the app's existing mappings.
+    for (const m of mappings as Array<Record<string, unknown> | null>) {
+        if (!m || typeof m !== 'object') return errorResponse('Each mapping must be an object', 400);
+        if (typeof m.pathPattern !== 'string' || !m.pathPattern) {
+            return errorResponse('pathPattern is required for each mapping', 400);
+        }
+        if (typeof m.layoutTemplateId !== 'string' || !m.layoutTemplateId) {
+            return errorResponse('layoutTemplateId is required for each mapping', 400);
+        }
+        if (typeof m.brandKitId !== 'string' || !m.brandKitId) {
+            return errorResponse('brandKitId is required for each mapping', 400);
+        }
+        if (m.tokenOverridesJson != null && typeof m.tokenOverridesJson !== 'string') {
+            return errorResponse('tokenOverridesJson must be a JSON string', 400);
+        }
+        if (m.tokenOverridesJson) {
+            try {
+                JSON.parse(m.tokenOverridesJson);
+            } catch {
+                return errorResponse(`Invalid JSON in tokenOverridesJson for pattern "${m.pathPattern}"`, 400);
+            }
+        }
+    }
+    const valid = mappings as Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority?: number;
+        tokenOverridesJson?: string | null;
+    }>;
 
     const existing = await LayoutRouteMapping.where({
         appId: appId ?? null,
@@ -141,22 +170,13 @@ export async function handlePutMappings(request: Request, env: BrandApiEnv, appI
         await m.destroy();
     }
 
-    for (const m of body.mappings ?? []) {
-        if (!m.brandKitId) return errorResponse('brandKitId is required for each mapping', 400);
-        // Validate tokenOverridesJson is valid JSON if provided
-        if (m.tokenOverridesJson) {
-            try {
-                JSON.parse(m.tokenOverridesJson);
-            } catch {
-                return errorResponse(`Invalid JSON in tokenOverridesJson for pattern "${m.pathPattern}"`, 400);
-            }
-        }
+    for (const m of valid) {
         await LayoutRouteMapping.create({
             appId: appId || null,
             pathPattern: m.pathPattern,
             layoutTemplateId: m.layoutTemplateId,
             brandKitId: m.brandKitId,
-            priority: m.priority ?? 0,
+            priority: typeof m.priority === 'number' ? m.priority : 0,
             tokenOverridesJson: m.tokenOverridesJson || null,
         });
     }

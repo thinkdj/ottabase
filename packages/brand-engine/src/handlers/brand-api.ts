@@ -81,4 +81,5 @@ export {
     handleGetBrandKits,
     handleUpdateBrandKit,
     handleUploadBrandKitLogo,
+    type BrandAuditUser,
 } from './brand-kit-api';

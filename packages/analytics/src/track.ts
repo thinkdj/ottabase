@@ -59,7 +59,7 @@ export function trackEvent(options: TrackEventOptions): void {
  *   event: 'button_click',
  *   appId: 'my-app',
  *   userId: session?.user?.id,
- *   country: request.headers.get('cf-connecting-country') ?? undefined,
+ *   country: getRequestCountry(request),
  *   visitorId: await resolveVisitorId(request),
  *   metadata: ['/pricing', 'cta-signup'],
  * });
@@ -95,6 +95,18 @@ export function trackCoreEvent(options: CoreEventOptions): void {
 }
 
 /**
+ * ISO country code of the visitor, or `'unknown'`.
+ *
+ * Workers expose it as `request.cf.country`; the `CF-IPCountry` header is the fallback (present when IP geolocation
+ * is enabled on the zone). There is no `cf-connecting-country` header.
+ */
+export function getRequestCountry(request: Request): string {
+    const cf = (request as Request & { cf?: { country?: unknown } }).cf;
+    const fromCf = typeof cf?.country === 'string' ? cf.country : '';
+    return fromCf || request.headers.get('cf-ipcountry') || 'unknown';
+}
+
+/**
  * Extract common request context for tracking.
  * Convenience helper to avoid repeating header reads.
  *
@@ -110,7 +122,7 @@ export function extractRequestContext(request: Request): {
     referer: string;
 } {
     return {
-        country: request.headers.get('cf-connecting-country') ?? 'unknown',
+        country: getRequestCountry(request),
         userAgent: (request.headers.get('user-agent') ?? '').slice(0, 200),
         referer: request.headers.get('referer') ?? '',
     };

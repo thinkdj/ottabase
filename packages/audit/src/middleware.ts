@@ -2,13 +2,17 @@
 // @ottabase/audit - Middleware
 // ============================================================
 
-import { User } from '@ottabase/ottaorm/models';
-import type { AuditMiddlewareOptions } from './types';
+import type { AuditActor, AuditMiddlewareOptions, AuditRequestContext } from './types';
 import { extractRequestContext, logAudit, logFailure } from './utils';
 
 /**
- * Audit middleware for Next.js API routes
- * Automatically logs API requests and responses
+ * Audit middleware for fetch-style route handlers.
+ * Automatically logs API requests and responses.
+ *
+ * The acting user comes ONLY from `options.getActor`, which must resolve it from a verified
+ * session. Request headers such as `x-user-id` are client-controlled and are never read —
+ * trusting one would let any caller attribute audit entries to another user. Without
+ * `getActor` the entry is logged with no user.
  *
  * @example
  * ```typescript
@@ -21,6 +25,11 @@ import { extractRequestContext, logAudit, logFailure } from './utils';
  *   },
  *   {
  *     resourceType: 'user',
+ *     getActor: async (req) => {
+ *       const session = await getSession(req, env);
+ *       if (!session) return null;
+ *       return { userId: session.user.id, userEmail: session.user.email, organizationId: session.user.organizationId };
+ *     },
  *     action: 'create',
  *     getResourceId: async (req) => {
  *       const body = await req.json();
@@ -38,21 +47,13 @@ export function withAudit<T extends (...args: any[]) => Promise<Response>>(
         const request = args[0] as Request;
         const params = args[1];
 
-        let userId: string | undefined;
-        let userEmail: string | undefined;
+        let actor: AuditActor | null = null;
         let resourceId: string | undefined;
         let requestBody: any;
 
         try {
-            // Get user from request (if available)
-            const userIdHeader = request.headers.get('x-user-id');
-            if (userIdHeader) {
-                userId = userIdHeader;
-                const user = await User.find(userId);
-                if (user) {
-                    userEmail = user.get('email') as string;
-                }
-            }
+            // Identity comes from the caller's verified-session resolver, never from request headers.
+            actor = (await options.getActor?.(request)) ?? null;
 
             // Get resource ID
             if (options.getResourceId) {
@@ -75,7 +76,7 @@ export function withAudit<T extends (...args: any[]) => Promise<Response>>(
             const response = await handler(...args);
 
             // Log successful action
-            const context = extractRequestContext(request, userId, userEmail);
+            const context = actorContext(request, actor);
 
             let changes: Record<string, any> | undefined;
             if (options.getChanges) {
@@ -97,8 +98,10 @@ export function withAudit<T extends (...args: any[]) => Promise<Response>>(
                 'custom';
 
             await logAudit({
-                userId,
-                userEmail,
+                userId: context.userId,
+                userEmail: context.userEmail,
+                organizationId: context.organizationId,
+                appId: context.appId,
                 action,
                 resourceType: options.resourceType,
                 resourceId,
@@ -116,7 +119,7 @@ export function withAudit<T extends (...args: any[]) => Promise<Response>>(
             return response;
         } catch (error) {
             // Log failed action
-            const context = extractRequestContext(request, userId, userEmail);
+            const context = actorContext(request, actor);
 
             const action =
                 options.action ||
@@ -135,6 +138,15 @@ export function withAudit<T extends (...args: any[]) => Promise<Response>>(
             throw error;
         }
     }) as T;
+}
+
+/** Request context with the resolved actor's identity and tenancy. */
+function actorContext(request: Request, actor: AuditActor | null): AuditRequestContext {
+    return {
+        ...extractRequestContext(request, actor?.userId, actor?.userEmail),
+        organizationId: actor?.organizationId,
+        appId: actor?.appId,
+    };
 }
 
 /**
@@ -167,6 +179,8 @@ export function Audit(options: AuditMiddlewareOptions) {
                 await logAudit({
                     userId: context.user?.id,
                     userEmail: context.user?.email,
+                    organizationId: context.organizationId,
+                    appId: context.appId,
                     action: options.action || 'custom',
                     resourceType: options.resourceType,
                     resourceId: context.resourceId,
@@ -186,6 +200,8 @@ export function Audit(options: AuditMiddlewareOptions) {
                     {
                         userId: context.user?.id,
                         userEmail: context.user?.email,
+                        organizationId: context.organizationId,
+                        appId: context.appId,
                     },
                     context.resourceId,
                 );

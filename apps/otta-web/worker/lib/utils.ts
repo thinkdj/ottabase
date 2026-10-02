@@ -97,13 +97,13 @@ export function isDevEnvironment(env: { ENVIRONMENT?: string }): boolean {
 }
 
 /**
- * Auth for endpoints that only require an authenticated session (not admin) — open in an
- * explicit dev environment, otherwise requires a logged-in user. Returns the 401 response to
- * short-circuit on, or null to continue. Shared so the "session or dev" gate can't drift
- * independently across call sites the way isDevEnvironment itself once did.
+ * Auth for endpoints that only require an authenticated session (not admin). Returns the 401
+ * response to short-circuit on, or null to continue. There is deliberately no dev bypass:
+ * wrangler.jsonc's top-level vars set ENVIRONMENT=development, so a deploy without --env would
+ * otherwise ship these endpoints open.
  */
-export function requireSessionOrDev(userId: string | null | undefined, env: { ENVIRONMENT?: string }): Response | null {
-    if (userId || isDevEnvironment(env)) return null;
+export function requireSignedIn(userId: string | null | undefined): Response | null {
+    if (userId) return null;
     return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
 }
 

@@ -1,3 +1,4 @@
+import { getRequestCountry } from '@ottabase/analytics/track';
 import {
     createSessionCookieForUser,
     getSession,
@@ -726,10 +727,12 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         let attributionResult;
         if (body.referralCode && getOttabaseConfig(env).packages.referrals) {
             const safeHeaders: Record<string, string> = {};
-            for (const h of ['accept', 'accept-language', 'cf-connecting-country']) {
+            for (const h of ['accept', 'accept-language']) {
                 const v = request.headers.get(h);
                 if (v) safeHeaders[h] = v;
             }
+            const country = getRequestCountry(request);
+            if (country !== 'unknown') safeHeaders['cf-ipcountry'] = country;
             const hasUtm = body.utm_source || body.utm_medium || body.utm_campaign || body.utm_term || body.utm_content;
             const meta =
                 hasUtm || Object.keys(safeHeaders).length > 0

@@ -322,7 +322,7 @@ import {
     handleReferralUsernameUpdate,
     handleReferralsAnalytics,
 } from '../referrals';
-import { apiRouter, handleApiRequest } from '../router';
+import { apiRouter, handleApiRequest, makeApiRouteContext } from '../router';
 import {
     handleShortlinkById,
     handleShortlinkExplicitGo,
@@ -987,5 +987,26 @@ describe('router dispatch parity', () => {
             const response = await handleApiRequest(request, {} as any);
             expect(response).not.toBeNull();
         });
+    });
+});
+
+describe('credentialed CORS', () => {
+    const corsFor = (origin: string, env: Record<string, string> = {}) =>
+        makeApiRouteContext(
+            new Request('https://app.example.com/api/auth/session', { headers: { Origin: origin } }),
+            env as any,
+        ).corsHeaders;
+
+    it('never reflects a foreign Origin with credentials', () => {
+        const headers = corsFor('https://evil.example');
+        expect(headers['Access-Control-Allow-Origin']).toBeUndefined();
+        expect(headers['Access-Control-Allow-Credentials']).toBeUndefined();
+    });
+
+    it('grants credentialed CORS to the request origin and configured allowlist only', () => {
+        expect(corsFor('https://app.example.com')['Access-Control-Allow-Origin']).toBe('https://app.example.com');
+        const allowed = corsFor('https://admin.example.com', { CORS_ALLOWED_ORIGINS: 'https://admin.example.com' });
+        expect(allowed['Access-Control-Allow-Origin']).toBe('https://admin.example.com');
+        expect(allowed['Access-Control-Allow-Credentials']).toBe('true');
     });
 });

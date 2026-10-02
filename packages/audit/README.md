@@ -325,6 +325,29 @@ const safe = sanitizeData({ name: 'John', password: 'secret123', apiKey: 'key' }
 // { name: 'John', password: '[REDACTED]', apiKey: '[REDACTED]' }
 ```
 
+Every `log*` helper persists `context.organizationId` and `context.appId` with the entry.
+
+### Middleware: `withAudit(handler, options)`
+
+Wraps a fetch-style handler and logs each request. The acting user comes only from `options.getActor`, resolved from a
+verified session — request headers such as `x-user-id` are client-controlled and are never read. Without `getActor` the
+entry has no user.
+
+```typescript
+import { getSession } from '@ottabase/auth/backend';
+import { withAudit } from '@ottabase/audit/middleware';
+
+const handlePostCreate = withAudit(async (request: Request) => Response.json({ ok: true }), {
+    resourceType: 'post',
+    action: 'create',
+    getActor: async (request) => {
+        const session = await getSession(request, env);
+        if (!session) return null;
+        return { userId: session.user.id, userEmail: session.user.email, organizationId: session.user.organizationId };
+    },
+});
+```
+
 ## Integration Examples
 
 ### With RBAC Context
@@ -371,15 +394,17 @@ await logUpdate(
 // Cloudflare Worker
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
-        const user = await getCurrentUser(request, env);
-        const orgId = await extractOrganizationId({ request });
+        // Actor + org come from the verified session (getSession from @ottabase/auth/backend),
+        // never from request headers such as x-user-id / x-org-id, which any client can spoof.
+        const session = await getSession(request, env);
+        const user = session?.user;
 
         // Build context
         const context = {
             userId: user?.id,
             userEmail: user?.email,
-            organizationId: orgId,
-            appId: 'web',
+            organizationId: user?.organizationId,
+            appId: getOttabaseConfig(env).appId, // server config, never a client header
             ipAddress: request.headers.get('cf-connecting-ip'),
             userAgent: request.headers.get('user-agent'),
         };

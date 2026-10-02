@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { extractRequestContext, trackCoreEvent, trackEvent } from '../src/track';
+import { extractRequestContext, getRequestCountry, trackCoreEvent, trackEvent } from '../src/track';
 
 describe('trackEvent', () => {
     let mockDataset: { writeDataPoint: ReturnType<typeof vi.fn> };
@@ -159,34 +159,29 @@ describe('trackCoreEvent', () => {
 });
 
 describe('extractRequestContext', () => {
-    it('extracts country, userAgent, and referer from request headers', () => {
-        const mockRequest = {
-            headers: new Map([
-                ['cf-connecting-country', 'IN'],
-                ['user-agent', 'TestAgent/1.0'],
-                ['referer', 'https://example.com'],
-            ]),
-        } as unknown as Request;
+    it('reads country from request.cf, plus userAgent and referer from headers', () => {
+        const request = Object.assign(
+            new Request('https://example.com', {
+                headers: { 'user-agent': 'TestAgent/1.0', referer: 'https://example.com', 'cf-ipcountry': 'US' },
+            }),
+            { cf: { country: 'IN' } },
+        );
 
-        // Use a real Request-like object with get()
-        const headers = {
-            get: (name: string) => {
-                const map: Record<string, string> = {
-                    'cf-connecting-country': 'IN',
-                    'user-agent': 'TestAgent/1.0',
-                    referer: 'https://example.com',
-                };
-                return map[name] ?? null;
-            },
-        };
-        const request = { headers } as unknown as Request;
-
-        const ctx = extractRequestContext(request);
-        expect(ctx).toEqual({
+        expect(extractRequestContext(request)).toEqual({
             country: 'IN',
             userAgent: 'TestAgent/1.0',
             referer: 'https://example.com',
         });
+    });
+
+    it('falls back to the CF-IPCountry header when request.cf is absent', () => {
+        const request = new Request('https://example.com', { headers: { 'cf-ipcountry': 'DE' } });
+        expect(getRequestCountry(request)).toBe('DE');
+    });
+
+    it('ignores the non-existent cf-connecting-country header', () => {
+        const request = new Request('https://example.com', { headers: { 'cf-connecting-country': 'IN' } });
+        expect(getRequestCountry(request)).toBe('unknown');
     });
 
     it('returns defaults when headers are missing', () => {

@@ -12,7 +12,7 @@ import { BrandKit } from '../persistence/BrandKit.model';
 import type { BrandKitItem } from '../persistence/types';
 import { PRESET_MAP, type PresetTheme } from '../presets';
 import { TOKEN_CATEGORY_KEYS } from '../tokens';
-import { logBrandAudit } from './audit-helper';
+import { logBrandAudit, type BrandAuditUser } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
 import { warmBrandCache } from './warm-cache';
 
@@ -210,10 +210,7 @@ export async function handleCreateBrandKit(
 }
 
 /** User context for audit logging (logged-in user's id/email) */
-export interface BrandAuditUser {
-    userId?: string;
-    userEmail?: string;
-}
+export type { BrandAuditUser };
 
 /** PUT /api/brand/kits/:id - Update Brand Kit */
 export async function handleUpdateBrandKit(
@@ -287,7 +284,7 @@ export async function handleUpdateBrandKit(
     await kit.save();
     await warmBrandCache(env, { kitId: id, appId: kApp, requestAppId: appId });
 
-    await logBrandAudit('brand.kit.update', request, { appId, kitId: id }, auditUser?.userId, auditUser?.userEmail);
+    await logBrandAudit('brand.kit.update', request, { appId, kitId: id }, auditUser);
     return jsonResponse(serializeKit(kit), 200);
 }
 
@@ -403,12 +400,6 @@ export async function handleUploadBrandKitLogo(
     await kit.save();
     await warmBrandCache(env, { kitId: id, appId: kApp, requestAppId: appId });
 
-    await logBrandAudit(
-        'brand.kit.logo.upload',
-        request,
-        { appId, kitId: id, logoType },
-        auditUser?.userId,
-        auditUser?.userEmail,
-    );
+    await logBrandAudit('brand.kit.logo.upload', request, { appId, kitId: id, logoType }, auditUser);
     return jsonResponse({ key, url: assets.getPublicUrl(key) }, 200);
 }

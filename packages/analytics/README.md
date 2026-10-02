@@ -47,15 +47,18 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=your-token-here
 ### Low-level (positional slots)
 
 ```typescript
-import { trackEvent } from '@ottabase/analytics';
+import { getRequestCountry, trackEvent } from '@ottabase/analytics';
 
 trackEvent({
     dataset: env.OBCF_ANALYTICS_SHORTLINKS,
     index: shortCode,
-    blobs: [country, userAgent, referer, fullUrl],
+    blobs: [getRequestCountry(request), userAgent, referer, fullUrl],
     doubles: [1],
 });
 ```
+
+`getRequestCountry(request)` reads `request.cf.country`, then the `CF-IPCountry` header, else `'unknown'`. (Cloudflare
+sends no `cf-connecting-country` header.)
 
 ### Structured (named fields)
 

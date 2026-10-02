@@ -1,25 +1,22 @@
 import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@ottabase/analytics/query';
-import { getSession } from '@ottabase/auth/backend';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { parseBoundedInteger } from '@ottabase/utils/pagination';
 import type { ApiRouteContext } from './router';
-import { getAuthOptions } from '../lib/auth-utils';
-import { requireSessionOrDev } from '../lib/utils';
+import { requireAdminAccess } from '../lib/admin-guard';
 
 /**
  * Handle GET /api/analytics/core - query WAE for core event analytics
- * Requires auth. Params: event (optional), days (default 7), groupBy (event|country|day)
+ * Requires a system-scope admin. Params: event (optional), days (default 7), groupBy (event|country|day)
  * core_events schema: index1=event, blob1=appId, blob2=userId, blob3=country
  */
 export async function handleCoreAnalytics(context: ApiRouteContext): Promise<Response> {
-    const { env, request, url } = context;
+    const { env, url } = context;
 
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    const userId = session?.user?.id;
-
-    const authError = requireSessionOrDev(userId, env);
-    if (authError) return authError;
+    // Analytics Engine rows carry no organization, so these totals are platform-wide:
+    // only a system-scope admin may read them.
+    const auth = await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,

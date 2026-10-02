@@ -58,6 +58,8 @@ export async function logCreate(
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'create',
         resourceType,
         resourceId,
@@ -84,6 +86,8 @@ export async function logUpdate(
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'update',
         resourceType,
         resourceId,
@@ -109,6 +113,8 @@ export async function logDelete(
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'delete',
         resourceType,
         resourceId,
@@ -129,6 +135,8 @@ export async function logRead(resourceType: string, resourceId: string, context?
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'read',
         resourceType,
         resourceId,
@@ -155,6 +163,8 @@ export async function logAuth(
     await logAudit({
         userId,
         userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action,
         resourceType: 'auth',
         resourceId: userId,
@@ -181,6 +191,8 @@ export async function logRoleAssign(
     await logAudit({
         userId: assignedBy,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'role_assign',
         resourceType: 'user_role',
         resourceId: userId,
@@ -213,6 +225,8 @@ export async function logRoleRemove(
     await logAudit({
         userId: removedBy,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action: 'role_remove',
         resourceType: 'user_role',
         resourceId: userId,
@@ -245,6 +259,8 @@ export async function logFailure(
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
+        organizationId: context?.organizationId,
+        appId: context?.appId,
         action,
         resourceType,
         resourceId,

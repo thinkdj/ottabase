@@ -3,7 +3,14 @@
 // ============================================================
 
 // Types
-export type { AuditAction, AuditStatus, AuditLogData, AuditRequestContext, AuditMiddlewareOptions } from './types';
+export type {
+    AuditAction,
+    AuditActor,
+    AuditStatus,
+    AuditLogData,
+    AuditRequestContext,
+    AuditMiddlewareOptions,
+} from './types';
 
 // Utils
 export {

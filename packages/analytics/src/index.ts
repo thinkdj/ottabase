@@ -35,7 +35,7 @@
  */
 
 // Track (write)
-export { extractRequestContext, trackCoreEvent, trackEvent } from './track';
+export { extractRequestContext, getRequestCountry, trackCoreEvent, trackEvent } from './track';
 
 // Query (read)
 export {

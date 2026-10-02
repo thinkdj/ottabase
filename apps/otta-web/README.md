@@ -438,7 +438,7 @@ apps/otta-web/
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
 - `/admin/infrastructure/cron` - DB-driven scheduled-task management (platform admin)
 - `/shortlinks` - Shortlink management
-- `/analytics` - Unified analytics (Shortlinks + Referrals tabs, WAE)
+- `/analytics` - Unified analytics (Core + Shortlinks + Referrals tabs, WAE) — platform admins only
 
 ### API Endpoints
 
@@ -449,8 +449,9 @@ apps/otta-web/
 - `/api/auth/register` - Credentials registration
 - `/api/auth/config` - Auth UI configuration
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
-- `/api/shortlinks/analytics` - Shortlink clicks (powers /analytics Shortlinks tab)
-- `/api/referrals/analytics` - Referral clicks (powers /analytics Referrals tab)
+- `/api/analytics/core`, `/api/shortlinks/analytics`, `/api/referrals/analytics` - Core events, shortlink clicks and
+  referral clicks for the /analytics tabs. System-admin only: Analytics Engine rows carry no organization, so the totals
+  are platform-wide
 - `/api/admin/cron` - Platform-admin task list/create API; manual runs use the same locked executor as scheduled ticks
 
 ### Scheduled Tasks
@@ -486,12 +487,12 @@ export default {
 ### With OttaORM
 
 ```typescript
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 import { Todo } from './ottabase/models/Todo';
 
 // In worker
 const driver = createD1Driver(env.OBCF_D1);
-setDriver(driver);
+registerConnection('default', driver);
 
 const todos = await Todo.all({ limit: 100 });
 ```

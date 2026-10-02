@@ -1,6 +1,5 @@
 import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@ottabase/analytics/query';
-import { trackEvent } from '@ottabase/analytics/track';
-import { getSession } from '@ottabase/auth/backend';
+import { getRequestCountry, trackEvent } from '@ottabase/analytics/track';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
@@ -9,8 +8,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { getAuthOptions } from '../lib/auth-utils';
-import { readJson, requireSessionOrDev } from '../lib/utils';
+import { readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 export interface ShortlinkContext {
@@ -26,7 +24,7 @@ function pushShortlinkClick(env: CloudflareEnv, request: Request, shortCode: str
         dataset: env.OBCF_ANALYTICS_SHORTLINKS,
         index: shortCode,
         blobs: [
-            request.headers.get('cf-connecting-country') ?? 'unknown',
+            getRequestCountry(request),
             (request.headers.get('user-agent') ?? '').slice(0, 200),
             request.headers.get('referer') ?? '',
             fullUrl ?? '',
@@ -276,16 +274,15 @@ export async function handleShortlinkFallback(context: ShortlinkContext): Promis
 
 /**
  * Handle GET /api/shortlinks/analytics - query WAE for click analytics
- * Requires auth. Params: shortCode (optional), days (default 7), groupBy (country|shortCode|day)
+ * Requires a system-scope admin. Params: shortCode (optional), days (default 7), groupBy (country|shortCode|day)
  */
 export async function handleShortlinksAnalytics(context: ShortlinkContext): Promise<Response> {
-    const { env, request, url } = context;
+    const { env, url } = context;
 
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    const userId = session?.user?.id;
-
-    const authError = requireSessionOrDev(userId, env);
-    if (authError) return authError;
+    // Analytics Engine rows carry no organization, so these totals are platform-wide:
+    // only a system-scope admin may read them.
+    const auth = await requireAdminAccess(context as unknown as ApiRouteContext, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
     const configErr = validateAnalyticsConfig({
         accountId: env.CLOUDFLARE_ACCOUNT_ID,

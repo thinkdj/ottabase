@@ -58,7 +58,7 @@ export interface CoreEventOptions {
     /** Authenticated user ID (blob2). */
     userId?: string;
 
-    /** ISO country code from `cf-connecting-country` header (blob3). */
+    /** ISO country code, e.g. from `getRequestCountry(request)` (blob3). */
     country?: string;
 
     /** Truncated user-agent (blob4, max 200 chars). */

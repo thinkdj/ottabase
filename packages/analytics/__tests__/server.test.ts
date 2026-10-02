@@ -11,7 +11,7 @@ function mockRequest(body: unknown, headers: Record<string, string> = {}): Reque
                 const map: Record<string, string> = {
                     'cf-connecting-ip': '1.2.3.4',
                     'user-agent': 'TestAgent',
-                    'cf-connecting-country': 'US',
+                    'cf-ipcountry': 'US',
                     ...headers,
                 };
                 return map[name.toLowerCase()] ?? null;
