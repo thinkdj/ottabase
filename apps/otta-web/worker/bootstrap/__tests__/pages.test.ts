@@ -196,6 +196,13 @@ describe('renderWizardPage — /__bootstrap__', () => {
         expect(html).toContain('>Not set<');
     });
 
+    it('names the account-id secret exactly as CI reads it', () => {
+        // deploy.yml / pr-preview.yml read secrets.CLOUDFLARE_ACCOUNT_ID; a different name never reaches CI.
+        const html = renderWizardPage(notReadyState);
+        expect(html).toContain('<code>CLOUDFLARE_ACCOUNT_ID</code> repository secret');
+        expect(html).not.toContain('CF_ACCOUNT_ID');
+    });
+
     it('lands on the completion panel when the platform is already READY', () => {
         const html = renderWizardPage(readyState);
         expect(html).toContain('finish(null)');

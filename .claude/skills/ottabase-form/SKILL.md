@@ -29,7 +29,7 @@ the model, not in the form.
 
 ## Custom forms (not model-shaped)
 
-Use the `@ottabase/ui-shadcn` form primitives (react-hook-form backed): `Form`, `FormField`, `FormItem`, `FormLabel`,
+Use the `@ottabase/ui-shadcn/form` primitives (react-hook-form backed): `Form`, `FormField`, `FormItem`, `FormLabel`,
 `FormControl`, `FormDescription`, `FormMessage`, and the `useFormField` context hook. These are uncontrolled/ref-based —
 a large admin form does **not** re-render on every keystroke. Native `<form>` submission + `FormData` are supported.
 

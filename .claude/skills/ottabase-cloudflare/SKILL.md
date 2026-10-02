@@ -14,13 +14,15 @@ This is a Workers project. Code runs at the edge — design for it.
 ## Edge-runtime rules
 
 - **No Node-only APIs** (`fs`, `child_process`, …) in app/worker code.
-- **Never read `process.env` in edge code** (lint-enforced). Read the env binding via `getOttabaseConfig(env)`.
-- Bindings use the `OBCF_*` convention (`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, `OBCF_QUEUE`, …).
+- **Never read `process.env` in edge code** (lint-enforced). Read config via `getOttabaseConfig(env)`
+  (`apps/*/ottabase/config.loader.ts`).
+- Bindings use the `OBCF_*` convention (`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, `OBCF_QUEUE`, `OBCF_ANALYTICS_*`, …).
 
-## Binding parity (a silent breakage if skipped)
+## Binding parity
 
-When you add/change a Cloudflare binding you MUST update **both** `wrangler.jsonc` **and** `cloudflare-env.d.ts`. They
-drift independently and nothing else catches it.
+`wrangler.jsonc` is the source of truth; `cloudflare-env.d.ts` is **generated** from it. After adding/changing a binding
+or var, run `pnpm --filter @ottabase/otta-web cf-typegen` and commit both files — never hand-edit the `.d.ts`. CI runs
+`cf-typegen:check` and fails on drift.
 
 ## Use the wrappers, not raw bindings
 
@@ -32,8 +34,8 @@ access.
 ## Multi-tenant cache keys (never hand-format KV keys)
 
 Use the key builders so tenants can't collide (`@ottabase/cf/cache-keys`): `globalKey` / `orgKey` / `userKey` / `appKey`
-/ `orgAppKey` / `orgAppUserKey` / `versionedOrgKey` (3-letter markers `org`/`app`/`usr`). Read-through cache via
-`withCache(kv, key, ttl, fetcher)` + `invalidateCache` / `invalidateCacheByPrefix`.
+/ `orgAppKey` / `orgUserKey` / `appUserKey` / `orgAppUserKey` / `versionedOrgKey` (scope markers `org`/`app`/`usr`).
+Read-through cache via `withCache` + `invalidateCache` / `invalidateCacheByPrefix` (`@ottabase/cf/kv-cache`).
 
 - **Cache is an optimization only**: a miss, malformed value, or failed write must never change an authorization
   outcome. Fail closed, never open.

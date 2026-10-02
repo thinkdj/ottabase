@@ -68,15 +68,17 @@ interface PaginatedResponse<T> {
 
 All paginated endpoints support these query parameters:
 
-| Parameter                   | Type        | Default   | Description                     |
-| --------------------------- | ----------- | --------- | ------------------------------- |
-| `page`                      | number      | 1         | Page number (1-indexed)         |
-| `per_page` or `perPage`     | number      | 15        | Items per page (max: 100)       |
-| `sort` or `orderBy`         | string      | createdAt | Field to sort by                |
-| `order` or `orderDirection` | string      | desc      | Sort direction: "asc" or "desc" |
-| `where`                     | JSON string | -         | Filter conditions as JSON       |
-| `field`                     | string      | -         | Field name for single lookup    |
-| `value`                     | string      | -         | Field value for single lookup   |
+| Parameter                   | Type        | Default     | Description                                                          |
+| --------------------------- | ----------- | ----------- | -------------------------------------------------------------------- |
+| `page`                      | number      | 1           | Page number (1-indexed)                                              |
+| `per_page` or `perPage`     | number      | 15          | Items per page (max: 100)                                            |
+| `sort` or `orderBy`         | string      | primary key | Field to sort by (primary key breaks ties)                           |
+| `order` or `orderDirection` | string      | asc         | Sort direction: "asc" or "desc"                                      |
+| `where`                     | JSON string | -           | Filter conditions as JSON                                            |
+| `search`                    | string      | -           | Text search over the model's searchable fields                       |
+| `limit` / `offset`          | number      | -           | Unpaginated window (max 1000); ignored when `page`/`per_page` is set |
+| `field`                     | string      | -           | Field name for single lookup                                         |
+| `value`                     | string      | -           | Field value for single lookup                                        |
 
 ### Find Single Record by Field/Value
 
@@ -110,18 +112,26 @@ const { data: post } = postHooks.useFind('slug', 'my-post-slug');
 
 ### Example Client Usage
 
+Reads go through a query hook (see AGENTS.MD "Client Data Layer"), never a raw call:
+
 ```typescript
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import type { PaginatedResponse } from '@/lib/api-types';
 
-// Fetch with types
-const response = await api<PaginatedResponse<Shortlink>>(`/api/ottaorm/shortlinks?page=1&per_page=15`);
+function ShortlinkList({ page }: { page: number }) {
+    const { data: response } = useApiQuery<PaginatedResponse<Shortlink>>({
+        entity: 'shortlinks', // invalidated together with the shortlinks model hooks
+        queryKey: ['page', page],
+        endpoint: `/api/ottaorm/shortlinks?page=${page}&per_page=15`,
+    });
 
-// Access data
-const items = response.data;
+    // Access data
+    const items = response?.data ?? [];
 
-// Access pagination
-const { page, totalPages, total } = response.pagination;
-
-// Navigation
-const nextPageUrl = response.pagination.next;
+    // Access pagination
+    const { totalPages, total, next } = response?.pagination ?? {};
+}
 ```
+
+`createModelHooks().useList()` returns the unwrapped item array (no `pagination`); use it when you do not page. For
+infinite scroll, use `useInfiniteList()`.

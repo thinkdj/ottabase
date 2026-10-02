@@ -1,6 +1,6 @@
 # Multi-Tenant RBAC System - Complete Guide
 
-**Last Updated:** 2026-02-03 **Status:** Production Ready ✅ **Architecture:** Tenant > App > User (RBAC)
+**Last Updated:** 2026-10-02 **Status:** Production Ready ✅ **Architecture:** Tenant > App > User (RBAC)
 
 ---
 
@@ -103,7 +103,8 @@ Default system roles are seeded automatically via `Role.ensureDefaultRoles()` wh
 bootstrap. To reconcile them to the canonical definitions after a framework upgrade, run the secret-gated seed step —
 open `/__bootstrap__/seed` or `POST /__bootstrap__/api/seed`.
 
-Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `editor`, `viewer`, `member`
+Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `editor`, `author`, `viewer`,
+`member`
 
 ### 3. Enable Row-Level Security in Worker
 
@@ -155,27 +156,27 @@ export default {
 
 ```
 # Core Admin Pages
-http://localhost:5173/admin                      # Admin Dashboard
-http://localhost:5173/admin/users                # User Management (NEW)
-http://localhost:5173/admin/users/:userId/rbac   # User RBAC Assignment (NEW)
+http://localhost:3003/admin                                      # Admin Dashboard
+http://localhost:3003/admin/access/users                         # User Management
+http://localhost:3003/admin/access/users/:userId/rbac            # User RBAC Assignment
 
 # RBAC Management
-http://localhost:5173/admin/rbac                 # RBAC Admin Dashboard
-http://localhost:5173/admin/rbac/roles           # Roles Management
-http://localhost:5173/admin/rbac/permissions     # Permissions Matrix
+http://localhost:3003/admin/access/rbac                          # RBAC Admin Dashboard
+http://localhost:3003/admin/access/rbac/roles                    # Roles Management
+http://localhost:3003/admin/access/rbac/permissions              # Permissions Matrix
 
 # Organization Management
-http://localhost:5173/organizations              # Organizations List
-http://localhost:5173/organizations/new          # Create Organization (NEW)
-http://localhost:5173/organizations/:id/settings # Organization Settings (NEW)
-http://localhost:5173/organizations/:id/members  # Organization Members
+http://localhost:3003/admin/access/organizations                 # Organizations List
+http://localhost:3003/admin/access/organizations/new             # Create Organization
+http://localhost:3003/admin/access/organizations/:id/settings    # Organization Settings
+http://localhost:3003/admin/access/organizations/:id/members     # Organization Members
 
 # User Profile
-http://localhost:5173/profile                    # User Profile Page (NEW)
+http://localhost:3003/profile                                    # User Profile Page
 
 # Audit & Security
-http://localhost:5173/admin/audit                # Audit Log Viewer
-http://localhost:5173/admin/security/rls         # RLS Demo Page
+http://localhost:3003/admin/security/audit                       # Audit Log Viewer
+http://localhost:3003/admin/security/rls                         # RLS Demo Page
 ```
 
 ---
@@ -195,7 +196,7 @@ const org = await Organization.create({
     slug: 'acme-corp',
     ownerId: user.id,
     plan: 'pro', // 'free' | 'pro' | 'enterprise'
-    status: 'active', // 'active' | 'suspended' | 'deleted'
+    status: 'active', // 'active' | 'suspended' | 'cancelled'
     settings: {
         maxMembers: 50,
         features: ['rbac', 'audit', 'api'],
@@ -238,17 +239,16 @@ import { Role, User } from '@ottabase/ottaorm/models';
 // System roles (pre-seeded)
 const adminRole = await Role.findByName('admin');
 
-// Custom org-scoped role
-const editorRole = await Role.create({
-    name: 'editor',
-    displayName: 'Content Editor',
-    description: 'Can create and edit content',
-    organizationId: org.id, // null = system role
+// Custom role. A role is a platform-wide permission bundle (`name` is unique across the
+// platform); the org scope lives on the GRANT (`user_roles.organization_id`), not on the role.
+const reviewerRole = await Role.create({
+    name: 'content-reviewer',
+    description: 'Can review and edit content',
     permissions: ['posts:*', 'tags:read'],
 });
 
-// Assign role to user
-await user.assignRole(editorRole.id, currentUser.id, org.id);
+// Assign role to user — organizationId is required (the tenant this grant applies in)
+await user.assignRole(reviewerRole.id, currentUser.id, org.id);
 
 // Check permission (org-scoped)
 const canEdit = await user.hasPermission('posts:edit', {
@@ -256,7 +256,7 @@ const canEdit = await user.hasPermission('posts:edit', {
 });
 
 // Check role
-const hasRole = await user.hasRole('editor', org.id);
+const hasRole = await user.hasRole('content-reviewer', org.id);
 
 // Get all roles in org
 const roles = await user.roles({
@@ -314,7 +314,7 @@ const logs = await AuditLog.where(
         organizationId: org.id,
         action: 'delete',
     },
-    { orderBy: 'timestamp', orderDirection: 'desc', limit: 100 },
+    { orderBy: 'createdAt', orderDirection: 'desc', limit: 100 },
 );
 ```
 
@@ -326,12 +326,12 @@ import { createKVClient } from '@ottabase/cf';
 
 // Initialize cache (in worker)
 const cache = initRBACCache({
-    kv: createKVClient({ namespace: env.RBAC_KV }),
+    kv: createKVClient({ namespace: env.OBCF_KV }),
     ttl: 300, // 5 minutes
 });
 
-// Cache keys are automatically org-scoped:
-// rbac:org:org-123:v1:user:user-456
+// Cache keys are automatically org-scoped and versioned:
+// rbac:org:org-123:v1:usr:user-456:perms
 
 // Check permissions with cache
 const canEdit = await user.hasPermission('posts:edit', {
@@ -378,30 +378,33 @@ GET / api / ottaorm / organization_members / member - 123; // member-123 belongs
 
 ### Scoped Models
 
-**Tenant-Scoped (automatic filtering):**
+Policies live in `packages/ottaorm/src/rls/registry.ts`; the hard blocks live in otta-web
+`worker/routes/ottaorm-crud.ts`.
 
-- organizations
-- organization_members
-- roles (if organizationId present)
-- permissions (if organizationId present)
-- user_roles
-- audit_logs
+**Tenant/membership-scoped (automatic filtering):**
 
-**Admin-Only (blocked from generic CRUD):**
+- organizations, organization_members (membership-scoped)
+- user_groups, user_group_members (group-membership-scoped)
+- audit_logs (org-scoped, platform-admin gated)
 
-- users
-- accounts
-- sessions
-- verification_tokens
+**User-scoped:** users (self only), accounts, sessions
 
-### Organization Extraction
+**Blocked from generic `/api/ottaorm` CRUD** (dedicated routes instead):
 
-Extracts tenant context from:
+- `users` → `/api/users/me`
+- `organization_members` → `/api/admin/organizations/:id/members` (last-owner guardrails, cache invalidation)
+- `roles`, `permissions`, `user_roles` → `/api/admin/roles` and the member / promote-owner endpoints. Roles have no
+  `organizationId` column; the RLS policies on these three are platform-admin gated as defence in depth.
+- `verification_tokens` (consumed only by the auth flows; RLS also denies reads)
 
-1. Header: `X-Org-Id: org-acme`
-2. Subdomain: `acme.yourapp.com` → `org-acme`
-3. Query: `?organizationId=org-acme`
-4. JWT: `token.organizationId`
+### Organization Selection
+
+The active organization comes from the **verified session** (`session.user.organizationId`). A client may _request_ a
+different one (e.g. an `X-Org-Id` header from the organization switcher), but that is a request, not an answer:
+`getSecurityContext` (otta-web `worker/lib/auth-utils.ts`) uses it only if it is in the user's active memberships and
+otherwise drops it to `null`. If memberships cannot be resolved the request fails closed with
+`503 SECURITY_CONTEXT_UNAVAILABLE`. Never feed a header, query parameter or subdomain into RLS without that check (see
+AGENTS.MD "Security Context: what may be trusted").
 
 ---
 
@@ -409,7 +412,8 @@ Extracts tenant context from:
 
 ### Organizations Page
 
-**Route:** `/organizations` **File:** `apps/otta-web/src/pages/organizations/OrganizationsPage.tsx`
+**Route:** `/admin/access/organizations` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationsPage.tsx`
 
 Features:
 
@@ -423,7 +427,8 @@ Features:
 
 ### Organization Members
 
-**Route:** `/organizations/:orgId/members` **File:** `apps/otta-web/src/pages/organizations/OrganizationMembersPage.tsx`
+**Route:** `/admin/access/organizations/:orgId/members` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationMembersPage.tsx`
 
 Features:
 
@@ -436,7 +441,7 @@ Features:
 
 ### RBAC Admin
 
-**Route:** `/admin/rbac` **File:** `apps/otta-web/src/pages/admin/rbac/RBACAdminPage.tsx`
+**Route:** `/admin/access/rbac` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACAdminPage.tsx`
 
 Dashboard with links to:
 
@@ -446,7 +451,7 @@ Dashboard with links to:
 
 ### Roles Management
 
-**Route:** `/admin/rbac/roles` **File:** `apps/otta-web/src/pages/admin/rbac/RBACRolesPage.tsx`
+**Route:** `/admin/access/rbac/roles` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACRolesPage.tsx`
 
 Features:
 
@@ -457,7 +462,8 @@ Features:
 
 ### Permissions Matrix
 
-**Route:** `/admin/rbac/permissions` **File:** `apps/otta-web/src/pages/admin/rbac/PermissionsMatrixPage.tsx`
+**Route:** `/admin/access/rbac/permissions` **File:**
+`apps/otta-web/src/pages/admin/access/rbac/PermissionsMatrixPage.tsx`
 
 Features:
 
@@ -469,7 +475,7 @@ Features:
 
 ### Audit Log Viewer
 
-**Route:** `/admin/audit` **File:** `apps/otta-web/src/pages/admin/audit/AuditLogViewerPage.tsx`
+**Route:** `/admin/security/audit` **File:** `apps/otta-web/src/pages/admin/security/audit/AuditLogViewerPage.tsx`
 
 Features:
 
@@ -481,7 +487,8 @@ Features:
 
 ### Organization Registration (NEW)
 
-**Route:** `/organizations/new` **File:** `apps/otta-web/src/pages/organizations/OrganizationRegistrationPage.tsx`
+**Route:** `/admin/access/organizations/new` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationRegistrationPage.tsx`
 
 Features:
 
@@ -494,7 +501,8 @@ Features:
 
 ### Organization Settings (NEW)
 
-**Route:** `/organizations/:id/settings` **File:** `apps/otta-web/src/pages/organizations/OrganizationSettingsPage.tsx`
+**Route:** `/admin/access/organizations/:id/settings` **File:**
+`apps/otta-web/src/pages/admin/access/organizations/OrganizationSettingsPage.tsx`
 
 Features:
 
@@ -523,7 +531,7 @@ Features:
 
 ### User Management (NEW)
 
-**Route:** `/admin/users` **File:** `apps/otta-web/src/pages/admin/users/UserManagementPage.tsx`
+**Route:** `/admin/access/users` **File:** `apps/otta-web/src/pages/admin/access/users/UserManagementPage.tsx`
 
 Features:
 
@@ -536,7 +544,7 @@ Features:
 
 ### User RBAC Assignment (NEW)
 
-**Route:** `/admin/users/:userId/rbac` **File:** `apps/otta-web/src/pages/admin/users/UserRBACPage.tsx`
+**Route:** `/admin/access/users/:userId/rbac` **File:** `apps/otta-web/src/pages/admin/access/users/UserRBACPage.tsx`
 
 Features:
 
@@ -581,13 +589,13 @@ Features:
 
 **File:** `apps/otta-web/src/hooks/useRBAC.ts`
 
-All RBAC operations are now powered by TanStack Query for:
+All RBAC operations go through the framework cache (`createModelHooks`, `useApiQuery`, and `useMutation` for the
+optimistic ones):
 
-- ✅ **Automatic caching** - Data persists between navigations
-- ✅ **Optimistic updates** - Instant UI feedback
-- ✅ **Cache invalidation** - Smart refetching strategies
-- ✅ **Loading states** - Built-in isPending/isLoading
-- ✅ **Error handling** - Automatic retry with rollback
+- ✅ **Caching** - shared TanStack Query cache, scoped per org by `OttaQueryProvider`
+- ✅ **Optimistic updates** - organization update/delete, role update, permission toggle
+- ✅ **Explicit invalidation** - every mutation invalidates the query families it affects
+- ✅ **Error handling** - optimistic writes roll back on failure
 
 ### Organizations Hooks
 
@@ -600,7 +608,7 @@ import {
     useDeleteOrganization,
 } from '@/hooks/useRBAC';
 
-// List organizations (5min cache)
+// List organizations
 const { data: orgs, isLoading, error, refetch } = useOrganizations();
 
 // Single organization
@@ -627,7 +635,7 @@ deleteMutation.mutate(orgId);
 ```typescript
 import { useOrganizationMembers, useInviteMember, useUpdateMemberRole, useRemoveMember } from '@/hooks/useRBAC';
 
-// List members (2min cache)
+// List members (paginated: page, perPage)
 const { data: members } = useOrganizationMembers(orgId);
 
 // Invite member
@@ -663,14 +671,14 @@ removeMutation.mutate({
 ```typescript
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, useTogglePermission } from '@/hooks/useRBAC';
 
-// List roles (10min cache - roles change infrequently)
+// List roles (GET /api/admin/roles)
 const { data: roles } = useRoles();
 
-// Create role
+// Create role (POST /api/admin/roles — platform-admin only; roles are platform-wide bundles)
 const createMutation = useCreateRole();
 createMutation.mutate({
-    name: 'Editor',
-    organizationId: orgId,
+    name: 'content-reviewer',
+    description: 'Reviews and edits posts',
     permissions: ['posts:write', 'posts:read'],
 });
 
@@ -688,7 +696,7 @@ toggleMutation.mutate({
 ```typescript
 import { useAuditLogs } from '@/hooks/useRBAC';
 
-// Fetch with filters (1min cache)
+// Fetch with filters (1 min staleTime)
 const { data: response } = useAuditLogs({
     page: '1',
     per_page: '25',
@@ -710,7 +718,7 @@ import {
 
 // Prefetch for faster navigation
 const prefetch = usePrefetchOrganizations();
-<Link onMouseEnter={prefetch} to="/organizations">
+<Link onMouseEnter={prefetch} to="/admin/access/organizations">
     Organizations
 </Link>
 
@@ -719,30 +727,16 @@ const invalidateAll = useInvalidateRBAC();
 invalidateAll(); // After major changes
 ```
 
-### Query Keys Structure
-
-```typescript
-// Organized hierarchy for cache management
-rbacKeys.all; // ['rbac']
-rbacKeys.organizations(); // ['rbac', 'organizations']
-rbacKeys.organization(id); // ['rbac', 'organizations', id]
-rbacKeys.members(orgId); // ['rbac', 'members', orgId]
-rbacKeys.member(id); // ['rbac', 'member', id]
-rbacKeys.roles(); // ['rbac', 'roles']
-rbacKeys.role(id); // ['rbac', 'roles', id]
-rbacKeys.auditLogs(filters); // ['rbac', 'audit', filters]
-```
-
 ### Cache Strategies
 
-- **Organizations:** 5min stale time (moderate changes)
-- **Members:** 2min stale time (frequent changes)
-- **Roles:** 10min stale time (infrequent changes)
-- **Audit Logs:** 1min stale time (real-time monitoring)
+- Organizations and roles use the `createModelHooks` keys for their entity; members use
+  `['admin-organization-members', orgId, page, perPage]`.
+- Audit logs: 1 min `staleTime`; everything else uses the provider defaults.
+- `useInvalidateRBAC()` invalidates all of the above after a bulk change.
 
 ### Optimistic Updates
 
-All mutations include automatic optimistic updates:
+Organization update/delete, role update and permission toggle are optimistic; member mutations invalidate and refetch:
 
 ```typescript
 // Example: Role assignment with instant UI feedback
@@ -783,65 +777,51 @@ implementation) to automatically enforce security policies based on the authenti
 
 ### Worker Integration
 
-The Vite app worker (`cloudflare-worker.ts`) automatically integrates auth with RLS:
+otta-web wires auth into RLS in `worker/lib/auth-utils.ts` (`getSecurityContext`) and `worker/routes/ottaorm-crud.ts`.
+The shape of it:
 
 ```typescript
-import { getSession, handleAuthRequest } from '@ottabase/auth/backend';
-import { initRLS, secureCrud, type SecurityContext } from '@ottabase/ottaorm';
-import { getOttabaseConfig } from './ottabase/config.loader'; // Vite template; replace in other apps
+import { getSession } from '@ottabase/auth/backend';
+import { executeSecureCrudRequest, initRLS, type SecurityContext } from '@ottabase/ottaorm';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
 
-// 1. Initialize RLS on startup
-function initDbConnection(env: CloudflareEnv): void {
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-    registerModels([
-        /* your models */
-    ]);
+// 1. Initialize RLS once (initDbConnection in worker/lib/db-utils.ts)
+initRLS();
 
-    // Initialize Row-Level Security
-    initRLS();
-}
-
-// 2. Extract security context from auth session
-// Optional `env` lets you default appId from app config (e.g. Ottabase template: getOttabaseConfig(env).appId).
-async function getSecurityContext(
-    request: Request,
-    session: any | null,
-    env?: CloudflareEnv,
-): Promise<SecurityContext> {
+// 2. Derive the security context from the VERIFIED session only
+async function getSecurityContext(request: Request, env: CloudflareEnv): Promise<SecurityContext> {
+    const session = await getSession(request, env);
     const userId = session?.user?.id;
 
-    // Extract organizationId from multiple sources (priority order):
-    let organizationId =
-        session?.user?.organizationId || // From JWT/session
-        request.headers.get('x-org-id') || // From header
-        extractFromSubdomain(request) || // From subdomain
-        request.searchParams.get('organizationId'); // From query
+    // Active memberships come from D1 (KV-cached); if they cannot be resolved, fail closed (503)
+    const memberOrganizationIds = userId ? await loadActiveMembershipOrgIds(env, userId) : [];
 
-    const configAppId = env ? getOttabaseConfig(env).appId : undefined;
+    // X-Org-Id is a REQUEST to switch org. Honour it only if the user is a member of that org.
+    const requestedOrgId = request.headers.get('x-org-id');
+    const organizationId =
+        requestedOrgId && memberOrganizationIds.includes(requestedOrgId)
+            ? requestedOrgId
+            : (session?.user?.organizationId ?? null);
 
     return {
         userId,
         organizationId,
-        appId: request.headers.get('x-app-id') || configAppId || 'web',
+        memberOrganizationIds,
+        appId: getOttabaseConfig(env).appId, // server config — never an x-app-id header
         roles: session?.user?.roles,
         permissions: session?.user?.permissions,
     };
 }
 
-// 3. Protect CRUD endpoints with auth + RLS
-if (url.pathname.startsWith('/api/ottaorm/')) {
-    // Get authenticated session
-    const session = await getSession(request, env);
-
-    // Extract security context
-    const securityContext = await getSecurityContext(request, session, env);
-
-    // Handle CRUD with automatic RLS enforcement
-    const result = await secureCrud(crudRequest, securityContext);
-
-    return jsonResponse(result.data, result.status);
-}
+// 3. Generic CRUD runs through RLS with that context
+const result = await executeSecureCrudRequest(crudRequest, await getSecurityContext(request, env));
+return result.success
+    ? jsonResponse(result.data, result.status)
+    : errorResponse(result.error ?? 'Request failed', result.status);
 ```
+
+(`loadActiveMembershipOrgIds` stands in for the membership lookup in `auth-utils.ts`.)
 
 ### Auth Routes
 
@@ -861,18 +841,12 @@ see `packages/auth/README.md` for the full route table.
 
 ### Organization ID Sources
 
-The security context extractor checks multiple sources for organization ID (in priority order):
+1. **Session** — `session.user.organizationId`, resolved server-side at sign-in (the default).
+2. **`X-Org-Id` header** — sent by the API client when the user picks an org in the switcher. It is only a request: the
+   server uses it if it is in the user's active memberships and ignores it otherwise.
 
-1. **Session/JWT** - `session.user.organizationId` (if JWT contains org)
-2. **Header** - `X-Org-Id: org-acme` (explicit org selection)
-3. **Subdomain** - `acme.yourapp.com` → `org-acme` (multi-tenant SaaS)
-4. **Query Parameter** - `?organizationId=org-acme` (fallback)
-
-This allows flexible multi-tenant architectures:
-
-- Single-tenant: organizationId from session
-- Multi-tenant SaaS: organizationId from subdomain
-- Org switcher: organizationId from header (set by frontend)
+Never derive the organization from an unvalidated header, query parameter or subdomain — RLS trusts whatever
+`organizationId` it is given. See AGENTS.MD "Security Context: what may be trusted".
 
 ### Frontend Integration
 
@@ -899,49 +873,10 @@ function MyComponent() {
 
 ### Client-Side Organization Switching
 
-The OrganizationSwitcher component persists the selected org and sends it via header:
-
-```typescript
-// apps/otta-web/src/router.tsx
-const [currentOrgId, setCurrentOrgId] = useState<string | undefined>(() => {
-    return localStorage.getItem('currentOrgId') || undefined;
-});
-
-<OrganizationSwitcher
-    currentOrgId={currentOrgId}
-    onOrgChange={(orgId) => {
-        setCurrentOrgId(orgId);
-        localStorage.setItem('currentOrgId', orgId);
-        // API calls will include: X-Org-Id: {orgId}
-    }}
-/>
-```
-
-Update your API client to send the header:
-
-```typescript
-// apps/otta-web/src/lib/api.ts
-export async function api<T = any>(url: string, options: RequestInit = {}): Promise<T> {
-    const orgId = localStorage.getItem('currentOrgId');
-
-    const headers = new Headers(options.headers);
-    if (orgId) {
-        headers.set('X-Org-Id', orgId);
-    }
-
-    const response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: 'include', // Include session cookie
-    });
-
-    if (!response.ok) {
-        throw new ApiError(response.status, await response.text());
-    }
-
-    return response.json();
-}
-```
+`OrganizationSwitcher` (`apps/otta-web/src/components/OrganizationSwitcher.tsx`) writes the chosen org to the global
+`organizationIdAtom` (`@/ottabase/state/appState`). The one API client built in `src/lib/api.ts` reads that atom and
+adds `X-Org-Id` to every request, and `OttaQueryProvider` keys its cache by the org, so switching orgs drops the
+previous org's cached rows. Do not build a second client or call `fetch()` directly (see AGENTS.MD "Client Data Layer").
 
 ### Session Customization
 
@@ -972,26 +907,18 @@ works seamlessly ✅ **Audit-ready** - All violations logged with full user cont
 Row-Level Security (RLS) automatically enforces data isolation at the database level. Every query is filtered based on
 your security context (user, organization, app) **without any manual filtering required**.
 
-**Before RLS (Manual - Error Prone):**
+**Where it applies:** RLS runs on the **secure CRUD path** — `executeSecureCrudRequest` / `rlsMiddleware`, which
+otta-web's generic `/api/ottaorm/{model}` route uses. Direct model calls in server code (`Post.where(...)`) are trusted
+code and are **not** filtered: when a custom route reads tenant data, pass the tenant filter yourself (from the verified
+security context) or route the request through `executeSecureCrudRequest`.
 
-```typescript
-// ❌ Easy to forget, security bug risk
-const posts = await db.posts.find({ where: { organizationId } });
+```http
+# Caller's verified context: organizationId = org-123
+GET /api/ottaorm/posts
+→ only rows with organizationId = 'org-123'
 
-// ❌ What if you forget to add the filter?
-const posts = await db.posts.find(); // SECURITY BUG!
-```
-
-**After RLS (Automatic - Secure by Default):**
-
-```typescript
-// ✅ Automatic filtering, impossible to forget
-const posts = await db.posts.find(); // Already filtered by context!
-
-// ✅ Cross-tenant write blocked automatically
-await db.posts.create({
-    organizationId: 'org-456', // Context is org-123
-}); // RLSError: Cross-tenant write blocked
+POST /api/ottaorm/posts   { "title": "x", "organizationId": "org-456" }
+→ 403 (cross-tenant write), logged to audit_logs
 ```
 
 ### Core Concepts
@@ -1054,54 +981,28 @@ registerPolicy({
 
 ### Worker Integration
 
-Enforce tenant/user/app isolation automatically with RLS:
-
-```typescript
-// apps/your-worker/src/index.ts
-import { initRLS, rlsMiddleware } from '@ottabase/ottaorm';
-
-// Initialize RLS at startup
-initRLS(); // Registers all pre-configured models
-
-export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
-        const url = new URL(request.url);
-
-        // Use RLS middleware for all CRUD operations
-        if (url.pathname.startsWith('/api/ottaorm/')) {
-            return rlsMiddleware(request, env, async (req, env) => {
-                // Extract security context from request
-                // (from JWT, headers, session, etc.)
-                return {
-                    userId: await getUserId(req),
-                    organizationId: await getOrgId(req),
-                    appId: 'web',
-                    roles: await getUserRoles(req),
-                    permissions: await getUserPermissions(req),
-                };
-            });
-        }
-
-        return new Response('Not found', { status: 404 });
-    },
-};
-```
+See [Quick Start → Enable Row-Level Security](#3-enable-row-level-security-in-worker) and
+[Authentication Integration → Worker Integration](#worker-integration). `rlsMiddleware` has no default context builder
+on purpose: deriving the context from raw headers would be spoofable, so `getContext` is required.
 
 ### Pre-Configured Models
 
-All system models come with RLS policies out of the box:
+`initRLS()` registers these (`packages/ottaorm/src/rls/registry.ts`, abridged):
 
-| Model                  | Policy                    | Filter Field     | Allow Null |
-| ---------------------- | ------------------------- | ---------------- | ---------- |
-| `organizations`        | Tenant-Scoped             | `organizationId` | Yes        |
-| `organization_members` | Tenant-Scoped             | `organizationId` | No         |
-| `roles`                | Tenant-Scoped             | `organizationId` | Yes        |
-| `permissions`          | Tenant-Scoped             | `organizationId` | Yes        |
-| `user_roles`           | Tenant-Scoped             | `organizationId` | No         |
-| `audit_logs`           | Tenant-Scoped (Read-Only) | `organizationId` | Yes        |
-| `users`                | Owner-Only                | `id`             | No         |
-| `accounts`             | User-Scoped               | `userId`         | No         |
-| `sessions`             | User-Scoped               | `userId`         | No         |
+| Model                               | Policy                                                         |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `organizations`                     | Membership-scoped (`memberOrganizationIds`, else own rows)     |
+| `organization_members`              | Membership-scoped                                              |
+| `user_groups`, `user_group_members` | Group-membership-scoped                                        |
+| `roles`, `permissions`              | Platform admin only (and blocked from generic CRUD)            |
+| `user_roles`                        | Tenant-scoped + platform admin (and blocked from generic CRUD) |
+| `audit_logs`                        | Tenant-scoped + platform admin                                 |
+| `users`                             | Owner-only (`id`)                                              |
+| `accounts`, `sessions`              | User-scoped (`userId`)                                         |
+| `verification_tokens`               | Deny all reads, read-only                                      |
+| `posts`                             | Tenant + app scoped; authors limited to their own posts        |
+
+A model with no registered policy is denied.
 
 ### Security Context
 
@@ -1109,31 +1010,22 @@ The security context determines what data a user can access:
 
 ```typescript
 interface SecurityContext {
-    userId?: string; // Current user ID
-    organizationId?: string | null; // Current org (null for single-founder)
-    appId?: string; // Current app (web, admin, api)
-    roles?: string[]; // User roles
-    permissions?: string[]; // User permissions
+    userId?: string; // Current user ID (from the verified session)
+    organizationId?: string | null; // Active org — membership-validated (null for single-founder)
+    appId?: string; // From server config (getOttabaseConfig), never a request header
+    roles?: string[]; // User roles in the active org
+    permissions?: string[]; // User permissions in the active org
+    platformAdmin?: boolean; // System-scoped platform:admin grant — never inferred from a role name
+    memberOrganizationIds?: string[]; // Orgs with an active membership
+    memberGroupIds?: string[]; // Accessible user groups
 }
 ```
 
 ### Security Violations
 
-RLS automatically logs all security violations:
-
-```typescript
-// Attempt cross-tenant read
-const posts = await db.posts.find(); // Context: org-123
-// → Only returns posts where organizationId = 'org-123'
-
-// Attempt cross-tenant write
-await db.posts.create({
-    title: 'Hacked!',
-    organizationId: 'org-456', // Different org!
-});
-// → RLSError: Cross-tenant write blocked
-// → Logged to audit_logs with full context
-```
+A blocked write or a policy denial on the secure CRUD path is logged to `audit_logs` (for models with
+`auditEnabled: true`) and answered with a generic 403 (401 when unauthenticated); the response never echoes the policy
+or the attempted data.
 
 ### Custom Policies
 
@@ -1146,16 +1038,10 @@ registerPolicy({
     policy: {
         level: 'custom',
         filter: (context) => {
-            // Only return documents where:
-            // 1. User's org matches OR
-            // 2. Document is public OR
-            // 3. User is explicitly shared
+            // Return null to deny. Otherwise: the caller's org's documents OR public ones.
+            if (!context.organizationId) return null;
             return {
-                OR: [
-                    { organizationId: context.organizationId },
-                    { isPublic: true },
-                    { sharedWith: { contains: context.userId } },
-                ],
+                $or: [{ organizationId: context.organizationId }, { isPublic: true }],
             };
         },
     },
@@ -1165,10 +1051,9 @@ registerPolicy({
 
 ### Benefits
 
-✅ **Impossible to forget** - Security is automatic, not manual ✅ **Reduces bugs by 90%** - No manual filtering = no
-filtering bugs ✅ **Single source of truth** - All security rules in one place ✅ **Compliance ready** - All violations
-logged automatically ✅ **Zero trust** - No model accessible without explicit policy ✅ **Performance** - Filters
-applied at DB level (fast!)
+✅ **Automatic on the CRUD path** - generic CRUD cannot skip the filter ✅ **Single source of truth** - All policies in
+one registry ✅ **Compliance ready** - Violations logged ✅ **Fail-closed** - No model accessible without an explicit
+policy ✅ **Performance** - Filters compile into the SQL WHERE clause
 
 ### Demo Page
 
@@ -1189,11 +1074,11 @@ Visit `/admin/security/rls` to see RLS in action:
 import {
     initRBACCache,
     buildAppContext,
-    extractOrganizationId,
-    extractAppId,
     hasPermission,
     hasAnyRole,
     hasAllRoles,
+    requireAdminAccess,
+    getRequestContext,
 } from '@ottabase/rbac';
 ```
 
@@ -1225,7 +1110,7 @@ import { rlsMiddleware, executeSecureCrudRequest, initRLS, registerPolicy, RLSPo
 
 ## 📚 Additional Documentation
 
-- **TENANT_ISOLATION.md** - Deep dive on database-level isolation
+- **AGENTS.MD → "Security Context: what may be trusted"** - provenance rules for the RLS context
 - **packages/rbac/README.md** - RBAC package API reference
 - **packages/audit/README.md** - Audit package API reference
 - **packages/ottaorm/README.md** - ORM models and multi-tenant patterns
@@ -1253,24 +1138,26 @@ const switchOrg = (orgId: string) => {
 ### Permission Guards
 
 ```typescript
-// Middleware
-export async function requirePermission(permission: string, organizationId: string) {
-    const user = await getCurrentUser();
-    const hasAccess = await user.hasPermission(permission, {
-        organizationId,
-    });
+import { getSession } from '@ottabase/auth/backend';
+import { User } from '@ottabase/ottaorm';
+import { errorResponse } from '@ottabase/utils/http-errors';
 
-    if (!hasAccess) {
-        throw new ForbiddenError(`Missing permission: ${permission}`);
+// Worker route: permission + scope, never a role name
+export async function handleCreatePost(request: Request, env: CloudflareEnv): Promise<Response> {
+    const session = await getSession(request, env);
+    const organizationId = session?.user?.organizationId;
+    if (!session || !organizationId) return errorResponse('Unauthorized', 401);
+
+    const user = await User.find(session.user.id);
+    if (!(await user?.hasPermission('posts:create', { organizationId }))) {
+        return errorResponse('Forbidden', 403); // generic — never name the missing permission
     }
-}
-
-// Usage in route
-app.post('/api/posts', async (req, res) => {
-    await requirePermission('posts:create', req.organizationId);
     // ... create post
-});
+}
 ```
+
+For admin surfaces use `requireAdminAccess(context, { scope: 'system' })` (or `scope: 'organization'`) from
+`@ottabase/rbac`.
 
 ### Audit Trail Query
 
@@ -1283,7 +1170,7 @@ const auditTrail = await AuditLog.where(
         action: 'update',
     },
     {
-        orderBy: 'timestamp',
+        orderBy: 'createdAt',
         orderDirection: 'desc',
         limit: 50,
     },
@@ -1291,11 +1178,11 @@ const auditTrail = await AuditLog.where(
 
 // Export for compliance
 const exportData = auditTrail.map((log) => ({
-    timestamp: log.timestamp,
-    user: log.userEmail,
-    action: log.action,
-    resource: `${log.resourceType}:${log.resourceId}`,
-    changes: log.changes,
+    timestamp: log.get('createdAt'),
+    user: log.get('userEmail'),
+    action: log.get('action'),
+    resource: `${log.get('resourceType')}:${log.get('resourceId')}`,
+    changes: log.get('changes'),
 }));
 ```
 
@@ -1307,7 +1194,7 @@ const exportData = auditTrail.map((log) => ({
 - [ ] Seed system roles
 - [ ] Enable `rlsMiddleware` in worker (with an explicit, trusted `getContext`)
 - [ ] Configure KV namespace for caching
-- [ ] Set up organization extraction (header/subdomain)
+- [ ] Confirm the active org is session-derived and any requested org is membership-validated
 - [ ] Test cross-tenant access prevention
 - [ ] Configure audit log retention policy
 - [ ] Set up monitoring for security violations
@@ -1321,5 +1208,5 @@ const exportData = auditTrail.map((log) => ({
 For issues or questions:
 
 1. Check package READMEs in `packages/rbac/` and `packages/audit/`
-2. Review TENANT_ISOLATION.md for security details
+2. Review AGENTS.MD "Security Context: what may be trusted"
 3. Examine example implementations in `apps/otta-web/`

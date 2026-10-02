@@ -45,14 +45,16 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **RLS context is mandatory**: always provide adequate context (`organizationId`, `userId`, `appId`) and never bypass
   RLS behavior.
 - **Controller/service anti-pattern**: keep business logic in models, not controllers/services.
-- **Relationship safety**: use dynamic imports inside `BaseModel` relationship methods to avoid circular dependencies.
+- **Relationship safety**: use dynamic imports inside `BaseModel` relationship methods when the related model (directly
+  or transitively) imports this one — that is a real cycle. When it does not, import statically: a dynamic import of a
+  module that is already statically imported elsewhere buys nothing and makes Vite warn.
 - **Cloudflare binding parity**: when bindings change, keep `wrangler.jsonc` and `cloudflare-env.d.ts` in sync.
 - **Error response consistency**: for API failures, use `errorResponse(...)` from `@ottabase/utils/http-errors`
   (lint-enforced — see "Enforced by Lint").
 - **Every app declares its dev ports in `package.json#ottabase.start`**: that block is the single source of truth for
   dev URLs/ports. `otta start` launches from it and `pnpm dev:kill` (`--app=<name>`) frees ports from it. Never keep a
-  parallel port list anywhere else; an app without the block cannot be started or cleaned up by the tooling. Format:
-  see `packages/cli/README.md` "App lifecycle contract".
+  parallel port list anywhere else; an app without the block cannot be started or cleaned up by the tooling. Format: see
+  `packages/cli/README.md` "App lifecycle contract".
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
@@ -271,9 +273,9 @@ export class Todo extends BaseModel {
 
 ### Deferred Columns
 
-A model's biggest columns should not ride along on every list read. Name them in `static deferred`
-and `where`/`whereIn`/`all`/`search`/`searchPaginate`/`paginate` drop them from the SELECT, while
-`find`/`first` still load everything.
+A model's biggest columns should not ride along on every list read. Name them in `static deferred` and
+`where`/`whereIn`/`all`/`search`/`searchPaginate`/`paginate` drop them from the SELECT, while `find`/`first` still load
+everything.
 
 ```typescript
 export class Post extends BaseModel {
@@ -281,14 +283,13 @@ export class Post extends BaseModel {
 }
 ```
 
-- **Reading a deferred column off a collection-loaded record throws.** That is the point: silence
-  turns `if (!post.get('content'))` into a no-op and read-then-write into data loss. Use
-  `find`/`first`, or `{ withDeferred: true }`, when a collection read genuinely needs the field.
-- **Check the UI before deferring.** If any screen reads the column out of a *list* response it
-  cannot be deferred — `PostVersion.content` stays loaded because version restore/compare read it
-  from the version list.
-- **Not a privacy control.** Single-record reads still load and serialize it. Privacy is `hidden`,
-  or a strip in the route's own serializer.
+- **Reading a deferred column off a collection-loaded record throws.** That is the point: silence turns
+  `if (!post.get('content'))` into a no-op and read-then-write into data loss. Use `find`/`first`, or
+  `{ withDeferred: true }`, when a collection read genuinely needs the field.
+- **Check the UI before deferring.** If any screen reads the column out of a _list_ response it cannot be deferred —
+  `PostVersion.content` stays loaded because version restore/compare read it from the version list.
+- **Not a privacy control.** Single-record reads still load and serialize it. Privacy is `hidden`, or a strip in the
+  route's own serializer.
 
 ### Row-Level Security (RLS)
 
@@ -416,10 +417,11 @@ boundary that keeps one tenant's cached rows from being read by another.
 
 ### @ottabase/ottaorm
 
-Fat model ORM. Core models: User, Post, Tag, Account, Session.
+Fat model ORM. Core models: User, Tag, Account, Session, Organization, Role, UserRole (blog `Post` lives in
+`@ottabase/ottablog`).
 
 ```typescript
-import { BaseModel, setDriver, autoInit, collectTableSchemas, User, Post, Tag } from '@ottabase/ottaorm';
+import { BaseModel, registerConnection, autoInit, collectTableSchemas, User, Tag } from '@ottabase/ottaorm';
 ```
 
 ### @ottabase/db
@@ -428,9 +430,10 @@ D1 database driver.
 
 ```typescript
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { registerConnection } from '@ottabase/ottaorm';
 
-const driver = createD1Driver(env.OBCF_D1);
-setDriver(driver);
+// Register the D1 driver as the default OttaORM connection (see worker/lib/db-utils.ts)
+registerConnection('default', createD1Driver(env.OBCF_D1));
 ```
 
 ### @ottabase/cf
@@ -535,8 +538,8 @@ Advanced data table built on TanStack Table v8. Server-side sort/filter/paginati
 bulk actions. Powers the list view in `@ottabase/forms` ModelCrud.
 
 ```typescript
-import { DataTable, useDataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable';
-import { useServerTable } from '@ottabase/ui-datatable'; // OttaORM server-side integration
+import { useDataTable, useServerTable } from '@ottabase/ui-datatable'; // headless hooks (OttaORM server-side)
+import { DataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable/react'; // rendered UI
 ```
 
 ### @ottabase/premium
@@ -832,7 +835,7 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 ### IMPORTANT NOTES FOR CODING AGENTS
 
 - **Build commands:** Agents should only run build and test commands for a particular package using the `--filter` flag
-  (e.g., `pnpm build:pkg --filter=<package>` or `pnpm test --filter=<package>`). Do not run full app builds
+  (e.g., `pnpm turbo run build --filter=<package>` or `pnpm test --filter=<package>`). Do not run full app builds
   (`pnpm build`, `pnpm dev`, etc.) unless you are a cloud agent; only cloud agents may execute full builds or dev
   workflows. Local development user is responsible for running full app builds, and shall share output with the agent as
   required.

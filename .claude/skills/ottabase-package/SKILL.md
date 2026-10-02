@@ -20,7 +20,9 @@ description:
 2. App: add the table to `ottabase/config.migrations.ts` `PACKAGE_REGISTRY`.
 3. App: add the package key to `ottabase.config.ts` `packages` (built-in) or `customPackages` (custom). Custom packages
    also register routes in `ottabase/config.routes.ts`.
-4. App owns the `BaseModel` class (`apps/*/ottabase/models/*`) and registers it in `worker/lib/db-utils.ts`.
+4. App owns the `BaseModel` class (`apps/*/ottabase/models/*`) and registers it in `worker/lib/db-utils.ts`. Generic
+   `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST` (`worker/routes/ottaorm-crud.ts`)
+   only if it should be reachable there, with an RLS policy registered.
 5. App exports the table from `ottabase/db/schema.ts` and adds it to `db/schemas-helper.ts`. _(Premium packages bypass
    all of this — one registration in `config.premium.ts`. See `docs/PREMIUM_PACKAGES.md`.)_
 

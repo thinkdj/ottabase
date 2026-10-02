@@ -14,17 +14,21 @@ writes to R2. Never call R2 multipart directly from app code.
 ## Client
 
 - Headless/vanilla: `uploadFile(file, options)` (`@ottabase/ottaupload`) — no React needed.
-- React: `useFileUpload(options)` → `{ files, isUploading, addFiles, uploadAll, removeFile, retryUpload }`, plus
-  `useDragAndDrop`.
-- Common options: `maxFileSize`, `acceptedFileTypes`, `provider` (`'r2' | 'cloudflare-images'`), progress/result
-  callbacks. (Callback names differ between the vanilla and hook APIs — check the README for the exact ones rather than
-  guessing.)
+- React: `useFileUpload(options)` → `{ files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload }`,
+  plus `useDragAndDrop` and the `<FileUploader>` component (`@ottabase/ottaupload/client`).
+- Common options: `maxFileSize`, `acceptedFileTypes`, `provider` (`'r2' | 'cloudflare-images'`). Callbacks differ by
+  API: vanilla `uploadFile` takes `onProgress`/`onSuccess`/`onError`; the hook takes `onUploadProgress`/
+  `onUploadComplete`/`onUploadError`. `onUploadComplete` fires once per batch (including `autoUpload`) with only the
+  files that actually uploaded.
 - Do not hand-roll `fetch` (lint-banned); the upload helpers are the request path.
 
 ## Server
 
-- The `/api/upload` route resolves the caller, then calls `uploadFileToR2(file, r2Client, options)` (or
-  `uploadFileToCloudflareImages`). `r2Client` comes from `@ottabase/cf`. `generateKey(file)` customizes the object key.
+- The `/api/upload` route resolves the caller (session required), then calls `uploadFileToR2(file, r2Client, options)`
+  (or `uploadFileToCloudflareImages`). `r2Client` is `createR2Client({ bucket: env.OBCF_R2 })` from `@ottabase/cf/r2`.
+  Server options: `maxFileSize`, `allowedTypes`, `generateKey(file)` (object key), `getUrl(key)` (returned URL; default
+  `/api/upload/file/<key>`, served by the app's `/api/upload/file/*` route). The app then records the upload via
+  `persistUploadedMediaRecord` (media library).
 - Retrieve/list via `getFileFromR2` / `listFilesFromR2`. The raw `R2Client` binding is reachable when genuinely needed.
 
 ## Gotchas

@@ -8,15 +8,15 @@ description:
 
 # Testing the Ottabase way
 
-Vitest everywhere. Tests live in `src/__tests__/` as `*.test.ts` / `*.test.tsx` (colocated). `@testing-library/react`
-for components; Cloudflare bindings are mocked in app test setups.
+Vitest 4 everywhere. Tests live in `src/__tests__/` (a few packages use a root `__tests__/`) as `*.test.ts` /
+`*.test.tsx`. `@testing-library/react` for components; Cloudflare bindings are mocked in app test setups.
 
 ## Running (agents: scope with `--filter`, do not run full builds locally)
 
 ```bash
 pnpm test --filter=@ottabase/<pkg>        # the package you changed
-pnpm --filter @ottabase/<pkg> test -- foo.test.ts   # a single file
-pnpm --filter @ottabase/<pkg> test -- --run          # one-shot (no watch)
+pnpm --filter @ottabase/<pkg> test foo.test.ts      # a single file
+pnpm --filter @ottabase/<pkg> exec vitest     # watch mode (package `test` scripts are `vitest run`)
 ```
 
 ## Rules that actually bite
@@ -24,11 +24,13 @@ pnpm --filter @ottabase/<pkg> test -- --run          # one-shot (no watch)
 - **Every workspace must declare a `test` script.** Turbo silently skips an undeclared task — a package with no `test`
   is not passing, it is _invisible_ to CI.
 - **`turbo test` depends on `^build`.** When you change a shared package and test a consumer, **rebuild first**
-  (`pnpm build:pkg --filter=<pkg>`) or the consumer tests run against stale `dist/`. Same for `type-check`. This is the
-  single most common false pass/fail.
-- **Cloudflare bindings are mocked in apps** (`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, `OBCF_QUEUE`, `OBCF_RATE_LIMITER`, …) via
-  each app's `vitest.setup.ts`. Override per-test with `vi.fn()` on the global.
+  (`pnpm turbo run build --filter=<pkg>`) or the consumer tests run against stale `dist/`. Same for `type-check`. This
+  is the single most common false pass/fail.
+- **Cloudflare bindings are mocked in apps** (`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, `OBCF_QUEUE`, `OBCF_RATE_LIMITER`,
+  `OBCF_REALTIME`, `OBCF_ASSETS`) via each app's `vitest.setup.ts`. Override per-test with `vi.fn()` on the global.
 - New package → add its own `vitest.config.ts` + `test` script, or `pnpm test:packages` won't see it.
+- **Coverage is a report, not a gate** (`pnpm test:coverage`; CI never runs it). `@vitest/coverage-v8` is pinned to the
+  exact installed `vitest` version — bump both together. Add `coverage.thresholds` only for a floor the package meets.
 
 ## Conventions
 
@@ -36,8 +38,8 @@ pnpm --filter @ottabase/<pkg> test -- --run          # one-shot (no watch)
   `describe.sequential()` only when order truly matters.
 - Keep it lazy: colocate one `*.test.ts`, no bespoke fixtures/frameworks unless the logic (a parser, a money/security
   path, a branch) genuinely needs them. Trivial one-liners don't need a test.
-- `await` your async assertions — an un-awaited `expect(...).rejects.toThrow(...)` passes today but hard-fails under
-  Vitest 3.
+- `await` your async assertions — an un-awaited `expect(...).rejects.toThrow(...)` fails the test on Vitest 3+ (the repo
+  is on 4).
 
 ## Authoritative sources
 

@@ -1072,7 +1072,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
               <dl class="deflist">
                 <div class="defrow">
                   <dt class="defterm">CLOUDFLARE_ACCOUNT_ID<span class="deftag">Production</span></dt>
-                  <dd class="defdesc">Needed by <code>wrangler deploy</code>, <code>pnpm cf:setup</code> and CI. Store it as the <code>CF_ACCOUNT_ID</code> repository secret. Local <code>wrangler dev</code> does not need it.</dd>
+                  <dd class="defdesc">Needed by <code>wrangler deploy</code>, <code>pnpm cf:setup</code> and CI. Store it as the <code>CLOUDFLARE_ACCOUNT_ID</code> repository secret. Local <code>wrangler dev</code> does not need it.</dd>
                 </div>
                 <div class="defrow">
                   <dt class="defterm">CLOUDFLARE_ANALYTICS_API_TOKEN<span class="deftag">Optional</span></dt>

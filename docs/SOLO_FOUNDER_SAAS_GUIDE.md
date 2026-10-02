@@ -3,7 +3,8 @@
 **Build production-ready multi-tenant SaaS from your home office**
 
 Welcome to Ottabase - the all-batteries-included monorepo for solo founders who want to ship fast without compromising
-on quality.
+on quality. The app (`apps/otta-web`) is a Vite + React SPA served by a Cloudflare Worker, with OttaORM over D1 as the
+only database layer.
 
 ---
 
@@ -27,30 +28,39 @@ on quality.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-user/ottabase.git
+git clone https://github.com/thinkdj/ottabase.git
 cd ottabase
 
-# 2. Install dependencies
+# 2. Install dependencies and build the shared packages
 pnpm install
+pnpm build:pkg
 
-# 3. Start development
+# 3. Local secrets: copy the example and set at least BOOTSTRAP_OWNER_SECRET
+cp apps/otta-web/.env.example apps/otta-web/.env.local
+
+# 4. Start development (Vite on :3003, Worker on :3004)
 pnpm dev
-
-# 4. Initialize database
-curl -X POST http://localhost:3004/api/ottaorm/init
-
-# 5. Seed database (optional)
-# See Step 2: Seed Data section below for manual seeding instructions
 ```
+
+Then open `http://localhost:3004/__bootstrap__` and run the four-step setup wizard (it asks for
+`BOOTSTRAP_OWNER_SECRET`):
+
+1. **Database** — creates every table and runs migrations
+2. **Roles** — seeds the built-in roles and their permissions
+3. **Owner** — creates your platform owner account and signs you in
+4. **Launch** — pre-flight checks, then marks the platform `READY`
+
+The same steps are available headless (`POST /__bootstrap__/api/{init,seed,create-owner,finalize}` with an
+`X-Bootstrap-Secret` header) — see `apps/otta-web/worker/bootstrap/README.MD`.
 
 **You now have:**
 
-- ✅ Multi-tenant organization system
+- ✅ Multi-tenant organization system (every signup gets its own organization)
 - ✅ Role-based access control (RBAC)
 - ✅ Audit logging
-- ✅ User authentication
-- ✅ Database with ORM
-- ✅ Type-safe API
+- ✅ User authentication (credentials, OAuth, magic links)
+- ✅ Database with ORM (OttaORM over Cloudflare D1)
+- ✅ Type-safe API with a single, tenant-scoped client data layer
 
 ---
 
@@ -66,7 +76,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
           ┌──────────────┴──────────────┐
           │                             │
     TENANT LAYER                  APP LAYER
-    (Organizations)               (web, admin, api)
+    (Organizations)               (appId from server config)
           │                             │
           └──────────────┬──────────────┘
                          │
@@ -79,24 +89,30 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 **Tenant (Organization):**
 
 - Your customers (e.g., Acme Corp, Startup Inc)
-- Data is isolated per tenant
-- Each tenant has its own members, roles, and data
+- Data is isolated per tenant by Row-Level Security (RLS) on `organizationId`
+- Each tenant has its own members, role grants, and data
 
 **App:**
 
-- Different applications sharing the same database (web, admin, api)
-- Users can have different permissions in different apps
-- Example: User is admin in web app, viewer in admin dashboard
+- One deployment = one `appId`, resolved on the server by `getOttabaseConfig(env).appId` (`ottabase.config.ts` `appId`,
+  overridable with the `APP_ID` var). Never taken from a request header.
+- App-scoped tables (for example the blog in platform mode) are filtered by `appId` through the `AppScoped` RLS policy.
+- Role grants are per **organization**, not per app.
 
 **User:**
 
 - Global user accounts (same login across all tenants)
-- Users can belong to multiple organizations
-- Permissions are scoped per tenant + app
+- Users can belong to multiple organizations and switch the active one
+- Permissions come from role grants in the active organization, plus any **system-scoped** grants (organization
+  `'system'`) — which is how the platform owner holds platform authority
 
 ---
 
 ## Core Concepts
+
+All snippets below run on the server (a Worker route) after the DB connection is initialized — `initDbConnection(env)`
+from `apps/otta-web/worker/lib/db-utils.ts` registers the D1 driver
+(`registerConnection('default', createD1Driver(env.OBCF_D1))`), every model, and the RLS policies.
 
 ### 1. Organizations (Tenants)
 
@@ -119,100 +135,100 @@ const acme = await Organization.findBySlug('acme');
 
 ### 2. Organization Membership
 
-Users belong to organizations with a membership role (owner, admin, member).
+Users belong to organizations with a roster role (`owner`, `admin`, `member`) and status (`active`, `invited`,
+`suspended`).
 
 ```typescript
 import { OrganizationMember } from '@ottabase/ottaorm/models';
 
-// Add user to organization
+// Add an existing user to an organization
 await OrganizationMember.addMember({
-    userId: user.id,
-    organizationId: org.id,
+    userId: user.get('id') as string,
+    organizationId: org.get('id') as string,
     role: 'admin',
     status: 'active',
 });
 
 // Check membership
-const isMember = await OrganizationMember.isMember(user.id, org.id);
-const isAdmin = await OrganizationMember.hasRole(user.id, org.id, 'admin');
+const isMember = await OrganizationMember.isMember(userId, orgId);
+const isAdmin = await OrganizationMember.hasRole(userId, orgId, 'admin');
 
 // Get user's organizations
-const orgs = await OrganizationMember.getUserOrganizations(user.id);
+const orgs = await OrganizationMember.getUserOrganizations(userId);
 ```
 
 ### 3. RBAC (Roles + Permissions)
 
-Permissions are assigned via roles, scoped by organization (and optionally by app).
+Permissions are bundled on roles and granted per organization. `organizationId` is **required** on every role API — an
+org-less call throws instead of merging grants from every tenant. Use `'system'` for platform-scoped grants.
 
 ```typescript
-import { User, Role, UserRole } from '@ottabase/ottaorm/models';
+import { Role, User } from '@ottabase/ottaorm/models';
+
+const user = await User.find(userId);
+const editor = await Role.findByName('editor');
+if (!user || !editor) throw new Error('User or role not found');
 
 // Assign role to user in organization
-// Note: appId is not a parameter of assignRole; use buildAppContext to scope by app
 await user.assignRole(
-    adminRoleId,
-    assignedBy.id,
+    editor.get('id') as string,
+    assignedById, // who granted it (optional)
     'org-acme', // organizationId (REQUIRED)
-    { cache: rbacCache }, // options (OPTIONAL)
 );
 
 // Check permissions
-const canEdit = await user.hasPermission('posts:edit', {
-    organizationId: 'org-acme',
-    cache: rbacCache,
-});
+const canEdit = await user.hasPermission('posts:update', { organizationId: 'org-acme' });
 
 // Get user roles
-const roles = await user.roles({
-    organizationId: 'org-acme',
-    cache: rbacCache,
-});
+const roles = await user.roles({ organizationId: 'org-acme' });
 ```
 
-### 4. AppContext (The Glue)
+### 4. Request Context (The Glue)
 
-AppContext unifies tenant + app + user context in one place.
+On the server, `getRequestContext` from `@ottabase/rbac` turns a request into the caller's verified identity, active
+organization, and merged permissions. Everything comes from the signed session and server config; the requested
+organization is kept only if the user is an active member of it.
 
 ```typescript
-import { buildAppContext, hasPermission } from '@ottabase/rbac';
+import { hasPermission } from '@ottabase/rbac/admin-guard';
+import { getRequestContext } from '@ottabase/rbac/request-context';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { getAuthOptions } from '../lib/auth-utils';
 
-// Build context from request
-const context = await buildAppContext({
-    organizationId: 'org-acme', // From subdomain/header
-    appId: 'web', // From env/header
-    user: currentUser, // From session
-    ipAddress: request.headers.get('cf-connecting-ip'),
-    userAgent: request.headers.get('user-agent'),
-    cache: rbacCache,
+const ctx = await getRequestContext(request, env, {
+    getAuthOptions,
+    appId: getOttabaseConfig(env).appId,
 });
 
-// Now you have everything:
-console.log(context.organizationId); // 'org-acme'
-console.log(context.appId); // 'web'
-console.log(context.user.email); // 'john@acme.com'
-console.log(context.roles); // ['admin', 'editor']
-console.log(context.permissions); // ['posts:*', 'users:read', ...]
+ctx.organizationId; // membership-verified active org, or null
+ctx.appId; // from server config
+ctx.permissions; // system-scoped ∪ active-org grants, e.g. ['*:read', 'posts:create']
 
-// Check permissions easily
-if (hasPermission(context, 'posts:edit')) {
+if (hasPermission(ctx, 'posts:update')) {
     // Allow edit
 }
 ```
 
 ### 5. Audit Logging
 
-Every action is logged with full context.
+Actions are logged with tenant + app context to `audit_logs`.
 
 ```typescript
-import { logCreate, logUpdate } from '@ottabase/audit';
-import { createAuditData } from '@ottabase/rbac';
+import { AuditLog } from '@ottabase/ottaorm/models';
 
-// Log action using context
-await logCreate('post', post.id, post, createAuditData(context, 'create', 'post', post.id));
+// Log an action using the request context
+await AuditLog.log({
+    userId: ctx.sessionUser?.id,
+    organizationId: ctx.organizationId ?? undefined,
+    appId: ctx.appId,
+    action: 'create',
+    resourceType: 'project',
+    resourceId: project.get('id') as string,
+});
 
 // Query logs
 const logs = await AuditLog.getByOrganization('org-acme', 100);
-const userLogs = await AuditLog.getByUserInOrganization(user.id, 'org-acme', 50);
+const userLogs = await AuditLog.getByUserInOrganization(userId, 'org-acme', 50);
 ```
 
 ---
@@ -221,107 +237,113 @@ const userLogs = await AuditLog.getByUserInOrganization(user.id, 'org-acme', 50)
 
 ### Step 1: Initialize Database
 
+The bootstrap wizard (Quick Start) does this for you. To re-run migrations later — for example after adding a model —
+call the init endpoint. Outside `ENVIRONMENT=development` it requires `MIGRATION_SECRET`:
+
 ```bash
+# Local dev
 curl -X POST http://localhost:3004/api/ottaorm/init
+
+# Any other environment
+curl -X POST https://yourapp.com/api/ottaorm/init -H "Authorization: Bearer $MIGRATION_SECRET"
 ```
 
-**What you get:**
+**What you get** (among the core tables):
 
 - `organizations` - Tenant entities
-- `organization_members` - User ↔ Organization
-- `roles` - System roles (admin, editor, viewer)
-- `permissions` - System permissions (users:\*, posts:read, etc.)
-- `user_roles` - User role assignments (per organization + app)
-- `audit_logs` - Complete audit trail
+- `organization_members` - User ↔ Organization roster
+- `roles` - Roles with their permission bundles
+- `permissions` - Permission catalog (`users:*`, `posts:read`, ...)
+- `user_roles` - Role grants (per organization; `'system'` for platform grants)
+- `audit_logs` - Audit trail
 
-### Step 2: Seed Data (Optional)
+### Step 2: Seed Roles
 
-Seed manually (no built-in seed script exists in `@ottabase/ottaorm`):
+The wizard's **Roles** step (`POST /__bootstrap__/api/seed`) seeds and heals the built-in roles:
 
-```typescript
-import { Role, Permission } from '@ottabase/ottaorm/models';
+| Role             | Scope        | Permissions                                                             |
+| ---------------- | ------------ | ----------------------------------------------------------------------- |
+| `platform_owner` | `'system'`   | `*:*` — the bootstrapped app owner                                      |
+| `owner`, `admin` | organization | full org-level access, including `org:admin` (no system-level wildcard) |
+| `editor`         | organization | `*:read`, `*:create`, `*:update`, `posts:publish`, `posts:manage`       |
+| `author`         | organization | `*:read`, `posts:create`, `posts:update`, `media:create`, `media:read`  |
+| `viewer`         | organization | `*:read`                                                                |
+| `member`         | organization | `*:read`                                                                |
 
-// Create roles
-const adminRole = await Role.create({
-    name: 'admin',
-    description: 'Full access to all resources',
-});
+Re-running it is safe: `/__bootstrap__/seed` reconciles the built-in roles without touching your custom ones.
 
-// Create permissions
-const permissions = ['users:*', 'posts:*', 'roles:*', 'audit:read'];
+### Step 3: RBAC Cache (Optional)
 
-for (const perm of permissions) {
-    await Permission.create({
-        name: perm,
-        description: `Permission for ${perm}`,
-    });
-}
-
-// Link permissions to roles (pass the permission name string, not an id)
-await adminRole.addPermission(permission.name);
-```
-
-### Step 3: Setup RBAC Cache (Production)
+Role and permission lookups can be cached in KV. Pass the cache to `getRequestContext` / the model role APIs via the
+`cache` option.
 
 ```typescript
+import { createKVClient } from '@ottabase/cf/kv';
 import { initRBACCache } from '@ottabase/rbac';
 
-// Initialize with Cloudflare KV
-const cache = initRBACCache({
-    kv: env.KV_NAMESPACE, // Cloudflare KV
+const rbacCache = initRBACCache({
+    kv: createKVClient({ namespace: env.OBCF_KV }),
     ttl: 300, // 5 minutes
     prefix: 'rbac:',
-    enabled: true,
 });
 ```
+
+The cache is an optimization only: a miss or a KV failure never changes an authorization outcome.
 
 ### Step 4: Create Your First Organization
 
+Every signup is provisioned with its own organization (owner membership + org-scoped `owner` grant), so there is nothing
+to do for a new user. To create another organization from the UI or API, `POST /api/ottaorm/organizations` creates it
+and makes the caller its owner. On the server, with models:
+
 ```typescript
-import { Organization, OrganizationMember } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, Role, User } from '@ottabase/ottaorm/models';
+
+const user = await User.find(userId);
+const ownerRole = await Role.findByName('owner'); // seeded by the bootstrap wizard
+if (!user || !ownerRole) throw new Error('User or owner role not found');
 
 // Create organization
 const org = await Organization.create({
     name: 'Your Company',
     slug: 'your-company',
-    ownerId: user.id,
+    ownerId: userId,
     plan: 'pro',
 });
+const orgId = org.get('id') as string;
 
-// Add owner as admin
+// Add the creator to the roster as owner
 await OrganizationMember.addMember({
-    userId: user.id,
-    organizationId: org.id,
+    userId,
+    organizationId: orgId,
     role: 'owner',
     status: 'active',
 });
 
-// Assign RBAC role
-await user.assignRole(adminRoleId, user.id, org.id);
+// Grant the org-scoped RBAC role
+await user.assignRole(ownerRole.get('id') as string, userId, orgId);
 ```
 
 ---
 
 ## Building Your First Feature
 
-Let's build a blog post CRUD with full multi-tenant support and RBAC.
+Let's build a tenant-scoped **Project** entity with CRUD, RBAC, and audit logging. Standard CRUD needs no custom
+endpoint: a registered model is served by the generic `/api/ottaorm/{entity}` route, scoped by RLS.
 
-### 1. Create the Model
+### 1. Create the Table and Model
 
 ```typescript
-// packages/ottaorm/src/models/Post.schema.ts
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+// apps/otta-web/ottabase/models/Project.schema.ts
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-export const postsTable = sqliteTable('posts', {
+export const projectsTable = sqliteTable('projects', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     organizationId: text('organization_id').notNull(), // Tenant scoping
-    appId: text('app_id'), // App scoping (optional)
-    title: text('title').notNull(),
-    content: text('content').notNull(),
-    authorId: text('author_id').notNull(),
-    status: text('status').default('draft'),
+    name: text('name').notNull(),
+    status: text('status').default('active').notNull(),
     createdAt: integer('created_at')
         .$defaultFn(() => Date.now())
         .notNull(),
@@ -330,194 +352,232 @@ export const postsTable = sqliteTable('posts', {
         .$onUpdateFn(() => Date.now())
         .notNull(),
 });
+
+export type ProjectType = typeof projectsTable.$inferSelect;
 ```
 
-### 2. Create the API Route
+```typescript
+// apps/otta-web/ottabase/models/Project.ts
+import { BaseModel, type PackageType } from '@ottabase/ottaorm';
+import { projectsTable } from './Project.schema';
+
+export { projectsTable, type ProjectType } from './Project.schema';
+
+export class Project extends BaseModel {
+    static entity = 'projects';
+    static table = projectsTable;
+    static primaryKey = 'id';
+    static packageName = 'app';
+    static packageType: PackageType = 'app';
+
+    // Fat model: domain logic lives here, not in routes
+    async archive() {
+        this.set('status', 'archived');
+        return this.save();
+    }
+}
+```
+
+### 2. Register It
+
+1. Export the table from `apps/otta-web/ottabase/db/schema.ts`: `export { projectsTable } from '../models/Project';`
+2. Add `projectsTable` to the `appTables` maps in `apps/otta-web/ottabase/db/schemas-helper.ts` (`getAllSchemas()` and
+   `getSchemaSummary()`).
+3. In `apps/otta-web/worker/lib/db-utils.ts` `initDbConnection`, add `Project` to `appModels` and register a tenant
+   policy **after** `initRLS()` (the registry is last-write-wins):
+
+    ```typescript
+    registerPolicy({
+        model: 'projects',
+        policy: RLSPolicies.TenantScoped(false), // rows filtered by the caller's organizationId
+        auditEnabled: true,
+    });
+    ```
+
+4. Add `'projects'` to `GENERIC_CRUD_ALLOWLIST` in `apps/otta-web/worker/routes/ottaorm-crud.ts`.
+5. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`.
+
+`GET/POST/PATCH/DELETE /api/ottaorm/projects` now works. On create, RLS injects the caller's `organizationId`; a body
+that names another organization is rejected as a cross-tenant write. Generic CRUD enforces **tenant scope**, so any
+active member of the organization can use it — add `requiredPermissions` to the policy, or write a custom route (step
+4), when an action needs a specific permission.
+
+### 3. Use It from the Client
+
+Never call `fetch()` in client code (lint-enforced). Generate hooks once:
 
 ```typescript
-// app/api/posts/route.ts
-import { buildAppContext, hasPermission, createAuditData } from '@ottabase/rbac';
-import { Post } from '@ottabase/ottaorm/models';
-import { logCreate } from '@ottabase/audit';
+// apps/otta-web/src/hooks/useProjects.ts
+import { createModelHooks } from '@ottabase/ottaorm/client';
+import type { ProjectType } from '../../ottabase/models/Project.schema';
 
-export async function POST(request: Request) {
-    // 1. Build context (tenant + app + user + RBAC)
-    const context = await buildAppContext({
-        organizationId: extractOrgFromRequest(request),
-        appId: 'web',
-        user: await getAuthUser(request),
-        ipAddress: request.headers.get('cf-connecting-ip'),
-        cache: rbacCache,
-    });
+export const {
+    useList: useProjects,
+    useDetail: useProject,
+    useCreate: useCreateProject,
+    useUpdate: useUpdateProject,
+    useDelete: useDeleteProject,
+} = createModelHooks<ProjectType>({ entityName: 'projects' });
+```
+
+For an admin screen, `ModelCrud` from `@ottabase/forms/react` renders list + detail + create/edit/delete from the
+model's field metadata.
+
+### 4. A Custom, Permission-Gated Route
+
+When an action is not plain CRUD — or needs a specific permission — add a route. Custom routes go in
+`apps/otta-web/ottabase/config.routes.ts` (`handleCustomRoutes`), which receives the same `ApiRouteContext` as every
+built-in route.
+
+```typescript
+// apps/otta-web/worker/routes/projects.ts
+import { AuditLog } from '@ottabase/ottaorm/models';
+import { hasPermission } from '@ottabase/rbac/admin-guard';
+import { getRequestContext } from '@ottabase/rbac/request-context';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { Project } from '../../ottabase/models/Project';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { getAuthOptions } from '../lib/auth-utils';
+import { initDbConnection } from '../lib/db-utils';
+import type { ApiRouteContext } from './router';
+
+export async function handleArchiveProject(context: ApiRouteContext, projectId: string): Promise<Response> {
+    const { request, env } = context;
+    initDbConnection(env);
+
+    // 1. Verified identity + membership-checked org + merged permissions
+    const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
+    if (!ctx.isAuthenticated) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    if (!ctx.organizationId) return errorResponse('Select an organization', 400, { code: 'NO_ORGANIZATION' });
 
     // 2. Check permission
-    if (!hasPermission(context, 'posts:create')) {
-        return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (!hasPermission(ctx, 'projects:update')) return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
 
-    // 3. Parse request
-    const data = await request.json();
+    // 3. Direct model calls are NOT RLS-filtered: scope the query to the caller's org yourself
+    const project = await Project.first({ id: projectId, organizationId: ctx.organizationId });
+    if (!project) return errorResponse('Not found', 404, { code: 'NOT_FOUND' });
 
-    // 4. Create post (tenant-scoped)
-    const post = await Post.create({
-        ...data,
-        organizationId: context.organizationId, // Tenant isolation
-        appId: context.appId, // App scoping
-        authorId: context.userId!,
-    });
+    // 4. Domain logic on the model
+    await project.archive();
 
     // 5. Log action
-    await logCreate('post', post.id, post, createAuditData(context, 'create', 'post', post.id));
+    await AuditLog.log({
+        userId: ctx.sessionUser?.id,
+        organizationId: ctx.organizationId,
+        appId: ctx.appId,
+        action: 'archive',
+        resourceType: 'project',
+        resourceId: projectId,
+    });
 
-    return Response.json(post);
+    return jsonResponse(project.toJson());
 }
 ```
 
-### 3. List Posts (Tenant-Scoped)
+```typescript
+// apps/otta-web/ottabase/config.routes.ts — inside handleCustomRoutes(context)
+const match = context.route.match(/^\/api\/projects\/([^/]+)\/archive$/);
+if (match && context.method === 'POST') {
+    return handleArchiveProject(context, match[1]);
+}
+```
+
+Call it from the client with a mutation hook:
 
 ```typescript
-export async function GET(request: Request) {
-    const context = await buildAppContext({
-        organizationId: extractOrgFromRequest(request),
-        appId: 'web',
-        user: await getAuthUser(request),
-    });
+import { useApiMutation } from '@ottabase/ottaorm/client';
 
-    if (!hasPermission(context, 'posts:read')) {
-        return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Query posts for THIS organization only
-    const posts = await Post.where({
-        organizationId: context.organizationId,
-        appId: context.appId, // Optional: filter by app
-    });
-
-    return Response.json(posts);
-}
+const archive = useApiMutation<unknown, { id: string }>({
+    endpoint: ({ id }) => `/api/projects/${id}/archive`,
+    method: 'POST',
+    invalidateEntities: ['projects'],
+});
+// archive.mutate({ id: project.id });
 ```
 
 **Key Points:**
 
-1. ✅ Context built once, used everywhere
-2. ✅ Permissions checked before operations
-3. ✅ Data scoped by organizationId (tenant isolation)
-4. ✅ Actions logged to audit trail
-5. ✅ Type-safe with TypeScript
+1. ✅ Identity and org come from the verified session, never from headers
+2. ✅ Generic CRUD is tenant-scoped by RLS; custom routes scope queries explicitly
+3. ✅ Permissions checked before operations
+4. ✅ Domain logic lives on the model
+5. ✅ Actions logged to the audit trail
 
 ---
 
 ## Multi-Tenancy
 
-### Extracting Organization from Request
+### Resolving the Organization for a Request
+
+Use `getRequestContext` from `@ottabase/rbac`. It verifies the session, takes the org from it (or from a requested
+`X-Org-Id` / `?organizationId=`), and **keeps that org only if the user is an active member** — otherwise
+`organizationId` is `null`. The `'system'` scope is kept only for a user holding a system-scoped grant. Never read the
+org straight off a header: it is a request, not an answer (AGENTS.MD "Security Context: what may be trusted").
 
 ```typescript
-import { extractOrganizationId } from '@ottabase/rbac';
+import { getRequestContext } from '@ottabase/rbac/request-context';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { getAuthOptions } from '../lib/auth-utils';
 
-// Strategy 1: Subdomain (recommended)
-// acme.yourapp.com → 'org-acme'
-const orgId = await extractOrganizationId({
-    request,
-    subdomainPrefix: 'org-',
-});
-
-// Strategy 2: Header
-// X-Org-Id: org-acme
-const orgId = await extractOrganizationId({
-    request,
-    headerName: 'X-Org-Id',
-});
-
-// Strategy 3: Query parameter
-// ?organizationId=org-acme
-const orgId = await extractOrganizationId({
-    request,
-    queryParam: 'organizationId',
-});
-
-// Strategy 4: JWT claim
-const orgId = await extractOrganizationId({
-    request,
-    jwtClaim: 'organizationId',
-    getJWT: async (req) => {
-        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-        return jwt.verify(token, secret);
-    },
-});
+const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
+// ctx.organizationId — membership-verified, or null
+// ctx.appId          — from server config, never a header
+// ctx.permissions    — merged system + active-org grants
 ```
+
+For OttaORM queries that go through RLS (`secureCrud` / the generic CRUD route), the app builds the `SecurityContext`
+with `getSecurityContext(request, session, env)` from `worker/lib/auth-utils.ts`. It applies the same membership check
+and fails closed with `503 SECURITY_CONTEXT_UNAVAILABLE` if membership cannot be resolved.
 
 ### Organization Switching
 
+The active organization is stored on the user and validated server-side. The app ships `OrganizationSwitcher`
+(`apps/otta-web/src/components/OrganizationSwitcher.tsx`), which persists the choice with a membership-checked
+`PATCH /api/users/me`:
+
 ```typescript
-// User switches organization
-async function switchOrganization(userId: string, newOrgId: string) {
-    // 1. Check membership
-    const isMember = await OrganizationMember.isMember(userId, newOrgId);
-    if (!isMember) {
-        throw new Error('Not a member of this organization');
-    }
+import { api } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 
-    // 2. Update session/JWT with new organizationId
-    const session = await updateSession({
-        userId,
-        organizationId: newOrgId,
-    });
+const { refreshSession } = useSession();
 
-    // 3. Clear cache for this user in new org
-    await rbacCache.invalidateUser(userId, newOrgId);
-
-    return session;
+async function switchOrganization(organizationId: string) {
+    // 400 with a field error if the caller is not an active member
+    await api('/api/users/me', { method: 'PATCH', body: { activeOrganizationId: organizationId } });
+    // Re-read the session so org-dependent UI (permissions, admin links) updates everywhere
+    await refreshSession();
 }
 ```
 
-### Inviting Users to Organization
+### Inviting Users to an Organization
+
+Invites are email-only roster rows (`status: 'invited'`, no `userId`); they activate when that email signs up or signs
+in. Use the admin members API, which enforces org-admin access and last-owner safety:
+
+```bash
+POST   /api/admin/organizations/:organizationId/members/invite   # { "email": "...", "role": "member" }
+GET    /api/admin/organizations/:organizationId/members
+PATCH  /api/admin/organizations/:organizationId/members/:memberId
+DELETE /api/admin/organizations/:organizationId/members/:memberId
+```
+
+On the server, the same thing with models:
 
 ```typescript
-async function inviteUserToOrganization(email: string, organizationId: string, invitedById: string) {
-    // 1. Check inviter has permission
-    const inviter = await User.find(invitedById);
-    const canInvite = await OrganizationMember.isOwnerOrAdmin(invitedById, organizationId);
+import { OrganizationMember } from '@ottabase/ottaorm/models';
 
-    if (!canInvite) {
-        throw new Error('Insufficient permissions to invite');
-    }
-
-    // 2. Find or create user
-    let user = await User.first({ email });
-    if (!user) {
-        user = await User.create({ email, name: email.split('@')[0] });
-    }
-
-    // 3. Add to organization as invited
+const existing = await OrganizationMember.findExistingInvite({ organizationId, invitedEmail: email });
+if (!existing) {
     await OrganizationMember.addMember({
-        userId: user.id,
         organizationId,
+        invitedEmail: email,
         role: 'member',
         status: 'invited',
         invitedBy: invitedById,
-        invitedAt: Date.now(),
     });
-
-    // 4. Send invitation email
-    await sendInvitationEmail(user.email, organizationId);
-
-    // 5. Log action
-    await logCreate(
-        'organization_member',
-        user.id,
-        { email },
-        {
-            userId: invitedById,
-            organizationId,
-            appId: 'web',
-            action: 'invite_user',
-            resourceType: 'organization_member',
-            resourceId: user.id,
-        },
-    );
-
-    return user;
 }
+// On sign-in: await OrganizationMember.activatePendingInvites(userId, email);
 ```
 
 ---
@@ -530,73 +590,58 @@ Permissions use the format: `resource:action`
 
 ```
 users:read       - Read users
-users:write      - Create/update users
+users:create     - Create users
 users:delete     - Delete users
 users:*          - All actions on users
 *:read           - Read all resources
+org:admin        - Administer the active organization
+platform:admin   - Platform administration (system-scoped grants only)
 *:*              - Super admin (all permissions)
 ```
 
 ### Checking Permissions
 
 ```typescript
-import { hasPermission } from '@ottabase/rbac';
+import { hasPermission, isOrgAdmin, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 
-// Method 1: Using context
-if (hasPermission(context, 'posts:edit')) {
+// Method 1: Using the request context (boolean)
+if (hasPermission(ctx, 'posts:update')) {
     // Allow
 }
 
-// Method 2: Using user model
-const canDelete = await user.hasPermission('posts:delete', {
-    organizationId: 'org-acme',
-    cache: rbacCache,
-});
+// Method 2: Using the user model (organizationId is required)
+const canDelete = await user.hasPermission('posts:delete', { organizationId: 'org-acme' });
 
-// Method 3: Multiple permissions (OR)
-const canManageUsers = hasPermission(context, 'users:*') || hasPermission(context, '*:*');
+// Method 3: Admin checks — permission + scope, never role names
+isOrgAdmin(ctx); // org:admin in the active org (or the platform owner's *:*)
+isPlatformAdmin(ctx); // platform:admin from a SYSTEM-scoped grant only
 ```
+
+Admin-only routes in the app use `requireAdminAccess(context, { scope: 'system' | 'organization' | 'either' })` from
+`apps/otta-web/worker/lib/admin-guard.ts`, which returns an admin context or a ready-made 401/403 `Response`.
 
 ### Creating Custom Roles
 
 ```typescript
+import { Role } from '@ottabase/ottaorm/models';
+
 // Create custom role
-const editorRole = await Role.create({
-    name: 'blog_editor',
-    description: 'Can edit blog posts only',
+const projectManager = await Role.create({
+    name: 'project_manager',
+    description: 'Can manage projects',
 });
 
-// Assign specific permissions (pass the permission name string)
-const permissions = ['posts:read', 'posts:write', 'posts:edit'];
-
-for (const permName of permissions) {
-    await editorRole.addPermission(permName);
+// Add permissions (stored on the role)
+for (const permission of ['projects:read', 'projects:create', 'projects:update']) {
+    await projectManager.addPermission(permission);
 }
 
-// Assign role to user
-// Note: assignRole does not accept appId; app-scoping is handled via buildAppContext
-await user.assignRole(editorRole.id, adminUser.id, 'org-acme');
+// Grant the role to a user in one organization
+await user.assignRole(projectManager.get('id') as string, adminUserId, 'org-acme');
 ```
 
-### App-Specific Permissions
-
-```typescript
-// User is admin in organization
-await user.assignRole(adminRoleId, assignerId, orgId);
-
-// User is viewer in organization (app-scoping is enforced via buildAppContext appId)
-await user.assignRole(viewerRoleId, assignerId, orgId);
-
-// Check permissions in specific app
-const context = await buildAppContext({
-    organizationId: orgId,
-    appId: 'admin', // Admin dashboard
-    user,
-});
-
-// This will use permissions for admin app only
-const canEditSettings = hasPermission(context, 'settings:edit');
-```
+Role and grant tables are not reachable through generic CRUD; manage them through the admin roles API
+(`/api/admin/roles`) or the models.
 
 ---
 
@@ -604,10 +649,10 @@ const canEditSettings = hasPermission(context, 'settings:edit');
 
 ### What Gets Logged
 
-Every action creates an audit log entry with:
+Every audit entry carries:
 
 - Who: userId, userEmail
-- What: action (create/update/delete), resourceType, resourceId
+- What: action (create/update/delete/...), resourceType, resourceId
 - When: createdAt timestamp
 - Where: organizationId, appId
 - How: ipAddress, userAgent
@@ -615,60 +660,60 @@ Every action creates an audit log entry with:
 
 ### Logging Actions
 
+`AuditLog.log` (from `@ottabase/ottaorm/models`) is always available. The `@ottabase/audit` package adds typed helpers —
+add `"@ottabase/audit": "workspace:*"` to your app's dependencies to use them:
+
 ```typescript
-import { logCreate, logUpdate, logDelete } from '@ottabase/audit';
+import { logCreate, logDelete, logUpdate } from '@ottabase/audit';
+
+const auditContext = {
+    userId: ctx.sessionUser?.id,
+    organizationId: ctx.organizationId ?? undefined,
+    appId: ctx.appId,
+    ipAddress: request.headers.get('cf-connecting-ip') ?? undefined,
+    userAgent: request.headers.get('user-agent') ?? undefined,
+};
 
 // Create
-await logCreate('post', post.id, post, {
-    userId: context.userId,
-    organizationId: context.organizationId,
-    appId: context.appId,
-    ipAddress: context.ipAddress,
-});
+await logCreate('project', projectId, project.toJson(), auditContext);
 
 // Update
-await logUpdate(
-    'post',
-    post.id,
-    { before, after },
-    {
-        userId: context.userId,
-        organizationId: context.organizationId,
-        appId: context.appId,
-    },
-);
+await logUpdate('project', projectId, { status: { from: 'active', to: 'archived' } }, auditContext);
 
 // Delete
-await logDelete('post', post.id, post, {
-    userId: context.userId,
-    organizationId: context.organizationId,
-    appId: context.appId,
-});
+await logDelete('project', projectId, auditContext);
+```
 
-// Custom action
-await AuditLog.create({
-    userId: context.userId,
-    organizationId: context.organizationId,
-    appId: context.appId,
+For a custom action, call `AuditLog.log` directly:
+
+```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
+await AuditLog.log({
+    userId: ctx.sessionUser?.id,
+    organizationId: ctx.organizationId ?? undefined,
+    appId: ctx.appId,
     action: 'export_data',
     resourceType: 'organization',
     resourceId: orgId,
     status: 'success',
-    metadata: JSON.stringify({ format: 'csv', rowCount: 1000 }),
+    metadata: { format: 'csv', rowCount: 1000 },
 });
 ```
 
 ### Querying Audit Logs
 
 ```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
 // All logs for organization
 const logs = await AuditLog.getByOrganization('org-acme', 100);
 
 // User actions in organization
-const userLogs = await AuditLog.getByUserInOrganization(user.id, 'org-acme', 50);
+const userLogs = await AuditLog.getByUserInOrganization(userId, 'org-acme', 50);
 
 // Resource-specific logs
-const postLogs = await AuditLog.getByResourceInOrganization('post', post.id, 'org-acme', 20);
+const projectLogs = await AuditLog.getByResourceInOrganization('project', projectId, 'org-acme', 20);
 
 // Advanced queries
 const recentDeletes = await AuditLog.where({
@@ -678,182 +723,134 @@ const recentDeletes = await AuditLog.where({
 });
 ```
 
+Over HTTP, `GET /api/audit/logs` serves the admin audit screen: admins see rows for the organizations they are active
+members of (system admins also see platform-level rows); everyone else sees only their own entries.
+
 ---
 
 ## Production Deployment
 
-### 1. Environment Variables
+Full walkthrough: [`CLOUDFLARE_DEPLOY.md`](./CLOUDFLARE_DEPLOY.md) (resources, secrets, CI/CD).
 
-```env
-# App
-APP_ID=web
-APP_NAME=Your SaaS
-DATABASE_URL=file:./prod.db
+### 1. Configuration and Secrets
 
-# Cloudflare KV (for RBAC cache)
-KV_NAMESPACE_ID=your-kv-namespace
+Worker code never reads `process.env`; it reads bindings and vars through `getOttabaseConfig(env)` / `env`. Bindings
+(`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, ...) are declared in `apps/otta-web/wrangler.jsonc` and typed in `cloudflare-env.d.ts`
+— keep the two in sync. Plain vars live per environment in `wrangler.jsonc`; secrets are set with `wrangler secret put`:
 
-# Auth
-AUTH_SECRET=your-secret-key
-AUTH_URL=https://yourapp.com
-
-# Multi-tenant
-DEFAULT_ORG_ID=default-org
+```bash
+cd apps/otta-web
+npx wrangler secret put AUTH_SECRET --env production             # signs sessions; required outside dev
+npx wrangler secret put BOOTSTRAP_OWNER_SECRET --env production  # gates /__bootstrap__
+npx wrangler secret put MIGRATION_SECRET --env production        # gates POST /api/ottaorm/init
+npx wrangler secret put CRON_SECRET --env production             # gates scheduled blog publishing
 ```
 
-### 2. Initialize Cache
+Also set `AUTH_URL` (your public origin) and, if you serve the API cross-origin, `CORS_ALLOWED_ORIGINS`. Optional
+providers (OAuth `GOOGLE_CLIENT_*` / `GITHUB_CLIENT_*`, email) are listed in `apps/otta-web/.env.example`.
+
+### 2. Bootstrap the Production Database
+
+After the first deploy, open `https://yourapp.com/__bootstrap__?secret=<BOOTSTRAP_OWNER_SECRET>` and run the wizard, or
+call the `/__bootstrap__/api/*` endpoints with the `X-Bootstrap-Secret` header. Later schema changes:
+`POST /api/ottaorm/init` with `MIGRATION_SECRET`.
+
+### 3. Request Context in Routes
 
 ```typescript
-// app/lib/rbac-cache.ts
-import { initRBACCache } from '@ottabase/rbac';
+import { hasPermission } from '@ottabase/rbac/admin-guard';
+import { getRequestContext } from '@ottabase/rbac/request-context';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { getAuthOptions } from '../lib/auth-utils';
+import { initDbConnection } from '../lib/db-utils';
+import type { ApiRouteContext } from './router';
 
-export function getRBACCache(env: any) {
-    return initRBACCache({
-        kv: env.KV_NAMESPACE,
-        ttl: 300, // 5 minutes
-        prefix: 'rbac:',
-        enabled: !!env.KV_NAMESPACE,
-    });
-}
-```
+export async function handleCreateProject(context: ApiRouteContext): Promise<Response> {
+    const { request, env } = context;
+    initDbConnection(env);
 
-### 3. Middleware
+    const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
+    if (!ctx.isAuthenticated) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    if (!ctx.organizationId) return errorResponse('Select an organization', 400, { code: 'NO_ORGANIZATION' });
+    if (!hasPermission(ctx, 'projects:create')) return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
 
-```typescript
-// middleware.ts
-import { buildAppContext, extractOrganizationId, extractAppId } from '@ottabase/rbac';
-
-export async function middleware(request: Request) {
-    // Extract tenant
-    const organizationId = await extractOrganizationId({ request });
-
-    if (!organizationId) {
-        return Response.redirect('/select-organization');
-    }
-
-    // Extract app
-    const appId = extractAppId({
-        request,
-        env: process.env,
-        defaultAppId: 'web',
-    });
-
-    // Get user from session
-    const user = await getSessionUser(request);
-
-    // Build context
-    const context = await buildAppContext({
-        organizationId,
-        appId,
-        user,
-        ipAddress: request.headers.get('cf-connecting-ip'),
-        userAgent: request.headers.get('user-agent'),
-        cache: rbacCache,
-    });
-
-    // Attach to request
-    (request as any).context = context;
-
-    return NextResponse.next();
+    // ... create the project with organizationId: ctx.organizationId
 }
 ```
 
 ### 4. Production Checklist
 
-- [ ] Run migrations on production database
-- [ ] Setup Cloudflare KV for RBAC caching
-- [ ] Configure auth with production secrets
-- [ ] Setup subdomain routing (\*.yourapp.com)
-- [ ] Configure CORS for API
-- [ ] Enable audit log archival (optional)
-- [ ] Setup monitoring for cache hit rates
+- [ ] Create Cloudflare resources (`pnpm cf:setup`) and deploy
+- [ ] Set `AUTH_SECRET`, `AUTH_URL`, `BOOTSTRAP_OWNER_SECRET`, `MIGRATION_SECRET`, `CRON_SECRET`
+- [ ] Run the `/__bootstrap__` wizard on the production database
+- [ ] Deploy with an explicit `--env` (the top-level `wrangler.jsonc` vars are the development defaults)
+- [ ] Configure `CORS_ALLOWED_ORIGINS` if a different origin calls the API
 - [ ] Test multi-tenant isolation (CRITICAL)
-- [ ] Setup backup strategy
-- [ ] Configure rate limiting per organization
+- [ ] Setup backup strategy (D1 Time Travel / exports)
+- [ ] Review rate limits for auth and public endpoints
+
+Analytics dashboards (`/api/analytics/core`, `/api/shortlinks/analytics`, `/api/referrals/analytics`) are **system-admin
+only**: Analytics Engine rows carry no organization, so the totals are platform-wide.
 
 ---
 
 ## Common Patterns
 
-### Pattern 1: Middleware with AppContext
+### Pattern 1: Route Wrapper with Request Context
 
 ```typescript
-export function withContext(handler: (req: Request, ctx: AppContext) => Promise<Response>) {
-    return async (request: Request) => {
-        const context = await buildAppContext({
-            organizationId: await extractOrganizationId({ request }),
-            appId: extractAppId({ request, env: process.env }),
-            user: await getAuthUser(request),
-            ipAddress: request.headers.get('cf-connecting-ip'),
-            cache: rbacCache,
-        });
+import { getRequestContext, type RequestContext } from '@ottabase/rbac/request-context';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { getAuthOptions } from '../lib/auth-utils';
+import { initDbConnection } from '../lib/db-utils';
+import type { ApiRouteContext } from './router';
 
-        return handler(request, context);
+export function withContext(handler: (context: ApiRouteContext, ctx: RequestContext) => Promise<Response>) {
+    return async (context: ApiRouteContext): Promise<Response> => {
+        initDbConnection(context.env);
+        const ctx = await getRequestContext(context.request, context.env, {
+            getAuthOptions,
+            appId: getOttabaseConfig(context.env).appId,
+        });
+        if (!ctx.isAuthenticated) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+        return handler(context, ctx);
     };
 }
-
-// Usage
-export const POST = withContext(async (request, context) => {
-    if (!hasPermission(context, 'posts:create')) {
-        return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Your logic here
-});
 ```
 
 ### Pattern 2: Tenant-Scoped Queries
 
+Through generic CRUD, RLS scopes every query for you. In your own server code, scope explicitly — keep it on the model:
+
 ```typescript
-// Base model extension
-class TenantScopedModel extends BaseModel {
-    static scopeToOrganization(organizationId: string) {
-        return this.where({ organizationId });
+export class Project extends BaseModel {
+    // ...
+    static forOrganization(organizationId: string) {
+        return this.where({ organizationId }, { orderBy: 'createdAt', orderDirection: 'desc' });
     }
 }
 
 // Usage
-const posts = await Post.scopeToOrganization('org-acme').where({
-    status: 'published',
-});
+const projects = await Project.forOrganization(ctx.organizationId);
 ```
 
 ### Pattern 3: Organization Switcher UI
 
-```typescript
-function OrganizationSwitcher({ user }: { user: User }) {
-    const [orgs, setOrgs] = useState([]);
-    const [current, setCurrent] = useState(null);
+Reuse the shipped component; it lists the caller's organizations (`useOrganizations()`, backed by
+`/api/ottaorm/organizations`) and switches through `PATCH /api/users/me` (see
+[Organization Switching](#organization-switching)):
 
-    useEffect(() => {
-        // Load user's organizations
-        fetch('/api/user/organizations')
-            .then(res => res.json())
-            .then(setOrgs);
-    }, []);
+```tsx
+import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 
-    const switchOrg = async (orgId: string) => {
-        await fetch('/api/user/switch-organization', {
-            method: 'POST',
-            body: JSON.stringify({ organizationId: orgId })
-        });
-
-        // Reload page with new subdomain
-        const newUrl = `https://${orgSlug}.yourapp.com${window.location.pathname}`;
-        window.location.href = newUrl;
-    };
-
-    return (
-        <select onChange={(e) => switchOrg(e.target.value)}>
-            {orgs.map(org => (
-                <option key={org.id} value={org.id}>
-                    {org.name}
-                </option>
-            ))}
-        </select>
-    );
-}
+<OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />;
 ```
+
+`apps/otta-web/src/ottabase/components/layout/ControlsSection.tsx` shows the full wiring (local state, server persist,
+`refreshSession()`). The API client sends the active org as `X-Org-Id`; the worker re-validates it against membership on
+every request.
 
 ---
 
@@ -861,9 +858,10 @@ function OrganizationSwitcher({ user }: { user: User }) {
 
 ### Issue: "organizationId is required" Error
 
-**Problem:** RBAC cache throws error
+**Problem:** A role/permission call throws
+`User.roles: organizationId is required (use 'system' for platform-scoped grants)`.
 
-**Solution:** Always pass organizationId to all RBAC operations
+**Solution:** Always pass the organization to role APIs — grants are org-scoped.
 
 ```typescript
 // ❌ Wrong
@@ -878,35 +876,31 @@ const roles = await user.roles({
 
 ### Issue: Cross-Tenant Data Leakage
 
-**Problem:** User sees data from different organization
+**Problem:** User sees data from a different organization
 
 **Solution:**
 
-1. Always filter queries by organizationId
-2. Validate organizationId in middleware
-3. Check user membership before operations
+1. Serve entity CRUD through `/api/ottaorm/{entity}` with a `TenantScoped` policy
+2. In custom routes, take the org from `getRequestContext` / `getSecurityContext`, never from a header or body
+3. Direct model calls are not RLS-filtered — always include `organizationId` in the query
 
 ```typescript
-// Verify membership
-const isMember = await OrganizationMember.isMember(userId, orgId);
-if (!isMember) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-}
+const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
+if (!ctx.organizationId) return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
 
-// Scope query
-const posts = await Post.where({
-    organizationId: orgId, // CRITICAL
+const projects = await Project.where({
+    organizationId: ctx.organizationId, // CRITICAL
 });
 ```
 
 ### Issue: Cache Not Working
 
-**Problem:** RBAC queries still hitting database
+**Problem:** RBAC queries still hitting the database
 
 **Solution:**
 
-1. Check KV is configured
-2. Verify cache is initialized
+1. Check `OBCF_KV` is bound
+2. Verify the cache is passed via the `cache` option
 3. Check cache stats
 
 ```typescript
@@ -923,27 +917,23 @@ console.log(stats);
 
 ### Issue: Permissions Not Working
 
-**Problem:** User has role but permission check fails
+**Problem:** User has a role but the permission check fails
 
 **Solution:**
 
-1. Check role has permissions assigned
-2. Verify organizationId matches
-3. Check role is assigned in correct app
+1. Check the role carries the permission
+2. Verify the grant is in the **active** organization (or `'system'` for platform permissions)
+3. After changing roles or memberships, live sessions pick it up once the caches are invalidated and the user's profile
+   version is bumped — the admin routes do both
 
 ```typescript
-// Debug permissions
-const role = await Role.first({ name: 'admin' });
-const permissions = await role.permissions();
-console.log(
-    'Role permissions:',
-    permissions.map((p) => p.name),
-);
+import { Role } from '@ottabase/ottaorm/models';
 
-const userPerms = await user.getPermissions({
-    organizationId: 'org-acme',
-    cache: rbacCache,
-});
+// Debug permissions
+const role = await Role.findByName('admin');
+console.log('Role permissions:', role?.getPermissions());
+
+const userPerms = await user.getPermissions({ organizationId: 'org-acme' });
 console.log('User permissions:', userPerms);
 ```
 
@@ -951,28 +941,34 @@ console.log('User permissions:', userPerms);
 
 ## What Makes This "Solo Founder's Delight"
 
-✅ **Zero Boilerplate** - Everything pre-configured and ready ✅ **Production-Ready** - Security, performance, and
-scalability built-in ✅ **Type-Safe** - Full TypeScript support with inference ✅ **Batteries Included** - Auth, RBAC,
-Audit, Multi-tenancy out of the box ✅ **DRY** - Reusable packages, no code duplication ✅ **KISS** - Simple patterns,
-easy to understand ✅ **Well-Documented** - This guide + inline docs + examples ✅ **Scalable** - From MVP to millions
-of users ✅ **Maintainable** - Clear architecture, easy to extend
+- ✅ **Zero Boilerplate** - Everything pre-configured and ready
+- ✅ **Production-Ready** - Security, performance, and scalability built-in
+- ✅ **Type-Safe** - Full TypeScript support with inference
+- ✅ **Batteries Included** - Auth, RBAC, Audit, Multi-tenancy out of the box
+- ✅ **DRY** - Reusable packages, no code duplication
+- ✅ **KISS** - Simple patterns, easy to understand
+- ✅ **Well-Documented** - This guide + inline docs + examples
+- ✅ **Scalable** - From MVP to millions of users
+- ✅ **Maintainable** - Clear architecture, easy to extend
 
 ---
 
 ## Next Steps
 
-1. **Read the architecture docs:**
-    - `MULTI_APP_MULTI_TENANT_ARCHITECTURE.md` - Deep dive into design decisions
-    - `RBAC_AUDIT_SETUP_GUIDE.md` - Detailed RBAC setup
-    - `OPTIMIZATION_SUMMARY.md` - Performance tips
+1. **Read the docs:**
+    - [`../AGENTS.MD`](../AGENTS.MD) - Architecture, rules, and conventions
+    - [`RBAC_MULTI_TENANT_GUIDE.md`](./RBAC_MULTI_TENANT_GUIDE.md) - RBAC, RLS, and tenant isolation in depth
+    - [`CLOUDFLARE_DEPLOY.md`](./CLOUDFLARE_DEPLOY.md) - Deployment
+    - [`API_PAGINATION.md`](./API_PAGINATION.md), [`CACHE_KEYS.md`](./CACHE_KEYS.md) - API and caching details
 
-2. **Explore examples:**
-    - `packages/ottaorm/examples/rbac-audit-demo.ts` - Complete working example
-    - Look at existing feature packages (shortlinks, blog, referrals)
+2. **Explore working code:**
+    - `apps/otta-web/ottabase/models/Todo.ts` - A complete app model
+    - `apps/otta-web/worker/routes/` - Real routes (admin, audit, blog, shortlinks, referrals)
+    - Feature packages: `packages/shortlinks`, `packages/ottablog`, `packages/referrals`
 
 3. **Build your MVP:**
-    - Create your first organization
-    - Add RBAC to your routes
+    - Add your first model
+    - Gate custom routes with permissions
     - Deploy to production
 
 4. **Join the community:**
@@ -986,11 +982,9 @@ of users ✅ **Maintainable** - Clear architecture, easy to extend
 
 **Need help?**
 
-- GitHub Issues: https://github.com/your-user/ottabase/issues
+- GitHub Issues: https://github.com/thinkdj/ottabase/issues
 - Documentation: ./docs
-- Examples: ./packages/ottaorm/examples
-
-**Pro tip:** Check `MULTI_APP_MULTI_TENANT_ARCHITECTURE.md` for architectural decisions and trade-offs.
+- Architecture & conventions: ./AGENTS.MD
 
 ---
 

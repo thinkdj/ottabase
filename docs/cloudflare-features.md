@@ -131,8 +131,7 @@ and others.
 For features requiring API access (like Images):
 
 ```bash
-pnpm wrangler secret put CF_ACCOUNT_ID
-pnpm wrangler secret put CF_API_TOKEN
+pnpm wrangler secret put CLOUDFLARE_API_TOKEN   # CLOUDFLARE_ACCOUNT_ID is a wrangler.jsonc var
 ```
 
 ## Development Workflow
@@ -264,8 +263,8 @@ export async function POST(request: Request) {
 import { createImagesClient } from '@ottabase/cf/images';
 
 const images = createImagesClient({
-    accountId: env.CF_ACCOUNT_ID,
-    apiToken: env.CF_API_TOKEN,
+    accountId: env.CLOUDFLARE_ACCOUNT_ID,
+    apiToken: env.CLOUDFLARE_API_TOKEN,
 });
 
 // Upload

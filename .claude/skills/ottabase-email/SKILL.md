@@ -31,12 +31,13 @@ await sendTemplatedEmail(mailer, {
 
 `resolveAppMailer(env, provider?)` builds a mailer per request from env. `'auto'` resolution order: **dev-trap**
 (`DEV_EMAIL_TRAP_ENABLED`+KV) → **nodemailer** (`EMAIL_SERVER`) → **ses** (`AWS_*`) → **resend**
-(`EMAIL_RESEND_API_KEY`); returns `{ mailer: null, error }` if none configured.
+(`EMAIL_RESEND_API_KEY`); returns `{ mailer: null, error }` if none configured. `from` is `EMAIL_FROM` (fallback
+`noreply@example.com`) and is passed on every send — providers have no default sender.
 
 ## Providers
 
-Factories: `createResendMailer`, `createSESMailer`, `createNodemailerMailer` (subpath
-`@ottabase/email/providers/nodemailer` — Node-only, kept out of the edge bundle), `createDevEmailTrapMailer` (+
+Factories: `createResendMailer`, `createSESMailer` (SES v2 HTTP API, SigV4-signed, edge-safe), `createNodemailerMailer`
+(subpath `@ottabase/email/providers/nodemailer` — Node-only, kept out of the edge bundle), `createDevEmailTrapMailer` (+
 `createKvEmailTrapStore`), `createNoopMailer`. `createCloudflareMailer`/`createMailChannelsMailer` exist in the package
 but are **not** wired into `resolveAppMailer` — add a resolver branch if you want them.
 
@@ -44,7 +45,8 @@ but are **not** wired into `resolveAppMailer` — add a resolver branch if you w
 
 A module-level registry (`registerEmailTemplate` / `getEmailTemplate` / `listEmailTemplates`). A `'default'` template is
 registered at load; the app registers its own via `registerAppEmailTemplates()` (`apps/*/src/email/templates/`).
-`template` is `string | EmailTemplate`.
+`template` is `string | EmailTemplate`. Omit `content` to render the template's own header/body/footer; pass
+`content: { body }` only to override a section.
 
 ## Gotchas
 
@@ -53,7 +55,8 @@ registered at load; the app registers its own via `registerAppEmailTemplates()` 
   app's `APP_TEMPLATES` array) before you reference it, and keep names as shared constants. (Typed template names are a
   roadmap item.)
 - No `email.defaults` / configured singleton — every send passes a `mailer`.
-- Keep provider secrets in env; never hardcode. Read env via `getOttabaseConfig(env)`, not `process.env`.
+- Keep provider secrets in env bindings/secrets; never hardcode, and never read `process.env` (lint-banned in edge
+  code).
 
 ## Authoritative sources
 

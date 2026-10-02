@@ -133,12 +133,13 @@ import { withCache, invalidateCache, invalidateCacheByPrefix } from '@ottabase/c
 import { userKey } from '@ottabase/cf/cache-keys';
 
 // Read-through cache — fetcher only called on cache miss
-const profile = await withCache(env.OBCF_KV, userKey('auth', userId, 'profile'), 300, async () => {
-    return db.query.users.findFirst({ where: eq(users.id, userId) });
+const settings = await withCache(env.OBCF_KV, userKey('cache', userId, 'settings'), 300, async () => {
+    const user = await User.find(userId); // OttaORM model from '@ottabase/ottaorm'
+    return user?.toJson() ?? null;
 });
 
 // Explicit invalidation (single key)
-await invalidateCache(env.OBCF_KV, userKey('auth', userId, 'profile'));
+await invalidateCache(env.OBCF_KV, userKey('cache', userId, 'settings'));
 
 // Prefix-based invalidation (all keys matching prefix)
 const deleted = await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
@@ -195,14 +196,18 @@ await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
 
 ### 4. Auth Session Revocation
 
-Auth uses a revocation key per user. When a user signs out, a timestamp is written; the JWT callback checks this
-timestamp and rejects tokens issued before it:
+`@ottabase/auth` keeps its session state under `auth:usr:{userId}:…` (`session-store.ts`); `getSession` checks both
+revocation keys on every request:
 
 ```typescript
-// On signOut (automatic via @ottabase/auth)
-await kv.put(userKey('auth', userId, 'revoked'), String(revokedAt), {
-    expirationTtl: sessionMaxAge,
-});
+// Sign-out (revokeSession): deny-list this one session's jti and drop its registry snapshot
+// auth:usr:{userId}:revoked-jti:{jti}  → '1'
+// auth:usr:{userId}:sess:{jti}          → deleted
+//
+// Password change/reset (revokeAllUserSessions): reject every session issued before now
+// auth:usr:{userId}:revoked             → String(Date.now())
+//
+// Both are written with expirationTtl = session max age.
 ```
 
 The auth package also exposes an `onSignOut` hook so apps can extend signout behavior (e.g., clearing RBAC cache)
@@ -312,19 +317,22 @@ const custom: CacheNamespace = 'my-pkg'; // custom strings also accepted
 ### 1. Brand Engine (`@ottabase/brand-engine`)
 
 ```typescript
-import { orgAppKey } from '@ottabase/cf/cache-keys';
+import { appKey, globalKey } from '@ottabase/cf/cache-keys';
 
-const key = orgAppKey('brand', orgId, appId, 'resolved', mode);
-// brand:org:acme:app:web:resolved:light
+const kitKey = globalKey('brand', 'kit', kitId, 'resolved');
+// brand:kit:kit-123:resolved   (light + dark themes of one kit)
+const metaKey = appKey('brand', appId, 'meta');
+// brand:app:web:meta           (route mappings + layouts)
 ```
 
 ### 2. RBAC (`@ottabase/rbac`)
 
 ```typescript
-// Format: rbac:org:{orgId}:v{version}:app:{appId}:usr:{userId}:context
+// Format: rbac:org:{orgId}:v{version}[:app:{appId}]:usr:{userId}:{user|roles|perms}
+// Version key: rbac:org:{orgId}:version
 ```
 
-### 3. Rate Limiting
+### 3. Rate Limiting (otta-web `worker/lib/rate-limiting.ts`)
 
 ```typescript
 import { userKey, globalKey } from '@ottabase/cf/cache-keys';
@@ -407,7 +415,7 @@ const key = orgUserKey('rbac', orgId, userId, 'perms');
 | `session`   | User sessions          | `session:usr:user-123:active`        |
 | `config`    | Configuration          | `config:app:web:settings`            |
 | `cache`     | General caching        | `cache:org:acme:feature-flags`       |
-| `auth`      | Authentication         | `auth:usr:user-123:revoked`          |
+| `auth`      | Authentication         | `auth:usr:user-123:revoked-jti:abc`  |
 | `system`    | System operations      | `system:maintenance`                 |
 | `temp`      | Temporary data         | `temp:upload-12345`                  |
 
@@ -416,5 +424,5 @@ Custom namespaces are also accepted — any string works.
 ## Testing
 
 ```bash
-pnpm test --filter=@ottabase/cf cache-keys
+pnpm --filter @ottabase/cf test cache-keys
 ```

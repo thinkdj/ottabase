@@ -100,27 +100,15 @@ GOOGLE_CLIENT_ID=your-google-oauth-client-id
 GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 
 # ============================================================
-# CLOUDFLARE R2 (Server-side API Access)
+# CLOUDFLARE ACCOUNT (runtime features that call the Cloudflare API)
 # ============================================================
-# Only needed if accessing R2 via REST API (not Worker binding)
-# Get from: https://dash.cloudflare.com/ > R2 > Manage R2 API Tokens
-CF_ACCOUNT_ID=your-cloudflare-account-id
-CF_R2_ACCESS_KEY_ID=your-32-character-r2-access-key
-CF_R2_SECRET_ACCESS_KEY=your-43-character-r2-secret-key
-CF_R2_BUCKET_NAME=ottabase-bucket
-CF_R2_PUBLIC_URL=https://your-bucket.r2.cloudflarestorage.com
-
-# ============================================================
-# CLOUDFLARE API (For scripts/automation)
-# ============================================================
-# Only needed for wrangler CLI operations
-CF_API_TOKEN=your-cloudflare-api-token
-
-# ============================================================
-# NEXT.JS TELEMETRY
-# ============================================================
-NEXT_TELEMETRY_DISABLED=1
+# Read by the worker for /analytics, Workers AI and Cloudflare Images.
+# R2, KV, D1 and Queues are reached through Worker bindings and need no credentials.
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 ```
+
+The Wrangler CLI (`wrangler deploy`, `pnpm cf:setup`) reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from your
+shell or `wrangler login`; CI reads the GitHub secrets of the same names.
 
 ### Production Secrets (Cloudflare Dashboard)
 
@@ -136,12 +124,15 @@ wrangler secret put GITHUB_CLIENT_SECRET
 wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put GOOGLE_CLIENT_SECRET
 
-# Cloudflare API (if needed for runtime operations)
-wrangler secret put CF_ACCOUNT_ID
-wrangler secret put CF_API_TOKEN
-wrangler secret put CF_R2_ACCESS_KEY_ID
-wrangler secret put CF_R2_SECRET_ACCESS_KEY
+# Schema migrations outside development (POST /api/ottaorm/init)
+wrangler secret put MIGRATION_SECRET
+
+# /analytics dashboard (optional, see above)
+wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 ```
+
+`CLOUDFLARE_ACCOUNT_ID` is not a secret: in `env.production` / `env.preview` it is a `vars` placeholder that CI fills
+from the GitHub secret of the same name.
 
 ---
 
@@ -194,6 +185,10 @@ multi-app: same placeholder name = shared resource; different names = isolated (
                 "name": "OBCF_REALTIME",
                 "class_name": "RealtimeActor",
             },
+            {
+                "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                "class_name": "WebhookEndpointQuota",
+            },
         ],
     },
     "unsafe": {
@@ -201,6 +196,7 @@ multi-app: same placeholder name = shared resource; different names = isolated (
             {
                 "name": "OBCF_RATE_LIMITER",
                 "type": "ratelimit",
+                "namespace_id": "1001", // any integer locally; use a distinct one per app/env
             },
         ],
     },
@@ -209,34 +205,21 @@ multi-app: same placeholder name = shared resource; different names = isolated (
 
 ### 2. `apps/otta-web/cloudflare-env.d.ts`
 
-**Status:** ✅ Already configured
+**Status:** ✅ Generated — regenerate with `pnpm --filter @ottabase/otta-web cf-typegen` after changing a binding
 
-**Type Definitions:**
+`wrangler types` writes the `CloudflareEnv` interface from `wrangler.jsonc`, so the two cannot drift (`cf-typegen:check`
+verifies it). Excerpt:
 
 ```typescript
-export interface CloudflareEnv {
-    // D1 Database (OBCF = Ottabase Cloudflare)
-    OBCF_D1?: D1Database;
-
-    // KV Namespace
-    OBCF_KV?: KVNamespace;
-
-    // R2 Bucket
-    OBCF_R2?: R2Bucket;
-
-    // Queue
-    OBCF_QUEUE?: Queue;
-
-    // Hyperdrive (uncomment when configured)
-    // OBCF_HYPERDRIVE?: Hyperdrive;
-
-    // Rate Limiter
-    OBCF_RATE_LIMITER?: RateLimiter;
-
-    // Durable Objects
-    OBCF_REALTIME?: DurableObjectNamespace;
-
-    // Add more bindings as needed
+interface CloudflareEnv {
+    OBCF_KV: KVNamespace;
+    OBCF_R2: R2Bucket;
+    OBCF_D1: D1Database;
+    OBCF_QUEUE: Queue;
+    OBCF_REALTIME: DurableObjectNamespace<import('./cloudflare-worker').RealtimeActor>;
+    OBCF_WEBHOOK_ENDPOINT_QUOTA: DurableObjectNamespace<import('./cloudflare-worker').WebhookEndpointQuota>;
+    OBCF_RATE_LIMITER: RateLimit;
+    // ...analytics datasets, OBCF_ASSETS, optional OBCF_AI / OBCF_BROWSER, and vars
 }
 ```
 
@@ -244,11 +227,13 @@ export interface CloudflareEnv {
 
 **Status:** ✅ Already configured
 
-**Exports Durable Objects:**
+**Exports Durable Objects** (every class named in `durable_objects` must be exported from the Wrangler `main` entry):
 
 ```typescript
-// Re-export RealtimeActor for Cloudflare bindings
-export { RealtimeActor } from '@ottabase/cf-realtime/server';
+import { RealtimeActor } from '@ottabase/cf-realtime/server';
+export { WebhookEndpointQuota } from './worker/durable-objects/WebhookEndpointQuota';
+
+export { RealtimeActor };
 ```
 
 ---
@@ -257,22 +242,23 @@ export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
 ### Using Drizzle with D1
 
-The app uses `@ottabase/db` package with Drizzle adapter for D1. Access `env` directly from your Worker fetch handler:
+The app uses `@ottabase/db` package with Drizzle adapter for D1. OttaORM models read the connection registered as
+`'default'`; otta-web registers it once per isolate in `ensureDbConnection(env)` (`worker/lib/db-utils.ts`), which the
+worker entry calls before routing. The underlying calls are:
 
 ```typescript
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { setDriver } from '@ottabase/ottaorm';
+import { User, registerConnection } from '@ottabase/ottaorm';
 
-// cloudflare-worker.ts
 export default {
     async fetch(request: Request, env: CloudflareEnv) {
-        const driver = createD1Driver(env.OBCF_D1);
-        setDriver(driver);
+        // Register the D1 driver every model uses by default
+        registerConnection('default', createD1Driver(env.OBCF_D1));
 
-        const db = driver.getDb();
-        const users = await db.select().from(usersTable);
+        // Prefer models over raw Drizzle (see AGENTS.MD "OttaORM First")
+        const user = await User.findByEmail('admin@example.com');
 
-        return Response.json(users);
+        return Response.json(user?.toJson() ?? null);
     },
 };
 ```
@@ -345,15 +331,12 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 Test each binding in production:
 
 ```bash
-# Test D1
+# Test the worker + D1 (a JSON response — even an auth error — proves the worker is serving the API)
 curl https://your-app.workers.dev/api/ottaorm/users
-
-# Test KV (if you have an endpoint)
-curl https://your-app.workers.dev/api/cloudflare/kv/test
-
-# Test R2 (if you have an endpoint)
-curl https://your-app.workers.dev/api/cloudflare/r2/list
 ```
+
+The `/api/cloudflare/*` demo routes (KV, R2, D1 todos, queues) are exercised from the demo pages under
+`src/pages/demo/cloudflare/`; sign in and use those pages rather than raw `curl`.
 
 ---
 
@@ -372,9 +355,8 @@ export default {
         const queue = env.OBCF_QUEUE; // Queue
         const realtime = env.OBCF_REALTIME; // Durable Object
 
-        // D1 via OttaORM (preferred):
-        // import { createD1Driver } from '@ottabase/db/drizzle-d1';
-        // const driver = createD1Driver(db); setDriver(driver);
+        // D1 via OttaORM (preferred) — see "Database Setup" above:
+        // registerConnection('default', createD1Driver(db));
         const kvClient = createKVClient({ namespace: kv });
         const r2Client = createR2Client({ bucket: r2 });
     },
@@ -459,9 +441,9 @@ secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI au
 ## 📚 Additional Resources
 
 - **Packages Documentation:**
-    - `@ottabase/db` - [packages/db/README.md](packages/db/README.md)
-    - `@ottabase/cf` - [packages/cf/README.md](packages/cf/README.md)
-    - `@ottabase/auth` - [packages/auth/README.md](packages/auth/README.md)
+    - `@ottabase/db` - [packages/db/README.md](../packages/db/README.md)
+    - `@ottabase/cf` - [packages/cf/README.md](../packages/cf/README.md)
+    - `@ottabase/auth` - [packages/auth/README.md](../packages/auth/README.md)
 
 - **Cloudflare Documentation:**
     - [D1 Database](https://developers.cloudflare.com/d1/)
@@ -472,7 +454,7 @@ secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI au
 
 - **Project Documentation:**
     - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Complete deployment guide with CI/CD setup
-    - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
+    - [AGENTS.MD](../AGENTS.MD) - Monorepo architecture
 
 ---
 
@@ -510,20 +492,15 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 **Solution:**
 
 ```bash
-pnpm cf-typegen
+pnpm --filter @ottabase/otta-web cf-typegen
 ```
 
 ### "Wrong binding name in code"
 
-**Cause:** Old binding names (`DB`, `OTTABASE_KV`) still in use.
+**Cause:** Code reads a binding name that `wrangler.jsonc` does not define (e.g. `env.DB`).
 
-**Solution:** All bindings now use `OBCF_*` prefix:
-
-- `env.OBCF_D1` (was `env.DB`)
-- `env.OBCF_KV` (was `env.OTTABASE_KV`)
-- `env.OBCF_R2` (was `env.OTTABASE_BUCKET`)
-- `env.OBCF_QUEUE` (was `env.MY_QUEUE`)
-- `env.OBCF_REALTIME` (was `env.REALTIME`)
+**Solution:** Every binding uses the `OBCF_*` prefix — `env.OBCF_D1`, `env.OBCF_KV`, `env.OBCF_R2`, `env.OBCF_QUEUE`,
+`env.OBCF_REALTIME`. Regenerate `cloudflare-env.d.ts` and let the type-checker find the stragglers.
 
 ---
 
@@ -533,7 +510,7 @@ pnpm cf-typegen
 
 - ✅ `wrangler.jsonc` - Cloudflare bindings (OBCF\_\* names); `ALL_CAPS` placeholder values are auto-detected and
   substituted from GitHub Secrets via `substitute-wrangler-secrets.py`
-- ✅ `types/cloudflare.d.ts` - TypeScript definitions (OBCF\_\* interfaces)
+- ✅ `cloudflare-env.d.ts` - TypeScript definitions, generated from `wrangler.jsonc` by `cf-typegen`
 - ✅ `cloudflare-worker.ts` - Durable Object exports
 - ✅ `.env.local` - Local environment variables (optional)
 
@@ -551,12 +528,14 @@ pnpm cf-typegen
 
 ### Key Environment Variables
 
-| Variable         | Required      | Purpose                                 |
-| ---------------- | ------------- | --------------------------------------- |
-| `D1_DATABASE_ID` | Yes (deploy)  | D1 database UUID (wrangler placeholder) |
-| `AUTH_SECRET`    | If using auth | Session signing secret                  |
-| `CF_ACCOUNT_ID`  | Optional      | Cloudflare API access                   |
-| `CF_API_TOKEN`   | Optional      | Cloudflare API access                   |
+| Variable                         | Required      | Purpose                                          |
+| -------------------------------- | ------------- | ------------------------------------------------ |
+| `D1_DATABASE_ID`                 | Yes (deploy)  | D1 database UUID (wrangler placeholder)          |
+| `CLOUDFLARE_API_TOKEN`           | Yes (deploy)  | Wrangler CLI / CI deploys (GitHub secret)        |
+| `CLOUDFLARE_ACCOUNT_ID`          | Yes (deploy)  | Wrangler CLI / CI; worker var for analytics & AI |
+| `AUTH_SECRET`                    | If using auth | Session signing secret                           |
+| `MIGRATION_SECRET`               | Recommended   | Authorizes `/api/ottaorm/init` outside dev       |
+| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | `/analytics` dashboard                           |
 
 ---
 

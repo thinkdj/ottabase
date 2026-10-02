@@ -32,7 +32,7 @@ pnpm add @ottabase/cf
 ```typescript
 import { createD1Client } from '@ottabase/cf/d1';
 
-const db = createD1Client({ database: env.DB });
+const db = createD1Client({ database: env.OBCF_D1 });
 
 // Query with type safety
 const result = await db.query<User>('SELECT * FROM users WHERE id = ?', [userId]);

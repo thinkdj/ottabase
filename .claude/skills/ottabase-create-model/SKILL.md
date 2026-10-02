@@ -19,15 +19,18 @@ controllers/services. Do not write raw SQL or vanilla Drizzle unless there is a 
     - `static entity = '<table>'`, `static table = <table>`, `static primaryKey = 'id'` (all three — a model without
       `entity` + `table` is an anti-pattern).
     - `static casts = { ... }` for boolean/json/date columns.
-    - Relationships (`belongsTo`/`hasMany`/`hasOne`/`belongsToMany`) **must use dynamic `import()`** inside the method
-      to avoid circular deps.
+    - Relationships (`belongsTo`/`hasMany`/`hasOne`/`belongsToMany`): use a dynamic `import()` inside the method only
+      when the related model (directly or transitively) imports this one — a real cycle. Otherwise import statically.
     - Domain logic as methods: `todo.markDone()`, not `service.markDone(todo)`.
     - `static deferred = [...]` for big columns that should not ride along on list reads (reading a deferred column off
       a collection-loaded record throws — by design).
 3. **Export the table** from `apps/*/ottabase/db/schema.ts` (drizzle-kit) **and** add it to `appTables` in
    `apps/*/ottabase/db/schemas-helper.ts` (runtime migrations). Both — they feed different paths.
 4. **Register the model** in `apps/*/worker/lib/db-utils.ts` `initDbConnection` (the right array: `appModels` /
-   `packageModels` / `brandModels`). Without this, `/api/ottaorm/{entity}` 404s.
+   `packageModels` / `brandModels`). If the browser drives it through generic CRUD, also:
+    - give it an **RLS policy** (`registerPolicy(...)` after `initRLS()` in `db-utils.ts`) — no policy = no access;
+    - add its entity to `GENERIC_CRUD_ALLOWLIST` in `apps/*/worker/routes/ottaorm-crud.ts` — the route is default-deny
+      (403 `CRUD_NOT_ALLOWED`). Never allowlist grant/auth tables (`user_roles`, `sessions`, …).
 5. **Run migrations**: `curl -X POST http://localhost:3004/api/ottaorm/init`. Auto-migration can add tables/columns but
    **cannot rename/drop** — and a new NOT NULL column needs a DEFAULT.
 

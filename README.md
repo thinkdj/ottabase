@@ -271,12 +271,12 @@ export { todosTable } from '../models/Todo'; // App
 ### Use Model
 
 ```typescript
-import { setDriver } from '@ottabase/ottaorm';
+import { registerConnection } from '@ottabase/ottaorm';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Todo } from './ottabase/models/Todo';
 
 // In worker
-setDriver(createD1Driver(env.OBCF_D1));
+registerConnection('default', createD1Driver(env.OBCF_D1));
 
 // CRUD
 const todo = await Todo.create({ title: 'Buy groceries' });

@@ -44,8 +44,10 @@ Model/schema directly and re-run init** rather than writing a migration — ther
 
 ## Gotchas
 
-- The engine is `@ottabase/ottaorm/src/migrations` (`autoInit` / runtime generator). There is **no active
-  `@ottabase/migrate` package on main** — don't import from it.
+- The engine source is `packages/ottaorm/src/migrations` (`autoInit` / runtime generator); import `autoInit`,
+  `runMigrations` and the `Migration` type from the `@ottabase/ottaorm` root — there is no `/migrations` subpath. There
+  is **no `@ottabase/migrate` package** — don't import from it.
+- `up`/`down` receive the `DbDriver` from both `autoInit` and `runMigrations`: use `db.executeRaw(sql)`.
 - After `clean:d1` / `clean:state`, re-run bootstrap + init to rebuild the schema.
 - A new NOT NULL column without a DEFAULT will fail the migration — add one.
 

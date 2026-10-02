@@ -17,15 +17,18 @@ Cloudflare wakes the worker once a minute; per-task cadence is evaluated against
 
 1. `wrangler.jsonc` → `"triggers": { "crons": ["* * * * *"] }` — one tick/minute.
 2. Worker `scheduled:` export → `handleAppScheduled` (guards platform-ready + the tick expression), then
-   `appCronScheduler.tick(env, repository)`.
-3. Register a handler on the app scheduler (`apps/*/ottabase/cron/index.ts`):
+   `runAppCronTick(env)` → `appCronScheduler.tick(env, appTaskRepository(env))` (repository is app-scoped). `tick`
+   returns `{ executed, failed, skipped }`; a task whose run or bookkeeping throws counts as `failed` and the tick
+   carries on with the remaining due tasks.
+3. Register a handler on the app scheduler (`apps/*/ottabase/cron/index.ts`): add an entry to `appCronHandlerRegistry`
+   (and its payload type to `AppCronPayloads`); it is passed to `registerHandlers`:
     ```ts
-    export const appCronScheduler = createScheduler<Env>({ ... })
-        .registerHandlers<AppCronPayloads>({
-            'my-task': async (ctx) => { /* ... enqueue or do work ... */ },
-        });
+    'my-task': {
+        description: 'Shown in the admin cron UI.',
+        handler: async ({ env, payload }) => { /* validate payload, then enqueue or do work */ },
+    },
     ```
-4. Schedule an actual run by creating a `ScheduledTask` row (app-scoped, via the admin cron routes /
+4. Schedule an actual run by creating a `ScheduledTask` row (app-scoped, via the system-admin cron routes /
    `handleAdminCronCreate`) with a cron expression. The repository (`createTaskRepository`) handles atomic locking so a
    task runs once even across overlapping ticks.
 
@@ -44,8 +47,9 @@ if you want jobs defined purely in code with their own Cron Triggers, rather tha
 
 ## Gotchas
 
-- The Cloudflare cron path is guarded by platform-ready + admin auth, **not** `CRON_SECRET`. `checkCronAuth` /
-  `CRON_SECRET` exist for a separately HTTP-triggered cron endpoint — don't assume the scheduled path checks it.
+- The Cloudflare `scheduled` path has no HTTP auth at all — it is guarded by platform-ready + the tick-expression check.
+  Admin auth gates the `/api/admin/cron` routes; `checkCronAuth` / `CRON_SECRET` gate separately HTTP-triggered cron
+  endpoints (e.g. blog publish-scheduled) and are open when `ENVIRONMENT` is a dev value.
 - Cron math is **UTC**. Convert for user-facing schedules.
 - Adding a cron trigger changes `wrangler.jsonc` — keep binding/trigger config in sync per the cloudflare rules.
 

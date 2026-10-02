@@ -13,10 +13,12 @@ Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
 
 ## Backend
 
-1. The model (see `ottabase-create-model`) must be registered in `worker/lib/db-utils.ts`. That alone exposes
-   `GET/POST/PATCH/DELETE /api/ottaorm/{entity}` via the single secure route (`executeSecureCrudRequest`), tenant-scoped
-   by RLS.
-2. If the route uses an allowlist (`GENERIC_CRUD_ALLOWLIST`), add the entity name to it.
+1. Register the model (see `ottabase-create-model`) in `worker/lib/db-utils.ts` **and** give it an RLS policy
+   (`registerPolicy` after `initRLS()`) — no policy = no access.
+2. Add the entity to `GENERIC_CRUD_ALLOWLIST` in `worker/routes/ottaorm-crud.ts`. The route is default-deny (403
+   `CRUD_NOT_ALLOWED`); once listed, `GET/POST/PATCH/PUT/DELETE /api/ottaorm/{entity}` runs through
+   `executeSecureCrudRequest`, filtered by RLS. Grant/auth tables (`user_roles`, `roles`, `permissions`, sessions…) are
+   never exposed here — they have dedicated admin routes.
 3. Keep persistence logic in model methods; the worker route only orchestrates/auths/validates.
 
 ## Client

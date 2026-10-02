@@ -35,7 +35,8 @@ pnpm cf:validate
 - D1 Database: `ottabase-db`
 - KV Namespace: `OBCF_KV` (+ preview)
 - R2 Buckets: `ottabase-bucket` (+ preview)
-- Queue: `ottabase-queue`
+- Queue: `ottabase-queue` (+ preview)
+- D1 preview database: `ottabase-db-preview`
 - **Does NOT modify wrangler.jsonc** (it's a template). Copy the output IDs for GitHub Secrets below.
 
 **Resource overview (prod vs preview):**
@@ -106,16 +107,24 @@ Go to: GitHub repository → **Settings** → **Secrets and variables** → **Ac
 > **Multi-app:** Same placeholder name across apps → same GitHub Secret → shared resource. Different names → isolated.
 > Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the
 > placeholder in `wrangler.jsonc`, add the matching GitHub Secret. CI auto-detects the rest. See
-> [.github/DEPLOYMENT.md](.github/DEPLOYMENT.md#extending-the-system) for a walkthrough.
+> [.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md#extending-the-system) for a walkthrough.
 
 ---
 
-## Step 4: Setup Database (Optional)
+## Step 4: Setup Database
 
-If using a database, ensure you have your migrations ready.
+CI does **not** run migrations. Schema is applied by OttaORM auto-migrations after the first deploy: open
+`https://<your-worker>/__bootstrap__` and run the setup wizard (it applies the schema, seeds roles and creates the
+platform owner; it asks for `BOOTSTRAP_OWNER_SECRET`), or call `POST /api/ottaorm/init` with `MIGRATION_SECRET` for
+later schema changes. Set both secrets before deploying:
 
-**Note:** CI/CD automatically applies migrations to production. See
-[CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for details.
+```bash
+cd apps/otta-web
+pnpm wrangler secret put BOOTSTRAP_OWNER_SECRET --env production
+pnpm wrangler secret put MIGRATION_SECRET --env production
+```
+
+See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md#migration-not-applied) for the init call.
 
 ---
 
@@ -141,8 +150,9 @@ Watch in GitHub Actions:
 
 - ✓ Build packages
 - ✓ Build application & worker bundle
-- ✓ Apply database migrations
+- ✓ Generate `wrangler.production.jsonc` from GitHub Secrets
 - ✓ Deploy to Cloudflare
+- ✓ Health check
 
 ---
 
@@ -185,11 +195,12 @@ Regenerate API token with correct permissions (Step 2).
 
 ### "Migration failed" errors
 
+Inspect which tables exist, then re-run `POST /api/ottaorm/init` (it is idempotent: it only creates missing tables and
+columns):
+
 ```bash
 wrangler d1 execute ottabase-db --remote --command="SELECT name FROM sqlite_master WHERE type='table'"
 ```
-
-CI pipeline gracefully handles already-applied migrations.
 
 ### Build fails
 
@@ -209,9 +220,10 @@ pnpm install
 # Local development
 pnpm dev
 
-# Manual deployment (bypass CI)
+# Manual deployment (bypass CI). env.production holds ALL_CAPS placeholders, so first generate a
+# config with real IDs (CI does this with .github/scripts/substitute-wrangler-secrets.py)
 cd apps/otta-web
-pnpm build && pnpm wrangler deploy --env production
+pnpm build && pnpm wrangler deploy --env production --config wrangler.production.jsonc
 
 # View logs
 wrangler tail otta-web
@@ -232,8 +244,10 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 
 1. Build packages & app
 2. Build Cloudflare Worker bundle
-3. Apply database migrations
-4. Deploy to Cloudflare Workers
+3. Generate `wrangler.production.jsonc` (placeholders → GitHub Secrets)
+4. Deploy to Cloudflare Workers and health-check
+
+Migrations are not part of CI — see Step 4.
 
 ### Turborepo Remote Cache
 
@@ -253,14 +267,15 @@ silently runs local-only. One-time setup, token format, rotation, and local use 
 
 ### Cloudflare Bindings
 
-| Binding             | Type           |
-| ------------------- | -------------- |
-| `OBCF_D1`           | D1 Database    |
-| `OBCF_KV`           | KV Namespace   |
-| `OBCF_R2`           | R2 Bucket      |
-| `OBCF_QUEUE`        | Queue          |
-| `OBCF_REALTIME`     | Durable Object |
-| `OBCF_RATE_LIMITER` | Rate Limiter   |
+| Binding                       | Type           |
+| ----------------------------- | -------------- |
+| `OBCF_D1`                     | D1 Database    |
+| `OBCF_KV`                     | KV Namespace   |
+| `OBCF_R2`                     | R2 Bucket      |
+| `OBCF_QUEUE`                  | Queue          |
+| `OBCF_REALTIME`               | Durable Object |
+| `OBCF_WEBHOOK_ENDPOINT_QUOTA` | Durable Object |
+| `OBCF_RATE_LIMITER`           | Rate Limiter   |
 
 See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for usage details.
 

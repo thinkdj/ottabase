@@ -32,8 +32,10 @@ const registry = createRegistry<Env>().register('send-email', async (job, ctx) =
 export default { queue: createQueueHandler(registry) };
 ```
 
-Processor hooks (`onBeforeProcess`/`onAfterProcess`/`onFailure`/`chainQueue`) and a DLQ are available at the lower rung.
-The raw `QueueAdapter` / binding is reachable via `dispatcher.getAdapter()` when you genuinely need it.
+`createQueueHandler(registry, options)` takes processor options: `onBeforeProcess`/`onAfterProcess`/`onFailure` hooks
+and `chainQueue` / `chainPriorityQueues`. There is no built-in DLQ — the README shows the `onFailure` + KV pattern (or
+configure a Cloudflare dead-letter queue on the consumer). The raw `QueueAdapter` is reachable via
+`dispatcher.getAdapter(priority?)` when you genuinely need it.
 
 ## Gotchas
 
@@ -41,6 +43,8 @@ The raw `QueueAdapter` / binding is reachable via `dispatcher.getAdapter()` when
   is not checked against the registered handler's payload type. Keep names as shared constants and payload types next to
   the handler to reduce drift. (Typed registries are a known roadmap item.)
 - Register the handler for every name you dispatch, or the job fails at runtime.
+- Chaining (`then: [...]`) only fires if the consumer was given `chainQueue` or `chainPriorityQueues`; otherwise the
+  chain is skipped with a warning. A chained job uses its own `priority`, else the parent's, else `normal`.
 - Keep job payloads small and serializable; pass IDs, re-fetch inside the handler.
 - A new queue binding must be kept in sync across `wrangler.jsonc` and `cloudflare-env.d.ts`.
 

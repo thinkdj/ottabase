@@ -26,13 +26,13 @@ participates in theming like a built-in.
 5. **Make it replaceable (Tier 2, optional)** — read the brand override registry so a fork can swap the whole
    implementation:
     ```tsx
-    import { useBrandComponent } from '@ottabase/ui-shadcn/providers/brand-components';
+    import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
     const Override = useBrandComponent('my-widget'); // called unconditionally
     if (Override) return <Override {...props} />;
     // else render the native element with data-slot stamps
     ```
-    An app registers overrides with `<BrandComponentsProvider overrides={{ 'my-widget': MyWidget }}>` (nests/merges with
-    parent).
+    An app registers overrides with `<BrandComponentsProvider overrides={{ 'my-widget': MyWidget }}>` (same subpath;
+    nests/merges with parent).
 
 ## Two-tier model (know which you need)
 

@@ -46,20 +46,16 @@ const displayTime = formatInUserTimezone(dbDate, 'PPpp', user.timezone);
 ### 1. Database Storage (Always UTC)
 
 ```typescript
-// ✅ CORRECT: Store in UTC
-const post = await db.post.create({
-    data: {
-        title: 'New Post',
-        createdAt: Date.now(), // Current time in UTC (ms)
-        publishedAt: toUTC(userInputDate, user.timezone), // Convert user input to UTC
-    },
+// ✅ CORRECT: Store in UTC (OttaORM model, e.g. Post from @ottabase/ottablog)
+const post = await Post.create({
+    title: 'New Post',
+    createdAt: Date.now(), // Current time in UTC (ms)
+    publishedAt: toUTC(userInputDate, user.get('timezone'))?.getTime(), // Convert user input to UTC
 });
 
 // ❌ INCORRECT: Never store user's local time
-const post = await db.post.create({
-    data: {
-        createdAt: Date.parse(userInputDate), // Ambiguous timezone
-    },
+const post = await Post.create({
+    createdAt: Date.parse(userInputDate), // Ambiguous timezone
 });
 ```
 
@@ -67,13 +63,13 @@ const post = await db.post.create({
 
 ```typescript
 // ✅ CORRECT: Convert UTC to user's timezone
-const posts = await db.post.findMany();
+const posts = await Post.where({ status: 'published' });
 const displayPosts = posts.map((post) => ({
-  ...post,
+  ...post.toJson(),
   createdAtFormatted: formatInUserTimezone(
-    post.createdAt,
+    post.get('createdAt'),
     'PPpp',
-    user.timezone
+    user.get('timezone')
   ),
 }));
 
@@ -95,16 +91,22 @@ const scheduledDate = Date.parse(userInput); // Ambiguous timezone
 
 ### Pattern 1: User Registration
 
-```typescript
-import { getUserTimezone } from '@ottabase/utils/timezone';
+`getUserTimezone()` reads the **browser's** zone; on the server (no `window`) it returns the configured default (`UTC`).
+Detect in the client, send it with the request, and validate it on the server:
 
-async function registerUser(data: RegisterInput) {
-    return db.user.create({
-        data: {
-            email: data.email,
-            timezone: getUserTimezone(), // Store user's detected timezone
-            createdAt: Date.now(), // Store registration time in UTC (ms)
-        },
+```typescript
+import { getUserTimezone, isValidTimezone } from '@ottabase/utils/timezone';
+import { User } from '@ottabase/ottaorm';
+
+// Client: include the detected zone in the sign-up payload
+const payload = { email, timezone: getUserTimezone() };
+
+// Server: never trust it blindly
+async function registerUser(data: { email: string; timezone?: string }) {
+    return User.create({
+        email: data.email,
+        timezone: data.timezone && isValidTimezone(data.timezone) ? data.timezone : 'UTC',
+        createdAt: Date.now(), // Store registration time in UTC (ms)
     });
 }
 ```
@@ -115,30 +117,27 @@ async function registerUser(data: RegisterInput) {
 import { toUTC, formatInUserTimezone } from '@ottabase/utils/timezone';
 
 // Creating scheduled content
-async function schedulePost(userId: string, data: ScheduleInput) {
-    const user = await db.user.findUnique({ where: { id: userId } });
+async function schedulePost(userId: string, data: { title: string; publishAt: string }) {
+    const user = await User.find(userId);
 
-    return db.post.create({
-        data: {
-            userId,
-            title: data.title,
-            scheduledAt: toUTC(data.scheduledAt, user.timezone), // Convert to UTC
-            createdAt: Date.now(),
-        },
+    return Post.create({
+        authorId: userId,
+        title: data.title,
+        status: 'scheduled',
+        publishedAt: toUTC(data.publishAt, user?.get('timezone'))?.getTime(), // Convert to UTC
+        createdAt: Date.now(),
     });
 }
 
 // Displaying scheduled content
 async function getScheduledPosts(userId: string) {
-    const user = await db.user.findUnique({ where: { id: userId } });
-    const posts = await db.post.findMany({
-        where: { userId, scheduledAt: { gte: Date.now() } },
-    });
+    const user = await User.find(userId);
+    const posts = await Post.where({ authorId: userId, status: 'scheduled' });
 
     return posts.map((post) => ({
-        ...post,
+        ...post.toJson(),
         // Display in user's timezone
-        scheduledAtDisplay: formatInUserTimezone(post.scheduledAt, 'PPpp', user.timezone),
+        publishAtDisplay: formatInUserTimezone(post.get('publishedAt'), 'PPpp', user?.get('timezone')),
     }));
 }
 ```
@@ -177,20 +176,21 @@ function TimezoneSelector({ value, onChange }: Props) {
 import { formatInUserTimezone } from '@ottabase/utils/timezone';
 
 // API route returning formatted dates
-export async function GET(request: Request) {
-    const userId = getUserIdFromRequest(request);
-    const user = await db.user.findUnique({ where: { id: userId } });
-    const posts = await db.post.findMany({ where: { userId } });
+export async function handleMyPosts(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env); // from '@ottabase/auth/backend'
+    if (!session) return errorResponse('Unauthorized', 401);
+    const user = await User.find(session.user.id);
+    const posts = await Post.where({ authorId: session.user.id });
 
     // Format dates for user's timezone
     const formattedPosts = posts.map((post) => ({
-        id: post.id,
-        title: post.title,
-        createdAt: post.createdAt, // UTC ms timestamp
-        createdAtFormatted: formatInUserTimezone(post.createdAt, 'PPpp', user.timezone),
+        id: post.get('id'),
+        title: post.get('title'),
+        createdAt: post.get('createdAt'), // UTC ms timestamp
+        createdAtFormatted: formatInUserTimezone(post.get('createdAt'), 'PPpp', user?.get('timezone')),
     }));
 
-    return Response.json(formattedPosts);
+    return jsonResponse(formattedPosts); // from '@ottabase/utils/http-response'
 }
 ```
 
@@ -295,7 +295,7 @@ formatInUserTimezone(dbDate, 'PPpp zzz'); // "... 2:30:00 PM EST"
 - `PPpp` - Date and time (Jan 15, 2024, 2:30:00 PM)
 - `zzz` - Timezone abbreviation (EST, PST, etc.)
 
-See [date-fns format tokens](https://date-fns.org/v2.30.0/docs/format) for complete list.
+See [date-fns format tokens](https://date-fns.org/docs/format) for complete list.
 
 ### Preset Format Functions
 
@@ -528,8 +528,10 @@ describe('Timezone Utilities', () => {
 
 5. **Never assume server and client are in same timezone**
     ```typescript
-    // ❌ BAD
-    const now = Date.now(); // Could be server or client timezone
+    // ❌ BAD — getHours() uses the runtime's local zone (UTC on Workers, the user's zone in the browser)
+    const hour = new Date().getHours();
+    // ✅ Date.now() is always UTC epoch ms; format it for a zone explicitly
+    const hourInUserTz = formatInUserTimezone(Date.now(), 'H', user.timezone);
     ```
 
 ## Troubleshooting
@@ -570,13 +572,14 @@ const offset = getTimezoneOffsetMinutes('America/New_York');
 **Solution**: Timezone detection works client-side only. Store user's timezone in database:
 
 ```typescript
-// Client-side: detect and store
+// Client-side: detect and store (PATCH /api/users/me accepts `timezone`; send it through a
+// useApiMutation hook, never raw fetch)
 const userTz = getUserTimezone();
-await updateUserProfile({ timezone: userTz });
+updateProfile.mutate({ timezone: userTz });
 
 // Server-side: retrieve from database
-const user = await db.user.findUnique({ where: { id } });
-const displayDate = formatInUserTimezone(dbDate, 'PPpp', user.timezone);
+const user = await User.find(id);
+const displayDate = formatInUserTimezone(dbDate, 'PPpp', user?.get('timezone'));
 ```
 
 ## Migration Guide
@@ -612,16 +615,16 @@ const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
 
 ## Resources
 
-- [Demo Page](/demo/timezone) - Interactive examples
-- [Package README](/packages/utils/README.md#timezone-utilities-ottabaseutilstimezone) - API documentation
-- [date-fns format tokens](https://date-fns.org/v2.30.0/docs/format) - Format string reference
+- Demo page at `/demo/timezone` in otta-web - Interactive examples
+- [Package README](../packages/utils/README.md#timezone-utilities-ottabaseutilstimezone) - API documentation
+- [date-fns format tokens](https://date-fns.org/docs/format) - Format string reference
 - [IANA Time Zone Database](https://www.iana.org/time-zones) - Timezone list
 
 ## Support
 
 For issues or questions:
 
-1. Check the [Demo Page](/demo/timezone) for working examples
+1. Check the `/demo/timezone` page in otta-web for working examples
 2. Review this guide and the package README
 3. Open an issue on GitHub with minimal reproduction
 

@@ -10,7 +10,7 @@ description:
 
 `@ottabase/brand-engine` is **core — always enabled** (not a toggleable package). Theming is token-driven: a
 `DesignTokens` object becomes CSS custom properties written into a single `<style>` block; dark mode is a pure CSS
-`html.dark` swap.
+`.dark` class swap (`:root` = light).
 
 ## Tokens are the contract
 
@@ -32,8 +32,9 @@ branding work.
 
 - **Static presets**: `brand-engine/src/presets.ts` (`PRESET_MAP` from `themes/*.json`: default, neo, crisp, midnight,
   rose, …).
-- **A running app's brand kits are DB rows** (`brandKitsTable`, app-scoped), seeded by `ensureAppBrandDefaults()` →
-  `BrandKit.getOrCreateDefault()`; edited through the admin brand API, not code.
+- **A running app's brand kits are DB rows** (`brandKitsTable`, app-scoped), seeded at bootstrap/init by the app's
+  `ensureAppBrandDefaults()` (`apps/otta-web/worker/lib/user-provisioning.ts`); the system default kit (appId `null`)
+  comes from `BrandKit.getOrCreateDefault()`. Edited through the admin brand API, not code.
 
 ## Applying & overriding
 
@@ -41,8 +42,8 @@ branding work.
   (`@ottabase/brand-engine-react`). It resolves the path-scoped theme and `applyBrandTheme()` writes the critical CSS.
 - **Per-route override**: a `RouteMapping.tokenOverridesJson` (JSON, `deepMerge`d onto the kit; malformed JSON silently
   falls back).
-- **Per-subtree override**: `<BrandScope name="…">` re-binds `scopes.{name}` vars for a subtree (e.g. an always-dark
-  hero) without `dark:` classes.
+- **Per-subtree override**: `<BrandScope name="…">` (`@ottabase/ui-shadcn/brand-components`) re-binds `scopes.{name}`
+  vars for a subtree (e.g. an always-dark hero) without `dark:` classes.
 - **Per-component look**: target `[data-slot="…"]` in theme CSS (Tier 1); see `ottabase-component` for replacing a
   component's DOM (Tier 2).
 
