@@ -75,6 +75,9 @@ const DEFAULT_OTTAAI: OttaaiFeatureConfig = {
     // an incident. Tune per product; these exist so an unconfigured deployment is not
     // unbounded.
     rateLimit: { perUser: 20, perOrganization: 120, perApp: 600 },
+    // A phone photo of a receipt is well under 4 MB as JPEG; resize on the client rather than
+    // raising these.
+    images: { maxCount: 4, maxBytes: 4 * 1024 * 1024, maxTotalBytes: 8 * 1024 * 1024, perUserPerMinute: 10 },
     gateway: null,
     platformProvider: null,
     platformBilling: null,
@@ -93,6 +96,13 @@ const DEFAULT_OTTAAI: OttaaiFeatureConfig = {
 export function normalizeRateLimit(value: unknown, fallback: number): number {
     const parsed = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+    return Math.floor(parsed);
+}
+
+/** Coerce one image-budget value. Anything that is not a positive number falls back. */
+export function normalizePositiveInt(value: unknown, fallback: number): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) return fallback;
     return Math.floor(parsed);
 }
 
@@ -178,6 +188,18 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
                 DEFAULT_OTTAAI.rateLimit.perOrganization,
             ),
             perApp: normalizeRateLimit(input.features?.ottaai?.rateLimit?.perApp, DEFAULT_OTTAAI.rateLimit.perApp),
+        },
+        images: {
+            maxCount: normalizePositiveInt(input.features?.ottaai?.images?.maxCount, DEFAULT_OTTAAI.images.maxCount),
+            maxBytes: normalizePositiveInt(input.features?.ottaai?.images?.maxBytes, DEFAULT_OTTAAI.images.maxBytes),
+            maxTotalBytes: normalizePositiveInt(
+                input.features?.ottaai?.images?.maxTotalBytes,
+                DEFAULT_OTTAAI.images.maxTotalBytes,
+            ),
+            perUserPerMinute: normalizePositiveInt(
+                input.features?.ottaai?.images?.perUserPerMinute,
+                DEFAULT_OTTAAI.images.perUserPerMinute,
+            ),
         },
         gateway: input.features?.ottaai?.gateway ?? DEFAULT_OTTAAI.gateway,
         platformProvider: input.features?.ottaai?.platformProvider ?? DEFAULT_OTTAAI.platformProvider,

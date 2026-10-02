@@ -110,6 +110,29 @@ export interface OttaaiRateLimitConfig {
 }
 
 /**
+ * The image budget for `POST /api/ai/vision` — a PRODUCT limit, applied before resolution.
+ *
+ * Each byte limit is clamped at runtime to @ottabase/ottaai's provider floor
+ * (`AI_CONTENT_LIMITS`: 5 MB per image, 14 MB per request), so raising one here can never
+ * produce a request a selectable provider would reject for size. Every value must be a
+ * positive integer; anything else falls back to the default.
+ */
+export interface OttaaiImageConfig {
+    /** Images per request. */
+    maxCount: number;
+    /** Decoded bytes per image. */
+    maxBytes: number;
+    /** Decoded bytes across all images in one request. */
+    maxTotalBytes: number;
+    /**
+     * Image requests per user per minute, checked BEFORE the body is read. Parsing a
+     * multi-megabyte body costs Worker CPU and memory before resolution or the inference rate
+     * limit runs, so this bounds how often one account can make the Worker do it.
+     */
+    perUserPerMinute: number;
+}
+
+/**
  * AI provisioning dials (@ottabase/ottaai). Non-secret only — the master secret, the
  * gateway token and every platform provider key stay in env vars.
  *
@@ -154,6 +177,8 @@ export interface OttaaiFeatureConfig {
      * guarantee it does not make.
      */
     rateLimit: OttaaiRateLimitConfig;
+    /** Image budget for vision tasks. See {@link OttaaiImageConfig}. */
+    images: OttaaiImageConfig;
     /** Cloudflare AI Gateway slug. Overridable per deploy via `CFAI_GATEWAY_NAME`. */
     gateway: string | null;
     /** The provider the PLATFORM key belongs to. Declared, never inferred from a prefix. */
@@ -175,7 +200,10 @@ export interface OttabaseFeaturesConfig {
      * `rateLimit` is separately partial so an operator can override ONE dimension without
      * restating the other two — a plain `Partial<OttaaiFeatureConfig>` would demand all three.
      */
-    ottaai?: Partial<Omit<OttaaiFeatureConfig, 'rateLimit'>> & { rateLimit?: Partial<OttaaiRateLimitConfig> };
+    ottaai?: Partial<Omit<OttaaiFeatureConfig, 'rateLimit' | 'images'>> & {
+        rateLimit?: Partial<OttaaiRateLimitConfig>;
+        images?: Partial<OttaaiImageConfig>;
+    };
 }
 
 export interface OttabaseEmailConfig {

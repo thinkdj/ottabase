@@ -150,6 +150,8 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                         config.features.ottaai.rateLimit.perApp,
                     ),
                 },
+                // Config-file only: a product budget, not an incident dial.
+                images: config.features.ottaai.images,
                 gateway: str(env, ENV_KEYS.OTTAAI_GATEWAY) ?? config.features.ottaai.gateway,
                 platformProvider:
                     str(env, ENV_KEYS.OTTAAI_PLATFORM_PROVIDER) ?? config.features.ottaai.platformProvider,

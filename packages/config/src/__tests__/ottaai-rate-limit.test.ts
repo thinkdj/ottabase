@@ -75,3 +75,34 @@ describe('env path applies the SAME rule', () => {
         });
     });
 });
+
+describe('image budget', () => {
+    const withImages = (images?: Record<string, unknown>) =>
+        defineOttabaseConfig({
+            appId: 'test-app',
+            appName: 'Test App',
+            ...(images ? { features: { ottaai: { images } } } : {}),
+        } as never);
+
+    it('defaults every value to a positive integer', () => {
+        const { images } = withImages().features.ottaai;
+        expect(images).toEqual({
+            maxCount: 4,
+            maxBytes: 4 * 1024 * 1024,
+            maxTotalBytes: 8 * 1024 * 1024,
+            perUserPerMinute: 10,
+        });
+    });
+
+    it('accepts a partial override and falls back on nonsense', () => {
+        const { images } = withImages({ maxCount: 2, maxBytes: 0, perUserPerMinute: 'lots' }).features.ottaai;
+        expect(images.maxCount).toBe(2);
+        expect(images.maxBytes).toBe(4 * 1024 * 1024);
+        expect(images.perUserPerMinute).toBe(10);
+    });
+
+    it('survives the env-override path, which rebuilds the ottaai block field by field', () => {
+        const resolved = resolveConfigWithEnv(withImages({ maxCount: 2 }), {});
+        expect(resolved.features.ottaai.images.maxCount).toBe(2);
+    });
+});

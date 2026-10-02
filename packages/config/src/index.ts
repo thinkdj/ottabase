@@ -17,6 +17,7 @@ export type {
     CrudHubFeatureConfig,
     AuthBehaviorConfig,
     OttaaiFeatureConfig,
+    OttaaiImageConfig,
     OttaaiRateLimitConfig,
     OttablogFeatureConfig,
     OttablogMode,
