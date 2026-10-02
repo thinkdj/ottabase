@@ -212,6 +212,11 @@ const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((
 
 const docsRoute = publicRoute('/docs/$', () => import('@/pages/docs/DocsPage').then((m) => ({ default: m.DocsPage })));
 
+// Outside the /demo wrapper on purpose: each preview swaps the whole app shell (see LayoutPreviewPage).
+const layoutPreviewRoute = publicRoute('/layout-preview/$preset', () =>
+    import('@/pages/demo/layout/LayoutPreviewPage').then((m) => ({ default: m.LayoutPreviewPage })),
+);
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 const loginRoute = publicRoute('/login', () =>
@@ -756,6 +761,7 @@ demoLayoutRoute.addChildren(demoChildren);
 const coreRoutes = [
     indexRoute,
     docsRoute,
+    layoutPreviewRoute,
     demoLayoutRoute,
     changelogListRoute,
     changelogDetailRoute,

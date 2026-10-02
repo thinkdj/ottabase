@@ -284,7 +284,8 @@ export const DEMO_ITEMS: DemoItem[] = [
         icon: Layout,
         label: 'Layout System',
         title: 'Layout System',
-        description: 'Inspect ottalayout presets and path-to-layout resolution using priority mappings.',
+        description:
+            'Live-preview every layout preset per route, and test path-to-layout resolution with priority rules.',
         buttonVariant: 'outline',
     },
     {

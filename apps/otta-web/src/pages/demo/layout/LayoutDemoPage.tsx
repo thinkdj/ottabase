@@ -6,6 +6,7 @@ import {
     type RouteMapping,
 } from '@ottabase/ottalayout';
 import {
+    Button,
     Card,
     CardContent,
     CardDescription,
@@ -18,16 +19,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@ottabase/ui-shadcn';
-import { IconLayout, IconRoute } from '@tabler/icons-react';
+import { IconEye, IconLayout, IconRoute } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
+// Sample rules for the simulator only — the app's real rules live in Admin → Appearance → Layouts.
 const DEMO_ROUTE_MAPPINGS: RouteMapping[] = [
-    { pathPattern: '/', layoutTemplateId: 'homepage', priority: 100 },
-    { pathPattern: '/blog/**', layoutTemplateId: 'docs', priority: 90 },
-    { pathPattern: '/admin/**', layoutTemplateId: 'dashboard', priority: 95 },
-    { pathPattern: '/auth/**', layoutTemplateId: 'auth', priority: 96 },
-    { pathPattern: '/demo/**', layoutTemplateId: 'app-shell', priority: 80 },
+    { pathPattern: '/login', layoutTemplateId: 'auth', priority: 100 },
+    { pathPattern: '/admin/**', layoutTemplateId: 'dashboard', priority: 90 },
+    { pathPattern: '/settings/**', layoutTemplateId: 'settings', priority: 90 },
+    { pathPattern: '/pricing', layoutTemplateId: 'marketing', priority: 50 },
+    { pathPattern: '/**', layoutTemplateId: 'app-shell', priority: 0 },
 ];
 
 export function LayoutDemoPage() {
@@ -47,6 +50,33 @@ export function LayoutDemoPage() {
                     </>
                 }
             />
+
+            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                        <IconEye className="h-4 w-4" />
+                        Live Preview
+                    </CardTitle>
+                    <CardDescription>
+                        Each link is its own route that pins one preset with <code>useLayoutMeta</code>, so moving
+                        between them swaps the whole app shell. The rest of the app keeps its layout. Per-route rules
+                        for real pages live in{' '}
+                        <Link to="/admin/appearance/layouts" className="underline underline-offset-4">
+                            Admin → Appearance → Layouts
+                        </Link>
+                        .
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                    {LAYOUT_PRESET_IDS.map((id) => (
+                        <Button key={id} asChild variant="outline" size="sm">
+                            <Link to="/layout-preview/$preset" params={{ preset: id }}>
+                                {id}
+                            </Link>
+                        </Button>
+                    ))}
+                </CardContent>
+            </Card>
 
             <div className="grid gap-4 lg:grid-cols-2">
                 <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
