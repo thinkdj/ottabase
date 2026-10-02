@@ -54,19 +54,16 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
             // Auto-upload if enabled
             if (autoUpload) {
-                uploadFiles.forEach((uploadFile) => {
-                    uploadFile.status = 'uploading';
-                    uploadSingleFile(uploadFile);
-                });
+                void uploadBatch(uploadFiles);
             }
         },
-        [files.length, maxFiles, maxFileSize, acceptedFileTypes, autoUpload, onUploadError],
+        [files.length, maxFiles, maxFileSize, acceptedFileTypes, autoUpload, onUploadError, onUploadComplete],
     );
 
     /**
      * Upload a single file
      */
-    const uploadSingleFile = async (uploadFile: UploadFile) => {
+    const uploadSingleFile = async (uploadFile: UploadFile): Promise<UploadFile> => {
         try {
             // Update status
             setFiles((prev) =>
@@ -91,7 +88,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             });
 
             // Response handler
-            return new Promise<UploadResponse>((resolve, reject) => {
+            return new Promise<UploadFile>((resolve, reject) => {
                 xhr.addEventListener('load', () => {
                     // Wrap in try/catch: throwing inside an XHR async callback won't be caught
                     // by the Promise — we must call reject() explicitly.
@@ -100,20 +97,15 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
                             const response = JSON.parse(xhr.responseText) as UploadResponse;
 
                             if (response.success) {
-                                setFiles((prev) =>
-                                    prev.map((f) =>
-                                        f.id === uploadFile.id
-                                            ? {
-                                                  ...f,
-                                                  status: 'success',
-                                                  progress: 100,
-                                                  url: response.url,
-                                                  key: response.key,
-                                              }
-                                            : f,
-                                    ),
-                                );
-                                resolve(response);
+                                const uploaded: UploadFile = {
+                                    ...uploadFile,
+                                    status: 'success',
+                                    progress: 100,
+                                    url: response.url,
+                                    key: response.key,
+                                };
+                                setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? uploaded : f)));
+                                resolve(uploaded);
                             } else {
                                 throw new Error(response.error || 'Upload failed');
                             }
@@ -165,29 +157,30 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     };
 
     /**
-     * Upload all pending files
+     * Upload a batch and report the ones that succeeded.
+     *
+     * Completion is built from the upload RESULTS, not from `files` state: that state is a
+     * render-time snapshot and does not yet hold the success updates (nor, for autoUpload,
+     * the files themselves). Each failure was already reported via onUploadError.
      */
-    const uploadAll = useCallback(async () => {
+    const uploadBatch = async (batch: UploadFile[]) => {
         setIsUploading(true);
-
         try {
-            const pendingFiles = files.filter((f) => f.status === 'pending');
-
-            if (pendingFiles.length === 0) {
-                return;
-            }
-
-            // Upload all files
-            await Promise.all(pendingFiles.map((file) => uploadSingleFile(file)));
-
-            // Call completion callback
-            const uploadedFiles = files.filter((f) => f.status === 'success');
-            onUploadComplete?.(uploadedFiles);
-        } catch (error) {
-            onUploadError?.(error instanceof Error ? error : new Error('Upload failed'));
+            const settled = await Promise.allSettled(batch.map((file) => uploadSingleFile(file)));
+            const uploaded = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+            if (uploaded.length > 0) onUploadComplete?.(uploaded);
         } finally {
             setIsUploading(false);
         }
+    };
+
+    /**
+     * Upload all pending files
+     */
+    const uploadAll = useCallback(async () => {
+        const pendingFiles = files.filter((f) => f.status === 'pending');
+        if (pendingFiles.length === 0) return;
+        await uploadBatch(pendingFiles);
     }, [files, onUploadComplete, onUploadError]);
 
     /**

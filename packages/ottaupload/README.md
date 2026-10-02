@@ -65,20 +65,20 @@ const result = await uploadFile(file, {
 
 ### FileUploader Props
 
-| Prop                | Type                                           | Default         | Description                      |
-| ------------------- | ---------------------------------------------- | --------------- | -------------------------------- |
-| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`    | UI style                         |
-| `maxFiles`          | `number`                                       | `1`             | Max file count                   |
-| `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                |
-| `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`) |
-| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                  |
-| `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                     |
-| `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select            |
-| `disabled`          | `boolean`                                      | `false`         | Disable uploader                 |
-| `onUpload`          | `(files: File[]) => void`                      | -               | Custom upload handler            |
-| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -               | Success callback                 |
-| `onUploadError`     | `(error: Error) => void`                       | -               | Error callback                   |
-| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -               | Progress callback                |
+| Prop                | Type                                           | Default         | Description                                                                                           |
+| ------------------- | ---------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
+| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`    | UI style                                                                                              |
+| `maxFiles`          | `number`                                       | `1`             | Max file count                                                                                        |
+| `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                                                                                     |
+| `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`)                                                                      |
+| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                                                                                       |
+| `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                                                                                          |
+| `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select                                                                                 |
+| `disabled`          | `boolean`                                      | `false`         | Disable uploader                                                                                      |
+| `onUpload`          | `(files: File[]) => void`                      | -               | Custom upload handler                                                                                 |
+| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -               | Once per batch (also autoUpload) with the files that uploaded (`url`, `key` set); skipped if none did |
+| `onUploadError`     | `(error: Error) => void`                       | -               | Error callback                                                                                        |
+| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -               | Progress callback                                                                                     |
 
 ## Providers
 
@@ -101,6 +101,8 @@ import { createR2Client } from '@ottabase/cf/r2';
 const r2Client = createR2Client({ bucket: env.OBCF_R2 });
 const result = await uploadFileToR2(file, r2Client, {
     maxFileSize: 50 * 1024 * 1024, // 50MB
+    // Optional: returned URL (default `/api/upload/file/<key>`), e.g. a public R2 domain
+    getUrl: (key) => `https://files.example.com/${key}`,
 });
 ```
 
@@ -191,7 +193,7 @@ const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
 ### useFileUpload
 
 ```tsx
-import { useFileUpload } from '@ottabase/ottaupload/client';
+import { useFileUpload } from '@ottabase/ottaupload';
 
 const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload } = useFileUpload({
     maxFiles: 5,
@@ -205,7 +207,7 @@ const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUp
 ### useDragAndDrop
 
 ```tsx
-import { useDragAndDrop } from '@ottabase/ottaupload/client';
+import { useDragAndDrop } from '@ottabase/ottaupload';
 
 const { isDragging, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } = useDragAndDrop({
     onDrop: (files) => console.log(files),
@@ -352,8 +354,8 @@ const { files, retryUpload } = useFileUpload();
 ## Package Structure
 
 ```
-@ottabase/ottaupload
-├── /client        # React components and hooks
+@ottabase/ottaupload  # Headless root: hooks + server, validation, types, utils (no rendered UI)
+├── /client        # React components (FileUploader, FileUploadList, FileUploadItem)
 ├── /server        # Server-side utilities (R2, Cloudflare Images)
 ├── /validation    # Validation functions and Zod schemas
 ├── /types         # TypeScript type definitions

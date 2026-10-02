@@ -1,7 +1,26 @@
-import { describe, expect, it } from 'vitest';
-import { createFileMetadata, createUploadFormData, parseFormDataFiles } from '../server';
+import { describe, expect, it, vi } from 'vitest';
+import { createFileMetadata, createUploadFormData, parseFormDataFiles, uploadFileToR2 } from '../server';
 
 describe('Server Utilities', () => {
+    describe('uploadFileToR2', () => {
+        // jsdom's File has no stream(); the R2 client is mocked anyway
+        const file = { name: 'a.txt', type: 'text/plain', size: 7, stream: () => null } as unknown as File;
+        const r2Client = { put: vi.fn(async () => ({ success: true })) };
+
+        it('returns the default serving URL', async () => {
+            const result = await uploadFileToR2(file, r2Client as never, { generateKey: () => 'k1' });
+            expect(result).toEqual({ success: true, key: 'k1', url: '/api/upload/file/k1' });
+        });
+
+        it('builds the URL with getUrl when given', async () => {
+            const result = await uploadFileToR2(file, r2Client as never, {
+                generateKey: () => 'k1',
+                getUrl: (key) => `https://cdn.example.com/${key}`,
+            });
+            expect(result.url).toBe('https://cdn.example.com/k1');
+        });
+    });
+
     describe('createFileMetadata', () => {
         it('should create file metadata with all fields', () => {
             const file = new File(['content'], 'test.txt', { type: 'text/plain' });

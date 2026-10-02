@@ -15,6 +15,7 @@ export function FileUploader({
     acceptedFileTypes,
     uploadEndpoint,
     autoUpload = false,
+    provider,
     disabled = false,
     className = '',
 }: FileUploaderProps) {
@@ -26,6 +27,7 @@ export function FileUploader({
         acceptedFileTypes,
         uploadEndpoint,
         autoUpload,
+        provider,
         onUploadComplete,
         onUploadError,
         onUploadProgress,

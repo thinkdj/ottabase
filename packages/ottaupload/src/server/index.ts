@@ -55,8 +55,7 @@ export async function uploadFileToR2(
         });
 
         if (result.success) {
-            // Generate public URL (adjust based on your R2 setup)
-            const url = `/api/upload/file/${key}`;
+            const url = options.getUrl ? options.getUrl(key) : `/api/upload/file/${key}`;
 
             return {
                 success: true,

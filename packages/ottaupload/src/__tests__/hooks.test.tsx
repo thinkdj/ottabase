@@ -159,8 +159,27 @@ describe('React Hooks', () => {
             });
 
             await waitFor(() => {
-                expect(onUploadComplete).toHaveBeenCalled();
+                expect(onUploadComplete).toHaveBeenCalledTimes(1);
             });
+            // Built from the upload results, not the stale pre-upload files snapshot (which was empty).
+            expect(onUploadComplete.mock.calls[0][0]).toEqual([
+                expect.objectContaining({ status: 'success', url: '/uploads/test-file.txt', key: 'test-file-123.txt' }),
+            ]);
+        });
+
+        it('should call onUploadComplete for autoUpload with the uploaded files', async () => {
+            const onUploadComplete = vi.fn();
+            const { result } = renderHook(() => useFileUpload({ autoUpload: true, onUploadComplete }));
+
+            act(() => {
+                result.current.addFiles([new File(['content'], 'test.txt', { type: 'text/plain' })]);
+            });
+
+            await waitFor(() => {
+                expect(onUploadComplete).toHaveBeenCalledTimes(1);
+            });
+            expect(onUploadComplete.mock.calls[0][0]).toEqual([expect.objectContaining({ status: 'success' })]);
+            await waitFor(() => expect(result.current.files[0].status).toBe('success'));
         });
     });
 

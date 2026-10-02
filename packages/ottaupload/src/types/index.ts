@@ -152,20 +152,15 @@ export interface UploadServerOptions {
     allowedTypes?: string[];
 
     /**
-     * Upload provider
-     * @default 'r2'
-     */
-    provider?: UploadProvider;
-
-    /**
-     * R2 bucket name (for R2 provider)
-     */
-    bucket?: string;
-
-    /**
      * Custom key generator
      */
     generateKey?: (file: File) => string;
+
+    /**
+     * Build the returned URL from the stored key (e.g. a public R2 domain).
+     * @default (key) => `/api/upload/file/${key}`
+     */
+    getUrl?: (key: string) => string;
 }
 
 /**
