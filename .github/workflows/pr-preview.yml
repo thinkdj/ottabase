@@ -29,7 +29,7 @@ env:
 jobs:
     # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview
     check-preview-requested:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         outputs:
             preview_requested: ${{ steps.check.outputs.preview_requested }}
         steps:
@@ -74,7 +74,7 @@ jobs:
     prepare-deployment:
         needs: [build-packages, check-preview-requested]
         if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 5
         name: Prepare preview deployment
         outputs:
@@ -82,12 +82,12 @@ jobs:
             has-apps: ${{ steps.build-matrix.outputs.has-apps }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 2
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
 
@@ -214,7 +214,7 @@ jobs:
     deploy-preview:
         needs: [build-packages, prepare-deployment]
         if: needs.prepare-deployment.outputs.has-apps == 'true' && github.event.action != 'closed'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 25
         name: Preview ${{ matrix.name }}
         strategy:
@@ -223,7 +223,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Compute preview worker name
               id: preview-name
@@ -315,10 +315,10 @@ jobs:
                   echo "✅ All required secrets are configured"
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v6
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -327,7 +327,7 @@ jobs:
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
             - name: Cache Turborepo
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: .turbo
                   key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -337,7 +337,7 @@ jobs:
 
             - name: Cache Next.js builds
               if: steps.config.outputs.app-type == 'nextjs'
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: |
                       apps/${{ matrix.folder }}/.next/cache
@@ -354,7 +354,7 @@ jobs:
 
             - name: Cache Vite builds
               if: steps.config.outputs.app-type == 'vite'
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: |
                       apps/${{ matrix.folder }}/dist
@@ -402,7 +402,7 @@ jobs:
                   echo "📦 Cache key: ${CACHE_KEY}"
 
             - name: Restore cached packages
-              uses: actions/cache/restore@v4
+              uses: actions/cache/restore@v6
               with:
                   path: |
                       packages/*/dist
@@ -524,7 +524,7 @@ jobs:
                   echo "✅ wrangler.preview.jsonc ready for deploy"
 
             - name: Deploy preview to Cloudflare Workers
-              uses: cloudflare/wrangler-action@v3
+              uses: cloudflare/wrangler-action@v4
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -573,17 +573,17 @@ jobs:
     # Cleanup preview when PR closes
     cleanup-preview:
         if: github.event.action == 'closed'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         name: Cleanup preview worker
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v6
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"

@@ -21,19 +21,19 @@ jobs:
     # Build & Test on ubuntu-latest
     test:
         name: CI - Build & Test
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 15
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Install pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.27.0
 
             - name: Setup Node.js 24
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -49,7 +49,7 @@ jobs:
 
             # Cache Turborepo build outputs
             - name: Setup Turborepo cache
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: |
                       .turbo
@@ -65,21 +65,21 @@ jobs:
     # Validate Cloudflare configuration
     validate-cloudflare:
         name: Validate Cloudflare Config
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         needs: test
         timeout-minutes: 10
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Install pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.27.0
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"

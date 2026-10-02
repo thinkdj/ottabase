@@ -30,7 +30,7 @@ concurrency:
 jobs:
     # Check commit message for #skipdeploy first (skip build-packages + deploy when set)
     check-skip-deploy:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         outputs:
             skip_deploy: ${{ steps.check.outputs.skip_deploy }}
         steps:
@@ -58,7 +58,7 @@ jobs:
     # Prepare deployment matrix based on target apps and code changes
     prepare-deployment:
         needs: check-skip-deploy
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 5
         name: Prepare deployment
         outputs:
@@ -66,12 +66,12 @@ jobs:
             has-apps: ${{ steps.build-matrix.outputs.has-apps }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0 # Full history needed for push-range diff (github.event.before..github.sha)
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
 
@@ -304,7 +304,7 @@ jobs:
     deploy:
         needs: [build-packages, prepare-deployment]
         if: needs.prepare-deployment.outputs.has-apps == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 20
         name: Deploy ${{ matrix.name }}
         strategy:
@@ -313,7 +313,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0 # Need full history for Turbo change detection
 
@@ -402,10 +402,10 @@ jobs:
                   echo "✅ All required secrets are configured"
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v6
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -415,7 +415,7 @@ jobs:
 
             # Cache Turborepo outputs for faster builds
             - name: Cache Turborepo
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: .turbo
                   key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -426,7 +426,7 @@ jobs:
             # Cache framework-specific build outputs
             - name: Cache Next.js builds
               if: steps.config.outputs.app-type == 'nextjs'
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: |
                       apps/${{ matrix.folder }}/.next/cache
@@ -443,7 +443,7 @@ jobs:
 
             - name: Cache Vite builds
               if: steps.config.outputs.app-type == 'vite'
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: |
                       apps/${{ matrix.folder }}/dist
@@ -483,7 +483,7 @@ jobs:
             # Fallback restore-key covers the edge case where build-packages was skipped
             # (e.g. workflow_dispatch without build-packages running).
             - name: Restore cached packages
-              uses: actions/cache/restore@v4
+              uses: actions/cache/restore@v6
               with:
                   path: |
                       packages/*/dist
@@ -712,7 +712,7 @@ jobs:
             # Uses wrangler.production.jsonc - secrets substituted by Generate step above
             - name: Deploy to Cloudflare Workers
               if: github.ref == 'refs/heads/main'
-              uses: cloudflare/wrangler-action@v3
+              uses: cloudflare/wrangler-action@v4
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
