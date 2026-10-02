@@ -1,6 +1,6 @@
 import Handlebars from 'handlebars';
 import { DEFAULT_EMAIL_LAYOUT, getEmailTemplate } from './templates';
-import type { EmailTemplate, RenderEmailOptions, RenderedEmail, TemplateVariables } from './types';
+import type { EmailTemplate, RenderEmailOptions, RenderedEmail, TemplateContent, TemplateVariables } from './types';
 
 const templateCache = new Map<string, Handlebars.TemplateDelegate>();
 
@@ -78,7 +78,8 @@ function resolveTemplate(template: string | EmailTemplate) {
 export function renderEmail(options: RenderEmailOptions): RenderedEmail {
     const template = resolveTemplate(options.template);
     const variables = options.variables ?? {};
-    const content = options.content ?? { body: '' };
+    // No `content` means "use the template's own sections" — never an empty body override.
+    const content: TemplateContent = options.content ?? {};
 
     const headerSource = content.header ?? template.header ?? '';
     const bodySource = content.body ?? template.body;

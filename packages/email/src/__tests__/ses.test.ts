@@ -1,3 +1,4 @@
+import { createHash, createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSESMailer } from '../providers/ses';
 
@@ -54,10 +55,9 @@ describe('SES Mailer', () => {
         expect(global.fetch).toHaveBeenCalledTimes(1);
 
         const call = (global.fetch as any).mock.calls[0];
-        expect(call[0]).toContain('email.us-east-1.amazonaws.com');
+        expect(call[0]).toBe('https://email.us-east-1.amazonaws.com/v2/email/outbound-emails');
         expect(call[1].method).toBe('POST');
-        expect(call[1].headers.get('Content-Type')).toBe('application/x-amz-json-1.0');
-        expect(call[1].headers.get('X-Amz-Target')).toBe('AWSSimpleEmailServiceV2.SendEmail');
+        expect(call[1].headers.get('Content-Type')).toBe('application/json');
     });
 
     it('should format email addresses correctly', async () => {
@@ -124,6 +124,7 @@ describe('SES Mailer', () => {
             from: 'sender@example.com',
             to: 'user@example.com',
             subject: 'Test',
+            html: '', // html is required by the contract; empty means text-only
             text: 'Plain text body',
         });
 
@@ -272,8 +273,60 @@ describe('SES Mailer', () => {
         expect(headers.get('Authorization')).toContain('AWS4-HMAC-SHA256');
         expect(headers.get('Authorization')).toContain('Credential=AKIAIOSFODNN7EXAMPLE');
         expect(headers.get('x-amz-date')).toBeDefined();
-        expect(headers.get('Content-Type')).toBe('application/x-amz-json-1.0');
-        expect(headers.get('X-Amz-Target')).toBe('AWSSimpleEmailServiceV2.SendEmail');
+        expect(headers.get('Content-Type')).toBe('application/json');
+    });
+
+    it('produces a SigV4 signature AWS accepts (raw-byte key chain, v2 REST path)', async () => {
+        // Recompute SigV4 independently with node:crypto. The old code chained hex strings
+        // between HMAC steps and signed path '/', so its signature could never match.
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-01-02T03:04:05.000Z'));
+        try {
+            (global.fetch as any).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+            await createSESMailer(mockOptions).send({
+                from: 'a@example.com',
+                to: 'b@example.com',
+                subject: 'S',
+                html: 'T',
+            });
+
+            const [, init] = (global.fetch as any).mock.calls[0];
+            const amzDate = '20260102T030405Z';
+            const scope = '20260102/us-east-1/ses/aws4_request';
+            const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+            const canonical = [
+                'POST',
+                '/v2/email/outbound-emails',
+                '',
+                `host:email.us-east-1.amazonaws.com\nx-amz-date:${amzDate}\n`,
+                'host;x-amz-date',
+                sha(init.body),
+            ].join('\n');
+            const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha(canonical)}`;
+            const hmac = (key: Buffer | string, msg: string) => createHmac('sha256', key).update(msg).digest();
+            let key = hmac(`AWS4${mockOptions.secretAccessKey}`, '20260102');
+            for (const part of ['us-east-1', 'ses', 'aws4_request']) key = hmac(key, part);
+            const expected = createHmac('sha256', key).update(stringToSign).digest('hex');
+
+            expect(init.headers.get('x-amz-date')).toBe(amzDate);
+            expect(init.headers.get('Authorization')).toContain(`Signature=${expected}`);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('sends custom headers as email headers, not EmailTags', async () => {
+        (global.fetch as any).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+        await createSESMailer(mockOptions).send({
+            from: 'a@example.com',
+            to: 'b@example.com',
+            subject: 'S',
+            html: 'T',
+            headers: { 'List-Unsubscribe': '<mailto:u@example.com>' },
+        });
+        const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+        expect(body.EmailTags).toBeUndefined();
+        expect(body.Content.Simple.Headers).toEqual([{ Name: 'List-Unsubscribe', Value: '<mailto:u@example.com>' }]);
     });
 
     it('should use custom region when provided', async () => {

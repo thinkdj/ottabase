@@ -4,7 +4,6 @@ export interface SESMailerOptions {
     accessKeyId: string;
     secretAccessKey: string;
     region?: string;
-    from?: EmailAddress;
 }
 
 const DEFAULT_REGION = 'us-east-1';
@@ -48,7 +47,9 @@ function normalizeAddressList(address?: EmailAddress | EmailAddress[]): string[]
 export function createSESMailer(options: SESMailerOptions): Mailer {
     const provider = 'ses';
     const region = options.region ?? DEFAULT_REGION;
-    const endpoint = `https://email.${region}.amazonaws.com`;
+    // SES v2 is a REST-JSON API: SendEmail is `POST /v2/email/outbound-emails` (no X-Amz-Target).
+    const path = '/v2/email/outbound-emails';
+    const endpoint = `https://email.${region}.amazonaws.com${path}`;
 
     // AWS Signature Version 4 signing
     async function signRequest(method: string, path: string, payload: string): Promise<Headers> {
@@ -68,19 +69,19 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
         const credentialScope = `${dateStamp}/${region}/ses/aws4_request`;
         const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${await sha256(canonicalRequest)}`;
 
-        const kDate = await hmacSha256(`AWS4${options.secretAccessKey}`, dateStamp);
+        // The key chain passes RAW bytes between steps; only the final signature is hex.
+        const kDate = await hmacSha256(new TextEncoder().encode(`AWS4${options.secretAccessKey}`), dateStamp);
         const kRegion = await hmacSha256(kDate, region);
         const kService = await hmacSha256(kRegion, 'ses');
         const kSigning = await hmacSha256(kService, 'aws4_request');
-        const signature = await hmacSha256(kSigning, stringToSign);
+        const signature = toHex(await hmacSha256(kSigning, stringToSign));
 
         const authorization = `${algorithm} Credential=${options.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
         const headers = new Headers();
         headers.set('Authorization', authorization);
         headers.set('x-amz-date', amzDate);
-        headers.set('Content-Type', 'application/x-amz-json-1.0');
-        headers.set('X-Amz-Target', 'AWSSimpleEmailServiceV2.SendEmail');
+        headers.set('Content-Type', 'application/json');
 
         return headers;
     }
@@ -120,16 +121,17 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
                                       }
                                     : undefined,
                             },
+                            // Custom email headers (not EmailTags, which are SES event-publishing labels).
+                            ...(input.headers && {
+                                Headers: Object.entries(input.headers).map(([key, value]) => ({
+                                    Name: key,
+                                    Value: value,
+                                })),
+                            }),
                         },
                     },
                     ...(input.replyTo && {
                         ReplyToAddresses: [formatAddress(input.replyTo)],
-                    }),
-                    ...(input.headers && {
-                        EmailTags: Object.entries(input.headers).map(([key, value]) => ({
-                            Name: key,
-                            Value: value,
-                        })),
                     }),
                 };
 
@@ -142,7 +144,7 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
                 }
 
                 const payloadString = JSON.stringify(payload);
-                const headers = await signRequest('POST', '/', payloadString);
+                const headers = await signRequest('POST', path, payloadString);
 
                 const response = await fetch(endpoint, {
                     method: 'POST',
@@ -185,18 +187,14 @@ export function createSESMailer(options: SESMailerOptions): Mailer {
 // Crypto helpers for AWS Signature V4
 async function sha256(message: string): Promise<string> {
     const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    return toHex(await crypto.subtle.digest('SHA-256', msgBuffer));
 }
 
-async function hmacSha256(key: string | ArrayBuffer, message: string): Promise<string> {
-    const keyBuffer = typeof key === 'string' ? new TextEncoder().encode(key) : key;
-    const messageBuffer = new TextEncoder().encode(message);
-    const cryptoKey = await crypto.subtle.importKey('raw', keyBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, [
-        'sign',
-    ]);
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageBuffer);
-    const hashArray = Array.from(new Uint8Array(signature));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+async function hmacSha256(key: BufferSource, message: string): Promise<ArrayBuffer> {
+    const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+}
+
+function toHex(buffer: ArrayBuffer): string {
+    return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, '0')).join('');
 }

@@ -93,6 +93,18 @@ registerEmailTemplate({
 });
 ```
 
+A registered template renders with its own sections, so `content` is optional. Any `content` field you pass (`header`,
+`body`, `footer`) overrides that one section only:
+
+```ts
+await sendTemplatedEmail(mailer, {
+    from: 'Acme <hello@acme.com>',
+    to: 'user@example.com',
+    template: 'login',
+    variables: { url: 'https://acme.com/magic/abc', minutes: 15 },
+});
+```
+
 ## Cloudflare Provider
 
 ### MailChannels (recommended for Workers)
@@ -161,6 +173,8 @@ await sendTemplatedEmail(mailer, {
 3. Verify your sending domain/email in SES console
 
 **Note:** SES uses HTTP API (not SMTP), so it works perfectly in Cloudflare Workers without any Node.js dependencies.
+Requests go to the SES v2 `SendEmail` endpoint (`POST /v2/email/outbound-emails`, SigV4-signed); `headers` on the send
+input become real email headers (`Content.Simple.Headers`), not SES `EmailTags`.
 
 ## Nodemailer (SMTP)
 

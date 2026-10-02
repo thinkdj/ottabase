@@ -131,6 +131,19 @@ describe('Email rendering', () => {
         }).toThrow('Email template not found: nonexistent-template');
     });
 
+    it('falls back to the template body when no content is passed', () => {
+        registerEmailTemplate({
+            name: 'body-only-template',
+            subject: 'Hello {{name}}',
+            body: '<p>Hi {{name}}</p>',
+        });
+
+        const result = renderEmail({ template: 'body-only-template', variables: { name: 'Ada' } });
+
+        expect(result.subject).toBe('Hello Ada');
+        expect(result.html).toContain('<p>Hi Ada</p>');
+    });
+
     it('should throw error for missing body', () => {
         // Register a template without body
         registerEmailTemplate({
@@ -159,8 +172,9 @@ describe('Email rendering', () => {
         expect(result.text).toBeDefined();
         // stripHtml removes HTML tags and converts entities
         // The text should contain the content without HTML tags
-        expect(result.text.replace(/&[^;]+;/g, '')).toContain('Hello');
-        expect(result.text.replace(/&[^;]+;/g, '')).toContain('world');
+        const text = (result.text ?? '').replace(/&[^;]+;/g, '');
+        expect(text).toContain('Hello');
+        expect(text).toContain('world');
         expect(result.text).not.toContain('<p>');
         expect(result.text).not.toContain('<strong>');
     });

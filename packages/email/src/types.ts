@@ -9,7 +9,8 @@ export type TemplateVariables = Record<string, unknown>;
 
 export interface TemplateContent {
     header?: string;
-    body: string;
+    /** Overrides the template body; omit to use the template's own. */
+    body?: string;
     footer?: string;
 }
 
