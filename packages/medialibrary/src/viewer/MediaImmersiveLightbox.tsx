@@ -6,20 +6,95 @@ import {
     IconMinimize,
     IconX,
 } from '@tabler/icons-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MediaLightboxProps } from './MediaLightbox';
 import { MediaPreview } from './MediaPreview';
+import { prefersReducedMotion } from './motion';
+
+/** Horizontal travel (px) before a press becomes a gallery drag. Below it, the press stays a click/tap. */
+const DRAG_START_SLOP = 8;
+const DRAG_COMMIT_DISTANCE = 90;
+const DRAG_FLING_DISTANCE = 36;
+/** Release velocity (px/ms) over the last ~{@link VELOCITY_WINDOW_MS} that commits a short fling. */
+const DRAG_FLING_VELOCITY = 0.45;
+const VELOCITY_WINDOW_MS = 80;
+const EDGE_DRAG_RESISTANCE = 0.24;
+const NAVIGATION_SLIDE_DURATION = 220;
+/**
+ * Height (px) above a video's bottom edge reserved for its native controls. A press there scrubs
+ * or adjusts volume and must never become a gallery drag.
+ * ponytail: browsers don't expose their control-bar height; 64px covers Chrome, Safari and Firefox.
+ */
+const VIDEO_CONTROLS_GUARD = 64;
+const SLIDE_POSITIONS = ['-100%', '0%', '100%'] as const;
+const SLOT_IDS = ['a', 'b', 'c'] as const;
+
+type SlotId = (typeof SLOT_IDS)[number];
+
+interface DragState {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    /** Set once horizontal intent passes the slop; the gallery then owns the pointer. */
+    dragging: boolean;
+    lastX: number;
+    lastT: number;
+    /** An older sample, ~VELOCITY_WINDOW_MS behind `last*`, for release velocity. */
+    sampleX: number;
+    sampleT: number;
+}
+
+function getAdjacentIndex(index: number, total: number, direction: 'previous' | 'next', loop: boolean): number | null {
+    if (total <= 1) return null;
+
+    const candidate = direction === 'next' ? index + 1 : index - 1;
+    if (loop) {
+        return (candidate + total) % total;
+    }
+    return candidate >= 0 && candidate < total ? candidate : null;
+}
+
+/** The DOM slot sitting at a physical position (0 = previous, 1 = active, 2 = next) for a rotation. */
+function slotAt(position: number, rotation: number): SlotId {
+    return SLOT_IDS[(position + rotation) % SLOT_IDS.length]!;
+}
+
+/** Item index shown at a physical position, derived from the visual active index every render. */
+function itemIndexAt(position: number, visualIndex: number, total: number, loop: boolean): number | null {
+    if (position === 1) return total > 0 ? visualIndex : null;
+    return getAdjacentIndex(visualIndex, total, position === 0 ? 'previous' : 'next', loop);
+}
+
+/** True when the press lands on a video's native control bar (scrubber, volume, fullscreen). */
+function isOnVideoControls(target: EventTarget | null, clientY: number): boolean {
+    const video = target instanceof Element ? target.closest('video') : null;
+    if (!video) return false;
+    return clientY >= video.getBoundingClientRect().bottom - VIDEO_CONTROLS_GUARD;
+}
 
 /**
  * Immersive lightbox for end-user / public-facing content.
  * Designed to feel like a native gallery — minimal chrome, cinematic backdrop,
  * auto-hiding controls, and smooth caption overlays.
+ *
+ * SLIDE MODEL. Three DOM slots sit at three physical positions (previous / active / next).
+ * Only two things are stored: the `rotation` mapping slots to positions, and the
+ * `visualIndex` the active position shows. Every slot's item is DERIVED from those each
+ * render, so a change of `items`, `loop` or `activeIndex` can never leave a stale neighbour.
+ *
+ *  • Buttons, keyboard, thumbnails, URL changes: `visualIndex` follows `activeIndex` IN PLACE.
+ *    No slot moves, so nothing animates — content swaps where it stands.
+ *  • A committed drag: the slides finish travelling, then `rotation` turns by one so the slot
+ *    that was dragged into view BECOMES the active one (its DOM node, image and decode are
+ *    kept) and the offset returns to zero in the SAME commit, with transitions suppressed
+ *    until the browser has applied it (see `snap`).
  */
 export function MediaImmersiveLightbox({
     items,
     activeIndex,
     isOpen,
+    loop = false,
     canGoPrevious = true,
     canGoNext = true,
     zIndex = 100,
@@ -35,8 +110,81 @@ export function MediaImmersiveLightbox({
     const [counterPulse, setCounterPulse] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thumbnailStripRef = useRef<HTMLDivElement>(null);
-    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
     const mediaContainerRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
+
+    const dragRef = useRef<DragState | null>(null);
+    /** Every pointer currently down on the media area — a second one means pinch, not swipe. */
+    const pointersRef = useRef(new Set<number>());
+    const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** The index a committed drag has already shown, until the parent's `activeIndex` catches up. */
+    const pendingIndexRef = useRef<number | null>(null);
+
+    const [phase, setPhase] = useState<'idle' | 'dragging' | 'settling'>('idle');
+    const [rotation, setRotation] = useState(0);
+    const [visualIndex, setVisualIndex] = useState(activeIndex);
+    /** Non-zero while a commit must apply WITHOUT transitions; cleared a frame after it lands. */
+    const [snap, setSnap] = useState(0);
+    const isSettling = phase === 'settling';
+    /** Buttons, keys and thumbnails wait while a drag is in progress or settling. */
+    const isBusy = phase !== 'idle';
+
+    // Read once per open: reduced motion makes slides, springs and the counter pulse instant
+    // (the drag itself still follows the pointer — that's direct manipulation, not animation).
+    const reducedMotion = useMemo(() => isOpen && prefersReducedMotion(), [isOpen]);
+    const slideDuration = reducedMotion ? 0 : NAVIGATION_SLIDE_DURATION;
+
+    const setDragOffset = useCallback((px: number) => {
+        mediaContainerRef.current?.style.setProperty('--media-drag-offset', `${px}px`);
+    }, []);
+
+    /**
+     * Apply an instant change. The commit carrying it renders with `transition: none`; this
+     * effect then zeroes the drag offset in that SAME commit, forces a style flush so the browser
+     * records the no-transition state, and only re-enables transitions on the next frame. Without
+     * the flush, re-enabling could land in the same style recalculation and animate the jump.
+     */
+    useLayoutEffect(() => {
+        if (snap === 0) return undefined;
+        setDragOffset(0);
+        void viewportRef.current?.getBoundingClientRect();
+        const frame = requestAnimationFrame(() => setSnap(0));
+        return () => cancelAnimationFrame(frame);
+    }, [setDragOffset, snap]);
+
+    const stopSettling = useCallback(() => {
+        if (settleTimerRef.current) {
+            clearTimeout(settleTimerRef.current);
+            settleTimerRef.current = null;
+        }
+    }, []);
+
+    /** Abandon any drag or settle and put the slides back where they belong, instantly. */
+    const cancelDragNavigation = useCallback(() => {
+        stopSettling();
+        dragRef.current = null;
+        pendingIndexRef.current = null;
+        setPhase('idle');
+        setSnap((n) => n + 1);
+    }, [stopSettling]);
+
+    // Follow the parent IN PLACE. A drag that already showed this index is a no-op; anything
+    // else (buttons, keyboard, thumbnails, the URL, a parent that refused the drag) wins and
+    // cancels a settle in flight.
+    useEffect(() => {
+        if (pendingIndexRef.current === activeIndex) {
+            pendingIndexRef.current = null;
+            return;
+        }
+        pendingIndexRef.current = null;
+        if (settleTimerRef.current || dragRef.current) cancelDragNavigation();
+        setVisualIndex(activeIndex);
+    }, [activeIndex, cancelDragNavigation]);
+
+    const handleClose = useCallback(() => {
+        cancelDragNavigation();
+        onClose();
+    }, [cancelDragNavigation, onClose]);
 
     // Pause any <video> in the media container when navigating or closing to prevent
     // audio bleed between items / after the lightbox has closed.
@@ -49,7 +197,7 @@ export function MediaImmersiveLightbox({
                 // ignore — browser may block for detached elements
             }
         });
-    }, [activeIndex, isOpen]);
+    }, [visualIndex, isOpen]);
 
     // Auto-hide controls after inactivity
     const resetHideTimer = useCallback(() => {
@@ -87,6 +235,15 @@ export function MediaImmersiveLightbox({
         return () => clearTimeout(timer);
     }, [activeIndex, isOpen]);
 
+    useEffect(() => stopSettling, [stopSettling]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            pointersRef.current.clear();
+            cancelDragNavigation();
+        }
+    }, [cancelDragNavigation, isOpen]);
+
     useEffect(() => {
         if (!isOpen) {
             return undefined;
@@ -99,9 +256,10 @@ export function MediaImmersiveLightbox({
         const handleKeyDown = (event: KeyboardEvent) => {
             resetHideTimer();
             if (event.key === 'Escape') {
-                onClose();
+                handleClose();
                 return;
             }
+            if (isBusy) return;
             if (event.key === 'ArrowLeft' && canGoPrevious) {
                 onPrevious();
                 return;
@@ -124,31 +282,146 @@ export function MediaImmersiveLightbox({
                 clearTimeout(hideTimerRef.current);
             }
         };
-    }, [canGoNext, canGoPrevious, isOpen, onClose, onNext, onPrevious, resetHideTimer]);
+    }, [canGoNext, canGoPrevious, handleClose, isBusy, isOpen, onNext, onPrevious, resetHideTimer]);
 
-    // Touch gesture handlers for swipe navigation
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length !== 1) return;
-        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }, []);
-
-    const handleTouchEnd = useCallback(
-        (e: React.TouchEvent) => {
-            if (!touchStartRef.current || e.changedTouches.length !== 1) return;
-            const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
-            const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
-            touchStartRef.current = null;
-
-            // Only trigger if horizontal swipe is dominant and exceeds threshold
-            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-                if (dx < 0 && canGoNext) {
-                    onNext();
-                } else if (dx > 0 && canGoPrevious) {
-                    onPrevious();
-                }
+    /** Spring an uncommitted drag back to rest (animated, unlike {@link cancelDragNavigation}). */
+    const springBack = useCallback(
+        (target?: HTMLElement, pointerId?: number) => {
+            if (target && pointerId !== undefined && target.hasPointerCapture?.(pointerId)) {
+                target.releasePointerCapture(pointerId);
             }
+            dragRef.current = null;
+            setPhase('idle');
+            setDragOffset(0);
         },
-        [canGoNext, canGoPrevious, onNext, onPrevious],
+        [setDragOffset],
+    );
+
+    // Pointer Events make the gallery draggable with both mouse and touch. ZoomableImage stops
+    // propagation while zoomed, so its pan gesture keeps priority; a second pointer (pinch)
+    // aborts the swipe here, and presses on a video's control bar never start one.
+    const handleMediaPointerDown = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            pointersRef.current.add(event.pointerId);
+            if (pointersRef.current.size > 1) {
+                if (dragRef.current) springBack(event.currentTarget, dragRef.current.pointerId);
+                return;
+            }
+            if (
+                items.length < 2 ||
+                isSettling ||
+                (event.pointerType === 'mouse' && event.button !== 0) ||
+                isOnVideoControls(event.target, event.clientY)
+            ) {
+                return;
+            }
+
+            const now = performance.now();
+            dragRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                dragging: false,
+                lastX: event.clientX,
+                lastT: now,
+                sampleX: event.clientX,
+                sampleT: now,
+            };
+            resetHideTimer();
+        },
+        [isSettling, items.length, resetHideTimer, springBack],
+    );
+
+    const handleMediaPointerMove = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            const drag = dragRef.current;
+            if (!drag || event.pointerId !== drag.pointerId) return;
+            // A mouse released outside the window before the drag took capture never sends
+            // pointerup here; a later hover must not resume it.
+            if (event.pointerType === 'mouse' && (event.buttons & 1) === 0) {
+                springBack(event.currentTarget, drag.pointerId);
+                return;
+            }
+
+            const dx = event.clientX - drag.startX;
+            const dy = event.clientY - drag.startY;
+            if (!drag.dragging) {
+                // Intent is decided ONCE. Vertical first → never a swipe; horizontal past the slop
+                // → a swipe for the rest of the gesture, however diagonal it later gets.
+                if (Math.abs(dy) > DRAG_START_SLOP && Math.abs(dy) >= Math.abs(dx)) {
+                    dragRef.current = null;
+                    return;
+                }
+                if (Math.abs(dx) <= DRAG_START_SLOP || Math.abs(dx) <= Math.abs(dy)) return;
+                drag.dragging = true;
+                // Capture only now: capturing on pointer-down would retarget ordinary clicks to
+                // this container and stop ZoomableImage toggling zoom.
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                setPhase('dragging');
+            }
+
+            event.preventDefault();
+            const now = performance.now();
+            if (now - drag.sampleT > VELOCITY_WINDOW_MS) {
+                drag.sampleX = drag.lastX;
+                drag.sampleT = drag.lastT;
+            }
+            drag.lastX = event.clientX;
+            drag.lastT = now;
+
+            const canMove = dx > 0 ? canGoPrevious : canGoNext;
+            setDragOffset(canMove ? dx : dx * EDGE_DRAG_RESISTANCE);
+        },
+        [canGoNext, canGoPrevious, setDragOffset, springBack],
+    );
+
+    const handleMediaPointerEnd = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            pointersRef.current.delete(event.pointerId);
+            const drag = dragRef.current;
+            if (!drag || event.pointerId !== drag.pointerId) return;
+            dragRef.current = null;
+            if (!drag.dragging) return;
+
+            const dx = event.clientX - drag.startX;
+            const now = performance.now();
+            const elapsed = Math.max(now - drag.sampleT, 1);
+            const velocity = (event.clientX - drag.sampleX) / elapsed;
+            // The SLIDE's width — slides sit at ±100% of the viewport, not of the padded container.
+            const slideWidth = viewportRef.current?.clientWidth || window.innerWidth;
+            const commitDistance = Math.min(DRAG_COMMIT_DISTANCE, slideWidth * 0.2);
+            const flung = Math.abs(dx) >= DRAG_FLING_DISTANCE && Math.abs(velocity) >= DRAG_FLING_VELOCITY;
+            const shouldNavigate =
+                event.type !== 'pointercancel' &&
+                (Math.abs(dx) >= commitDistance || (flung && Math.sign(velocity) === Math.sign(dx)));
+
+            const direction = dx < 0 ? 'next' : 'previous';
+            const allowed = direction === 'next' ? canGoNext : canGoPrevious;
+            const target = getAdjacentIndex(visualIndex, items.length, direction, loop);
+            if (!shouldNavigate || !allowed || target === null) {
+                setPhase('idle');
+                setDragOffset(0);
+                return;
+            }
+
+            // Finish the visible slide into the neighbour before changing anything, so the gesture
+            // stays connected to its result.
+            setPhase('settling');
+            setDragOffset(direction === 'next' ? -slideWidth : slideWidth);
+            settleTimerRef.current = setTimeout(() => {
+                settleTimerRef.current = null;
+                pendingIndexRef.current = target;
+                // One commit: rotate so the incoming slot is active, show the target, and snap
+                // the offset to zero (the snap effect does that inside this same commit).
+                setRotation((r) => (r + (direction === 'next' ? 1 : SLOT_IDS.length - 1)) % SLOT_IDS.length);
+                setVisualIndex(target);
+                setSnap((n) => n + 1);
+                setPhase('idle');
+                if (direction === 'next') onNext();
+                else onPrevious();
+            }, slideDuration);
+        },
+        [canGoNext, canGoPrevious, items.length, loop, onNext, onPrevious, setDragOffset, slideDuration, visualIndex],
     );
 
     // Scroll active thumbnail into view
@@ -157,15 +430,21 @@ export function MediaImmersiveLightbox({
             return;
         }
         const activeThumb = thumbnailStripRef.current.children[activeIndex] as HTMLElement | undefined;
-        activeThumb?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }, [activeIndex, isOpen]);
+        if (typeof activeThumb?.scrollIntoView === 'function') {
+            activeThumb.scrollIntoView({
+                behavior: reducedMotion ? 'auto' : 'smooth',
+                block: 'nearest',
+                inline: 'center',
+            });
+        }
+    }, [activeIndex, isOpen, reducedMotion]);
 
     const counterStyle = useMemo(
         () => ({
-            transform: counterPulse ? 'scale(1.15)' : 'scale(1)',
-            transition: 'transform 0.2s ease',
+            transform: counterPulse && !reducedMotion ? 'scale(1.15)' : 'scale(1)',
+            transition: reducedMotion ? 'none' : 'transform 0.2s ease',
         }),
-        [counterPulse],
+        [counterPulse, reducedMotion],
     );
 
     if (!isOpen || typeof document === 'undefined' || !currentItem) {
@@ -177,6 +456,27 @@ export function MediaImmersiveLightbox({
     const hasMultiple = items.length > 1;
     // Reserve bottom space: thumbnails ~80px, or minimal padding
     const bottomInset = hasMultiple ? 80 : 12;
+    const slideTransition =
+        reducedMotion || phase === 'dragging' || snap !== 0
+            ? 'none'
+            : isSettling
+              ? `transform ${NAVIGATION_SLIDE_DURATION}ms cubic-bezier(0.22, 1, 0.36, 1)`
+              : // Spring-back after a drag released short of the threshold.
+                'transform 360ms cubic-bezier(0.22, 1.25, 0.36, 1)';
+    const mediaSlides = SLIDE_POSITIONS.flatMap((position, positionIndex) => {
+        const itemIndex = itemIndexAt(positionIndex, visualIndex, items.length, loop);
+        const item = itemIndex === null ? null : items[itemIndex];
+        if (!item) return [];
+        return [
+            {
+                item,
+                slotId: slotAt(positionIndex, rotation),
+                position,
+                active: positionIndex === 1,
+                name: positionIndex === 0 ? 'previous' : positionIndex === 1 ? 'active' : 'next',
+            },
+        ];
+    });
 
     return createPortal(
         <div
@@ -185,14 +485,12 @@ export function MediaImmersiveLightbox({
             data-medialightbox
             onPointerMove={resetHideTimer}
             onClick={resetHideTimer}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
         >
             {/* Backdrop (click to close) */}
             <button
                 type="button"
                 className="absolute inset-0 h-full w-full"
-                onClick={onClose}
+                onClick={handleClose}
                 aria-label="Close gallery"
             />
 
@@ -236,7 +534,7 @@ export function MediaImmersiveLightbox({
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onClose();
+                            handleClose();
                         }}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                         aria-label="Close gallery"
@@ -255,9 +553,10 @@ export function MediaImmersiveLightbox({
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
+                                if (isBusy) return;
                                 onPrevious();
                             }}
-                            disabled={!canGoPrevious}
+                            disabled={!canGoPrevious || isBusy}
                             className={`absolute left-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:left-5 md:h-12 md:w-12 ${controlsClass}`}
                             aria-label="Previous"
                         >
@@ -267,9 +566,10 @@ export function MediaImmersiveLightbox({
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
+                                if (isBusy) return;
                                 onNext();
                             }}
-                            disabled={!canGoNext}
+                            disabled={!canGoNext || isBusy}
                             className={`absolute right-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:right-5 md:h-12 md:w-12 ${controlsClass}`}
                             aria-label="Next"
                         >
@@ -283,13 +583,44 @@ export function MediaImmersiveLightbox({
                     ref={mediaContainerRef}
                     className="absolute inset-x-0 z-10 flex items-center justify-center px-14 md:px-20"
                     style={{ top: 56, bottom: bottomInset }}
-                    onClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                            onClose();
-                        }
-                    }}
+                    onPointerDown={handleMediaPointerDown}
+                    onPointerMove={handleMediaPointerMove}
+                    onPointerUp={handleMediaPointerEnd}
+                    onPointerCancel={handleMediaPointerEnd}
                 >
-                    <MediaPreview item={currentItem} mode="immersive" fit="contain" controls zoomStart={zoomStart} />
+                    <div
+                        ref={viewportRef}
+                        className="relative h-full w-full overflow-hidden"
+                        data-medialightbox-viewport
+                        style={{ touchAction: 'pan-y' }}
+                    >
+                        {mediaSlides.map(({ item, slotId, position, active, name }) => (
+                            <div
+                                key={slotId}
+                                className={`absolute inset-0 ${active ? '' : 'pointer-events-none'}`}
+                                data-medialightbox-slide={name}
+                                // Off-screen neighbours stay mounted (and decoded) for a seamless swipe,
+                                // but are out of the tab order and the accessibility tree.
+                                inert={!active}
+                                style={{
+                                    transform: `translate3d(calc(${position} + var(--media-drag-offset, 0px)), 0, 0)`,
+                                    transition: slideTransition,
+                                    willChange: phase === 'idle' ? 'auto' : 'transform',
+                                    contain: 'layout paint',
+                                }}
+                            >
+                                <MediaPreview
+                                    item={item}
+                                    mode="immersive"
+                                    fit="contain"
+                                    controls={active}
+                                    interactive={active}
+                                    preload={active ? 'metadata' : 'none'}
+                                    zoomStart={zoomStart}
+                                />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -323,8 +654,10 @@ export function MediaImmersiveLightbox({
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        if (isBusy) return;
                                         onSelectIndex(index);
                                     }}
+                                    disabled={isBusy}
                                     className={`h-12 w-12 shrink-0 overflow-hidden bg-white/10 transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 md:h-14 md:w-14 ${
                                         isActive
                                             ? 'ring-2 ring-white'

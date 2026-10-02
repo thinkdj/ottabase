@@ -13,6 +13,10 @@ export interface MediaPreviewProps {
     fit?: 'cover' | 'contain';
     controls?: boolean;
     muted?: boolean;
+    /** Disable zoom/pan affordances for an inactive carousel neighbor. */
+    interactive?: boolean;
+    /** Media preload behavior. Inactive carousel neighbors should not fetch video metadata. */
+    preload?: 'none' | 'metadata' | 'auto';
     /** Mouse gesture that toggles zoom in lightbox / immersive modes. Defaults to 'single'. */
     zoomStart?: ZoomStartGesture;
 }
@@ -40,12 +44,20 @@ function getShellClassName(mode: NonNullable<MediaPreviewProps['mode']>, classNa
               ? 'h-full w-full overflow-hidden rounded-xl bg-muted/40'
               : mode === 'immersive'
                 ? // In immersive mode, a whisper of muted tint marks the media boundary without a hard border
-                  'h-full w-full flex rounded-lg items-center justify-center overflow-hidden bg-muted/5'
+                  'h-full w-full flex items-center justify-center overflow-hidden bg-muted/5'
                 : mode === 'lightbox'
-                  ? 'h-full w-full overflow-hidden rounded-xl bg-muted/40'
+                  ? 'h-full w-full overflow-hidden bg-muted/40'
                   : 'h-full w-full overflow-hidden rounded-xl bg-muted/40';
 
     return [modeClassName, className].filter(Boolean).join(' ');
+}
+
+function getShellStyle(mode: NonNullable<MediaPreviewProps['mode']>): React.CSSProperties | undefined {
+    if (mode !== 'lightbox' && mode !== 'immersive') return undefined;
+
+    // `--radius` is the app's runtime theme token. Keep a package-safe fallback for consumers
+    // that render the component without the app theme stylesheet.
+    return { borderRadius: 'var(--radius, 0.75rem)' };
 }
 
 export function MediaPreview({
@@ -55,6 +67,8 @@ export function MediaPreview({
     fit = 'cover',
     controls = false,
     muted = true,
+    interactive = true,
+    preload = 'metadata',
     zoomStart = 'single',
 }: MediaPreviewProps) {
     const mediaKind = item.mediaKind ?? getMediaKindFromMimeType(item.mimeType, item.originalName);
@@ -66,18 +80,20 @@ export function MediaPreview({
     });
     const objectFitClassName = fit === 'contain' ? 'object-contain' : 'object-cover';
     const shellClassName = getShellClassName(mode, className);
+    const shellStyle = getShellStyle(mode);
 
     if (mediaKind === 'image' && previewUrl) {
         // Use ZoomableImage in lightbox / immersive modes for zoom + pan support
         if (mode === 'lightbox' || mode === 'immersive') {
             return (
-                <div className={shellClassName}>
+                <div className={shellClassName} style={shellStyle}>
                     <ZoomableImage
                         src={previewUrl}
                         alt={item.altText || title}
                         className="h-full w-full"
                         mode={mode}
                         zoomStart={zoomStart}
+                        interactive={interactive}
                     />
                 </div>
             );
@@ -89,7 +105,7 @@ export function MediaPreview({
         const intrinsicWidth = typeof item.width === 'number' && item.width > 0 ? item.width : undefined;
         const intrinsicHeight = typeof item.height === 'number' && item.height > 0 ? item.height : undefined;
         return (
-            <div className={shellClassName}>
+            <div className={shellClassName} style={shellStyle}>
                 <img
                     src={previewUrl}
                     alt={item.altText || title}
@@ -105,14 +121,15 @@ export function MediaPreview({
 
     if (mediaKind === 'video' && previewUrl) {
         return (
-            <div className={shellClassName}>
+            <div className={shellClassName} style={shellStyle}>
                 <video
                     src={previewUrl}
                     className={`h-full w-full ${objectFitClassName}`}
+                    style={shellStyle}
                     controls={controls || mode === 'detail' || mode === 'lightbox'}
                     muted={muted}
                     playsInline
-                    preload="metadata"
+                    preload={preload}
                 />
             </div>
         );
@@ -133,15 +150,17 @@ export function MediaPreview({
 
     if (
         isDocumentMedia({
-            mediaKind: mediaKind as any,
+            mediaKind,
             mimeType: item.mimeType || '',
             originalName: item.originalName || '',
         })
     ) {
         const isPdf = (item.mimeType || '').toLowerCase() === 'application/pdf';
-        if (isPdf && previewUrl && mode !== 'thumb') {
+        // An inactive carousel neighbour shows the placeholder below: an embedded PDF is a full
+        // document fetch, and an iframe would sit in the tab order of a slide the user cannot see.
+        if (isPdf && previewUrl && mode !== 'thumb' && interactive) {
             return (
-                <div className={shellClassName}>
+                <div className={shellClassName} style={shellStyle}>
                     <iframe
                         src={previewUrl}
                         title={title}
@@ -157,7 +176,7 @@ export function MediaPreview({
     const PlaceholderIcon = getPlaceholderIcon(mediaKind);
 
     return (
-        <div className={`${shellClassName} flex min-h-[10rem] items-center justify-center p-4`}>
+        <div className={`${shellClassName} flex min-h-[10rem] items-center justify-center p-4`} style={shellStyle}>
             <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
                     <PlaceholderIcon className="h-7 w-7" />

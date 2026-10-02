@@ -256,6 +256,7 @@ export function MediaLightboxProvider({
                 items={items}
                 activeIndex={lightboxState.activeIndex}
                 isOpen={isOpen}
+                loop={loop}
                 showMetadata={showMetadata}
                 canGoPrevious={lightboxState.canGoPrevious}
                 canGoNext={lightboxState.canGoNext}

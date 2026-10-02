@@ -19,6 +19,8 @@ export interface MediaLightboxProps {
     activeIndex: number;
     isOpen: boolean;
     showMetadata?: boolean;
+    /** Whether previous/next navigation wraps around the item collection. */
+    loop?: boolean;
     canGoPrevious?: boolean;
     canGoNext?: boolean;
     zIndex?: number;

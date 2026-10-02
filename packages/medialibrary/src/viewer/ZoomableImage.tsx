@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { prefersReducedMotion } from './motion';
 
 /** Which mouse gesture toggles zoom: a single click or a double click. */
 export type ZoomStartGesture = 'single' | 'double';
@@ -11,6 +12,8 @@ export interface ZoomableImageProps {
     mode?: 'lightbox' | 'immersive';
     /** Mouse gesture that toggles zoom. Touch always uses double-tap. Defaults to 'single'. */
     zoomStart?: ZoomStartGesture;
+    /** Disable zoom and pan handlers while retaining the same image DOM for carousel neighbors. */
+    interactive?: boolean;
 }
 
 const MIN_ZOOM = 1;
@@ -32,10 +35,19 @@ const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =
  *
  * Used inside lightbox / immersive viewers for image media only.
  */
-export function ZoomableImage({ src, alt, className, mode = 'lightbox', zoomStart = 'single' }: ZoomableImageProps) {
+export function ZoomableImage({
+    src,
+    alt,
+    className,
+    mode = 'lightbox',
+    zoomStart = 'single',
+    interactive = true,
+}: ZoomableImageProps) {
     const [zoom, setZoom] = useState(MIN_ZOOM);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
+    // Zoom snaps instead of easing when Ottabase motion is reduced (see ./motion)
+    const [reducedMotion] = useState(prefersReducedMotion);
     const dragOrigin = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +67,17 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox', zoomStar
         pointersRef.current.clear();
         pinchRef.current = null;
     }, [src]);
+
+    // A slide that leaves the active position (carousel neighbour) drops its zoom and any gesture
+    // in flight, so it never comes back zoomed or with a phantom pointer.
+    useEffect(() => {
+        if (interactive) return;
+        setZoom(MIN_ZOOM);
+        setPan({ x: 0, y: 0 });
+        setIsDragging(false);
+        pointersRef.current.clear();
+        pinchRef.current = null;
+    }, [interactive]);
 
     const toggleZoom = useCallback(() => {
         setZoom((prev) => {
@@ -156,9 +179,10 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox', zoomStar
             if (!pointersRef.current.has(e.pointerId)) return;
             pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-            // Pinch zoom
+            // Pinch zoom — the gesture is ours, so a parent gallery must not read it as a swipe.
             if (pointersRef.current.size === 2 && pinchRef.current) {
                 e.preventDefault();
+                e.stopPropagation();
                 const [a, b] = Array.from(pointersRef.current.values());
                 const currentDistance = getDistance(a, b);
                 const scale = currentDistance / pinchRef.current.startDistance;
@@ -198,37 +222,56 @@ export function ZoomableImage({ src, alt, className, mode = 'lightbox', zoomStar
     }, []);
 
     const isZoomed = zoom > MIN_ZOOM;
-    const cursor = isDragging ? 'cursor-grabbing' : isZoomed ? 'cursor-grab' : 'cursor-zoom-in';
+    const cursor = !interactive
+        ? 'cursor-default'
+        : isDragging
+          ? 'cursor-grabbing'
+          : isZoomed
+            ? 'cursor-grab'
+            : 'cursor-zoom-in';
 
     const imgClassName =
         mode === 'immersive'
             ? 'max-h-full max-w-full object-contain select-none'
             : 'h-full w-full object-contain select-none';
+    const imageStyle =
+        mode === 'lightbox' || mode === 'immersive' ? { borderRadius: 'var(--radius, 0.75rem)' } : undefined;
 
     return (
         <div
             ref={containerRef}
             className={`relative overflow-hidden ${className ?? ''}`}
-            onWheel={handleWheel}
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerEnd}
-            onPointerCancel={handlePointerEnd}
-            onPointerLeave={handlePointerEnd}
+            onWheel={interactive ? handleWheel : undefined}
+            onClick={interactive ? handleClick : undefined}
+            onDoubleClick={interactive ? handleDoubleClick : undefined}
+            onPointerDown={interactive ? handlePointerDown : undefined}
+            onPointerMove={interactive ? handlePointerMove : undefined}
+            onPointerUp={interactive ? handlePointerEnd : undefined}
+            onPointerCancel={interactive ? handlePointerEnd : undefined}
+            onPointerLeave={interactive ? handlePointerEnd : undefined}
+            // A parent gallery that takes over a swipe captures the pointer; drop it here so a
+            // stale entry never turns the next single touch into a phantom pinch.
+            onLostPointerCapture={interactive ? handlePointerEnd : undefined}
             // Disable native browser pinch / pan so our handlers own the gesture on touch
-            style={{ touchAction: 'none' }}
+            style={{ touchAction: interactive ? 'none' : 'auto' }}
         >
             <div
                 className={`flex h-full w-full items-center justify-center ${cursor}`}
                 style={{
                     transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-                    transition: isDragging || pinchRef.current ? 'none' : 'transform 0.2s ease',
+                    transition: isDragging || pinchRef.current || reducedMotion ? 'none' : 'transform 0.2s ease',
                     transformOrigin: 'center center',
                 }}
             >
-                <img src={src} alt={alt} className={imgClassName} loading="eager" draggable={false} />
+                <img
+                    src={src}
+                    alt={alt}
+                    className={imgClassName}
+                    style={imageStyle}
+                    // Eager on purpose: carousel neighbours are mounted to be ready BEFORE they are swiped in.
+                    loading="eager"
+                    draggable={false}
+                />
             </div>
 
             {/* Zoom level indicator */}

@@ -155,7 +155,9 @@ Behavior:
 
 ### Lightbox CSS Custom Properties
 
-The immersive lightbox exposes CSS custom properties for border-radius customization:
+Lightbox media uses the app's runtime `--radius` theme token for both the media container and the visible image/video,
+with a `0.75rem` fallback when no theme stylesheet is present. The immersive lightbox also exposes CSS custom properties
+for border-radius customization of its thumbnail UI:
 
 ```css
 /* Defaults — override in your own CSS to customise */
@@ -196,7 +198,7 @@ import { ZoomableImage } from '@ottabase/medialibrary/react';
 ```
 
 - **Scroll wheel** zooms in/out (1×–5×, 0.25× steps)
-- **Double-click** toggles 2× zoom
+- **Click** toggles 2× zoom by default (`zoomStart="double"` opts into double-click)
 - **Pinch-to-zoom** on touch devices
 - **Double-tap** toggles 2× zoom on touch devices
 - **Drag to pan** when zoomed in
@@ -215,10 +217,42 @@ download link uses `target="_blank"` and `rel="noopener noreferrer"` so browsers
 for some remote HTTPS URLs do not navigate away from the app tab. In the immersive lightbox, the download button sits in
 the top-right control bar alongside the fullscreen toggle.
 
-## Touch Gestures
+## Gallery Gestures
 
-The immersive lightbox supports horizontal swipe gestures for navigation on touch devices. A left swipe advances to the
-next item and a right swipe goes to the previous item. Vertical swipes are ignored to avoid conflicts with scrolling.
+The immersive lightbox supports horizontal drag navigation with both mouse and touch. A left drag advances to the next
+item and a right drag goes to the previous item. The active item follows the pointer, resists at the first/last item,
+and springs back when released short of the swipe threshold. The neighboring item is visible while dragging, so the
+navigation direction is always clear; a committed drag completes into that neighboring item instead of bouncing back
+before it changes.
+
+- **Commit:** a drag commits past 90px (or 20% of a narrow slide), or as a fling — at least 36px with a _release_ speed
+  of 0.45px/ms, measured over the last ~80ms rather than averaged over the whole gesture.
+- **Intent is decided once.** A press becomes a swipe after 8px of mostly-horizontal travel and then tracks the pointer
+  however diagonal it gets; a gesture that starts vertical never becomes a swipe; a few pixels of wobble stay a click.
+- **Gestures that win over swiping:** pan and pinch on a zoomed image; a pinch from 1× (a second finger abandons the
+  swipe and springs it back); a press on a video's native control bar (the bottom 64px), so scrubbing and volume work.
+  An embedded PDF captures its own pointer events, so swipe beside it or use the arrows.
+- **Wrap-around** needs `loop` (the Provider passes it). Without it there is no neighbor past the first/last item, so a
+  drag there only rubber-bands, even if `canGoPrevious` / `canGoNext` allow a button to wrap.
+
+The three slides are DOM slots whose items are derived from the visual index on every render. Buttons, keys, thumbnails
+and URL changes swap content in place without moving a slot; a committed drag rotates the slots so the node dragged into
+view becomes the active one (its decoded image is kept), with transitions suppressed until the browser has applied the
+rotation. During dragging, the offset is applied through a CSS custom property so pointer movement does not trigger a
+React render for every event. Neighbors stay mounted and load eagerly, so they are ready before they are swiped in, but
+they are `inert` (out of the tab order and the accessibility tree), their videos use `preload="none"`, and a neighboring
+PDF shows its placeholder rather than an embedded document. Clicks on the full media surface toggle zoom and never close
+the gallery; clicking the backdrop outside that surface closes the lightbox. A click that develops horizontal drag
+intent remains navigation, so a drag does not accidentally toggle zoom.
+
+## Reduced Motion
+
+The viewer follows Ottabase's motion setting, so there is nothing to configure in this package. Motion is reduced when
+the OS asks for it (`prefers-reduced-motion: reduce`) or when the active brand kit turns on **Disable animations**
+(Admin → Brand kit → Motion), which emits `--motion-duration-*: 0s`. Either way, slide and spring-back transitions, the
+zoom ease, the counter pulse and smooth thumbnail scrolling become instant. A drag still follows the pointer, because
+that is direct manipulation rather than animation. Class-based transitions (`duration-normal` …) already follow the
+motion tokens.
 
 ## MediaPreview Performance
 
