@@ -225,6 +225,10 @@ export function sanitizeUrl(url: string | null | undefined): string {
     const trimmed = url.trim();
     if (!trimmed) return '#';
 
+    // Block protocol-relative URLs (`//evil.com`). Browsers drop tab/CR/LF inside URLs and read `\` as `/`,
+    // so `/\evil.com` and `/<TAB>/evil.com` are protocol-relative too.
+    if (/^[/\\]{2}/.test(trimmed.replace(/[\t\n\r]/g, ''))) return '#';
+
     // Allow relative URLs
     if (
         trimmed.startsWith('/') ||

@@ -125,7 +125,8 @@ import {
   to human-readable format
 - **`ucFirst(str: string): string`** - Uppercase the first letter
 - **`replaceStringTokens(str: string, replacements: object, identifier?: string): string`** - Replace tokens in strings
-- **`generateUUID(length: number, alphanumeric?: boolean): string`** - Generate unique alphanumeric ID
+- **`generateUUID(length: number, alphanumeric?: boolean): string`** - Generate a random ID from
+  `crypto.getRandomValues`
 - **`stripHtml(html: string): string`** - Convert HTML to readable plain text, removing scripts/styles and decoding
   entities
 
@@ -144,7 +145,8 @@ import {
 ### Sanitization Utilities (`@ottabase/utils/sanitize`)
 
 - **`sanitizeUrl(url: string | null | undefined): string`** - Allowlist URL schemes (`http`, `https`, `mailto`, `tel`,
-  `sms`) and safe relative links, else fallback to `#`
+  `sms`) and safe relative links, else fallback to `#`. Protocol-relative URLs (`//host`, `/\host`, `/<TAB>/host`) are
+  blocked.
 - **`sanitizeInlineHtml(html: string): string`** - Sanitize inline EditorJS markup (safe for `dangerouslySetInnerHTML`)
 - **`sanitizeBlockHtml(html: string): string`** - Sanitize broader block-level HTML content
 - **`sanitizeSvgHtml(svg: string): string`** - Sanitize inline SVG content

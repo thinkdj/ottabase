@@ -186,25 +186,21 @@ export function replaceStringTokens(
 }
 
 /**
- * Generate a unique alphanumeric UID that does not start with a digit.
+ * Generate a random identifier from a CSPRNG (`crypto.getRandomValues`).
+ * `alphanumeric` (default) draws from `[A-Za-z0-9]`; otherwise `_~-` may also appear, but never first or last.
  */
 export function generateUUID(length: number, alphanumeric: boolean = true): string {
     if (length <= 0) return '';
 
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_~-';
     const alphaNumericChars = chars.length - 3;
+    const random = crypto.getRandomValues(new Uint32Array(length));
     const uuidArr: string[] = new Array(length);
 
-    if (alphanumeric) {
-        for (let i = 0; i < length; i++) {
-            uuidArr[i] = chars.charAt(Math.floor(Math.random() * alphaNumericChars));
-        }
-    } else {
-        uuidArr[0] = chars.charAt(Math.floor(Math.random() * alphaNumericChars)); // Ensure the first character is alphanumeric
-        for (let i = 1; i < length; i++) {
-            uuidArr[i] = chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        uuidArr[length - 1] = chars.charAt(Math.floor(Math.random() * alphaNumericChars)); // Ensure the last character is alphanumeric
+    for (let i = 0; i < length; i++) {
+        // First and last characters are always alphanumeric. Modulo bias over a 32-bit source is < 2e-8 here.
+        const size = alphanumeric || i === 0 || i === length - 1 ? alphaNumericChars : chars.length;
+        uuidArr[i] = chars.charAt((random[i] ?? 0) % size);
     }
     return uuidArr.join('');
 }

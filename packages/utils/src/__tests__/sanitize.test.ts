@@ -111,6 +111,19 @@ describe('sanitizeUrl', () => {
         expect(sanitizeUrl('/about')).toBe('/about');
     });
 
+    it('blocks protocol-relative URLs, including backslash and whitespace variants', () => {
+        for (const url of [
+            '//evil.com',
+            '/\\evil.com',
+            '\\\\evil.com',
+            '/\t/evil.com',
+            '/\n/evil.com',
+            ' //evil.com',
+        ]) {
+            expect(sanitizeUrl(url)).toBe('#');
+        }
+    });
+
     it('allows fragment-only links', () => {
         expect(sanitizeUrl('#section')).toBe('#section');
     });

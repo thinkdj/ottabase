@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jsonResponse } from '../http-response';
+import { paginatedJsonResponse } from '../pagination';
 
 describe('jsonResponse', () => {
     it('preserves Headers instances while enforcing the JSON content type', async () => {
@@ -18,5 +19,17 @@ describe('jsonResponse', () => {
         const response = jsonResponse({}, 200, { headers: [['Set-Cookie', 'session=fixture']] });
 
         expect(response.headers.get('set-cookie')).toBe('session=fixture');
+    });
+});
+
+describe('paginatedJsonResponse', () => {
+    it('preserves Headers instances while enforcing the JSON content type', async () => {
+        const response = paginatedJsonResponse({ data: [1], total: 1, page: 1, perPage: 15, path: '/api/items' }, 200, {
+            headers: new Headers({ 'Cache-Control': 'no-store' }),
+        });
+
+        expect(response.headers.get('content-type')).toBe('application/json');
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        await expect(response.json()).resolves.toMatchObject({ data: [1] });
     });
 });

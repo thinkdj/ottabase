@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
     getCommonTimezones,
     getTimezonesForSelect,
+    isDST,
     isValidTimezone,
     getTimezoneOffsetMinutes,
     setTimezoneConfig,
@@ -116,6 +117,20 @@ describe('Timezone Utilities', () => {
             const config = getTimezoneConfig();
             expect(config.defaultTimezone).toBe('UTC');
             expect(config.userTimezone).toBe('Asia/Tokyo');
+        });
+    });
+
+    describe('isDST', () => {
+        it('detects northern and southern hemisphere DST', () => {
+            expect(isDST(new Date('2024-06-15T12:00:00Z'), 'America/New_York')).toBe(true);
+            expect(isDST(new Date('2024-12-15T12:00:00Z'), 'America/New_York')).toBe(false);
+            expect(isDST(new Date('2024-12-15T12:00:00Z'), 'Australia/Sydney')).toBe(true);
+            expect(isDST(new Date('2024-06-15T12:00:00Z'), 'Australia/Sydney')).toBe(false);
+        });
+
+        it('is never true in a zone without DST', () => {
+            expect(isDST(new Date('2024-06-15T12:00:00Z'), 'Asia/Tokyo')).toBe(false);
+            expect(isDST(new Date('2024-12-15T12:00:00Z'), 'UTC')).toBe(false);
         });
     });
 });

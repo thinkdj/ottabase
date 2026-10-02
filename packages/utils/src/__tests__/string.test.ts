@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     changeCase,
     generateUUID,
@@ -207,6 +207,16 @@ describe('String Utilities', () => {
                 const uuid = generateUUID(10, true);
                 expect(uuid).toHaveLength(10);
                 expect(/^[A-Za-z0-9]/.test(uuid)).toBe(true);
+            }
+        });
+
+        it('draws from crypto.getRandomValues, not Math.random', () => {
+            const spy = vi.spyOn(Math, 'random').mockReturnValue(0);
+            try {
+                expect(generateUUID(16)).not.toBe(generateUUID(16));
+                expect(generateUUID(16, false)).not.toBe(generateUUID(16, false));
+            } finally {
+                spy.mockRestore();
             }
         });
 

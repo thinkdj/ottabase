@@ -5,6 +5,8 @@
  * across all OttaBase collection/list endpoints.
  */
 
+import { jsonResponse } from './http-response';
+
 // ============================================================
 // Types
 // ============================================================
@@ -299,13 +301,6 @@ export function paginatedJsonResponse<T>(
     status: number = 200,
     init: ResponseInit = {},
 ): Response {
-    const paginatedData = createPaginatedResponse(options);
-    return new Response(JSON.stringify(paginatedData), {
-        ...init,
-        status,
-        headers: {
-            ...init.headers,
-            'Content-Type': 'application/json',
-        },
-    });
+    // jsonResponse merges through `new Headers()`, so Headers instances and tuple arrays survive.
+    return jsonResponse(createPaginatedResponse(options), status, init);
 }

@@ -769,12 +769,13 @@ export function isDST(date: DateInput, timezone?: Timezone): boolean {
         // Get offset for current date
         const currentOffset = getTimezoneOffset(tz, dateObj);
 
-        // DST is active when offset differs from standard time
-        // Standard time is the larger offset (further from UTC)
-        const standardOffset = Math.max(janOffset, julOffset);
+        // date-fns-tz offsets are milliseconds EAST of UTC (New York: -5h winter, -4h summer).
+        // DST moves clocks forward, so standard time is the smaller of the Jan/Jul offsets
+        // (this also covers the southern hemisphere, where January is summer).
+        const standardOffset = Math.min(janOffset, julOffset);
 
-        // If current offset is less than standard offset, we're in DST
-        return currentOffset < standardOffset;
+        // Anything above standard time is DST; zones without DST have jan === jul and never match.
+        return currentOffset > standardOffset;
     } catch (e) {
         console.error('Error checking DST:', e);
         return false;
