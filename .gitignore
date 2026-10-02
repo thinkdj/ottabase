@@ -1,4 +1,3 @@
-.repos.downstream
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # Cloudflare && OpenNext
@@ -29,6 +28,10 @@ tmp/
 *.tmp
 temp/
 .temp/
+
+# Ottabase
+MARKETING.MD
+.repos.downstream
 
 # =============================================================================
 # Dependencies
@@ -183,4 +186,3 @@ Thumbs.db
 # devdb
 .devdbrc
 
-MARKETING.MD
