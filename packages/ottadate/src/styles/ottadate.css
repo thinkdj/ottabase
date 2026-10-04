@@ -254,14 +254,7 @@
     width: fit-content;
 }
 
-/* Full-width day grid used inside FuzzyDateTimePicker (matches year/month grids) */
-.ottadate-days--fuzzy {
-    grid-template-columns: repeat(7, 1fr);
-    width: auto;
-}
-
-/* Day cells inside fuzzy grid adapt to fractional columns */
-.ottadate-days--fuzzy .ottadate-day {
+.ottadate-day {
     width: auto;
 }
 
@@ -645,249 +638,443 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Fuzzy Date Picker — progressive "fill in what you remember" drill-down.
- * The live sentence headline sits on top; year → month → day → time sections
- * appear one level at a time as the previous level is filled.
+ * Fuzzy pickers: shared shell: field trigger, entry, result line.
+ * The panel keeps one width; the zoom body swaps one grid at a time.
  * --------------------------------------------------------------------------- */
 
-.ottadate-fuzzy {
+.ottadate--fuzzy {
+    --od-fz-width: 19rem;
+    /* Part band (solid) and "~ Roughly" spill (hatched) drawn over grid cells */
+    --od-fz-band: color-mix(in srgb, var(--od-primary) 14%, transparent);
+    --od-fz-approx: color-mix(in srgb, var(--od-primary) 12%, transparent);
+}
+
+.ottadate--compact {
+    --od-fz-width: 17rem;
+}
+
+/* Field trigger: the open button and the clear button are siblings, never nested */
+.ottadate-trigger--field {
+    padding: 0 0.375rem 0 0;
+    cursor: default;
+}
+
+.ottadate-trigger--field:focus-within {
+    border-color: var(--od-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
+}
+
+.ottadate-trigger-main {
+    flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+}
+
+.ottadate-trigger-main:disabled {
+    cursor: not-allowed;
+}
+
+.ottadate-fz {
+    width: var(--od-fz-width);
+    max-width: calc(100vw - 1rem);
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
 }
 
-.ottadate-fuzzy-section {
+.ottadate-fz [hidden] {
+    display: none;
+}
+
+.ottadate-fz .ottadate-footer {
+    margin-top: 0;
+}
+
+.ottadate--disabled .ottadate-fz {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Type-to-parse entry: a quiet tinted well that lifts onto --od-bg on focus */
+.ottadate-fz-entry {
+    width: 100%;
+    height: 2.125rem;
+    padding: 0 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--od-radius-inner);
+    background: var(--od-tint);
+    font-family: var(--od-font);
+    font-size: var(--od-font-size);
+    color: var(--od-fg);
+    outline: none;
+    transition:
+        background var(--od-transition),
+        border-color var(--od-transition),
+        box-shadow var(--od-transition);
+}
+
+.ottadate-fz-entry::placeholder {
+    color: var(--od-muted-fg);
+}
+
+.ottadate-fz-entry:focus {
+    background: var(--od-bg);
+    border-color: var(--od-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
+}
+
+/* Unreadable or too-vague entry: a red ring, never a silent guess */
+.ottadate-fz-entry--invalid,
+.ottadate-fz-entry--invalid:focus {
+    border-color: var(--od-destructive);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-destructive) 25%, transparent);
+}
+
+/* Result line: what will be stored, live. Dashed while previewing typed text. */
+.ottadate-fz-result {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.4375rem 0.4375rem 0.4375rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--od-radius-inner);
+    background: var(--od-tint);
+}
+
+.ottadate-fz-result--preview {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--od-border);
+}
+
+.ottadate-fz-result-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ottadate-fz-label {
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.ottadate-fz-label--muted {
+    font-weight: 500;
+    color: var(--od-muted-fg);
+}
+
+.ottadate-fz-sub {
+    font-size: var(--od-font-size-xs);
+    line-height: 1.4;
+    color: var(--od-muted-fg);
+    font-variant-numeric: tabular-nums;
+}
+
+/* "~ Roughly": the edges are soft (widens the stored range, hatches the grid) */
+.ottadate-fz-approx {
+    flex-shrink: 0;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--od-border);
+    border-radius: var(--od-radius-pill);
+    background: var(--od-bg);
+    color: var(--od-muted-fg);
+    font-family: var(--od-font);
+    font-size: var(--od-font-size-sm);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background var(--od-transition),
+        color var(--od-transition),
+        border-color var(--od-transition);
+}
+
+.ottadate-fz-approx:hover:not([aria-pressed='true']) {
+    color: var(--od-fg);
+    background: var(--od-tint-hover);
+}
+
+.ottadate-fz-approx[aria-pressed='true'] {
+    background: var(--od-primary);
+    border-color: var(--od-primary);
+    color: var(--od-primary-fg);
+}
+
+/* Exact time row (minutes/seconds) under the hour grid, and the compact time row */
+.ottadate-fz-exact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.ottadate-fz-exact-label {
+    font-size: var(--od-font-size-sm);
+    color: var(--od-muted-fg);
+}
+
+.ottadate-fz-time {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Fuzzy zoom body: nav (title zooms out), answer chips, one grid
+ * --------------------------------------------------------------------------- */
+
+.ottadate-fz-zoom {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ottadate-fz-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.ottadate-fz-title {
+    flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 1.75rem;
+    padding: 0 0.5rem;
+    border: none;
+    border-radius: var(--od-radius-inner);
+    background: transparent;
+    font-family: var(--od-font);
+    font-size: var(--od-font-size);
+    font-weight: 600;
+    color: var(--od-fg);
+    cursor: pointer;
+    transition: background var(--od-transition);
+}
+
+.ottadate-fz-title:hover:not(:disabled) {
+    background: var(--od-tint-hover);
+}
+
+.ottadate-fz-title:disabled {
+    cursor: default;
+}
+
+.ottadate-fz-title-icon {
+    display: inline-flex;
+    color: var(--od-muted-fg);
+    transform: rotate(180deg);
+}
+
+.ottadate-fz-title-icon svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+/* Answer chips: "Sometime" + parts for the period on screen */
+.ottadate-fz-chips {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.25rem;
+}
+
+.ottadate-fz-chips--day {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.ottadate-fz-chip {
+    height: 1.75rem;
+    padding: 0 0.375rem;
+    border: 1px solid var(--od-border);
+    border-radius: var(--od-radius-pill);
+    background: var(--od-bg);
+    color: var(--od-muted-fg);
+    font-family: var(--od-font);
+    font-size: var(--od-font-size-sm);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background var(--od-transition),
+        color var(--od-transition),
+        border-color var(--od-transition);
+}
+
+.ottadate-fz-chip:hover:not([aria-pressed='true']) {
+    color: var(--od-fg);
+    background: var(--od-tint-hover);
+}
+
+.ottadate-fz-chip[aria-pressed='true'] {
+    background: var(--od-primary);
+    border-color: var(--od-primary);
+    color: var(--od-primary-fg);
+    font-weight: 500;
+}
+
+.ottadate-fz-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.125rem;
+}
+
+.ottadate-fz-grid--years {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.ottadate-fz-grid--days {
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.ottadate-fz-grid--hours {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.ottadate-fz-cell {
+    height: 2.25rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--od-radius-inner);
+    background: transparent;
+    font-family: var(--od-font);
+    font-size: var(--od-font-size);
+    font-variant-numeric: tabular-nums;
+    color: var(--od-fg);
+    cursor: pointer;
+    transition:
+        background var(--od-transition),
+        color var(--od-transition);
+}
+
+.ottadate-fz-grid--days .ottadate-fz-cell {
+    height: 2rem;
+}
+
+.ottadate-fz-grid--hours .ottadate-fz-cell {
+    height: 1.875rem;
+    font-size: var(--od-font-size-sm);
+}
+
+.ottadate-fz-cell:hover {
+    background: var(--od-tint-hover);
+}
+
+.ottadate-fz-cell:focus-visible {
+    outline: 2px solid var(--od-ring);
+    outline-offset: 1px;
+}
+
+/* Today / this year: a hairline ring, same as the calendar pickers */
+.ottadate-fz-cell--now {
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--od-border);
+}
+
+/* The part's span ("Summer" → Jun, Jul, Aug) */
+.ottadate-fz-cell--band {
+    background: var(--od-fz-band);
+}
+
+/* "~ Roughly" spill beyond the named period: hatched = maybe */
+.ottadate-fz-cell--approx {
+    background: repeating-linear-gradient(-45deg, var(--od-fz-approx) 0 3px, transparent 3px 6px);
+}
+
+.ottadate-fz-cell[aria-current='true'] {
+    background: var(--od-primary);
+    color: var(--od-primary-fg);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.ottadate-fz-weekday {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.5rem;
+    font-size: var(--od-font-size-xs);
+    font-weight: 500;
+    color: var(--od-muted-fg);
+    user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Fuzzy compact body: native <select>s in label order, two per row
+ * --------------------------------------------------------------------------- */
+
+.ottadate-fzc {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ottadate-fzc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.375rem;
 }
 
-/* Type-to-parse field — "early 90s" / "summer 98" / "21 jul 2010" straight in. */
-.ottadate-fuzzy-entry {
+/* Wraps each <select> so a themed chevron can sit over it (OS chevrons look dated) */
+.ottadate-fzc-select {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.ottadate-fzc-native {
     width: 100%;
-    padding: 0.4375rem 0.625rem;
+    height: 2.125rem;
+    padding: 0 1.75rem 0 0.625rem;
     border: 1px solid var(--od-border);
     border-radius: var(--od-radius-inner);
-    font-size: var(--od-font-size);
-    font-family: var(--od-font);
-    color: var(--od-fg);
     background: var(--od-bg);
+    font-family: var(--od-font);
+    font-size: var(--od-font-size);
+    color: var(--od-fg);
+    text-overflow: ellipsis;
+    cursor: pointer;
     outline: none;
+    appearance: none;
     box-shadow: var(--od-shadow-xs);
     transition:
         border-color var(--od-transition),
         box-shadow var(--od-transition);
 }
 
-.ottadate-fuzzy-entry::placeholder {
-    color: var(--od-muted-fg);
-    opacity: 0.8;
-}
-
-.ottadate-fuzzy-entry:focus {
+.ottadate-fzc-native:focus {
     border-color: var(--od-ring);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
-/* Unparseable or out-of-bounds entry — a red ring, never a silent guess. */
-.ottadate-fuzzy-entry--invalid {
-    border-color: var(--od-destructive);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-destructive) 25%, transparent);
+.ottadate-fzc-native:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-/* Headline row: the live sentence + the "~ Roughly" toggle. */
-.ottadate-fuzzy-headline-row {
+.ottadate-fzc-chevron {
+    position: absolute;
+    right: 0.5rem;
     display: flex;
-    align-items: stretch;
-    gap: 0.375rem;
-}
-
-/* Live sentence headline — the result, promoted to the top as a quiet well. */
-.ottadate-fuzzy-headline {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    min-height: 2.5rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--od-tint);
-    border-radius: var(--od-radius-inner);
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.35;
-}
-
-.ottadate-fuzzy-headline--empty {
     color: var(--od-muted-fg);
-    font-weight: 400;
+    pointer-events: none;
 }
 
-/* "~ Roughly" toggle — marks the whole selection as approximate (soft boundary). */
-.ottadate-fuzzy-approx-toggle {
-    flex-shrink: 0;
-    align-self: center;
-    padding: 0.3125rem 0.625rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius-pill);
-    background: var(--od-bg);
-    color: var(--od-muted-fg);
-    font-size: var(--od-font-size-sm);
-    font-family: var(--od-font);
-    cursor: pointer;
-    white-space: nowrap;
-    transition:
-        background var(--od-transition),
-        color var(--od-transition),
-        border-color var(--od-transition);
-}
-
-.ottadate-fuzzy-approx-toggle:hover:not(.ottadate-fuzzy-approx-toggle--active) {
-    background: var(--od-tint-hover);
-    color: var(--od-fg);
-}
-
-.ottadate-fuzzy-approx-toggle--active {
-    background: var(--od-primary);
-    color: var(--od-primary-fg);
-    border-color: var(--od-primary);
-}
-
-/* Part chips (Early / Mid / Late, seasons, day-parts) — the coarse terminal
-   answers to "when in X?". Pill with a hairline ring; active = filled primary. */
-.ottadate-fuzzy-parts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
-
-.ottadate-part-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.625rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius-pill);
-    font-size: var(--od-font-size-sm);
-    font-family: var(--od-font);
-    cursor: pointer;
-    background: var(--od-bg);
-    color: var(--od-muted-fg);
-    transition:
-        background var(--od-transition),
-        color var(--od-transition),
-        border-color var(--od-transition);
-    user-select: none;
-}
-
-.ottadate-part-chip:hover:not(.ottadate-part-chip--active) {
-    background: var(--od-tint-hover);
-    color: var(--od-fg);
-}
-
-.ottadate-part-chip--active {
-    background: var(--od-primary);
-    color: var(--od-primary-fg);
-    border-color: var(--od-primary);
-}
-
-/* Year/decade is a single field here (not a range to browse), so it's a compact
-   stepper — the year value is directly editable (type "1994" instead of clicking
-   30 times); the decade value is stepped in 10-year jumps. */
-.ottadate-fuzzy-year-stepper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-/* Read-only stepper value (the decade display, e.g. "1990s") */
-.ottadate-fuzzy-stepper-value {
-    flex: 1;
-    text-align: center;
-    font-size: var(--od-font-size);
-    font-weight: 600;
-    color: var(--od-fg);
-}
-
-.ottadate-fuzzy-year-input {
-    flex: 1;
-    min-width: 0;
-    text-align: center;
-    padding: 0.25rem;
-    border: none;
-    background: transparent;
-    outline: none;
-    border-radius: var(--od-radius-inner);
-    font-family: var(--od-font);
-    font-size: var(--od-font-size);
-    font-weight: 600;
-    color: var(--od-fg);
-    transition:
-        background var(--od-transition),
-        box-shadow var(--od-transition);
-    -moz-appearance: textfield;
-}
-
-.ottadate-fuzzy-year-input::-webkit-inner-spin-button,
-.ottadate-fuzzy-year-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.ottadate-fuzzy-year-input:hover {
-    background: var(--od-tint);
-}
-
-.ottadate-fuzzy-year-input:focus {
-    background: var(--od-tint);
-    box-shadow: inset 0 0 0 1px var(--od-border);
-}
-
-/* Tighter month grid scoped to the fuzzy picker only — DatePicker's own month/year
-   switcher keeps 3 columns, since that's a deliberate wide-range browse view. */
-.ottadate-fuzzy-section .ottadate-months {
-    grid-template-columns: repeat(6, 1fr);
-    gap: 0.125rem;
-}
-
-.ottadate-fuzzy-section .ottadate-month-cell {
-    padding: 0.375rem 0.25rem;
-    font-size: var(--od-font-size-sm);
-}
-
-/* Section label row: micro-label left, teaching hint right. */
-.ottadate-fuzzy-label-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.ottadate-fuzzy-label {
-    /* Micro-label recipe: xs / medium / uppercase / tracking-wide / muted. */
-    font-size: var(--od-font-size-xs);
-    font-weight: 500;
-    color: var(--od-muted-fg);
-    letter-spacing: 0.025em;
-    text-transform: uppercase;
-}
-
-/* Hint ("if you remember" / "tap again to clear") — quiet, lowercase. */
-.ottadate-fuzzy-hint {
-    font-size: var(--od-font-size-xs);
-    color: var(--od-muted-fg);
-    opacity: 0.8;
-}
-
-/* Cascading time inputs (blank = "don't remember"). */
-.ottadate-fuzzy-time {
-    display: flex;
-    align-items: center;
-    gap: 0.125rem;
-}
-
-.ottadate-fuzzy-divider {
-    height: 1px;
-    background: var(--od-border);
-    margin: 0.25rem 0;
+.ottadate-fzc-chevron svg {
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 /* ---------------------------------------------------------------------------
@@ -997,16 +1184,8 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Fuzzy compact mode — tighter spacing for inline fuzzy pickers
+ * Inline mode: tighter calendar cells
  * --------------------------------------------------------------------------- */
-
-.ottadate--inline .ottadate-fuzzy {
-    gap: 0.5rem;
-}
-
-.ottadate--inline .ottadate-fuzzy-section {
-    gap: 0.25rem;
-}
 
 .ottadate--inline .ottadate-years,
 .ottadate--inline .ottadate-months {
@@ -1037,133 +1216,6 @@
 
 .ottadate--inline .ottadate-days {
     grid-template-columns: repeat(7, 1.75rem) !important;
-}
-
-/* Fuzzy day grid stays full-width even when inline */
-.ottadate--inline .ottadate-days--fuzzy {
-    grid-template-columns: repeat(7, 1fr) !important;
-    width: auto;
-}
-
-.ottadate--inline .ottadate-days--fuzzy .ottadate-day {
-    width: auto;
-    height: 1.75rem;
-    font-size: var(--od-font-size-sm);
-}
-
-.ottadate--inline .ottadate-fuzzy-divider {
-    margin: 0.125rem 0;
-}
-
-.ottadate--inline .ottadate-fuzzy-headline {
-    min-height: 2.125rem;
-    padding: 0.375rem 0.625rem;
-    font-size: var(--od-font-size);
-}
-
-/* ---------------------------------------------------------------------------
- * Compact fuzzy mode — native <select> based layout
- * --------------------------------------------------------------------------- */
-
-.ottadate-compact-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-/* Wraps every compact <select> so a themed chevron can be absolutely positioned over it
-   (native `appearance: auto` OS chevrons are what made this mode look dated). */
-.ottadate-compact-select-wrapper {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-/* Part select ("Sometime" / Early / Summer / Night…) — first word of the sentence */
-.ottadate-compact-part {
-    min-width: 6.25rem;
-}
-
-/* Decade select (decade mode) — leads the sentence and pages the year select */
-.ottadate-compact-decade {
-    width: 5.25rem;
-}
-
-/* "~" approximate chip in the compact sentence row */
-.ottadate-compact-approx-chip {
-    padding: 0.25rem 0.5rem;
-    font-weight: 600;
-}
-
-/* Live preview of the stored label */
-.ottadate-compact-desc {
-    font-size: var(--od-font-size-sm);
-    color: var(--od-muted-fg);
-    font-style: italic;
-}
-
-.ottadate-compact-row {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    flex-wrap: wrap;
-}
-
-.ottadate-compact-select {
-    width: 100%;
-    padding: 0.3125rem 1.75rem 0.3125rem 0.5rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius-inner);
-    font-size: var(--od-font-size);
-    font-family: var(--od-font);
-    color: var(--od-fg);
-    background: var(--od-bg);
-    outline: none;
-    cursor: pointer;
-    box-shadow: var(--od-shadow-xs);
-    transition:
-        border-color var(--od-transition),
-        box-shadow var(--od-transition);
-    appearance: none;
-}
-
-.ottadate-compact-select:focus {
-    border-color: var(--od-ring);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
-}
-
-.ottadate-compact-select:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.ottadate-compact-select-chevron {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    display: flex;
-    transform: translateY(-50%);
-    color: var(--od-muted-fg);
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-.ottadate-compact-select-chevron svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-.ottadate-compact-year {
-    min-width: 5.5rem;
-}
-
-.ottadate-compact-month {
-    flex: 1;
-    min-width: 6.5rem;
-}
-
-.ottadate-compact-day {
-    width: 4.75rem;
 }
 
 /* ---------------------------------------------------------------------------

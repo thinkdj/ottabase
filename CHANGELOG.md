@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **OttaDate: fuzzy pickers redesigned around a zooming panel.** `createFuzzyDateTimePicker` is now one fixed-size panel
+  that zooms decades → years → months → days → hours instead of stacking every level (which grew to ~500px). Browsing
+  (title to zoom out, arrows to page) never changes the value; a cell names a period and zooms in; chips answer for the
+  period on screen, with **Sometime** / **All day** as the explicit way to be less precise (replaces "tap again to
+  clear"). Parts and "~ Roughly" are drawn as bands on the grid, the result line shows the stored range, days use a real
+  weekday calendar, nothing is pre-filled, and the panel is keyboard-navigable. `createFuzzyDateTimeCompact` shares the
+  same shell (type-it field, result line, popover) with native selects in label order. Both use fixed positioning and no
+  longer nest the clear button inside the open button. New headless pieces: `formatFuzzyRange(fuzzy)` and the selection
+  controller's `select(level, at)`. Stored `FuzzyDateTime` values and labels are unchanged; DOM class names of the fuzzy
+  pickers changed (`ottadate-fz-*`). The blog editor's "Originally Written" field uses the picker instead of a bare text
+  input.
+
 - **RBAC: authorization is permission + scope, never role NAME.** Admin gates no longer trust the role names
   `owner`/`admin`/`platform_owner`. A role is now purely a bundle of permissions; every gate asks "does a grant **at the
   required scope** carry the required permission." Two capabilities:

@@ -6,7 +6,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { createFuzzyDateTime } from '../core/fuzzy';
 import { parseFuzzyInput } from '../core/parse';
+import type { DatePart } from '../core/types';
 
 const NOW = new Date(2026, 6, 21, 15, 0, 0); // July 21 2026, local
 const parse = (input: string) => parseFuzzyInput(input, { now: NOW });
@@ -149,5 +151,27 @@ describe('parseFuzzyInput — strictness', () => {
     it('rejects invalid calendar dates', () => {
         expect(parse('30 feb 2020')).toBeNull();
         expect(parse('32 jan 2020')).toBeNull();
+    });
+});
+
+describe('parseFuzzyInput: labels round-trip', () => {
+    // Every built-in label must parse back to the same value, so a stored label can be re-typed or pasted
+    const cases: [Date, Parameters<typeof createFuzzyDateTime>[1], { part?: DatePart; approximate?: boolean }][] = [
+        [new Date(Date.UTC(1990, 0)), 'decade', {}],
+        [new Date(Date.UTC(1990, 0)), 'decade', { part: 'early', approximate: true }],
+        [new Date(Date.UTC(1996, 0)), 'year', { approximate: true }],
+        [new Date(Date.UTC(1998, 0)), 'year', { part: 'summer' }],
+        [new Date(Date.UTC(2010, 4)), 'month', {}],
+        [new Date(Date.UTC(2010, 4)), 'month', { part: 'late', approximate: true }],
+        [new Date(Date.UTC(2010, 4, 21)), 'day', { part: 'night' }],
+        [new Date(Date.UTC(2010, 4, 21)), 'day', { part: 'morning', approximate: true }],
+        [new Date(Date.UTC(2010, 4, 21, 14, 30)), 'minute', {}],
+        [new Date(Date.UTC(2010, 4, 21, 14, 30, 45)), 'second', { approximate: true }],
+    ];
+
+    it.each(cases)('%s %s %o', (date, res, opts) => {
+        const value = createFuzzyDateTime(date, res, opts);
+        const parsed = parseFuzzyInput(value.label, { now: NOW });
+        expect(parsed).toEqual(value);
     });
 });

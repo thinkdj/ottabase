@@ -9,11 +9,12 @@ JS — no React, Vue, or Angular required.
 - **DateRangePicker** — Two-calendar layout for start/end range selection
 - **DateRangePicker (with Presets)** — Sidebar with quick-select presets + Apply/Cancel footer
 - **DateTimePicker** — Calendar + time inputs (hours, minutes, optional seconds, 12h/24h toggle)
-- **FuzzyDateTimePicker** — Half-remembered dates ("Early 1990s", "Summer 1998", "Late May 2010") via a recursive "when
-  in X?" drill-down: precision is derived from how deep the user goes, part chips give the coarse human answers, and
-  every value stores a queryable `[earliest, latest]` interval
-- **FuzzyDateTimeCompact** — Space-efficient fuzzy picker: sentence-style native `<select>`s that read like the stored
-  label ("Summer · 1998", "Late · May · 2010")
+- **FuzzyDateTimePicker**: half-remembered dates ("Early 1990s", "Summer 1998", "Late May 2010") in one fixed-size panel
+  that zooms like a map (decades → years → months → days → hours). Tap what you remember, as roughly as you like; parts
+  and "~ Roughly" are drawn as bands on the grid, and the panel spells out the stored range
+- **FuzzyDateTimeCompact**: same shell with native `<select>`s in label order ("Late · May · 2010"): the smallest
+  footprint, and the OS wheel on phones
+- **Type it**: both fuzzy pickers take typed memories ("summer 98", "early 90s", "last night") with a live preview
 - **UTC-first** — Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
   objects
 - **Auto timezone** — Displays dates in user's detected timezone automatically
@@ -151,19 +152,36 @@ const dt = OttaDate.createDateTimePicker(container, {
 
 ### `OttaDate.createFuzzyDateTimePicker(container, options)`
 
-For dates the user only partially remembers — "early 90s", "1996", "Summer 1998", "Late May 2010", "21 July 2026 at
-14:30". There is no upfront "pick your precision" step. Every section asks the same recursive question — **"when in
-X?"** — answerable at three fidelities:
+For dates the user only partly remembers: "early 90s", "1996", "Summer 1998", "Late May 2010", "21 July 2026 at 14:30".
+One panel, one grid at a time, zooming like a map:
 
-1. **Name the sub-unit** (pick a year / month / day / time) — drills one level deeper.
-2. **Pick a part chip** — the coarse terminal answer: early / mid / late (decades, years, months), seasons (years),
-   morning / afternoon / evening / night (days). A part is terminal: naming a deeper unit clears it.
-3. **Stop** — the resolution is simply the deepest level filled.
+```text
+ Type it: summer 98, early 90s…        ← type a memory (live preview, Enter to apply)
+ ‹            1998 ⌃            ›      ← title zooms out, arrows browse
+ [Sometime][Early ][ Mid  ][ Late ]    ← how sure you are about 1998
+ [Spring  ][Summer][Autumn][Winter]
+   Jan    Feb    Mar    Apr            ← or name a month to zoom in
+  ░May░  [Jun]  [Jul]  [Aug]           ← "Summer" as a band, "~ Roughly" hatched
+  ░Sep░   Oct    Nov    Dec
+ Around summer 1998       [~ Roughly]  ← what will be stored
+ May 1 to Sep 30, 1998
+ Today  Clear                    Done
+```
 
-The live sentence headline shows exactly what will be stored ("Early 1990s", "Sometime in May 2010"), next to a single
-**~ Roughly** toggle that marks the boundary itself as soft ("Around 1996" → could be 1995 or 1997). Tapping an active
-month/day/part again clears it; time is a cascading `hh : mm : ss` row where blank means "don't remember". **Every
-change applies immediately**; the footer offers Today / Clear plus Done (popover mode).
+The whole interaction model is four rules:
+
+1. **Browse freely.** The title (zoom out) and the ‹ › arrows never change the value.
+2. **Tap a cell** to name that period and zoom into it (1998 → its months → May's calendar → May 21's hours). Tapping a
+   cell already on the value's path just zooms in, so going back up never loses detail.
+3. **Tap a chip** to answer for the period on screen: a part (early / mid / late, seasons, morning … night) or
+   **Sometime** / **All day** ("just this period"), which is how you become less precise. Tap an active part to drop it.
+   A part is terminal: naming a finer unit replaces it.
+4. **~ Roughly** marks the edges as soft ("Around 1996" → 1995 to 1997).
+
+Parts are drawn as a solid band over the grid and the "~ Roughly" spill as a hatched band, and the result line spells
+out the stored range ("Jun 1 to Aug 31, 1998", or "Precise to the month" for plain values). Days use a real calendar
+with weekdays (a strong memory cue: "it was a Saturday"). Every change applies immediately; the footer offers Today /
+Clear plus Done (popover mode).
 
 ```typescript
 const fuzzy = OttaDate.createFuzzyDateTimePicker(container, {
@@ -171,10 +189,19 @@ const fuzzy = OttaDate.createFuzzyDateTimePicker(container, {
     resolutions: ['decade', 'year', 'month', 'day'], // decade is opt-in; default is year → second
     parts: true, // part chips (default: true)
     allowApproximate: true, // the ~ Roughly toggle (default: true)
+    quickEntry: true, // the "Type it" field (default: true)
     hemisphere: 'north', // season → month mapping (default: 'north')
-    inline: true, // Works great inline
+    inline: true,
 });
 ```
+
+**Opening view:** with a value, the panel opens inside its deepest named period ("Summer 1998" opens on 1998's months
+with Summer active). Empty, it opens on the grid of the coarsest allowed level: the decades grid in decade mode, else
+this decade's years. Nothing is pre-filled, so what you see selected is exactly what is stored.
+
+**Keyboard:** one tab stop per grid (the selected cell, else today), arrow keys move within it, Home / End jump, PageUp
+/ PageDown browse, Escape clears typed text first and then closes. On desktop the "Type it" field is focused on open, so
+click → type "summer 98" → Enter is the fastest path; on touch it is not, so the keyboard never covers the grid.
 
 Apps can re-voice labels without touching internals via `formatLabel`, which receives everything but the label:
 
@@ -193,25 +220,25 @@ const journal = OttaDate.createFuzzyDateTimePicker(container, {
 
 **`resolutions` semantics:** the list bounds the drill-down. The _coarsest_ entry is the required baseline (e.g.
 `['month', 'day']` keeps a month always selected), and the _finest_ entry caps how deep the UI goes (e.g.
-`['year', 'month', 'day']` never shows the time step). Pass `'decade'` to start the drill-down at decades.
+`['year', 'month', 'day']` never shows hours; a day then offers only its day-part chips). Pass `'decade'` to let a value
+stop at a decade.
 
 ### `OttaDate.createFuzzyDateTimeCompact(container, options)`
 
-Space-efficient fuzzy date picker for forms and sidebars. Same derived-resolution model, rendered as a **sentence of
-native `<select>`s that reads like the stored label** — the first select is the part ("Sometime" = none), and a small
-`~` chip marks the value as approximate:
+Same options, same shell (type-it field, result line, ~ Roughly, footer), with a body of native `<select>`s in the order
+the label reads, two per row:
 
 ```text
-[ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]        → "Sometime in 2020"
-[ Summer ▾ ]   [ Any month ▾ ] [ 1998 ▾ ]        → "Summer 1998"
-[ Late ▾ ] [ May ▾ ] [ Any day ▾ ] [ 2010 ▾ ]    → "Late May 2010"
-[ Sometime ▾ ] [ 1990s ▾ ] [ Any year ▾ ]        → "Sometime in the 1990s"  (decade mode)
+[ Sometime ▾ ] [ Year     ▾ ]          → nothing picked yet
+[ Summer   ▾ ] [ Any month▾ ]          → "Summer 1998"
+[ 1998     ▾ ]
+[ Late     ▾ ] [ May      ▾ ]          → "Late May 2010"
+[ Any day  ▾ ] [ 2010     ▾ ]
 ```
 
-Choosing "Any month" / "Any day" / "Any year" keeps the selection coarse; picking a real value refines it. Time inputs
-cascade in once a day is set. The year dropdown spans 10 years ahead to 100 years back (fuzzy recall is past-heavy); in
-decade mode the decade select pages the year select. Footer: Now (current date-time at the finest allowed depth, not
-approximate) and Clear. Auto-applies on change.
+"Sometime" is the no-part answer and "Any month" / "Any day" keep it coarse. The year list is grouped by decade (10
+years ahead to 100 back); in decade mode each group starts with the decade itself ("1990s"). Changing the year keeps the
+rest ("Summer 1998" → "Summer 1997"). Time inputs cascade in once a day is named.
 
 ```typescript
 const compact = OttaDate.createFuzzyDateTimeCompact(container, {
@@ -237,7 +264,8 @@ interface FuzzyDateTime {
 
 **Interval behavior (the machine-usable core):** every value carries `[earliest, latest]`. Sort a journal by
 `timestamp`, filter "everything in the 90s" with an overlap query (`earliest <= rangeEnd AND latest >= rangeStart`),
-render precise entries as points and fuzzy ones as bands.
+render precise entries as points and fuzzy ones as bands. `formatFuzzyRange(fuzzy)` turns the interval into text ("1990
+to 1993", "Jun 1 to Aug 31, 1998", "May 21, 2010, 21:00 to 23:59") for lists and tooltips.
 
 | Selection        | Label                          | Interval                        |
 | ---------------- | ------------------------------ | ------------------------------- |
@@ -272,8 +300,9 @@ never apply at time resolutions).
 
 ### Type-to-parse
 
-`parseFuzzyInput` turns typed memories into FuzzyDateTime values — the text front-end to the same vocabulary. The full
-fuzzy picker embeds it as a quick-entry field at the top (disable with `quickEntry: false`):
+`parseFuzzyInput` turns typed memories into FuzzyDateTime values, the text front-end to the same vocabulary. Both fuzzy
+pickers embed it as the "Type it" field (disable with `quickEntry: false`), and every built-in label parses back to the
+same value, so stored labels can be pasted or re-typed:
 
 ```typescript
 import { parseFuzzyInput } from '@ottabase/ottadate/parse';
@@ -337,10 +366,11 @@ import { OttaDate } from '@ottabase/ottadate';
 import { toDate, fromDate, formatDate, detectTimezone, resolveTimezone } from '@ottabase/ottadate/core';
 
 // FuzzyDateTime logic only (no DOM)
-import { createFuzzyDateTime, snapToResolution, buildFuzzyLabel } from '@ottabase/ottadate/fuzzy';
+import { createFuzzyDateTime, snapToResolution, buildFuzzyLabel, formatFuzzyRange } from '@ottabase/ottadate/fuzzy';
 
-// Headless fuzzy selection-state controller — the derived-resolution state
+// Headless fuzzy selection-state controller: the derived-resolution state
 // machine both fuzzy pickers render from. Use it to build custom fuzzy UIs.
+// `select(level, at)` names a period exactly (the one move a zoomable UI needs).
 import { createFuzzySelection } from '@ottabase/ottadate/fuzzy';
 
 // Type-to-parse (no DOM): "early 90s" / "summer 98" → FuzzyDateTime
@@ -417,6 +447,8 @@ function MyDatePicker({ value, onChange }) {
 - **Preset mode is opt-in.** Pass `presets` to `createDateRangePicker` to enable the sidebar + Apply/Cancel footer.
   Without it, the picker auto-applies on selection (classic mode). This is fully backward-compatible.
 - **Inline mode disables close.** When `inline: true`, `open()` / `close()` are no-ops; the calendar is always rendered.
-- **Popover positioning.** The popover uses `position: absolute` relative to the picker root. Ensure the parent
-  container has `position: relative` or uses normal flow.
-- **No keyboard navigation (yet).** Focus management and arrow-key navigation are planned for a future release.
+- **Popover positioning.** `DatePicker`, `DateTimePicker` and both fuzzy pickers use `position: fixed` with viewport
+  clamping, so scroll panes never clip them. `DateRangePicker` uses `position: absolute` relative to the picker root;
+  give its parent `position: relative` or normal flow.
+- **Keyboard navigation.** The fuzzy pickers are fully keyboard-driven (see above). The calendar pickers (`DatePicker`,
+  `DateRangePicker`, `DateTimePicker`) do not have arrow-key navigation yet.

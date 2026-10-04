@@ -5,6 +5,7 @@
  * hero image upload, SEO settings, and all post fields.
  */
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
+import { FuzzyDateField } from '@/components/editor/FuzzyDateField';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
@@ -31,7 +32,7 @@ import {
     type PostStatus,
     type SeoMeta,
 } from '@ottabase/ottablog';
-import { parseFuzzyInput, type FuzzyDateTime } from '@ottabase/ottadate';
+import type { FuzzyDateTime } from '@ottabase/ottadate';
 import {
     AdvancedImageTool,
     MediaLibraryTool,
@@ -422,7 +423,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const [originalDate, setOriginalDate] = useState<FuzzyDateTime | null>(
         (initialData?.originalDate as FuzzyDateTime | null) ?? null,
     );
-    const [originalDateInput, setOriginalDateInput] = useState(initialData?.originalDate?.label ?? '');
 
     // The same post on Instagram/X/Facebook, one optionally flagged as where it started.
     const [crossposts, setCrossposts] = useState<PostCrosspost[]>(initialData?.crossposts ?? []);
@@ -650,7 +650,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setPasswordHint(initialData.passwordHint ?? '');
         setPublishAt(initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '');
         setOriginalDate((initialData.originalDate as FuzzyDateTime | null) ?? null);
-        setOriginalDateInput(initialData.originalDate?.label ?? '');
         setCrossposts(initialData.crossposts ?? []);
         setHeroImage(initialData.heroImage ?? null);
         setSeoTitle(initialData.seoMeta?.title ?? '');
@@ -1117,10 +1116,8 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 isProtected,
                 passwordHint: passwordHint || undefined,
                 ...(isProtected && password.trim() ? { password: password.trim() } : {}),
-                // Only send originalDate when the input is clean: a successful parse or an
-                // explicit clear. An unparseable mid-edit string omits the field so PATCH
-                // semantics preserve the existing value instead of erasing it.
-                ...(originalDate || !originalDateInput.trim() ? { originalDate } : {}),
+                // The picker only ever holds a valid fuzzy date or null (cleared)
+                originalDate,
                 publishAt: publishAtPayload,
                 ...(expectedUpdatedAt !== undefined ? { expectedUpdatedAt } : {}),
                 seriesId,
@@ -1969,43 +1966,13 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Originally Written</Label>
-                                <Input
-                                    placeholder='e.g. "Late May 2010", "Summer 1998", "1990s"'
-                                    value={originalDateInput}
-                                    onChange={(e) => {
-                                        setOriginalDateInput(e.target.value);
-                                        const trimmed = e.target.value.trim();
-                                        if (!trimmed) {
-                                            // Cleared — erase the date
-                                            setOriginalDate(null);
-                                        } else {
-                                            const parsed = parseFuzzyInput(trimmed);
-                                            // Only update when the parse succeeds — an invalid mid-edit
-                                            // string must not erase an existing valid date on save.
-                                            if (parsed) setOriginalDate(parsed);
-                                        }
-                                    }}
+                                <Label htmlFor="originalDate">Originally Written</Label>
+                                <FuzzyDateField
+                                    id="originalDate"
+                                    value={originalDate}
+                                    onChange={setOriginalDate}
+                                    placeholder='e.g. "Late May 2010", "Summer 1998"'
                                 />
-                                {originalDate ? (
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-xs text-muted-foreground">{originalDate.label}</p>
-                                        <button
-                                            type="button"
-                                            className="text-xs text-muted-foreground hover:text-foreground"
-                                            onClick={() => {
-                                                setOriginalDate(null);
-                                                setOriginalDateInput('');
-                                            }}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ) : originalDateInput.trim() ? (
-                                    <p className="text-xs text-destructive">
-                                        Could not parse — try &quot;May 2010&quot; or &quot;early 1990s&quot;
-                                    </p>
-                                ) : null}
                             </div>
 
                             <div className="space-y-3 pt-2">

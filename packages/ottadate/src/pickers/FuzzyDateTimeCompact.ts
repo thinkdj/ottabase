@@ -1,478 +1,169 @@
 /**
- * @ottabase/ottadate — FuzzyDateTimeCompact
+ * @ottabase/ottadate: FuzzyDateTimeCompact
  *
- * Space-efficient fuzzy date picker for forms and sidebars. The controls are a
- * mad-lib sentence of native <select>s that reads like the stored label, and —
- * like the full picker — the resolution is DERIVED from how much of the
- * sentence the user fills in (see core/fuzzy-selection.ts):
+ * The small-footprint fuzzy picker for forms and sidebars: the same shell as
+ * FuzzyDateTimePicker (type-to-parse, result line, ~ Roughly, footer) with a
+ * body of native <select>s in the order the label reads. Native selects mean
+ * the OS wheel on phones.
  *
- *   [ Sometime ▾ ] [ Any month ▾ ] [ 2020 ▾ ]         → "Sometime in 2020"
- *   [ Summer ▾ ]   [ Any month ▾ ] [ 1998 ▾ ]         → "Summer 1998"
- *   [ Late ▾ ]     [ May ▾ ] [ Any day ▾ ] [ 2010 ▾ ] → "Late May 2010"
- *   [ 14 ] : [ 30 ]                                    ← time cascade, once a day is set
+ *   [ Late      ▾ ] [ May     ▾ ]      → "Late May 2010"
+ *   [ Any day   ▾ ] [ 2010    ▾ ]
+ *   [ hh ] : [ mm ]                    ← once a day is named
  *
- * The first select is the PART ("Sometime" = none); a small "~" chip marks the
- * whole thing as approximate. With `resolutions: ['decade', …]` a decade
- * select leads the sentence. Every change auto-applies.
- *
- * Usage:
- *   const picker = OttaDate.createFuzzyDateTimeCompact(container, {
- *       onChange: (fuzzy) => console.log(fuzzy),
- *   });
+ * "Sometime" is the no-part answer, "Any month" / "Any day" keep it coarse,
+ * and the year list is grouped by decade (with "1990s" itself selectable when
+ * decades are allowed). Every change auto-applies.
  */
 
-import { PART_LABELS } from '../core/fuzzy';
-import { createFuzzySelection, type FuzzySelection } from '../core/fuzzy-selection';
-import type { DatePart, FuzzyDateTime, FuzzyDateTimePickerInstance, FuzzyDateTimePickerOptions } from '../core/types';
-import { getIntlLocale, getMonthNames, pad2, resolveConfig } from '../core/utils';
-import {
-    btn,
-    clearChildren,
-    div,
-    el,
-    iconCalendar,
-    iconChevronDown,
-    iconX,
-    onClickOutside,
-    onEscape,
-    span,
-} from '../dom/helpers';
+import { PART_LABELS, resolutionIndex } from '../core/fuzzy';
+import type { DatePart, FuzzyDateTimePickerInstance, FuzzyDateTimePickerOptions } from '../core/types';
+import { getIntlLocale, getMonthNames } from '../core/utils';
+import { div, el, iconChevronDown, span } from '../dom/helpers';
+import { createFuzzyShell, timeFields, type FuzzyBody, type FuzzyBodyContext } from './fuzzy-shell';
 
-/** Year dropdown range — fuzzy dates are past-heavy, so reach far back */
+/** Year list range: fuzzy recall is past-heavy, so reach far back */
 const YEARS_AHEAD = 10;
 const YEARS_BACK = 100;
-const DECADES_BACK = 12;
+
+type Option = { value: string; label: string };
+type Group = { label: string; options: Option[] };
+
+function compactBody(ctx: FuzzyBodyContext): FuzzyBody {
+    /** Themed native <select> (custom chevron, mirrors ui-shadcn's NativeSelect) */
+    function select(key: string, label: string, items: (Option | Group)[], value: string, apply: (v: string) => void) {
+        const wrapper = div(`ottadate-fzc-select ottadate-fzc-select--${key}`);
+        const s = el('select', { className: 'ottadate-fzc-native', 'aria-label': label }) as HTMLSelectElement;
+        s.dataset.key = `select:${key}`; // keeps keyboard focus across re-renders
+        s.disabled = !!ctx.config.disabled;
+        const option = (o: Option) => {
+            const opt = el('option', { value: o.value }) as HTMLOptionElement;
+            opt.textContent = o.label;
+            return opt;
+        };
+        for (const item of items) {
+            if ('options' in item) {
+                const group = el('optgroup', { label: item.label });
+                item.options.forEach((o) => group.appendChild(option(o)));
+                s.appendChild(group);
+            } else {
+                s.appendChild(option(item));
+            }
+        }
+        s.value = value;
+        s.addEventListener('change', () => {
+            apply(s.value);
+            ctx.commit();
+        });
+        const chevron = span('ottadate-fzc-chevron', '');
+        chevron.innerHTML = iconChevronDown();
+        wrapper.append(s, chevron);
+        return wrapper;
+    }
+
+    /** Years grouped by decade, newest first; "1990s" itself is an option when decades are allowed */
+    function whenItems(): (Option | Group)[] {
+        const { sel } = ctx;
+        const s = sel.state;
+        const decadeMode = sel.base === 'decade';
+        const now = new Date().getFullYear();
+        const newest = Math.max(now + YEARS_AHEAD, s.year);
+        const oldest = Math.min(now - YEARS_BACK, s.year);
+        const items: (Option | Group)[] = s.hasSelection ? [] : [{ value: '', label: 'Year' }];
+
+        for (let d = newest - (newest % 10); d >= oldest - (oldest % 10); d -= 10) {
+            const options: Option[] = decadeMode ? [{ value: `d${d}`, label: `${d}s` }] : [];
+            if (sel.levelAllowed('year')) {
+                for (let y = Math.min(d + 9, newest); y >= Math.max(d, oldest); y--) {
+                    options.push({ value: `y${y}`, label: String(y) });
+                }
+            }
+            items.push(...(sel.levelAllowed('year') ? [{ label: `${d}s`, options }] : options));
+        }
+        return items;
+    }
+
+    function render(): HTMLElement {
+        const { sel } = ctx;
+        const s = sel.state;
+        const wrap = div('ottadate-fzc');
+        const grid = div('ottadate-fzc-grid');
+
+        // 1. Part: "Sometime" (none) or the parts of the current level
+        const parts = sel.partOptions();
+        if (parts.length || s.part) {
+            const none = sel.resolution() === 'day' ? 'All day' : 'Sometime';
+            grid.appendChild(
+                select(
+                    'part',
+                    'How sure',
+                    [{ value: '', label: none }, ...parts.map((p) => ({ value: p, label: PART_LABELS[p] }))],
+                    s.part ?? '',
+                    (v) => sel.setPart(v ? (v as DatePart) : null),
+                ),
+            );
+        }
+
+        // 2. Month, once a year is named
+        if (sel.levelAllowed('month') && s.hasSelection && s.yearSet) {
+            const required = resolutionIndex(sel.base) >= resolutionIndex('month');
+            const months = getMonthNames(getIntlLocale(ctx.config.locale)).map((name, i) => ({
+                value: String(i),
+                label: name,
+            }));
+            grid.appendChild(
+                select(
+                    'month',
+                    'Month',
+                    required ? months : [{ value: '', label: 'Any month' }, ...months],
+                    s.monthSet ? String(s.month) : '',
+                    (v) => (v === '' ? sel.clearMonth() : sel.setMonth(parseInt(v, 10))),
+                ),
+            );
+        }
+
+        // 3. Day, once a month is named
+        if (sel.levelAllowed('day') && s.monthSet) {
+            const days: Option[] = [];
+            for (let d = 1; d <= sel.daysInMonth(); d++) days.push({ value: String(d), label: String(d) });
+            const required = resolutionIndex(sel.base) >= resolutionIndex('day');
+            grid.appendChild(
+                select(
+                    'day',
+                    'Day',
+                    required ? days : [{ value: '', label: 'Any day' }, ...days],
+                    s.daySet ? String(s.day) : '',
+                    (v) => (v === '' ? sel.clearDay() : sel.setDay(parseInt(v, 10))),
+                ),
+            );
+        }
+
+        // 4. Year (or decade): last, like the label reads
+        const when = !s.hasSelection ? '' : s.yearSet ? `y${s.year}` : `d${s.year - (s.year % 10)}`;
+        grid.appendChild(
+            select('year', 'Year', whenItems(), when, (v) => {
+                const n = parseInt(v.slice(1), 10);
+                // A year keeps the rest of the date ("same day, another year"); a decade starts over
+                if (v.startsWith('d')) sel.select('decade', { year: n });
+                else sel.setYear(n);
+            }),
+        );
+        wrap.appendChild(grid);
+
+        // Time cascade, once a day is named
+        if (sel.levelAllowed('hour') && s.daySet) {
+            const time = div('ottadate-fz-exact');
+            time.append(span('ottadate-fz-exact-label', 'Time'), timeFields(ctx, true));
+            wrap.appendChild(time);
+        }
+        return wrap;
+    }
+
+    return { render, reset() {} };
+}
 
 export function createFuzzyDateTimeCompact(
     container: HTMLElement,
     options: FuzzyDateTimePickerOptions = {},
 ): FuzzyDateTimePickerInstance {
-    let config = resolveConfig({
-        placeholder: 'Select approximate date…',
-        ...options,
-    });
-
-    function buildSelection(value: FuzzyDateTime | null): FuzzySelection {
-        return createFuzzySelection({
-            resolutions: config.resolutions,
-            parts: config.parts,
-            hemisphere: config.hemisphere,
-            formatLabel: config.formatLabel,
-            value,
-        });
-    }
-
-    let sel = buildSelection(config.value ?? null);
-    let currentFuzzy: FuzzyDateTime | null = config.value ?? null;
-
-    let isOpen = false;
-    let removeClickOutside: (() => void) | null = null;
-    let removeEscapeHandler: (() => void) | null = null;
-
-    const root = div('ottadate');
-    root.classList.add('ottadate--compact');
-    if (config.inline) root.classList.add('ottadate--inline');
-    container.appendChild(root);
-
-    // Trigger
-    const trigger = el('button', {
-        className: 'ottadate-trigger',
-        type: 'button',
-        'aria-haspopup': 'dialog',
-        'aria-expanded': 'false',
-    }) as HTMLButtonElement;
-
-    if (config.disabled) {
-        trigger.setAttribute('aria-disabled', 'true');
-    }
-
-    const triggerIcon = span('ottadate-trigger-icon', '');
-    triggerIcon.innerHTML = iconCalendar();
-    const triggerText = span('ottadate-trigger-text', '');
-    const triggerClear = el('button', {
-        className: 'ottadate-trigger-clear',
-        type: 'button',
-        'aria-label': 'Clear',
-    }) as HTMLButtonElement;
-    triggerClear.innerHTML = iconX();
-    triggerClear.style.display = 'none';
-
-    trigger.append(triggerIcon, triggerText, triggerClear);
-    if (!config.inline) root.appendChild(trigger);
-
-    // Popover
-    const popover = div('ottadate-popover');
-    popover.style.display = config.inline ? '' : 'none';
-    if (config.inline) isOpen = true;
-    root.appendChild(popover);
-
-    // --- Actions ---
-
-    function emitChange() {
-        if (config.onChange) {
-            config.onChange(currentFuzzy);
-        }
-    }
-
-    /** Every change auto-applies — each partial state is a valid fuzzy date */
-    function commit() {
-        currentFuzzy = sel.build();
-        updateTriggerText();
-        emitChange();
-        render();
-    }
-
-    // --- Rendering helpers ---
-
-    function updateTriggerText() {
-        if (currentFuzzy) {
-            triggerText.textContent = currentFuzzy.label;
-            triggerText.classList.remove('ottadate-trigger-placeholder');
-            triggerClear.style.display = '';
-        } else {
-            triggerText.textContent = config.placeholder!;
-            triggerText.classList.add('ottadate-trigger-placeholder');
-            triggerClear.style.display = 'none';
-        }
-    }
-
-    /** Themed <select> with a custom chevron (mirrors ui-shadcn's NativeSelect) */
-    function createSelect(
-        className: string,
-        optionItems: { value: string; label: string }[],
-        currentValue: string,
-        onChange: (value: string) => void,
-    ): HTMLElement {
-        const wrapper = div(`ottadate-compact-select-wrapper ${className}`);
-
-        const select = el('select', {
-            className: 'ottadate-compact-select',
-        }) as HTMLSelectElement;
-
-        if (config.disabled) select.disabled = true;
-
-        for (const opt of optionItems) {
-            const option = el('option', { value: opt.value }) as HTMLOptionElement;
-            option.textContent = opt.label;
-            if (opt.value === currentValue) option.selected = true;
-            select.appendChild(option);
-        }
-
-        select.addEventListener('change', () => onChange(select.value));
-
-        const chevron = span('ottadate-compact-select-chevron', '');
-        chevron.innerHTML = iconChevronDown();
-
-        wrapper.append(select, chevron);
-        return wrapper;
-    }
-
-    /** The sentence row: [part] [decade?] [month?] [day?] [year] [~] */
-    function renderSentenceRow(): HTMLElement {
-        const row = div('ottadate-compact-row');
-
-        // Part — "Sometime" is the no-part state; options track the current level
-        const partChoices = sel.partOptions();
-        if (partChoices.length || sel.state.part) {
-            const partItems = [
-                { value: '', label: 'Sometime' },
-                ...partChoices.map((p) => ({ value: p, label: PART_LABELS[p] })),
-            ];
-            row.appendChild(
-                createSelect('ottadate-compact-part', partItems, sel.state.part ?? '', (val) => {
-                    sel.setPart(val === '' ? null : (val as DatePart));
-                    commit();
-                }),
-            );
-        }
-
-        const decadeMode = sel.base === 'decade';
-
-        // Decade — leads the sentence in decade mode, and pages the year select
-        if (decadeMode) {
-            const currentDecade = new Date().getFullYear() - (new Date().getFullYear() % 10);
-            const first = Math.max(currentDecade + 10, sel.decadeStart());
-            const last = Math.min(currentDecade - DECADES_BACK * 10, sel.decadeStart());
-            const decadeItems: { value: string; label: string }[] = [];
-            for (let d = first; d >= last; d -= 10) {
-                decadeItems.push({ value: String(d), label: `${d}s` });
-            }
-            row.appendChild(
-                createSelect('ottadate-compact-decade', decadeItems, String(sel.decadeStart()), (val) => {
-                    sel.stepDecade((parseInt(val, 10) - sel.decadeStart()) / 10);
-                    commit();
-                }),
-            );
-        }
-
-        // Year — "Any year" keeps a decade-mode selection at decade resolution
-        if (sel.levelAllowed('year')) {
-            const yearItems: { value: string; label: string }[] = [];
-            if (decadeMode) {
-                yearItems.push({ value: '', label: 'Any year' });
-                const start = sel.decadeStart();
-                for (let y = start + 9; y >= start; y--) {
-                    yearItems.push({ value: String(y), label: String(y) });
-                }
-            } else {
-                const now = new Date().getFullYear();
-                const maxYear = Math.max(now + YEARS_AHEAD, sel.state.year);
-                const minYear = Math.min(now - YEARS_BACK, sel.state.year);
-                for (let y = maxYear; y >= minYear; y--) {
-                    yearItems.push({ value: String(y), label: String(y) });
-                }
-            }
-            row.appendChild(
-                createSelect(
-                    'ottadate-compact-year',
-                    yearItems,
-                    sel.state.yearSet ? String(sel.state.year) : '',
-                    (val) => {
-                        if (val === '') {
-                            if (sel.state.yearSet) sel.toggleYear(sel.state.year);
-                        } else {
-                            sel.setYear(parseInt(val, 10));
-                        }
-                        commit();
-                    },
-                ),
-            );
-        }
-
-        // Month — "Any month" keeps the selection at year resolution
-        if (sel.levelAllowed('month') && sel.state.yearSet) {
-            const monthRequired = sel.base !== 'decade' && sel.base !== 'year';
-            const months = getMonthNames(getIntlLocale(config.locale));
-            const monthItems = [
-                ...(monthRequired ? [] : [{ value: '', label: 'Any month' }]),
-                ...months.map((name, idx) => ({ value: String(idx), label: name })),
-            ];
-            row.appendChild(
-                createSelect(
-                    'ottadate-compact-month',
-                    monthItems,
-                    sel.state.monthSet ? String(sel.state.month) : '',
-                    (val) => {
-                        if (val === '') sel.clearMonth();
-                        else sel.setMonth(parseInt(val, 10));
-                        commit();
-                    },
-                ),
-            );
-        }
-
-        // Day — appears only once a month is chosen
-        if (sel.levelAllowed('day') && sel.state.monthSet) {
-            const dayRequired = sel.base !== 'decade' && sel.base !== 'year' && sel.base !== 'month';
-            const dayItems = [...(dayRequired ? [] : [{ value: '', label: 'Any day' }])];
-            for (let d = 1; d <= sel.daysInMonth(); d++) {
-                dayItems.push({ value: String(d), label: String(d) });
-            }
-            row.appendChild(
-                createSelect('ottadate-compact-day', dayItems, sel.state.daySet ? String(sel.state.day) : '', (val) => {
-                    if (val === '') sel.clearDay();
-                    else sel.setDay(parseInt(val, 10));
-                    commit();
-                }),
-            );
-        }
-
-        // "~" — approximate chip
-        if (config.allowApproximate !== false) {
-            const approxChip = btn('ottadate-part-chip ottadate-compact-approx-chip', '~', () => {
-                if (config.disabled) return;
-                sel.toggleApproximate();
-                commit();
-            });
-            approxChip.title = 'Roughly — widens the stored range';
-            approxChip.setAttribute('aria-label', 'Approximate');
-            if (sel.state.approximate) approxChip.classList.add('ottadate-part-chip--active');
-            row.appendChild(approxChip);
-        }
-
-        return row;
-    }
-
-    /** Cascading time inputs — blank = "don't remember"; appears once a day is set */
-    function timeInput(
-        value: number | null,
-        enabled: boolean,
-        ariaLabel: string,
-        onCommit: (value: number | null) => void,
-    ): HTMLInputElement {
-        const input = el('input', {
-            className: 'ottadate-time-input',
-            type: 'number',
-            placeholder: '––',
-            'aria-label': ariaLabel,
-        }) as HTMLInputElement;
-        input.value = value != null ? pad2(value) : '';
-        input.disabled = config.disabled || !enabled;
-        input.addEventListener('change', () => {
-            const raw = input.value.trim();
-            if (raw === '') {
-                onCommit(null);
-            } else {
-                const parsed = parseInt(raw, 10);
-                onCommit(isNaN(parsed) ? null : parsed);
-            }
-            commit();
-        });
-        return input;
-    }
-
-    function renderTimeRow(): HTMLElement | null {
-        if (!sel.levelAllowed('hour') || !sel.state.daySet) return null;
-
-        const row = div('ottadate-compact-row');
-        row.appendChild(timeInput(sel.state.hour, true, 'Hour', (v) => sel.setHour(v)));
-
-        if (sel.levelAllowed('minute')) {
-            row.appendChild(span('ottadate-time-separator', ':'));
-            row.appendChild(timeInput(sel.state.minute, sel.state.hour != null, 'Minute', (v) => sel.setMinute(v)));
-        }
-        if (sel.levelAllowed('second')) {
-            row.appendChild(span('ottadate-time-separator', ':'));
-            row.appendChild(timeInput(sel.state.second, sel.state.minute != null, 'Second', (v) => sel.setSecond(v)));
-        }
-
-        return row;
-    }
-
-    /** Live preview of the stored label */
-    function renderPreview(): HTMLElement {
-        const preview = sel.build();
-        return span('ottadate-compact-desc', preview ? preview.label : 'Pick what you remember…');
-    }
-
-    function renderFooter(): HTMLElement {
-        const footer = div('ottadate-footer');
-
-        const nowBtn = btn('ottadate-footer-btn ottadate-footer-btn--primary', 'Now', () => {
-            if (config.disabled) return;
-            sel.setNow();
-            commit();
-        });
-
-        const clearBtn = btn('ottadate-footer-btn', 'Clear', () => {
-            if (config.disabled) return;
-            sel.clear();
-            commit();
-        });
-
-        footer.append(nowBtn, clearBtn);
-        return footer;
-    }
-
-    function render() {
-        clearChildren(popover);
-
-        const wrapper = div('ottadate-compact-wrapper');
-        wrapper.appendChild(renderSentenceRow());
-
-        const timeRow = renderTimeRow();
-        if (timeRow) wrapper.appendChild(timeRow);
-
-        wrapper.appendChild(renderPreview());
-
-        popover.appendChild(wrapper);
-        popover.appendChild(renderFooter());
-    }
-
-    function openPicker() {
-        if (isOpen || config.disabled) return;
-        isOpen = true;
-        popover.style.display = '';
-        trigger.setAttribute('aria-expanded', 'true');
-        render();
-
-        removeClickOutside = onClickOutside(root, closePicker);
-        removeEscapeHandler = onEscape(closePicker);
-    }
-
-    function closePicker() {
-        if (!isOpen || config.inline) return;
-        isOpen = false;
-        popover.style.display = 'none';
-        trigger.setAttribute('aria-expanded', 'false');
-        removeClickOutside?.();
-        removeEscapeHandler?.();
-        removeClickOutside = null;
-        removeEscapeHandler = null;
-    }
-
-    // --- Events ---
-
-    trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (isOpen) closePicker();
-        else openPicker();
-    });
-
-    triggerClear.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sel.clear();
-        currentFuzzy = null;
-        updateTriggerText();
-        emitChange();
-        if (isOpen) render();
-    });
-
-    // --- Initial render ---
-
-    updateTriggerText();
-    if (config.inline) render();
-
-    // --- Value plumbing ---
-
-    function applyValue(value: FuzzyDateTime | null) {
-        if (value) {
-            sel.load(value);
-            currentFuzzy = value;
-        } else {
-            sel.clear();
-            currentFuzzy = null;
-        }
-        updateTriggerText();
-        if (isOpen) render();
-    }
-
-    // --- Public API ---
-
-    return {
-        open: openPicker,
-        close: closePicker,
-        toggle() {
-            if (isOpen) closePicker();
-            else openPicker();
-        },
-        setValue: applyValue,
-        getValue() {
-            return currentFuzzy;
-        },
-        setOptions(newOptions) {
-            config = resolveConfig({ ...config, ...newOptions });
-            // Constraint changes need a fresh selection controller
-            if (
-                newOptions.resolutions !== undefined ||
-                newOptions.parts !== undefined ||
-                newOptions.hemisphere !== undefined ||
-                newOptions.formatLabel !== undefined
-            ) {
-                sel = buildSelection(currentFuzzy);
-            }
-            if (newOptions.value !== undefined) {
-                applyValue(newOptions.value);
-            } else {
-                updateTriggerText();
-                if (isOpen) render();
-            }
-        },
-        destroy() {
-            closePicker();
-            root.remove();
-        },
-        isOpen: () => isOpen,
-        element: root,
-    };
+    return createFuzzyShell(container, options, { className: 'ottadate--fuzzy ottadate--compact', body: compactBody });
 }

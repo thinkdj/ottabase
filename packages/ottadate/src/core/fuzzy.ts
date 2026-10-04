@@ -19,7 +19,7 @@
  */
 
 import type { DatePart, DateResolution, FuzzyDateTime, FuzzyLabelFormatter, Hemisphere } from './types';
-import { getMonthNames, pad2 } from './utils';
+import { getMonthNames, getMonthNamesShort, pad2 } from './utils';
 
 // ---------------------------------------------------------------------------
 // Ordered resolution levels (coarsest → finest)
@@ -571,6 +571,53 @@ export function decodeFuzzyDateTime(
     }
 
     return null;
+}
+
+// ---------------------------------------------------------------------------
+// Readable interval: what a fuzzy value actually covers
+// ---------------------------------------------------------------------------
+
+/**
+ * Human-readable `[earliest, latest]` span of a FuzzyDateTime, so users can see
+ * what a fuzzy answer stores:
+ *
+ *   "Early 1990s"           → "1990 to 1993"
+ *   "Summer 1998"           → "Jun 1 to Aug 31, 1998"
+ *   "Winter 1998"           → "Dec 1, 1998 to Feb 28, 1999"
+ *   "Night of May 21, 2010" → "May 21, 2010, 21:00 to 23:59"
+ *   "May 21, 2010"          → "May 21, 2010"
+ *
+ * Whole years collapse to years, whole days to dates; anything finer shows
+ * times (with seconds only at second resolution). English, UTC components.
+ */
+export function formatFuzzyRange(fuzzy: Pick<FuzzyDateTime, 'earliest' | 'latest' | 'resolution'>): string {
+    const a = new Date(fuzzy.earliest * 1000);
+    const b = new Date(fuzzy.latest * 1000);
+    const months = getMonthNamesShort();
+    const ya = a.getUTCFullYear();
+    const yb = b.getUTCFullYear();
+    const date = (d: Date) => `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    const time = (d: Date) =>
+        `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` +
+        (fuzzy.resolution === 'second' ? `:${pad2(d.getUTCSeconds())}` : '');
+    const sameDay = ya === yb && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate();
+    const wholeDays =
+        a.getUTCHours() + a.getUTCMinutes() + a.getUTCSeconds() === 0 &&
+        b.getUTCHours() === 23 &&
+        b.getUTCMinutes() === 59 &&
+        b.getUTCSeconds() === 59;
+
+    if (wholeDays) {
+        if (sameDay) return `${date(a)}, ${ya}`;
+        const wholeYears =
+            a.getUTCMonth() === 0 && a.getUTCDate() === 1 && b.getUTCMonth() === 11 && b.getUTCDate() === 31;
+        if (wholeYears) return ya === yb ? `${ya}` : `${ya} to ${yb}`;
+        return ya === yb ? `${date(a)} to ${date(b)}, ${yb}` : `${date(a)}, ${ya} to ${date(b)}, ${yb}`;
+    }
+    if (sameDay) return `${date(a)}, ${ya}, ${time(a)} to ${time(b)}`;
+    return ya === yb
+        ? `${date(a)}, ${time(a)} to ${date(b)}, ${time(b)}, ${yb}`
+        : `${date(a)}, ${ya}, ${time(a)} to ${date(b)}, ${yb}, ${time(b)}`;
 }
 
 // ---------------------------------------------------------------------------

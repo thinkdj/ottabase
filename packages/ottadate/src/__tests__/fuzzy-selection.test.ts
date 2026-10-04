@@ -296,3 +296,51 @@ describe('createFuzzySelection — shortcuts and lifecycle', () => {
         expect(sel.resolution()).toBe('minute');
     });
 });
+
+describe('createFuzzySelection: select (name a period exactly)', () => {
+    it('names the level and every coarser one, clearing finer levels and the part', () => {
+        const sel = createFuzzySelection();
+        sel.select('day', { year: 2010, month: 4, day: 21 });
+        sel.setHour(14);
+        sel.setPart(null);
+
+        sel.select('month', { year: 2010, month: 4 });
+        expect(sel.resolution()).toBe('month');
+        expect(sel.state.daySet).toBe(false);
+        expect(sel.state.hour).toBeNull();
+        expect(sel.build()!.label).toBe('Sometime in May 2010');
+    });
+
+    it('drops a part but keeps approximate', () => {
+        const sel = createFuzzySelection();
+        sel.select('year', { year: 1998 });
+        sel.setPart('summer');
+        sel.setApproximate(true);
+
+        sel.select('year', { year: 1997 });
+        expect(sel.state.part).toBeNull();
+        expect(sel.build()!.label).toBe('Around 1997');
+    });
+
+    it('snaps a decade to its first year and leaves the year un-named', () => {
+        const sel = createFuzzySelection({ resolutions: ['decade', 'year', 'month'] });
+        sel.select('decade', { year: 1996 });
+        expect(sel.state.year).toBe(1990);
+        expect(sel.state.yearSet).toBe(false);
+        expect(sel.build()!.label).toBe('Sometime in the 1990s');
+    });
+
+    it('fills hour/minute/second from the coordinates at time levels', () => {
+        const sel = createFuzzySelection();
+        sel.select('minute', { year: 2010, month: 4, day: 21, hour: 14, minute: 30 });
+        expect(sel.resolution()).toBe('minute');
+        expect(sel.build()!.label).toBe('May 21, 2010 at 14:30');
+    });
+
+    it('ignores levels outside the allowed bounds', () => {
+        const sel = createFuzzySelection({ resolutions: ['year', 'month'] });
+        sel.select('decade', { year: 1990 });
+        sel.select('day', { year: 2010, month: 4, day: 21 });
+        expect(sel.state.hasSelection).toBe(false);
+    });
+});

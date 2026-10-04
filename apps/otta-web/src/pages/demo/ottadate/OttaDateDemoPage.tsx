@@ -5,7 +5,7 @@
  * - DatePicker (single date)
  * - DateRangePicker
  * - DateTimePicker
- * - FuzzyDateTimePicker
+ * - FuzzyDateTimePicker (zoom panel) + FuzzyDateTimeCompact (native selects)
  *
  * Each picker is mounted as a vanilla JS widget inside React refs.
  */
@@ -13,6 +13,7 @@
 import {
     OttaDate,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     getDefaultRangePresets,
     parseFuzzyInput,
     type DatePickerInstance,
@@ -230,9 +231,10 @@ function FuzzyDateTimeDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime Picker</CardTitle>
                 <CardDescription>
-                    For dates you only partially remember. Each step asks "when in X?" — name the sub-unit, pick a part
-                    chip (early/mid/late, seasons, day-parts), or stop. Precision is derived from how deep you go, and
-                    the stored value carries a queryable [earliest, latest] interval. Every change applies immediately.
+                    For dates you only partly remember. One panel that zooms like a map: tap a year, month or day to
+                    zoom in, tap the title to zoom out. Chips answer for the period on screen (Sometime, early/mid/late,
+                    seasons, morning to night), and the result line shows the exact range that gets stored. Or just type
+                    it: "summer 98", then Enter.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -270,9 +272,8 @@ function FuzzyDateTimeInlineDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Inline, Decades)</CardTitle>
                 <CardDescription>
-                    Inline "memory mode": decade opt-in via resolutions, capped at day. Try "Early 1990s", "Summer
-                    1998", or "Late May 2010" — part chips are the coarse answer to each "when in X?" step, and the ~
-                    toggle marks the whole thing as rough.
+                    Inline, decades allowed, capped at day. Try "Early 1990s" (1990s, then Early), "Summer 1998" or
+                    "Late May 2010". Parts show as a band on the grid; ~ Roughly hatches the spill beyond it.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -304,9 +305,9 @@ function FuzzyCompactDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Compact)</CardTitle>
                 <CardDescription>
-                    Sentence-style native selects that read like the stored label — "Summer · 1998", "Late · May ·
-                    2010". "Sometime" is the no-part state; "Any month" / "Any day" stay coarse; the ~ chip marks it
-                    rough. Space-efficient for forms and sidebars; auto-applies on change.
+                    Same shell, native selects in label order: "Late · May · 2010". "Sometime" is the no-part answer,
+                    "Any month" / "Any day" stay coarse, years are grouped by decade. Smallest footprint, and the OS
+                    wheel on phones.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -344,7 +345,7 @@ function FuzzyCompactInlineDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy Compact (Inline)</CardTitle>
                 <CardDescription>
-                    Inline compact mode capped at day resolution. Minimal footprint for embedded forms.
+                    Inline compact capped at day resolution, for embedded forms and sidebars.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -369,9 +370,9 @@ function FuzzyParseDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Type a Memory (parseFuzzyInput)</CardTitle>
                 <CardDescription>
-                    Free-text front-end to the same vocabulary — try "early 90s", "summer 98", "late may 2010", "21 july
+                    Free-text front-end to the same vocabulary: try "early 90s", "summer 98", "late may 2010", "21 july
                     2026 9pm", "1996ish", "last night". Strict: anything unrecognized returns null instead of guessing.
-                    The full fuzzy picker embeds this as its quick-entry field.
+                    Both fuzzy pickers embed this as their "Type it" field.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -385,6 +386,8 @@ function FuzzyParseDemo() {
                     <div className="space-y-2">
                         <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
                             "{parsed.label}" <span className="not-italic text-muted-foreground">·</span>{' '}
+                            <span className="not-italic text-xs text-muted-foreground">{formatFuzzyRange(parsed)}</span>{' '}
+                            <span className="not-italic text-muted-foreground">·</span>{' '}
                             <code className="not-italic text-xs text-muted-foreground">
                                 {encodeFuzzyDateTime(parsed)}
                             </code>

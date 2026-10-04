@@ -57,6 +57,7 @@ export {
     createFuzzyDateTime,
     decodeFuzzyDateTime,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     isResolutionFinerOrEqual,
     isValidPart,
     parseFuzzyDateTime,

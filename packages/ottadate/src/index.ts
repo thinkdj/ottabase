@@ -55,6 +55,7 @@ export {
     decodeFuzzyDateTime,
     DEFAULT_RESOLUTIONS,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     parseFuzzyDateTime,
     PART_LABELS,
     partsForResolution,
@@ -67,7 +68,7 @@ export {
 
 // Headless fuzzy selection-state controller (build custom fuzzy UIs on top)
 export { createFuzzySelection } from './core/fuzzy-selection';
-export type { FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
+export type { FuzzySelectAt, FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
 
 // Type-to-parse ("early 90s", "summer 98", "21 july 2026" → FuzzyDateTime)
 export { parseFuzzyInput } from './core/parse';
@@ -92,6 +93,7 @@ import {
     createFuzzyDateTime,
     decodeFuzzyDateTime,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     parseFuzzyDateTime,
     refreshFuzzyLabel,
     snapToResolution,
@@ -143,5 +145,6 @@ export const OttaDate = {
     snapToResolution,
     encodeFuzzyDateTime,
     decodeFuzzyDateTime,
+    formatFuzzyRange,
     parseFuzzyInput,
 } as const;

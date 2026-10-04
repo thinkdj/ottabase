@@ -13,6 +13,7 @@ import {
     decodeFuzzyDateTime,
     DEFAULT_RESOLUTIONS,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     isResolutionFinerOrEqual,
     isValidPart,
     parseFuzzyDateTime,
@@ -311,5 +312,36 @@ describe('RESOLUTION_LABELS', () => {
             expect(typeof RESOLUTION_LABELS[res]).toBe('string');
             expect(RESOLUTION_LABELS[res].length).toBeGreaterThan(0);
         }
+    });
+});
+
+describe('formatFuzzyRange', () => {
+    const range = (date: Date, res: Parameters<typeof createFuzzyDateTime>[1], opts = {}) =>
+        formatFuzzyRange(createFuzzyDateTime(date, res, opts));
+
+    it('collapses whole years to years', () => {
+        expect(range(new Date(Date.UTC(1990, 0)), 'decade', { part: 'early' })).toBe('1990 to 1993');
+        expect(range(new Date(Date.UTC(1996, 0)), 'year', { approximate: true })).toBe('1995 to 1997');
+        expect(range(new Date(Date.UTC(1996, 0)), 'year')).toBe('1996');
+    });
+
+    it('shows dates for part-of-year and part-of-month spans, crossing years when needed', () => {
+        expect(range(new Date(Date.UTC(1998, 0)), 'year', { part: 'summer' })).toBe('Jun 1 to Aug 31, 1998');
+        expect(range(new Date(Date.UTC(1998, 0)), 'year', { part: 'winter' })).toBe('Dec 1, 1998 to Feb 28, 1999');
+        expect(range(new Date(Date.UTC(2010, 4)), 'month', { part: 'late' })).toBe('May 21 to May 31, 2010');
+        expect(range(new Date(Date.UTC(2010, 4, 21)), 'day')).toBe('May 21, 2010');
+    });
+
+    it('shows times below a day, with seconds only at second resolution', () => {
+        expect(range(new Date(Date.UTC(2010, 4, 21)), 'day', { part: 'night' })).toBe('May 21, 2010, 21:00 to 23:59');
+        expect(range(new Date(Date.UTC(2010, 4, 21, 14, 30)), 'minute', { approximate: true })).toBe(
+            'May 21, 2010, 14:15 to 14:45',
+        );
+        expect(range(new Date(Date.UTC(2010, 4, 21, 14, 30, 30)), 'second', { approximate: true })).toBe(
+            'May 21, 2010, 14:30:15 to 14:30:45',
+        );
+        expect(range(new Date(Date.UTC(2010, 4, 21)), 'day', { part: 'night', approximate: true })).toBe(
+            'May 21, 19:00 to May 22, 01:59, 2010',
+        );
     });
 });

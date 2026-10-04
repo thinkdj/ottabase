@@ -16,6 +16,7 @@ export {
     createFuzzyDateTime,
     decodeFuzzyDateTime,
     encodeFuzzyDateTime,
+    formatFuzzyRange,
     isResolutionFinerOrEqual,
     isValidPart,
     parseFuzzyDateTime,
@@ -29,4 +30,4 @@ export {
 // Headless selection-state controller (what the fuzzy pickers render from) —
 // use it to build custom fuzzy-date UIs with the same derived-resolution model.
 export { createFuzzySelection } from './core/fuzzy-selection';
-export type { FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
+export type { FuzzySelectAt, FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';

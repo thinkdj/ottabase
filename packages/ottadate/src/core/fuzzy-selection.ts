@@ -66,6 +66,16 @@ export interface FuzzySelectionState {
     hasSelection: boolean;
 }
 
+/** Coordinates for `select()`: only the parts down to the selected level are read */
+export interface FuzzySelectAt {
+    year: number;
+    month?: number; // 0-indexed
+    day?: number;
+    hour?: number;
+    minute?: number;
+    second?: number;
+}
+
 export interface FuzzySelection {
     state: FuzzySelectionState;
     base: DateResolution;
@@ -107,6 +117,12 @@ export interface FuzzySelection {
     toggleApproximate(): void;
     /** Today's date, no time or part — the common "it happened today" shortcut */
     setToday(): void;
+    /**
+     * Name a period exactly: `level` and every coarser level come from `at`,
+     * everything finer and the part are cleared. The one move a zoomable UI
+     * needs ("it was 1998", "it was May 21"). Ignored outside the allowed bounds.
+     */
+    select(level: DateResolution, at: FuzzySelectAt): void;
     /** Full current date+time at the finest allowed depth, not approximate */
     setNow(): void;
     /** Reset to the empty state */
@@ -318,6 +334,26 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         state.hasSelection = true;
     }
 
+    function select(level: DateResolution, at: FuzzySelectAt) {
+        if (resolutionIndex(level) < resolutionIndex(base) || !levelAllowed(level)) return;
+        const named = (l: DateResolution) => isResolutionFinerOrEqual(level, l);
+        const year = clamp(Math.round(at.year), 1, 9999);
+
+        state.yearSet = named('year');
+        state.year = state.yearSet ? year : year - (year % 10);
+        state.monthSet = named('month');
+        state.month = state.monthSet ? clamp(at.month ?? 0, 0, 11) : 0;
+        state.daySet = named('day');
+        state.day = state.daySet ? clamp(at.day ?? 1, 1, daysInMonth()) : 1;
+        state.hour = named('hour') ? clamp(at.hour ?? 0, 0, 23) : null;
+        state.minute = named('minute') ? clamp(at.minute ?? 0, 0, 59) : null;
+        state.second = named('second') ? clamp(at.second ?? 0, 0, 59) : null;
+        state.part = null;
+        partLevel = null;
+        state.hasSelection = true;
+        applyBaseFloor();
+    }
+
     function setApproximate(approximate: boolean) {
         state.approximate = approximate;
         if (approximate) state.hasSelection = true;
@@ -415,6 +451,7 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
             setApproximate(!state.approximate);
         },
         setToday,
+        select,
         setNow() {
             setToday();
             const now = new Date();
