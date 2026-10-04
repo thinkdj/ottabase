@@ -8,17 +8,18 @@ function defaultRenderResult(result: SpotlightResult, index: number, isSelected:
     return (
         <div
             className={cn(
-                'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-75',
+                'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-75',
                 isSelected && 'bg-accent text-accent-foreground',
             )}
         >
-            {result.icon && <div className="flex-shrink-0">{result.icon}</div>}
+            {result.icon && <div className="flex-shrink-0 text-muted-foreground">{result.icon}</div>}
             <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm">{result.label}</div>
                 {result.description && (
                     <div className="text-xs text-muted-foreground mt-0.5 truncate">{result.description}</div>
                 )}
             </div>
+            {result.hint && <span className="flex-shrink-0 text-xs text-muted-foreground">{result.hint}</span>}
         </div>
     );
 }
@@ -28,6 +29,7 @@ export function Spotlight({
     onOpenChange,
     placeholder = 'Search...',
     emptyMessage = 'No results found',
+    idleMessage = 'Type to search',
     loadingMessage = 'Searching...',
     errorMessage = 'An error occurred while searching',
     onSearch,
@@ -51,6 +53,8 @@ export function Spotlight({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const listId = React.useId();
+    const optionId = (index: number) => `${listId}-option-${index}`;
     const resultsRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const defaultResultsRef = useRef(defaultResults);
@@ -291,6 +295,14 @@ export function Spotlight({
                         <input
                             ref={inputRef}
                             type="text"
+                            role="combobox"
+                            aria-expanded={results.length > 0}
+                            aria-controls={listId}
+                            aria-autocomplete="list"
+                            aria-activedescendant={
+                                selectedIndex >= 0 && results[selectedIndex] ? optionId(selectedIndex) : undefined
+                            }
+                            aria-label={placeholder}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder={placeholder}
@@ -331,7 +343,9 @@ export function Spotlight({
                                 </div>
                             )
                         ) : results.length === 0 ? (
-                            renderEmpty ? (
+                            !query.trim() ? (
+                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">{idleMessage}</div>
+                            ) : renderEmpty ? (
                                 renderEmpty()
                             ) : (
                                 <div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -339,19 +353,37 @@ export function Spotlight({
                                 </div>
                             )
                         ) : (
-                            <div className="py-2">
+                            <div className="py-2" role="listbox" id={listId} aria-label="Results">
                                 {results.map((result, index) => (
-                                    <div
-                                        key={result.id}
-                                        data-index={index}
-                                        onClick={() => handleResultClick(result)}
-                                        onMouseEnter={() => setSelectedIndex(index)}
-                                    >
-                                        {renderResult(result, index, index === selectedIndex)}
-                                    </div>
+                                    <React.Fragment key={result.id}>
+                                        {result.group && result.group !== results[index - 1]?.group && (
+                                            <div
+                                                role="presentation"
+                                                className="px-4 pb-1 pt-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground first:pt-1"
+                                            >
+                                                {result.group}
+                                            </div>
+                                        )}
+                                        <div
+                                            id={optionId(index)}
+                                            role="option"
+                                            aria-selected={index === selectedIndex}
+                                            data-index={index}
+                                            onClick={() => handleResultClick(result)}
+                                            onMouseEnter={() => setSelectedIndex(index)}
+                                        >
+                                            {renderResult(result, index, index === selectedIndex)}
+                                        </div>
+                                    </React.Fragment>
                                 ))}
                             </div>
                         )}
+                    </div>
+                    {/* Key hints: keyboard users only, so hidden on touch-sized screens */}
+                    <div className="hidden items-center gap-4 border-t px-4 py-2 text-xs text-muted-foreground sm:flex">
+                        <span>↑ ↓ to move</span>
+                        <span>Enter to open</span>
+                        <span>Esc to close</span>
                     </div>
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>

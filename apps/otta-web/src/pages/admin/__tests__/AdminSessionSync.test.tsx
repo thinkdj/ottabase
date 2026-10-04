@@ -20,6 +20,11 @@ vi.mock('@ottabase/ui-shadcn', () => ({
     CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     CardTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+    Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+    Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -30,6 +35,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('lucide-react', () => ({
     ArrowRight: () => null,
     LayoutDashboard: () => null,
+    Menu: () => null,
     Search: () => null,
     X: () => null,
 }));

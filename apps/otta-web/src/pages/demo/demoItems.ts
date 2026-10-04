@@ -294,7 +294,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'OttaDate',
         title: 'OttaDate',
         description:
-            'Framework-agnostic date picker with range, datetime, and fuzzy date support. UTC unix timestamps by default.',
+            'Fuzzy dates people half remember (a zooming, hands-on playground), plus exact date, range and time pickers.',
         buttonVariant: 'default',
     },
     {

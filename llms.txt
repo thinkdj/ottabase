@@ -17,15 +17,16 @@
 - [Cache Key Prefixing System](docs/CACHE_KEYS.md): The Ottabase cache layer uses a systematic, type-safe approach to building cache keys for Cloudflare KV storage. This ensures cache integrity and prevents accidental overwrites across different…
 - [Cloudflare Configuration Guide for Ottabase](docs/CLOUDFLARE_CONFIGURATION_GUIDE.md): Complete guide for configuring your Ottabase application to work 100% with Cloudflare Workers using OBCF_ binding names.
 - [Deploy Ottabase to Cloudflare Workers](docs/CLOUDFLARE_DEPLOY.md): Complete guide for deploying otta-web to Cloudflare Workers with automated CI/CD.
-- [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo.
+- [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo. The authoritative checklist (DB tables, migrations registry, headless vs rendered entrypoints) is AGENTS.MD → "If adding a…
 - [Premium Packages](docs/PREMIUM_PACKAGES.md): How to install, build, license and operate commercial add-ons in an Ottabase app.
-- [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-02-03 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
-- [Recommended · Supported · Possible](docs/RECOMMENDED_SUPPORTED_POSSIBLE.md): Ottabase is opinionated on purpose (design principle #29: "prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always one canonical path. This table names…
+- [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-10-02 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
+- [Recommended · Supported · Possible](docs/RECOMMENDED_SUPPORTED_POSSIBLE.md): Ottabase is opinionated on purpose (design principle: "prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always one canonical path. This table names it, so…
 - [Referral system](docs/REFERRAL_SYSTEM.md): Documentation for inbound referral tracking, first-touch attribution, and signup conversion in the Ottabase monorepo.
 - [Releases](docs/RELEASES.md)
 - [Testing Guide - Ottabase Monorepo](docs/TESTING.md): This document describes the comprehensive automated testing setup for the Ottabase monorepo using Vitest, with support for all packages and applications.
 - [Timezone Standardization Guide](docs/TIMEZONE_GUIDE.md): Complete guide for working with timezones in Ottabase applications using @ottabase/utils/timezone.
 - [Cloudflare Features Guide](docs/cloudflare-features.md): Complete guide for using Cloudflare bindings with @ottabase/cf and Next.js.
+- [Start here](docs/index.md): Ottabase is a Cloudflare-native foundation for SaaS apps, products and content sites. Auth, organizations and roles, an ORM over D1, forms, uploads, a blog/CMS, queues and a runtime theming engine…
 
 ## Packages
 

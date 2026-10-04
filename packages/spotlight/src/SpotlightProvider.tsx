@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Spotlight } from './Spotlight';
 import { SpotlightContext } from './context';
 import type { SpotlightConfig } from './types';
@@ -63,6 +63,7 @@ export function SpotlightProvider({
     renderError,
     placeholder,
     emptyMessage,
+    idleMessage,
     loadingMessage,
     errorMessage,
     maxResults,
@@ -74,6 +75,20 @@ export function SpotlightProvider({
     defaultResults,
 }: SpotlightProviderProps) {
     const [open, setOpen] = useState(false);
+
+    // Report every open/close (shortcut, setOpen, Escape, click outside) exactly once
+    const onOpenChangeRef = useRef(onOpenChange);
+    const mountedRef = useRef(false);
+    useEffect(() => {
+        onOpenChangeRef.current = onOpenChange;
+    }, [onOpenChange]);
+    useEffect(() => {
+        if (!mountedRef.current) {
+            mountedRef.current = true;
+            return;
+        }
+        onOpenChangeRef.current?.(open);
+    }, [open]);
 
     const toggle = useCallback(() => {
         setOpen((prev) => !prev);
@@ -122,10 +137,7 @@ export function SpotlightProvider({
             {children}
             <Spotlight
                 open={open}
-                onOpenChange={(newOpen) => {
-                    setOpen(newOpen);
-                    onOpenChange?.(newOpen);
-                }}
+                onOpenChange={setOpen}
                 onSearch={onSearch}
                 renderResult={renderResult}
                 renderLoading={renderLoading}
@@ -133,6 +145,7 @@ export function SpotlightProvider({
                 renderError={renderError}
                 placeholder={placeholder}
                 emptyMessage={emptyMessage}
+                idleMessage={idleMessage}
                 loadingMessage={loadingMessage}
                 errorMessage={errorMessage}
                 maxResults={maxResults}

@@ -1,3 +1,4 @@
+import { registerAppNavigate } from '@/lib/app-navigate';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -861,6 +862,9 @@ export const router = new Router({
     defaultPendingComponent: RouteLoadingFallback,
     defaultPendingMs: 0,
 });
+
+// Lets global providers above <RouterProvider> (e.g. the command palette) navigate client-side
+registerAppNavigate((href) => void router.navigate({ to: href as never }));
 
 declare module '@tanstack/react-router' {
     interface Register {

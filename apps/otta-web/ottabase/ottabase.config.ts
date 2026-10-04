@@ -75,7 +75,7 @@ export default defineOttabaseConfig({
         },
         spotlight: {
             enabled: true,
-            shortcuts: ['/'],
+            shortcuts: ['mod+k', '/'],
         },
         pagination: {
             defaultPageSize: 10,

@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Command palette is a real navigator.** Ctrl/⌘K (now in the default shortcuts, alongside `/`) and a new header Search
+  button open a palette built from the app's own nav lists: main pages, the admin menu filtered by what the user may
+  open, and the demo gallery, with recent picks first and a light/dark action. `@ottabase/spotlight` gains result
+  `group` headings and `hint`s, combobox/listbox semantics, a "Type to search" idle state, key hints, and an
+  `onOpenChange` that also fires for shortcut opens. Global providers navigate through `appNavigate`
+  (`src/lib/app-navigate.ts`).
+- **Docs open on a real "Start here" page** (`docs/index.md`). `/docs` used to parse its own path as the slug `docs` and
+  render the `@ottabase/docs` package README instead of redirecting.
+- **Admin navigation on phones** is one "current page" bar that opens the nav in a sheet, instead of ~24 links stacked
+  above every page; links carry `aria-current="page"` and the layout no longer nests a second `<main>`.
+
 - **OttaDate: fuzzy pickers redesigned around a zooming panel.** `createFuzzyDateTimePicker` is now one fixed-size panel
   that zooms decades → years → months → days → hours instead of stacking every level (which grew to ~500px). Browsing
   (title to zoom out, arrows to page) never changes the value; a cell names a period and zooms in; chips answer for the

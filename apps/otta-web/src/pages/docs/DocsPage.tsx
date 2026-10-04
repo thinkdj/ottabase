@@ -15,13 +15,20 @@ export function DocsPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const isOnDocsRoute = location.pathname === BASE_PATH || location.pathname.startsWith(`${BASE_PATH}/`);
-    const activeSlug = location.pathname.replace(`${BASE_PATH}/`, '').replace(/^\/+|\/+$/g, '') || undefined;
+    // "/docs" itself has no slug (it must redirect), "/docs/guides/x/" → "guides/x"
+    const activeSlug = location.pathname.startsWith(`${BASE_PATH}/`)
+        ? location.pathname.slice(BASE_PATH.length + 1).replace(/\/+$/, '') || undefined
+        : undefined;
 
     useEffect(() => {
         if (!isOnDocsRoute || activeSlug || docsConfig.sources.length === 0) return;
         const firstSource = docsConfig.sources.find((s) => s.pages.length > 0);
         if (firstSource?.pages[0]) {
-            navigate({ to: `${BASE_PATH}/${buildPageSlug(firstSource, firstSource.pages[0])}` as string });
+            // replace: Back from the start page should leave docs, not bounce through /docs
+            navigate({
+                to: `${BASE_PATH}/${buildPageSlug(firstSource, firstSource.pages[0])}` as string,
+                replace: true,
+            });
         }
     }, [isOnDocsRoute, activeSlug, navigate]);
 

@@ -76,6 +76,7 @@ vi.mock('@/ottabase/config', () => ({
     APP_ID: 'test-app',
     APP_NAME: 'Test App',
     PACKAGES_ENABLED: { ottablog: true, shortlinks: true, referrals: true },
+    appConfig: { features: { spotlight: { enabled: true, shortcuts: ['mod+k', '/'] } } },
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },

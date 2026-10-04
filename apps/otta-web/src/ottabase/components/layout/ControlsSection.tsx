@@ -3,11 +3,15 @@ import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import { appConfig } from '@/ottabase/config';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
+import { SpotlightContext } from '@ottabase/spotlight';
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
+import { Search } from 'lucide-react';
 import { useSetAtom } from 'jotai';
+import { useContext } from 'react';
 
 function useOrganizationSelection() {
     const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('ottabase.current-org-id');
@@ -39,12 +43,36 @@ function useOrganizationSelection() {
     return { currentOrgId, setOrganization };
 }
 
+/** Opens the command palette; the only way in on touch devices, and a visible hint of the shortcut */
+function SearchButton() {
+    // Read the context directly: the header may render where no palette is mounted
+    const spotlight = useContext(SpotlightContext);
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+    const shortcut = isMac ? '⌘K' : 'Ctrl K';
+    if (!spotlight) return null;
+    return (
+        <button
+            type="button"
+            onClick={() => spotlight?.setOpen(true)}
+            aria-label={`Search (${shortcut})`}
+            className="inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground md:border md:border-border md:pr-1.5"
+        >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden md:inline">Search</span>
+            <kbd className="hidden rounded border border-border bg-muted px-1.5 font-mono text-[0.6875rem] md:inline">
+                {shortcut}
+            </kbd>
+        </button>
+    );
+}
+
 export function ControlsSection() {
     const { isAuthenticated } = useSession();
     const { currentOrgId, setOrganization } = useOrganizationSelection();
 
     return (
         <div className="flex items-center gap-1">
+            {appConfig.features.spotlight.enabled && <SearchButton />}
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
             {/* Language is the least urgent control — it yields first on narrow headers */}
             <span className="hidden sm:inline-flex">

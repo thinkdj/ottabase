@@ -6,6 +6,10 @@ export interface SpotlightResult {
     description?: string;
     icon?: ReactNode;
     keywords?: string[];
+    /** Section heading; consecutive results with the same group render under one heading */
+    group?: string;
+    /** Optional right-aligned hint, e.g. a shortcut or "Recent" */
+    hint?: string;
     onSelect?: () => void;
     [key: string]: unknown;
 }
@@ -15,6 +19,8 @@ export interface SpotlightConfig {
     shortcuts?: string[];
     placeholder?: string;
     emptyMessage?: string;
+    /** Shown before anything is typed when there are no default results. Default: 'Type to search' */
+    idleMessage?: string;
     loadingMessage?: string;
     errorMessage?: string;
     onSearch?: (query: string, signal?: AbortSignal) => Promise<SpotlightResult[]> | SpotlightResult[];

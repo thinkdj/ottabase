@@ -342,6 +342,7 @@ function App() {
 | `shortcuts`        | `string[]`                                                                                 | `["/"]`                  | Shortcuts: `mod` (Cmd/Ctrl), `shift`, `alt` + one key, e.g. `shift+/`. Mod and Alt must match exactly      |
 | `placeholder`      | `string`                                                                                   | `"Search..."`            | Input placeholder text                                                                                     |
 | `emptyMessage`     | `string`                                                                                   | `"No results found"`     | Message when no results                                                                                    |
+| `idleMessage`      | `string`                                                                                   | `"Type to search"`       | Shown before anything is typed when there are no default results                                           |
 | `loadingMessage`   | `string`                                                                                   | `"Searching..."`         | Loading message                                                                                            |
 | `errorMessage`     | `string`                                                                                   | `"An error occurred..."` | Error message                                                                                              |
 | `onSearch`         | `(query: string, signal?: AbortSignal) => Promise<SpotlightResult[]> \| SpotlightResult[]` | -                        | Search function with abort support                                                                         |
@@ -354,8 +355,15 @@ function App() {
 | `minQueryLength`   | `number`                                                                                   | `0`                      | Minimum query length to trigger search                                                                     |
 | `onQueryChange`    | `(query: string) => void`                                                                  | -                        | Callback when query changes                                                                                |
 | `onResultSelect`   | `(result: SpotlightResult) => void`                                                        | -                        | Callback when result is selected                                                                           |
-| `onOpenChange`     | `(open: boolean) => void`                                                                  | -                        | Callback when spotlight opens/closes                                                                       |
+| `onOpenChange`     | `(open: boolean) => void`                                                                  | -                        | Fires once on every open and close, including keyboard-shortcut opens                                      |
 | `defaultResults`   | `SpotlightResult[]`                                                                        | `[]`                     | Results shown when query is empty; without `onSearch` they are also filtered by label/keywords as you type |
+
+### Result grouping and accessibility
+
+Give results a `group` (e.g. `'Admin'`, `'Demos'`) and consecutive results with the same group render under one heading;
+keep each group together in the array you return. An optional `hint` renders right-aligned (e.g. `'Recent'`). Result ids
+must be unique: they are React keys and option ids. The input is a WAI-ARIA combobox (`aria-activedescendant` follows
+the highlighted option) and results are a `listbox` of `option`s. A footer shows the key hints on larger screens.
 
 ### Keyboard Shortcuts Format
 

@@ -28,7 +28,8 @@ const DEFAULT_REFERRALS: ReferralsFeatureConfig = {
 
 const DEFAULT_SPOTLIGHT: SpotlightFeatureConfig = {
     enabled: true,
-    shortcuts: ['/'],
+    // Ctrl/⌘K is the convention people expect; "/" stays for quick keyboard use
+    shortcuts: ['mod+k', '/'],
 };
 
 const DEFAULT_PAGINATION: PaginationFeatureConfig = {

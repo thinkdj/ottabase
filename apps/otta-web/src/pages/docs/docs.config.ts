@@ -14,7 +14,8 @@ export function createDocsSource(
         .map(([filePath, content]) => {
             const fileName = filePath.split('/').pop() || '';
             const slug = fileNameToSlug(fileName);
-            let title = slugToTitle(slug);
+            // index.md is the guides' landing page ("Start here"), listed first
+            let title = slug === 'index' ? 'Start here' : slugToTitle(slug);
             if (typeof content === 'string') {
                 const extracted = extractTitle(content);
                 if (extracted !== 'Untitled') title = extracted;

@@ -1,4 +1,5 @@
 import { api, reportApiError } from '@/lib/api';
+import { AppSpotlightProvider } from '@/components/AppSpotlight';
 import { AuthSessionBootstrap } from '@/components/AuthSessionBootstrap';
 import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
@@ -26,7 +27,6 @@ import type { FullBrandConfig } from '@ottabase/brand-engine-react';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
-import { SpotlightProvider } from '@ottabase/spotlight/react';
 import { ProviderState } from '@ottabase/state';
 import { ProviderUIBase } from '@ottabase/ui-base';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
@@ -172,15 +172,12 @@ function ProvidersCore({
                                 <ScaleManager />
                                 <SidebarStateManager />
                                 <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                    <SpotlightProvider
-                                        enabled={appConfig.features.spotlight.enabled}
-                                        shortcuts={appConfig.features.spotlight.shortcuts}
-                                    >
+                                    <AppSpotlightProvider>
                                         {children}
                                         {MEDIA_LIBRARY_ENABLED && <MediaLibraryPickerBridge />}
                                         {/* Provides shadcn AlertDialog confirmation for MediaGalleryTool delete/clear actions */}
                                         <MediaGalleryConfirmBridge />
-                                    </SpotlightProvider>
+                                    </AppSpotlightProvider>
                                 </ShadcnProviders>
                             </ThemeProvider>
                         </ProviderNextThemes>
