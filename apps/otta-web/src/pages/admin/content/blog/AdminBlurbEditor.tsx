@@ -13,6 +13,7 @@ import { BlurbRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { ConfirmDialog } from '@ottabase/ui-components';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -85,9 +86,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
     const [crossposts, setCrossposts] = useState<PostCrosspost[]>(initialData?.crossposts ?? []);
     const [status, setStatus] = useState<PostStatus>(initialData?.status ?? 'draft');
     const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
-    const [publishAt, setPublishAt] = useState(
-        initialData?.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '',
-    );
+    const [publishAt, setPublishAt] = useState(toDateTimeLocalInput(initialData?.publishAt));
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [alert, setAlert] = useState<{ open: boolean; title: string; message: string }>({
@@ -146,7 +145,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
             crosspostsJson !== crosspostsKey(initialData.crossposts) ||
             status !== initialData.status ||
             allowComments !== initialData.allowComments ||
-            publishAt !== (initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '') ||
+            publishAt !== toDateTimeLocalInput(initialData.publishAt) ||
             JSON.stringify([...selectedTagIds].sort()) !== JSON.stringify(tagLinks.map((link) => link.tagId).sort())
         );
     }, [allowComments, crosspostsJson, initialData, publishAt, selectedTagIds, status, tagLinks, text]);
@@ -164,7 +163,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
         }
 
         const resolvedStatus = publishNow ? 'published' : status;
-        const publishAtValue = publishAt ? new Date(publishAt).getTime() : null;
+        const publishAtValue = fromDateTimeLocalInput(publishAt);
         if (resolvedStatus === 'scheduled' && !publishAtValue) {
             setAlert({ open: true, title: 'Publish date required', message: 'Choose when this blurb should go live.' });
             return;

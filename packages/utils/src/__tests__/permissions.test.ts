@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasGrantedPermission, permissionMatches } from '../permissions';
+import { findGrantingPermission, hasGrantedPermission, PERMISSION_CATALOG, permissionMatches } from '../permissions';
 
 describe('permissionMatches', () => {
     it.each([
@@ -39,5 +39,22 @@ describe('hasGrantedPermission', () => {
 
     it('fails closed for missing permission collections', () => {
         expect(hasGrantedPermission(undefined, 'users:read')).toBe(false);
+    });
+});
+
+describe('PERMISSION_CATALOG', () => {
+    it('has unique, well-formed resource:action ids with no wildcards', () => {
+        const ids = PERMISSION_CATALOG.map((p) => p.id);
+        expect(new Set(ids).size).toBe(ids.length);
+        for (const id of ids) expect(id).toMatch(/^[a-z]+:[a-z]+$/);
+    });
+});
+
+describe('findGrantingPermission', () => {
+    it('prefers an exact grant, then the first matching wildcard', () => {
+        expect(findGrantingPermission(['*:read', 'posts:read'], 'posts:read')).toBe('posts:read');
+        expect(findGrantingPermission(['posts:*', '*:*'], 'posts:publish')).toBe('posts:*');
+        expect(findGrantingPermission(['*:read'], 'posts:publish')).toBeNull();
+        expect(findGrantingPermission(null, 'posts:read')).toBeNull();
     });
 });

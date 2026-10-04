@@ -30,6 +30,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { Eye, Languages, Loader2, Save, Trash2 } from 'lucide-react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import { getPublicContentPath } from './blogAdminPaths';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -137,7 +138,7 @@ function TranslationEditor({
             slug: existing?.slug ?? `${basePost.slug}-${language.toLowerCase()}`,
             excerpt: existing?.excerpt ?? basePost.excerpt ?? '',
             status: existing?.status ?? 'draft',
-            publishAt: existing?.publishAt ? new Date(existing.publishAt).toISOString().slice(0, 16) : '',
+            publishAt: toDateTimeLocalInput(existing?.publishAt),
             blurbText: existing?.blurbText ?? basePost.blurbText ?? '',
             photoNote: existing?.photoNote ?? basePost.photoNote ?? '',
         }),
@@ -228,7 +229,7 @@ function TranslationEditor({
                 excerpt: excerpt || null,
                 content,
                 status,
-                publishAt: publishAt || null,
+                publishAt: fromDateTimeLocalInput(publishAt),
                 blurbText: blurbText || null,
                 photoNote: photoNote || null,
             });

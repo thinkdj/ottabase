@@ -4,15 +4,6 @@ import { IconAlertCircle, IconSearch, IconX } from '@tabler/icons-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { SpotlightProps, SpotlightResult } from './types';
 
-const DEFAULT_RESULTS: SpotlightResult[] = [
-    { id: 'home', label: 'Home', onSelect: () => console.log('Home') },
-    { id: 'about', label: 'About us', onSelect: () => console.log('About') },
-    { id: 'contacts', label: 'Contacts', onSelect: () => console.log('Contacts') },
-    { id: 'blog', label: 'Blog', onSelect: () => console.log('Blog') },
-    { id: 'careers', label: 'Careers', onSelect: () => console.log('Careers') },
-    { id: 'terms', label: 'Terms of service', onSelect: () => console.log('Terms') },
-];
-
 function defaultRenderResult(result: SpotlightResult, index: number, isSelected: boolean) {
     return (
         <div
@@ -131,9 +122,9 @@ export function Spotlight({
 
                     searchResults = Array.isArray(fetchedResults) ? fetchedResults : [];
                 } else {
-                    // Default search logic
+                    // No onSearch: filter the provided defaultResults locally
                     const lowerQuery = trimmedQuery.toLowerCase();
-                    searchResults = DEFAULT_RESULTS.filter((result) => {
+                    searchResults = defaultResultsRef.current.filter((result) => {
                         const matchesLabel = result.label.toLowerCase().includes(lowerQuery);
                         const matchesKeywords =
                             result.keywords?.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) ?? false;

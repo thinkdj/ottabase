@@ -2,6 +2,7 @@ import { api, isApiError } from '@/lib/api';
 import { APP_ID } from '@/ottabase/config';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ShortlinkTypes } from '@ottabase/shortlinks';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import {
     Button,
     Input,
@@ -40,7 +41,7 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
                 shortCode: shortlink.shortCode,
                 type: shortlink.type,
                 appId: shortlink.appId || APP_ID,
-                expiryDate: shortlink.expiryDate ? new Date(shortlink.expiryDate).toISOString().slice(0, 16) : '',
+                expiryDate: toDateTimeLocalInput(shortlink.expiryDate),
                 interstitialEnabled: shortlink.interstitialEnabled ?? false,
                 interstitialSeconds: shortlink.interstitialSeconds ?? 10,
             });
@@ -55,12 +56,14 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
         setLoading(true);
 
         try {
+            const expiryMs = fromDateTimeLocalInput(formData.expiryDate);
             const payload = {
                 fullUrl: formData.fullUrl.trim(),
                 shortCode: formData.shortCode.trim(),
                 type: formData.type,
                 appId: (formData.appId || APP_ID).trim(),
-                expiryDate: formData.expiryDate ? formData.expiryDate : null,
+                // Send an absolute instant: the worker runs in UTC and would misread local wall time
+                expiryDate: expiryMs ? new Date(expiryMs).toISOString() : null,
                 interstitialEnabled: formData.interstitialEnabled,
                 interstitialSeconds: formData.interstitialEnabled ? formData.interstitialSeconds : null,
             };

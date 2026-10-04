@@ -4,6 +4,7 @@ import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import type { PaginatedResponse, Pagination } from '@/lib/api-types';
 import type { AuditLogRecord } from '@/types/rbac';
+import { downloadTextFile, toCsv } from '@ottabase/utils/browser';
 import {
     Badge,
     Button,
@@ -48,6 +49,10 @@ import {
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 type AuditLogsResponse = PaginatedResponse<AuditLogRecord>;
+
+/** Export pages through the API at its max page size, up to a sane cap */
+const EXPORT_PAGE_SIZE = 100;
+const EXPORT_MAX_ROWS = 5000;
 
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
@@ -298,24 +303,27 @@ export function AuditLogViewerPage() {
     const [userIdFilter, setUserIdFilter] = useState('');
     const [organizationIdFilter, setOrganizationIdFilter] = useState('');
 
+    /** Query for the current filters; shared by the table and the export */
+    const buildParams = useCallback(
+        (page: number, itemsPerPage: number) => {
+            const params = new URLSearchParams({ page: page.toString(), per_page: itemsPerPage.toString() });
+            if (searchTerm) params.append('search', searchTerm);
+            if (actionFilter !== 'all') params.append('action', actionFilter);
+            if (entityTypeFilter !== 'all') params.append('entityType', entityTypeFilter);
+            if (userIdFilter) params.append('userId', userIdFilter);
+            if (organizationIdFilter) params.append('organizationId', organizationIdFilter);
+            return params.toString();
+        },
+        [searchTerm, actionFilter, entityTypeFilter, userIdFilter, organizationIdFilter],
+    );
+
     const fetchLogs = useCallback(
         async (page: number = 1, itemsPerPage: number = 25) => {
             try {
                 setLoading(true);
                 setError(null);
 
-                const params = new URLSearchParams({
-                    page: page.toString(),
-                    per_page: itemsPerPage.toString(),
-                });
-
-                if (searchTerm) params.append('search', searchTerm);
-                if (actionFilter !== 'all') params.append('action', actionFilter);
-                if (entityTypeFilter !== 'all') params.append('entityType', entityTypeFilter);
-                if (userIdFilter) params.append('userId', userIdFilter);
-                if (organizationIdFilter) params.append('organizationId', organizationIdFilter);
-
-                const response = await api<AuditLogsResponse>(`/api/audit/logs?${params.toString()}`);
+                const response = await api<AuditLogsResponse>(`/api/audit/logs?${buildParams(page, itemsPerPage)}`);
                 if (response.data) {
                     setLogs(response.data);
                     setPagination(response.pagination);
@@ -328,7 +336,7 @@ export function AuditLogViewerPage() {
                 setLoading(false);
             }
         },
-        [searchTerm, actionFilter, entityTypeFilter, userIdFilter, organizationIdFilter],
+        [buildParams],
     );
 
     useEffect(() => {
@@ -349,12 +357,58 @@ export function AuditLogViewerPage() {
         setCurrentPage(1);
     };
 
+    const [exporting, setExporting] = useState(false);
+
+    /** Download every log matching the current filters as CSV (capped, newest first) */
     const handleExport = async () => {
+        setExporting(true);
         try {
-            toast.info('Exporting audit logs...', 'This may take a moment for large datasets');
-            toast.success('Export complete', 'Audit logs have been downloaded');
+            const rows: AuditLogRecord[] = [];
+            for (let page = 1; rows.length < EXPORT_MAX_ROWS; page++) {
+                const res = await api<AuditLogsResponse>(`/api/audit/logs?${buildParams(page, EXPORT_PAGE_SIZE)}`);
+                rows.push(...(res.data ?? []));
+                if (!res.pagination || page >= res.pagination.totalPages) break;
+            }
+            const exported = rows.slice(0, EXPORT_MAX_ROWS);
+            if (!exported.length) {
+                toast.info('Nothing to export', 'No audit logs match the current filters');
+                return;
+            }
+            const csv = toCsv(
+                [
+                    'time',
+                    'status',
+                    'action',
+                    'resource_type',
+                    'resource_id',
+                    'user_email',
+                    'user_id',
+                    'organization_id',
+                    'ip_address',
+                    'error_message',
+                ],
+                exported.map((l) => [
+                    new Date(l.created_at).toISOString(),
+                    l.status,
+                    l.action,
+                    l.resource_type,
+                    l.resource_id,
+                    l.user_email,
+                    l.user_id,
+                    l.organization_id,
+                    l.ip_address,
+                    l.error_message,
+                ]),
+            );
+            downloadTextFile(csv, `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
+            toast.success(
+                'Export ready',
+                `${exported.length} log${exported.length === 1 ? '' : 's'} saved as CSV${rows.length >= EXPORT_MAX_ROWS ? ` (first ${EXPORT_MAX_ROWS})` : ''}`,
+            );
         } catch {
-            toast.error('Export failed', 'Could not export audit logs');
+            toast.error('Export failed', 'Could not load the audit logs. Try again.');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -385,9 +439,9 @@ export function AuditLogViewerPage() {
                             View and search audit logs across all organizations and apps
                         </p>
                     </div>
-                    <Button variant="outline" onClick={handleExport} className="h-9 w-fit gap-2">
+                    <Button variant="outline" onClick={handleExport} disabled={exporting} className="h-9 w-fit gap-2">
                         <Download className="h-4 w-4" />
-                        Export
+                        {exporting ? 'Exporting…' : 'Export CSV'}
                     </Button>
                 </div>
             </div>

@@ -406,10 +406,8 @@ export function AdminBrandKitDetailPage() {
         setDeleteDialogOpen(true);
     };
 
-    const handleConfirmDelete = () => {
-        deleteMutation.mutate();
-        setDeleteDialogOpen(false);
-    };
+    /** Returning the promise keeps the dialog open with "Deleting…" until it settles */
+    const handleConfirmDelete = () => deleteMutation.mutateAsync();
 
     /** Download kit as ottabase_<name>_YYYYMMDD.json – complete backup */
     const handleDownloadKit = () => {

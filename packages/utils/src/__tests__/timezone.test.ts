@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect, beforeEach } from 'vitest';
 import {
+    fromDateTimeLocalInput,
+    toDateTimeLocalInput,
     getCommonTimezones,
     getTimezonesForSelect,
     isDST,
@@ -132,5 +134,37 @@ describe('Timezone Utilities', () => {
             expect(isDST(new Date('2024-06-15T12:00:00Z'), 'Asia/Tokyo')).toBe(false);
             expect(isDST(new Date('2024-12-15T12:00:00Z'), 'UTC')).toBe(false);
         });
+    });
+});
+
+describe('datetime-local input helpers', () => {
+    // Run in a non-UTC zone: the bug these prevent is invisible in UTC
+    const originalTz = process.env.TZ;
+    beforeAll(() => {
+        process.env.TZ = 'Asia/Kolkata'; // UTC+05:30, no DST
+    });
+    afterAll(() => {
+        process.env.TZ = originalTz;
+    });
+
+    const instant = Date.UTC(2026, 9, 6, 3, 30); // 2026-10-06 03:30 UTC = 09:00 IST
+
+    it('shows the instant in local wall time', () => {
+        expect(toDateTimeLocalInput(instant)).toBe('2026-10-06T09:00');
+        expect(toDateTimeLocalInput(new Date(instant))).toBe('2026-10-06T09:00');
+    });
+
+    it('round-trips without drifting by the UTC offset', () => {
+        let value = instant;
+        for (let i = 0; i < 3; i++) value = fromDateTimeLocalInput(toDateTimeLocalInput(value))!;
+        expect(value).toBe(instant);
+    });
+
+    it('treats empty and invalid values as no date', () => {
+        expect(toDateTimeLocalInput(null)).toBe('');
+        expect(toDateTimeLocalInput(undefined)).toBe('');
+        expect(toDateTimeLocalInput('not a date')).toBe('');
+        expect(fromDateTimeLocalInput('')).toBeNull();
+        expect(fromDateTimeLocalInput('garbage')).toBeNull();
     });
 });

@@ -781,3 +781,34 @@ export function isDST(date: DateInput, timezone?: Timezone): boolean {
         return false;
     }
 }
+
+/**
+ * Value for an `<input type="datetime-local">`: the instant in the browser's local
+ * wall time ("2026-10-06T09:00"). Pair with `fromDateTimeLocalInput`.
+ *
+ * `toISOString().slice(0, 16)` is the classic bug here: it yields UTC wall time,
+ * which the input then shows (and reads back) as local, shifting the instant by
+ * the UTC offset on every save.
+ *
+ * @example
+ * ```typescript
+ * <input type="datetime-local" value={toDateTimeLocalInput(post.publishAt)} />
+ * ```
+ */
+export function toDateTimeLocalInput(date: DateInput | null | undefined): string {
+    if (date == null || date === '') return '';
+    const d = validateAndConvertToDate(date);
+    if (!d) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Parse an `<input type="datetime-local">` value (browser local wall time) to epoch
+ * milliseconds. Returns null for an empty or invalid value.
+ */
+export function fromDateTimeLocalInput(value: string | null | undefined): number | null {
+    if (!value) return null;
+    const ms = new Date(value).getTime(); // "YYYY-MM-DDTHH:mm" without a zone parses as local time
+    return Number.isFinite(ms) ? ms : null;
+}

@@ -152,4 +152,45 @@ describe('ConfirmDialog', () => {
         expect(fallbackTitle.className).toContain('sr-only');
         expect(screen.getByText('Continue to remove this item.')).toBeTruthy();
     });
+
+    it('keeps the dialog open and disabled while an async confirm runs, then closes', async () => {
+        let resolve!: () => void;
+        const onOpenChange = vi.fn();
+        render(
+            <ConfirmDialog
+                open
+                onOpenChange={onOpenChange}
+                title="Delete menu?"
+                confirmLabel="Delete"
+                onConfirm={() => new Promise<void>((r) => (resolve = r))}
+            />,
+        );
+        const confirm = screen.getByRole('button', { name: 'Delete' });
+        fireEvent.click(confirm);
+
+        expect(onOpenChange).not.toHaveBeenCalledWith(false);
+        await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(true));
+        expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
+
+        resolve();
+        await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    });
+
+    it('shows the error inline and stays open when an async confirm fails', async () => {
+        const onOpenChange = vi.fn();
+        render(
+            <ConfirmDialog
+                open
+                onOpenChange={onOpenChange}
+                title="Delete menu?"
+                confirmLabel="Delete"
+                onConfirm={() => Promise.reject(new Error('Menu is assigned to a slot'))}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Menu is assigned to a slot');
+        expect(onOpenChange).not.toHaveBeenCalledWith(false);
+        expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(false);
+    });
 });

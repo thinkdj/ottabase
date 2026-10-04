@@ -1,4 +1,5 @@
 import type { RoleRecord } from '@/types/rbac';
+import { findGrantingPermission, PERMISSION_CATALOG, type PermissionDefinition } from '@ottabase/utils/permissions';
 import {
     Badge,
     Button,
@@ -14,7 +15,7 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
@@ -23,35 +24,6 @@ import { useRoles, useTogglePermission } from '@/hooks/useRBAC';
 
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
-
-// Predefined permissions for the system
-const SYSTEM_PERMISSIONS = [
-    // Organization permissions
-    { id: 'org:read', name: 'View Organization', category: 'Organization' },
-    { id: 'org:write', name: 'Manage Organization', category: 'Organization' },
-    { id: 'org:delete', name: 'Delete Organization', category: 'Organization' },
-
-    // Member permissions
-    { id: 'member:read', name: 'View Members', category: 'Members' },
-    { id: 'member:invite', name: 'Invite Members', category: 'Members' },
-    { id: 'member:write', name: 'Manage Members', category: 'Members' },
-    { id: 'member:delete', name: 'Remove Members', category: 'Members' },
-
-    // Role permissions
-    { id: 'role:read', name: 'View Roles', category: 'RBAC' },
-    { id: 'role:write', name: 'Manage Roles', category: 'RBAC' },
-    { id: 'role:delete', name: 'Delete Roles', category: 'RBAC' },
-    { id: 'permission:grant', name: 'Grant Permissions', category: 'RBAC' },
-    { id: 'permission:revoke', name: 'Revoke Permissions', category: 'RBAC' },
-
-    // Audit permissions
-    { id: 'audit:read', name: 'View Audit Logs', category: 'Audit' },
-
-    // App permissions
-    { id: 'app:read', name: 'View Apps', category: 'Apps' },
-    { id: 'app:write', name: 'Manage Apps', category: 'Apps' },
-    { id: 'app:delete', name: 'Delete Apps', category: 'Apps' },
-];
 
 export function PermissionsMatrixPage() {
     const toast = useRBACToast();
@@ -76,8 +48,14 @@ export function PermissionsMatrixPage() {
 
     const filteredRoles = filterRoles(activeTab);
 
+    /** Directly granted on this role (togglable) */
     const hasPermission = (role: RoleRecord, permissionId: string): boolean => {
         return role.permissions?.includes(permissionId) || false;
+    };
+    /** Covered by a wildcard grant such as `*:*` or `posts:*` (shown checked, not togglable here) */
+    const wildcardFor = (role: RoleRecord, permissionId: string): string | null => {
+        const via = findGrantingPermission(role.permissions, permissionId);
+        return via && via !== permissionId ? via : null;
     };
 
     // Optimistic permission toggle with instant UI feedback
@@ -101,17 +79,11 @@ export function PermissionsMatrixPage() {
         );
     };
 
-    // Group permissions by category
-    const permissionsByCategory = SYSTEM_PERMISSIONS.reduce(
-        (acc, perm) => {
-            if (!acc[perm.category]) {
-                acc[perm.category] = [];
-            }
-            acc[perm.category].push(perm);
-            return acc;
-        },
-        {} as Record<string, typeof SYSTEM_PERMISSIONS>,
-    );
+    // Group the enforced permissions by section
+    const permissionsByCategory = PERMISSION_CATALOG.reduce<Record<string, PermissionDefinition[]>>((acc, perm) => {
+        (acc[perm.group] ??= []).push(perm);
+        return acc;
+    }, {});
 
     return (
         <div className="space-y-8">
@@ -203,8 +175,9 @@ export function PermissionsMatrixPage() {
                                                                 className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
                                                             >
                                                                 <TableCell className="px-4 py-3 font-medium">
-                                                                    {permission.name}
-                                                                    <div className="text-xs text-muted-foreground">
+                                                                    {permission.label}
+                                                                    <div className="text-xs font-normal text-muted-foreground">
+                                                                        {permission.description}{' '}
                                                                         <code className="font-mono">
                                                                             {permission.id}
                                                                         </code>
@@ -212,14 +185,17 @@ export function PermissionsMatrixPage() {
                                                                 </TableCell>
                                                                 {filteredRoles.map((role) => {
                                                                     const hasIt = hasPermission(role, permission.id);
+                                                                    const via = hasIt
+                                                                        ? null
+                                                                        : wildcardFor(role, permission.id);
                                                                     return (
                                                                         <TableCell
                                                                             key={role.id}
                                                                             className="px-4 py-3 text-center"
                                                                         >
-                                                                            <div className="flex justify-center">
+                                                                            <div className="flex flex-col items-center gap-1">
                                                                                 <Checkbox
-                                                                                    checked={hasIt}
+                                                                                    checked={hasIt || !!via}
                                                                                     onCheckedChange={() =>
                                                                                         handleToggle(
                                                                                             role,
@@ -227,10 +203,23 @@ export function PermissionsMatrixPage() {
                                                                                         )
                                                                                     }
                                                                                     disabled={
+                                                                                        !!via ||
                                                                                         togglePermission.isPending
                                                                                     }
-                                                                                    aria-label={`Toggle ${permission.name} for ${role.name}`}
+                                                                                    aria-label={
+                                                                                        via
+                                                                                            ? `${permission.label} for ${role.name}: included in ${via}`
+                                                                                            : `${permission.label} for ${role.name}`
+                                                                                    }
                                                                                 />
+                                                                                {via && (
+                                                                                    <span className="text-[0.6875rem] text-muted-foreground">
+                                                                                        via{' '}
+                                                                                        <code className="font-mono">
+                                                                                            {via}
+                                                                                        </code>
+                                                                                    </span>
+                                                                                )}
                                                                             </div>
                                                                         </TableCell>
                                                                     );
@@ -243,17 +232,11 @@ export function PermissionsMatrixPage() {
                                         </div>
                                     ))}
 
-                                    {/* Legend */}
-                                    <div className="flex items-center gap-4 border-t border-border/60 pt-4 text-sm text-muted-foreground">
-                                        <div className="flex items-center gap-2">
-                                            <Check className="h-4 w-4 text-success" />
-                                            <span>Permission Granted</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <X className="h-4 w-4 text-destructive" />
-                                            <span>Permission Denied</span>
-                                        </div>
-                                    </div>
+                                    <p className="border-t border-border/60 pt-4 text-sm text-muted-foreground">
+                                        Only permissions the server checks are listed. A greyed tick is already included
+                                        in a wildcard grant on that role, such as <code>*:*</code> or{' '}
+                                        <code>posts:*</code>.
+                                    </p>
                                 </div>
                             )}
                         </TabsContent>

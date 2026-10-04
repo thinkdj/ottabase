@@ -171,7 +171,7 @@ export function UserRBACPage() {
 
     const handleConfirmRemove = () => {
         if (!removeMembership) return;
-        removeMutation.mutate(
+        return removeMutation.mutateAsync(
             { memberId: removeMembership.memberId, userId, organizationId: removeMembership.organizationId },
             {
                 onSuccess: () => {

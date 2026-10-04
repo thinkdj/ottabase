@@ -75,6 +75,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- **Scheduled publish times no longer drift.** The blog, blurb, photo-journal and translation editors filled their
+  `datetime-local` inputs with UTC wall time (`toISOString().slice(0, 16)`) and read them back as local time, so every
+  save of a scheduled post moved it by the UTC offset; translations and shortlink expiry sent local wall time that the
+  UTC worker misread. All five now use `toDateTimeLocalInput` / `fromDateTimeLocalInput` from
+  `@ottabase/utils/timezone`.
+- **Command palette shows no fake pages.** Without `onSearch`, `@ottabase/spotlight` searched a hard-coded placeholder
+  list ("About us", "Careers") that only logged to the console; it now filters the `defaultResults` you pass.
+- **Audit log export works.** The button showed success toasts without downloading anything; it now pages through the
+  current filters (up to 5,000 rows) and saves a CSV (`toCsv` / `downloadTextFile` in `@ottabase/utils/browser`).
+- **Password reset and email verification show their success message on the login page** (the redirect dropped the query
+  flag the login page reads).
+- **Permissions matrix offers only real permissions.** It listed permissions no server code checks (`member:invite`,
+  `app:write`…) and couldn't toggle the ones that are checked. It now renders `PERMISSION_CATALOG` from
+  `@ottabase/utils/permissions` and shows wildcard coverage ("via `*:*`").
+- **Layout route editor keeps focus while typing** (rows were keyed by the pattern being edited).
+- **DateRangePicker drops unapplied drafts** on Cancel, Escape, click outside or a half-picked range, and preset mode
+  only ever shows the applied range in the field.
+- **Media picker no longer looks empty when it isn't.** Kind filters (`acceptKinds`) run on the server via `$in`, the
+  upload input gets a matching `accept`, and the item count uses the server total.
+- **Confirm dialogs show their pending state.** `ConfirmDialog` keeps the dialog open while an async `onConfirm` runs
+  (spinner, disabled buttons, inline error on failure); menu, layout, brand kit and membership deletes now use it.
+
 - **Generic CRUD is now DEFAULT-DENY (allowlist).** `/api/ottaorm/*` previously allowed any registered model except an
   explicit denylist — which repeatedly missed sensitive tables (`user_roles`, then `user_group_members`). It now serves
   ONLY an allow-list of app-data models (posts/taxonomy/media/comments/organizations/todos); every other model —

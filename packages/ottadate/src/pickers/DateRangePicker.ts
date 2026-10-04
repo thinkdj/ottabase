@@ -138,15 +138,17 @@ export function createDateRangePicker(
     // -----------------------------------------------------------------------
 
     function updateTriggerText() {
-        const localeStr = getIntlLocale(config.locale);
-        if (startDate && endDate) {
-            const startStr = formatDisplay(startDate, config.displayFormat!, config.locale);
-            const endStr = formatDisplay(endDate, config.displayFormat!, config.locale);
+        // Preset mode buffers the selection until Apply: the field only ever shows the applied range
+        const shownStart = hasPresets ? committedStart : startDate;
+        const shownEnd = hasPresets ? committedEnd : endDate;
+        if (shownStart && shownEnd) {
+            const startStr = formatDisplay(shownStart, config.displayFormat!, config.locale);
+            const endStr = formatDisplay(shownEnd, config.displayFormat!, config.locale);
             triggerText.textContent = `${startStr}  →  ${endStr}`;
             triggerText.classList.remove('ottadate-trigger-placeholder');
             triggerClear.style.display = '';
-        } else if (startDate) {
-            triggerText.textContent = `${formatDisplay(startDate, config.displayFormat!, config.locale)}  →  …`;
+        } else if (shownStart) {
+            triggerText.textContent = `${formatDisplay(shownStart, config.displayFormat!, config.locale)}  →  …`;
             triggerText.classList.remove('ottadate-trigger-placeholder');
             triggerClear.style.display = '';
         } else {
@@ -507,7 +509,9 @@ export function createDateRangePicker(
             hoverDate = null;
 
             if (!hasPresets) {
-                // Classic mode: auto-apply and close
+                // Classic mode: a completed range is applied immediately
+                committedStart = startDate ? new Date(startDate) : null;
+                committedEnd = endDate ? new Date(endDate) : null;
                 updateTriggerText();
                 emitChange();
                 if (!config.inline) {
@@ -555,6 +559,10 @@ export function createDateRangePicker(
 
     function closePicker() {
         if (!isOpen || config.inline) return;
+        // Closing without Apply (Cancel, Escape, click outside, half-picked range) drops the draft
+        startDate = committedStart ? new Date(committedStart) : null;
+        endDate = committedEnd ? new Date(committedEnd) : null;
+        updateTriggerText();
         isOpen = false;
         popover.style.display = 'none';
         trigger.setAttribute('aria-expanded', 'false');

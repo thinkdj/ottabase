@@ -6,6 +6,7 @@
  */
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { FuzzyDateField } from '@/components/editor/FuzzyDateField';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
@@ -410,9 +411,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const [isProtected, setIsProtected] = useState(initialData?.isProtected ?? false);
     const [passwordHint, setPasswordHint] = useState(initialData?.passwordHint ?? '');
     const [password, setPassword] = useState(''); // transient: only sent when setting/changing
-    const [publishAt, setPublishAt] = useState(
-        initialData?.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '',
-    );
+    const [publishAt, setPublishAt] = useState(toDateTimeLocalInput(initialData?.publishAt));
 
     useEffect(() => {
         if (!initialData && studioState?.languageConfig.defaultLanguage)
@@ -648,7 +647,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setAllowComments(initialData.allowComments ?? true);
         setIsProtected(initialData.isProtected ?? false);
         setPasswordHint(initialData.passwordHint ?? '');
-        setPublishAt(initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '');
+        setPublishAt(toDateTimeLocalInput(initialData.publishAt));
         setOriginalDate((initialData.originalDate as FuzzyDateTime | null) ?? null);
         setCrossposts(initialData.crossposts ?? []);
         setHeroImage(initialData.heroImage ?? null);
@@ -694,8 +693,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             isProtected === (initialData.isProtected ?? false) &&
             (passwordHint ?? '') === (initialData.passwordHint ?? '') &&
             !password &&
-            (publishAt || '') ===
-                (initialData.publishAt ? new Date(initialData.publishAt).toISOString().slice(0, 16) : '') &&
+            (publishAt || '') === toDateTimeLocalInput(initialData.publishAt) &&
             JSON.stringify(originalDate) === JSON.stringify(initialData.originalDate ?? null) &&
             (seriesId ?? '') === (initialData.seriesId ?? '') &&
             (seriesOrder ?? '') === (initialData.seriesOrder ?? '') &&
@@ -805,7 +803,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setActiveTab('content');
     };
 
-    const previewPublishedAt = publishAt ? new Date(publishAt).getTime() : (initialData?.publishedAt ?? null);
+    const previewPublishedAt = fromDateTimeLocalInput(publishAt) ?? initialData?.publishedAt ?? null;
 
     const previewPost = previewVersion
         ? {
@@ -1080,7 +1078,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 setSlug(baseSlug);
             }
 
-            const publishAtValue = publishAt ? new Date(publishAt).getTime() : null;
+            const publishAtValue = fromDateTimeLocalInput(publishAt);
             const shouldAutoSchedule = Boolean(publishAtValue) && (status === 'draft' || status === 'scheduled');
             const resolvedStatus: PostStatus = publishNow ? 'published' : shouldAutoSchedule ? 'scheduled' : status;
 

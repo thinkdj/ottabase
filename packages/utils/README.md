@@ -100,6 +100,10 @@ import {
     getTimezonesForSelect,
     isValidTimezone,
 } from '@ottabase/utils/timezone';
+
+// PERMISSION_CATALOG lists every permission the server enforces (id, label, description, group).
+// Admin UIs offer only these; findGrantingPermission(grants, 'posts:publish') returns the grant
+// that covers it ('posts:publish', 'posts:*' or '*:*'), or null.
 ```
 
 ## Available Utilities
@@ -202,6 +206,8 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 - **`getViewportSize(): object | null`** - Get viewport dimensions
 - **`supportsFeature(feature: string): boolean`** - Check browser feature support
 - **`getBrowserDetails(): object | null`** - Get browser name and version
+- **`downloadTextFile(content, filename, type?)`** - Save text (CSV, JSON, Markdown) as a file
+- **`toCsv(headers, rows)`** - RFC 4180 CSV with formula-injection guarding (`=`, `+`, `-`, `@` cells are prefixed)
 
 ### Currency Utilities (`@ottabase/utils/currency`)
 
@@ -251,6 +257,10 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 ### Timezone Utilities (`@ottabase/utils/timezone`)
 
 **Production-ready timezone standardization for SaaS applications**
+
+For `<input type="datetime-local">`, always use `toDateTimeLocalInput(value)` to fill it and
+`fromDateTimeLocalInput(input.value)` (epoch ms) to read it. `toISOString().slice(0, 16)` shows UTC wall time as if it
+were local and shifts the instant by the UTC offset on every save.
 
 Core principles:
 

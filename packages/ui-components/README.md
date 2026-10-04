@@ -22,7 +22,9 @@ A shared confirmation dialog wrapper built on top of `@ottabase/ui-shadcn`'s ale
 - `secondaryActionText?: React.ReactNode` - Semantic alias for the secondary action button text
 - `confirmLabel?: React.ReactNode` - Confirm button label override
 - `cancelLabel?: React.ReactNode` - Cancel button label override
-- `onConfirm?: MouseEventHandler<HTMLButtonElement>` - Confirm action
+- `onConfirm?: (event) => void | Promise<unknown>` - Confirm action. Return a promise (e.g. `mutation.mutateAsync()`) to
+  keep the dialog open while it runs: buttons disable and show a spinner, it closes on success, and on failure it stays
+  open with the error shown inline
 - `onCancel?: MouseEventHandler<HTMLButtonElement>` - Cancel action
 
 `primaryActionText` and `secondaryActionText` take precedence over `confirmLabel` and `cancelLabel` when both are

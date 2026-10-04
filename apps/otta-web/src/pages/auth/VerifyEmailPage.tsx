@@ -29,7 +29,7 @@ export function VerifyEmailPage() {
             }
 
             setStatus('success');
-            setTimeout(() => navigate({ to: '/login' }), 1200);
+            setTimeout(() => navigate({ to: '/login', search: { verified: '1' } }), 1200);
         };
 
         run().catch((err) => {

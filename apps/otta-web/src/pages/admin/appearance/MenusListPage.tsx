@@ -121,12 +121,7 @@ export function AdminMenusListPage() {
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText={deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                onConfirm={() => {
-                    if (deleteMenuId) deleteMutation.mutate(deleteMenuId);
-                    setDeleteMenuId(null);
-                }}
-                confirmProps={{ disabled: deleteMutation.isPending }}
-                cancelProps={{ disabled: deleteMutation.isPending }}
+                onConfirm={() => (deleteMenuId ? deleteMutation.mutateAsync(deleteMenuId) : undefined)}
             />
         </div>
     );

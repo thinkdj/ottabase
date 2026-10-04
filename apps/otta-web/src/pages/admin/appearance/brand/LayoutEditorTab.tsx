@@ -37,6 +37,15 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { layoutApi, type BrandKitItem, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
+/**
+ * A mapping row with a client-only key. Keying rows by their editable path
+ * pattern remounted the row on every keystroke and dropped input focus.
+ */
+type MappingRowItem = LayoutMappingItem & { rowKey: string };
+let nextRowKey = 0;
+const withRowKey = (m: LayoutMappingItem): MappingRowItem => ({ ...m, rowKey: m.id ?? `new-${nextRowKey++}` });
+const stripRowKey = ({ rowKey: _rowKey, ...m }: MappingRowItem): LayoutMappingItem => m;
+
 const PRESET_IDS = Object.keys(LAYOUT_PRESETS) as LayoutPresetId[];
 
 const BUILT_IN_PRESETS: LayoutTemplateItem[] = PRESET_IDS.map((key) => ({
@@ -655,12 +664,7 @@ function DeleteTemplateButton({ template, inUseCount }: { template: LayoutTempla
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText={deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                onConfirm={() => {
-                    deleteMutation.mutate();
-                    setOpen(false);
-                }}
-                confirmProps={{ disabled: deleteMutation.isPending }}
-                cancelProps={{ disabled: deleteMutation.isPending }}
+                onConfirm={() => deleteMutation.mutateAsync()}
             />
         </>
     );
@@ -684,15 +688,10 @@ function MappingsEditor({
     const [layoutTemplateId, setLayoutTemplateId] = useState('');
     const [brandKitId, setBrandKitId] = useState('');
     const [priority, setPriority] = useState(0);
-    const [items, setItems] = useState<LayoutMappingItem[]>(mappings);
+    const [items, setItems] = useState<MappingRowItem[]>(() => mappings.map(withRowKey));
 
     useEffect(() => {
-        setItems(
-            mappings.map((m) => ({
-                ...m,
-                brandKitId: m.brandKitId || kits[0]?.id || '',
-            })),
-        );
+        setItems(mappings.map((m) => withRowKey({ ...m, brandKitId: m.brandKitId || kits[0]?.id || '' })));
     }, [mappings, kits]);
 
     const handlePathPatternChange = useCallback((value: string) => {
@@ -708,7 +707,13 @@ function MappingsEditor({
         if (!pathPattern.trim() || patternError || !layoutTemplateId || !brandKitId) return;
         setItems((prevItems) => [
             ...prevItems,
-            { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority, tokenOverridesJson: null },
+            withRowKey({
+                pathPattern: pathPattern.trim(),
+                layoutTemplateId,
+                brandKitId,
+                priority,
+                tokenOverridesJson: null,
+            }),
         ]);
         setPathPattern('');
         setPatternError('');
@@ -767,7 +772,7 @@ function MappingsEditor({
                                 const hasOverrides = !!m.tokenOverridesJson && m.tokenOverridesJson !== '{}';
                                 return (
                                     <MappingRow
-                                        key={`${m.pathPattern}-${idx}`}
+                                        key={m.rowKey}
                                         mapping={m}
                                         layoutOptions={layoutOptions}
                                         kits={kits}
@@ -785,7 +790,7 @@ function MappingsEditor({
                 </div>
             )}
 
-            <Button onClick={() => onSave(items)} disabled={saving || kits.length === 0}>
+            <Button onClick={() => onSave(items.map(stripRowKey))} disabled={saving || kits.length === 0}>
                 {saving ? 'Saving...' : 'Save mappings'}
             </Button>
 

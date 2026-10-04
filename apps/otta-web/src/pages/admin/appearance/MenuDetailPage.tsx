@@ -416,12 +416,7 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText={deleteItemMutation.isPending ? 'Removing…' : 'Remove'}
-                onConfirm={() => {
-                    if (deleteItemId) deleteItemMutation.mutate(deleteItemId);
-                    setDeleteItemId(null);
-                }}
-                confirmProps={{ disabled: deleteItemMutation.isPending }}
-                cancelProps={{ disabled: deleteItemMutation.isPending }}
+                onConfirm={() => (deleteItemId ? deleteItemMutation.mutateAsync(deleteItemId) : undefined)}
             />
         </Card>
     );

@@ -134,3 +134,32 @@ export function getBrowserDetails(): { name: string; version: string } | null {
 
     return { name: browserName, version: browserVersion };
 }
+
+/**
+ * Save text as a file in the browser (CSV, JSON, Markdown…).
+ * No-op outside a browser.
+ */
+export function downloadTextFile(content: string, filename: string, type = 'text/plain;charset=utf-8'): void {
+    if (!isBrowser()) return;
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    // Revoke after the click has been handled so slower browsers still get the file
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Serialize rows to CSV (RFC 4180): quotes fields containing commas, quotes or
+ * newlines, doubles inner quotes, and neutralises spreadsheet formula injection
+ * (cells starting with = + - @ get a leading apostrophe).
+ */
+export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
+    const cell = (value: string | number | null | undefined) => {
+        let text = value == null ? '' : String(value);
+        if (/^[=+\-@]/.test(text)) text = `'${text}`;
+        return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    return [headers, ...rows].map((row) => row.map(cell).join(',')).join('\r\n');
+}

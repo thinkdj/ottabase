@@ -47,7 +47,7 @@ export function ResetPasswordPage() {
                 throw new Error(result.error || 'Password reset failed');
             }
             setSuccess(true);
-            setTimeout(() => navigate({ to: '/login' }), 1200);
+            setTimeout(() => navigate({ to: '/login', search: { passwordChanged: '1' } }), 1200);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Password reset failed');
         } finally {

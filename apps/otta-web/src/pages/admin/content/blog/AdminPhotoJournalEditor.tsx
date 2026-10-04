@@ -53,6 +53,7 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -167,7 +168,7 @@ function dateInputValue(value: number | null | undefined): string {
 }
 
 function initialPublishAt(value: number | null | undefined): string {
-    return value ? new Date(value).toISOString().slice(0, 16) : '';
+    return toDateTimeLocalInput(value);
 }
 
 export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJournalEditorPost }) {
@@ -336,7 +337,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
         }
 
         const resolvedStatus = publishNow ? 'published' : status;
-        const publishAtValue = publishAt ? new Date(publishAt).getTime() : null;
+        const publishAtValue = fromDateTimeLocalInput(publishAt);
         const publishAtForPayload =
             typeof publishAtValue === 'number' && Number.isFinite(publishAtValue) && publishAtValue > 0
                 ? publishAtValue

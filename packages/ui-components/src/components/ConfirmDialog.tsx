@@ -36,7 +36,12 @@ export interface ConfirmDialogProps extends Omit<React.ComponentPropsWithoutRef<
     secondaryActionText?: React.ReactNode;
     confirmLabel?: React.ReactNode;
     cancelLabel?: React.ReactNode;
-    onConfirm?: React.MouseEventHandler<HTMLButtonElement>;
+    /**
+     * Runs on confirm. Return a promise to keep the dialog open while it runs:
+     * buttons disable, Escape/outside clicks are ignored, it closes on success
+     * and shows the error inline (staying open) on failure.
+     */
+    onConfirm?: (event: React.MouseEvent<HTMLButtonElement>) => void | Promise<unknown>;
     onCancel?: React.MouseEventHandler<HTMLButtonElement>;
     contentProps?: React.ComponentPropsWithoutRef<typeof AlertDialogContent>;
     confirmProps?: Omit<React.ComponentPropsWithoutRef<typeof AlertDialogAction>, 'children' | 'onClick'>;
@@ -62,6 +67,38 @@ export function ConfirmDialog({
     cancelProps,
     ...rootProps
 }: ConfirmDialogProps) {
+    const { open: openProp, defaultOpen, onOpenChange, ...restRootProps } = rootProps;
+    const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false);
+    const [pending, setPending] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const open = openProp ?? internalOpen;
+
+    const setOpen = (next: boolean) => {
+        if (pending) return; // stay put while the action runs
+        if (next) setError(null);
+        if (openProp === undefined) setInternalOpen(next);
+        onOpenChange?.(next);
+    };
+
+    const handleConfirm = (event: React.MouseEvent<HTMLButtonElement>) => {
+        const result = onConfirm?.(event);
+        if (!(result instanceof Promise)) return; // sync: AlertDialogAction closes as before
+        event.preventDefault();
+        setPending(true);
+        setError(null);
+        result.then(
+            () => {
+                setPending(false);
+                if (openProp === undefined) setInternalOpen(false);
+                onOpenChange?.(false);
+            },
+            (cause: unknown) => {
+                setPending(false);
+                setError(cause instanceof Error && cause.message ? cause.message : 'Something went wrong. Try again.');
+            },
+        );
+    };
+
     const isDestructiveTone = tone === 'destructive' || tone === 'unsaved-changes';
     const isUnsavedChangesTone = tone === 'unsaved-changes';
     const resolvedConfirmLabel =
@@ -75,20 +112,33 @@ export function ConfirmDialog({
     const confirmAction = (
         <AlertDialogAction
             className={cn(isDestructiveTone ? buttonVariants({ variant: 'destructive' }) : undefined, confirmClassName)}
-            onClick={onConfirm}
             {...restConfirmProps}
+            onClick={handleConfirm}
+            disabled={pending || restConfirmProps.disabled}
+            aria-busy={pending || undefined}
         >
+            {pending ? (
+                <span
+                    aria-hidden="true"
+                    className="mr-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                />
+            ) : null}
             {resolvedConfirmLabel}
         </AlertDialogAction>
     );
     const cancelAction = (
-        <AlertDialogCancel className={cancelClassName} onClick={onCancel} {...restCancelProps}>
+        <AlertDialogCancel
+            className={cancelClassName}
+            {...restCancelProps}
+            onClick={onCancel}
+            disabled={pending || restCancelProps.disabled}
+        >
             {resolvedCancelLabel}
         </AlertDialogCancel>
     );
 
     return (
-        <AlertDialog {...rootProps}>
+        <AlertDialog {...restRootProps} open={open} onOpenChange={setOpen}>
             {trigger ? <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger> : null}
             <AlertDialogContent className={contentClassName} {...restContentProps}>
                 <AlertDialogHeader>
@@ -98,6 +148,11 @@ export function ConfirmDialog({
                     {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
                 </AlertDialogHeader>
                 {children}
+                {error ? (
+                    <p role="alert" className="text-sm text-destructive">
+                        {error}
+                    </p>
+                ) : null}
                 <AlertDialogFooter>
                     {isUnsavedChangesTone ? (
                         <>

@@ -68,6 +68,13 @@ interface UploadApiResponse {
 
 const MEDIA_KIND_FILTERS: MediaKind[] = ['image', 'video', 'audio', 'document', 'archive', 'other'];
 
+/** File-input `accept` for a picker's kinds; undefined (anything) when a kind has no MIME family */
+function acceptAttribute(kinds?: MediaKind[]): string | undefined {
+    const families: Partial<Record<MediaKind, string>> = { image: 'image/*', video: 'video/*', audio: 'audio/*' };
+    if (!kinds?.length || kinds.some((kind) => !families[kind])) return undefined;
+    return kinds.map((kind) => families[kind]).join(',');
+}
+
 function formatCreatedAt(value?: string | number | Date | null): string {
     if (!value) {
         return 'Unknown';
@@ -175,12 +182,14 @@ export function MediaLibraryBrowser({
             status: 'active',
             ...(defaultWhere || {}),
         };
-        // Push kind filter to the server when a specific tab is active
+        // Kind filters run on the server, so paging never hides matching items
         if (activeKind !== 'all') {
             clause.mediaKind = activeKind;
+        } else if (acceptKinds?.length) {
+            clause.mediaKind = { $in: acceptKinds };
         }
         return clause;
-    }, [activeKind, defaultWhere]);
+    }, [activeKind, acceptKinds, defaultWhere]);
 
     const mediaListQuery = mediaLibraryHooks.useInfiniteList(
         {
@@ -200,24 +209,21 @@ export function MediaLibraryBrowser({
 
     const allowedKinds = useMemo(() => acceptKinds ?? MEDIA_KIND_FILTERS, [acceptKinds]);
 
-    // Light client-side filter only for acceptKinds (restricts kinds in picker mode)
-    const filteredItems = useMemo(() => {
-        if (!acceptKinds) return items;
-        return items.filter((item) => acceptKinds.includes(item.mediaKind));
-    }, [acceptKinds, items]);
+    // Server total for the current filters (falls back to loaded rows before the first page lands)
+    const totalCount = mediaListQuery.data?.pages?.[0]?.total ?? items.length;
+
+    // Picker mode: only offer files the picker can accept
+    const uploadAccept = useMemo(() => acceptAttribute(acceptKinds), [acceptKinds]);
 
     const selectedItem = useMemo(
-        () => filteredItems.find((item) => item.id === selectedId) ?? filteredItems[0] ?? null,
-        [filteredItems, selectedId],
+        () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
+        [items, selectedId],
     );
 
     // Ordered list of full item objects for the current multi-selection (capped at 5 for the card stack visual)
     const multiSelectedItems = useMemo(
-        () =>
-            multiSelectedIds
-                .map((id) => filteredItems.find((item) => item.id === id))
-                .filter(Boolean) as MediaListItem[],
-        [multiSelectedIds, filteredItems],
+        () => multiSelectedIds.map((id) => items.find((item) => item.id === id)).filter(Boolean) as MediaListItem[],
+        [multiSelectedIds, items],
     );
 
     const multiSelectionSummary = useMemo(() => {
@@ -372,6 +378,7 @@ export function MediaLibraryBrowser({
                                 ref={uploadInputRef}
                                 type="file"
                                 multiple
+                                accept={uploadAccept}
                                 className="hidden"
                                 aria-label="Upload media files"
                                 onChange={(event) => {
@@ -425,7 +432,7 @@ export function MediaLibraryBrowser({
                             <div>
                                 <CardTitle className="text-[0.9375rem] font-semibold">Library</CardTitle>
                                 <CardDescription className="text-sm text-muted-foreground">
-                                    {filteredItems.length} item{filteredItems.length === 1 ? '' : 's'} available
+                                    {totalCount} item{totalCount === 1 ? '' : 's'} available
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-3">
@@ -458,7 +465,7 @@ export function MediaLibraryBrowser({
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {mediaListQuery.isLoading && filteredItems.length === 0 ? (
+                        {mediaListQuery.isLoading && items.length === 0 ? (
                             // Skeleton grid — card is muted, so pulse tiles use bg-background/60 to stay visible
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-busy="true">
                                 <span className="sr-only">Loading media library…</span>
@@ -469,7 +476,7 @@ export function MediaLibraryBrowser({
                                     />
                                 ))}
                             </div>
-                        ) : filteredItems.length === 0 ? (
+                        ) : items.length === 0 ? (
                             <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-xl bg-muted/40 text-center">
                                 <div className="rounded-full bg-background p-4 ring-1 ring-border">
                                     <IconPhotoPlus className="h-8 w-8 text-muted-foreground" />
@@ -505,7 +512,7 @@ export function MediaLibraryBrowser({
                                                 onClick={() => {
                                                     // Collect payloads in the order they were selected
                                                     const ordered = multiSelectedIds
-                                                        .map((id) => filteredItems.find((item) => item.id === id))
+                                                        .map((id) => items.find((item) => item.id === id))
                                                         .filter(Boolean) as MediaListItem[];
                                                     onSelectItems?.(ordered.map(toMediaSelectionPayload));
                                                 }}
@@ -517,7 +524,7 @@ export function MediaLibraryBrowser({
                                     </div>
                                 )}
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                                    {filteredItems.map((item) => {
+                                    {items.map((item) => {
                                         const itemTitle = getMediaDisplayTitle(item);
                                         const isSelected = selectedItem?.id === item.id;
                                         const isMultiSelected = multiSelectedSet.has(item.id);
