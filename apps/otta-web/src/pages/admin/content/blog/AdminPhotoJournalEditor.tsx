@@ -1,4 +1,5 @@
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
+import { PublishActions, PublishControl } from '@/components/editor/PublishControl';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { blogPostHooks, blogTagHooks } from '@/hooks/blogHooks';
@@ -9,7 +10,6 @@ import {
     createPhotoJournalTitle,
     PHOTO_JOURNAL_MAX_ITEMS,
     PHOTO_JOURNAL_NOTE_MAX_LENGTH,
-    POST_STATUSES,
     type PhotoJournalItem,
     type PostCrosspost,
     type PostStatus,
@@ -48,27 +48,12 @@ import {
     DialogTitle,
     Input,
     Label,
-    NativeSelect,
-    NativeSelectOption,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-    ArrowDown,
-    ArrowLeft,
-    ArrowUp,
-    Images,
-    Loader2,
-    MapPin,
-    Plus,
-    Save,
-    Send,
-    Star,
-    Tag,
-    Trash2,
-} from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Images, MapPin, Plus, Star, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useBlogSurface } from './blogAdminPaths';
 
@@ -482,22 +467,15 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => void handleSave(false)} disabled={isSaving || !isDirty}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Save
-                    </Button>
-                    <Button onClick={() => void handleSave(true)} disabled={isSaving || photos.length === 0}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                        )}
-                        Publish
-                    </Button>
+                    <PublishActions
+                        status={status}
+                        savedStatus={initialData?.status}
+                        isSaving={isSaving}
+                        saveDisabled={!isDirty}
+                        publishDisabled={photos.length === 0}
+                        onSave={() => void handleSave(false)}
+                        onPublishNow={() => void handleSave(true)}
+                    />
                 </div>
             </div>
 
@@ -801,32 +779,15 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                             <CardTitle className="text-[0.9375rem] font-semibold">Publishing</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="photoJournalStatus">Status</Label>
-                                <NativeSelect
-                                    id="photoJournalStatus"
-                                    value={status}
-                                    onChange={(event) => setStatus(event.target.value as PostStatus)}
-                                    wrapperClassName="w-full"
-                                >
-                                    {Object.entries(POST_STATUSES).map(([value, option]) => (
-                                        <NativeSelectOption key={value} value={value}>
-                                            {option.label}
-                                        </NativeSelectOption>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-                            {status === 'scheduled' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="photoJournalPublishAt">Publish at</Label>
-                                    <Input
-                                        id="photoJournalPublishAt"
-                                        type="datetime-local"
-                                        value={publishAt}
-                                        onChange={(event) => setPublishAt(event.target.value)}
-                                    />
-                                </div>
-                            )}
+                            <PublishControl
+                                status={status}
+                                onStatusChange={setStatus}
+                                publishAt={publishAt}
+                                onPublishAtChange={setPublishAt}
+                                savedStatus={initialData?.status}
+                                publishedAt={initialData?.publishedAt}
+                                disabled={isSaving}
+                            />
                             <label className="flex items-center gap-2 text-sm font-medium">
                                 <input
                                     type="checkbox"

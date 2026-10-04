@@ -1,14 +1,9 @@
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
+import { PublishActions, PublishControl } from '@/components/editor/PublishControl';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { useSession } from '@/lib/auth';
-import {
-    BLURB_MAX_LENGTH,
-    createBlurbTitle,
-    POST_STATUSES,
-    type PostCrosspost,
-    type PostStatus,
-} from '@ottabase/ottablog';
+import { BLURB_MAX_LENGTH, createBlurbTitle, type PostCrosspost, type PostStatus } from '@ottabase/ottablog';
 import { BlurbRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
@@ -28,14 +23,10 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-    Input,
-    Label,
-    NativeSelect,
-    NativeSelectOption,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Loader2, Save, Send, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { blogPostHooks, blogTagHooks } from '@/hooks/blogHooks';
 import { useBlogSurface } from './blogAdminPaths';
@@ -263,22 +254,15 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => void handleSave(false)} disabled={isSaving || !isDirty}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Save
-                    </Button>
-                    <Button onClick={() => void handleSave(true)} disabled={isSaving || !previewText}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                        )}
-                        Publish
-                    </Button>
+                    <PublishActions
+                        status={status}
+                        savedStatus={initialData?.status}
+                        isSaving={isSaving}
+                        saveDisabled={!isDirty}
+                        publishDisabled={!previewText}
+                        onSave={() => void handleSave(false)}
+                        onPublishNow={() => void handleSave(true)}
+                    />
                 </div>
             </div>
 
@@ -348,32 +332,15 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                             <CardTitle className="text-[0.9375rem] font-semibold">Publishing</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="blurbStatus">Status</Label>
-                                <NativeSelect
-                                    id="blurbStatus"
-                                    value={status}
-                                    onChange={(event) => setStatus(event.target.value as PostStatus)}
-                                    wrapperClassName="w-full"
-                                >
-                                    {Object.entries(POST_STATUSES).map(([value, option]) => (
-                                        <NativeSelectOption key={value} value={value}>
-                                            {option.label}
-                                        </NativeSelectOption>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-                            {status === 'scheduled' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="blurbPublishAt">Publish at</Label>
-                                    <Input
-                                        id="blurbPublishAt"
-                                        type="datetime-local"
-                                        value={publishAt}
-                                        onChange={(event) => setPublishAt(event.target.value)}
-                                    />
-                                </div>
-                            )}
+                            <PublishControl
+                                status={status}
+                                onStatusChange={setStatus}
+                                publishAt={publishAt}
+                                onPublishAtChange={setPublishAt}
+                                savedStatus={initialData?.status}
+                                publishedAt={initialData?.publishedAt}
+                                disabled={isSaving}
+                            />
                             <label className="flex items-center gap-2 text-sm font-medium">
                                 <input
                                     type="checkbox"

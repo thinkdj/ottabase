@@ -94,6 +94,10 @@ vi.mock('lucide-react', () => ({
     Save: () => null,
     Trash2: () => null,
     Eye: () => null,
+    // PublishControl module
+    Archive: () => null,
+    CalendarClock: () => null,
+    Send: () => null,
 }));
 
 import { AdminBlogTranslationsPanel } from '../AdminBlogTranslationsPanel';

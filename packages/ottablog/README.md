@@ -162,8 +162,13 @@ switching. Unsaved translations prompt before switching languages or leaving the
 published, scheduled, or deleted independently. Only the writing column switches languages: the shared sidebar stays
 visible. While translating, **Save original & shared settings** uses the existing original-post save operation
 (including any pending original text edits); **Save translation** saves only the selected translation. Translation
-status and save controls appear in the page header. The sidebar's original status and schedule are explicitly labelled.
-Published originals show **Save changes** and **View post**; drafts retain **Save draft** and **Publish now**.
+status and save controls appear in the page header.
+
+Every editor (article, blurb, photo journal, and each translation) uses one **Visibility** control: Draft, Published,
+Scheduled or Archived, with a line saying what saving will do in the author's time zone ("Goes live Sat, 10 Oct, 09:00
+BST (in 6 days)"). Picking Scheduled suggests tomorrow 09:00; a time already passed is published by the next cron run,
+dated that time. The save button is named after the choice (**Save draft**, **Publish**, **Schedule**, **Archive**,
+**Unpublish**, **Save changes**), and drafts also get **Publish now**. Nothing is scheduled unless Scheduled is picked.
 
 The admin detail read uses `?language={language}` to load one editable translation. In the admin UI, translation slugs
 are presented as `<canonical-post-slug>-<editable-suffix>`; the canonical slug is fixed while the suffix can be

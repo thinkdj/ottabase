@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **One Visibility control for every blog editor.** Article, blurb, photo journal and translation editors share
+  `PublishControl` (Draft / Published / Scheduled / Archived) in place of a status dropdown plus a loose date field. It
+  says in plain words what saving will do ("Goes live Sat, 10 Oct, 09:00 BST (in 6 days)", "Saving takes it offline"),
+  suggests tomorrow 09:00 when Scheduled is picked, and explains a past time instead of hiding it. The header save
+  button is named after the choice (Save draft, Publish, Schedule, Unpublish, Archive, Save changes) with **Publish
+  now** only for drafts, so "Scheduled" plus "Publish" can no longer silently publish at once. The article editor no
+  longer auto-schedules a draft that has a date, and its status chip shows the saved status.
 - **Sign-in and account flow reworked.** `LoginForm` is email-first: one email shared by the **Password** and **Email
   link** tabs, errors (social ones too) shown once at the top, the forgot-password dialog prefilled with what was typed,
   and "try again" after a magic link no longer reloads the page (`onMagicLinkReset`). Login, register, reset and verify

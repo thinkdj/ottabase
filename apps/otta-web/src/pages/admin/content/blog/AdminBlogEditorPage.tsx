@@ -4,6 +4,7 @@
  * Full-featured blog post editor with OttaEditor integration,
  * hero image upload, SEO settings, and all post fields.
  */
+import { PublishActions, PublishControl } from '@/components/editor/PublishControl';
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { FuzzyDateField } from '@/components/editor/FuzzyDateField';
 import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
@@ -22,7 +23,6 @@ import {
     CONTENT_TYPES,
     type BlogLanguageConfig,
     formatDate,
-    formatShortDate,
     generateSlug,
     POST_STATUSES,
     type ContentType,
@@ -101,7 +101,6 @@ import {
     Redo2,
     Save,
     Search,
-    Send,
     Settings,
     SplitSquareHorizontal,
     StickyNote,
@@ -1079,19 +1078,18 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             }
 
             const publishAtValue = fromDateTimeLocalInput(publishAt);
-            const shouldAutoSchedule = Boolean(publishAtValue) && (status === 'draft' || status === 'scheduled');
-            const resolvedStatus: PostStatus = publishNow ? 'published' : shouldAutoSchedule ? 'scheduled' : status;
+            const resolvedStatus: PostStatus = publishNow ? 'published' : status;
 
             if (resolvedStatus === 'scheduled' && !publishAtValue) {
                 setAlertDialog({
                     open: true,
-                    title: 'Validation Error',
-                    message: 'Scheduled posts must include a publish date.',
+                    title: 'Publish date required',
+                    message: 'Choose when this post should go live.',
                 });
                 return;
             }
 
-            const publishAtPayload = publishNow || resolvedStatus !== 'scheduled' ? null : publishAtValue;
+            const publishAtPayload = resolvedStatus === 'scheduled' ? publishAtValue : null;
             const expectedUpdatedAt = initialData?.updatedAt ? new Date(initialData.updatedAt).getTime() : undefined;
 
             const postData: Partial<BlogPost> & { expectedUpdatedAt?: number } = {
@@ -1349,8 +1347,12 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 />
                 <div className={isWritingTranslation ? 'hidden' : 'flex flex-wrap items-center gap-2'}>
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[status]}`} />
-                        {POST_STATUSES[status].label}
+                        {/* What is saved now; the Visibility panel holds what saving will change it to */}
+                        <span
+                            aria-hidden="true"
+                            className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[initialData?.status ?? 'draft']}`}
+                        />
+                        {POST_STATUSES[initialData?.status ?? 'draft'].label}
                     </span>
                     {isEditMode && initialData && status === 'published' && (
                         <Button variant="ghost" asChild>
@@ -1363,28 +1365,14 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </a>
                         </Button>
                     )}
-                    <Button
-                        variant={status === 'published' ? 'default' : 'outline'}
-                        onClick={() => handleSave(false)}
-                        disabled={saveDisabled}
-                    >
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                        )}
-                        {isSaving ? 'Saving…' : status === 'draft' ? 'Save draft' : 'Save changes'}
-                    </Button>
-                    {status !== 'published' && (
-                        <Button onClick={() => handleSave(true)} disabled={isSaving}>
-                            {isSaving ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="mr-2 h-4 w-4" />
-                            )}
-                            Publish now
-                        </Button>
-                    )}
+                    <PublishActions
+                        status={status}
+                        savedStatus={initialData?.status}
+                        isSaving={isSaving}
+                        saveDisabled={saveDisabled}
+                        onSave={() => handleSave(false)}
+                        onPublishNow={() => handleSave(true)}
+                    />
                 </div>
             </div>
 
@@ -1932,36 +1920,16 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                 </NativeSelect>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="postStatus">Original post status</Label>
-                                <NativeSelect
-                                    id="postStatus"
-                                    aria-label="Post status"
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value as PostStatus)}
-                                    wrapperClassName="w-full"
-                                >
-                                    {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                                        <NativeSelectOption key={value} value={value}>
-                                            {label}
-                                        </NativeSelectOption>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Original post schedule</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={publishAt}
-                                    onChange={(e) => setPublishAt(e.target.value)}
-                                />
-                                {initialData?.publishedAt && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Published {formatShortDate(initialData.publishedAt)}
-                                    </p>
-                                )}
-                            </div>
+                            <PublishControl
+                                label="Original post visibility"
+                                status={status}
+                                onStatusChange={setStatus}
+                                publishAt={publishAt}
+                                onPublishAtChange={setPublishAt}
+                                savedStatus={initialData?.status}
+                                publishedAt={initialData?.publishedAt}
+                                disabled={isSaving}
+                            />
 
                             <div className="space-y-2">
                                 <Label htmlFor="originalDate">Originally Written</Label>

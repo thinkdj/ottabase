@@ -1,3 +1,4 @@
+import { PublishControl } from '@/components/editor/PublishControl';
 import {
     POST_STATUSES,
     type BlogLanguageConfig,
@@ -21,11 +22,6 @@ import {
     Label,
     NativeSelect,
     NativeSelectOption,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { Eye, Languages, Loader2, Save, Trash2 } from 'lucide-react';
@@ -229,7 +225,7 @@ function TranslationEditor({
                 excerpt: excerpt || null,
                 content,
                 status,
-                publishAt: fromDateTimeLocalInput(publishAt),
+                publishAt: status === 'scheduled' ? fromDateTimeLocalInput(publishAt) : null,
                 blurbText: blurbText || null,
                 photoNote: photoNote || null,
             });
@@ -328,32 +324,21 @@ function TranslationEditor({
                         </p>
                     </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="translation-status">Status</Label>
-                        <Select value={status} onValueChange={(value) => setStatus(value as PostStatus)}>
-                            <SelectTrigger id="translation-status" className="w-full">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.entries(POST_STATUSES).map(([value, option]) => (
-                                    <SelectItem key={value} value={value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="translation-publish-at">Publish at (for scheduled)</Label>
-                        <Input
-                            id="translation-publish-at"
-                            type="datetime-local"
-                            value={publishAt}
-                            onChange={(event) => setPublishAt(event.target.value)}
-                        />
-                    </div>
-                </div>
+                <PublishControl
+                    label="Visibility of this language"
+                    status={status}
+                    onStatusChange={setStatus}
+                    publishAt={publishAt}
+                    onPublishAtChange={setPublishAt}
+                    savedStatus={existing?.status}
+                    publishedAt={existing?.publishedAt}
+                    disabled={saveMutation.isPending}
+                    note={
+                        basePost.status !== 'published' && (status === 'published' || status === 'scheduled')
+                            ? 'Readers see it once the original post is live.'
+                            : undefined
+                    }
+                />
                 {(basePost.contentType === 'blurb' || basePost.blurbText) && (
                     <div className="space-y-2">
                         <Label htmlFor="translation-blurb">Blurb text</Label>
