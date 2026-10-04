@@ -1,7 +1,7 @@
 import { cleanCrossposts, CrosspostsField, crosspostsKey } from '@/components/editor/CrosspostsField';
 import { PublishActions, PublishControl } from '@/components/editor/PublishControl';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
-import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
+import { MediaPickerDialog } from '@/components/media-library/MediaPickerDialog';
 import { blogPostHooks, blogTagHooks } from '@/hooks/blogHooks';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { useSession } from '@/lib/auth';
@@ -41,11 +41,6 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
     Input,
     Label,
     Textarea,
@@ -850,31 +845,16 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 </div>
             </div>
 
-            <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
-                <DialogContent className="flex max-h-[90vh] max-w-6xl flex-col overflow-hidden">
-                    <DialogHeader>
-                        <DialogTitle>Choose photographs</DialogTitle>
-                        <DialogDescription>
-                            Select several images in the order you want them added. You can rearrange them afterwards.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
-                        <MediaLibraryBrowser
-                            title="Photographs"
-                            description="Select from your image library or upload new photographs."
-                            emptyTitle="No photographs yet"
-                            emptyDescription="Upload the first images for this journal."
-                            acceptKinds={['image']}
-                            mode="picker"
-                            allowMultiselect
-                            allowDelete={false}
-                            confirmLabel="Add selected photographs"
-                            onSelectItem={(item) => addPhotos([item])}
-                            onSelectItems={addPhotos}
-                        />
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <MediaPickerDialog
+                open={libraryOpen}
+                onOpenChange={setLibraryOpen}
+                title="Choose photographs"
+                description="Tap them in the order you want them added. You can rearrange them afterwards."
+                acceptKinds={['image']}
+                multiple
+                confirmLabel="Add photos"
+                onPick={addPhotos}
+            />
 
             <ConfirmDialog
                 open={deleteOpen}

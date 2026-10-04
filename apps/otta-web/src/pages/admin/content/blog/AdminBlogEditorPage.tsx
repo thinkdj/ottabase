@@ -13,10 +13,11 @@ import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
 import { AdminBlogTranslationsPanel } from './AdminBlogTranslationsPanel';
 import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
-import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
+import { MediaPickerDialog } from '@/components/media-library/MediaPickerDialog';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
-import { api, isApiError } from '@/lib/api';
+import { isApiError } from '@/lib/api';
+import { uploadMedia } from '@/lib/upload';
 import { useSession } from '@/lib/auth';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
@@ -915,13 +916,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const uploadHeroFile = async (file: File) => {
         setIsUploadingHero(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const data = await api<{ url?: string; cfImageId?: string }>('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            const data = await uploadMedia(file);
             if (data.url) {
                 setHeroImage({
                     url: data.url,
@@ -932,7 +927,11 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             }
         } catch (error) {
             console.error('Hero image upload failed:', error);
-            setAlertDialog({ open: true, title: 'Error', message: 'Failed to upload image. Please try again.' });
+            setAlertDialog({
+                open: true,
+                title: 'Upload failed',
+                message: error instanceof Error ? error.message : 'Failed to upload image. Please try again.',
+            });
         } finally {
             setIsUploadingHero(false);
         }
@@ -1858,19 +1857,14 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </CardContent>
                     </Card>
 
-                    <Dialog open={isHeroMediaPickerOpen} onOpenChange={setIsHeroMediaPickerOpen}>
-                        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-                            <MediaLibraryBrowser
-                                title="Media gallery"
-                                description="Search existing uploads or add a new one and pick it as the hero image."
-                                emptyTitle="No matching media yet"
-                                emptyDescription="Upload a file here to add it to your media library."
-                                acceptKinds={['image']}
-                                mode="picker"
-                                onSelectItem={(payload) => handleHeroMediaSelect(payload)}
-                            />
-                        </DialogContent>
-                    </Dialog>
+                    <MediaPickerDialog
+                        open={isHeroMediaPickerOpen}
+                        onOpenChange={setIsHeroMediaPickerOpen}
+                        title="Choose a hero image"
+                        acceptKinds={['image']}
+                        confirmLabel="Use as hero"
+                        onPick={([item]) => handleHeroMediaSelect(item)}
+                    />
 
                     {/* Post Settings */}
                     <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">

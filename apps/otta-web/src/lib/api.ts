@@ -232,27 +232,28 @@ function handleUnauthorized(): void {
 export const api = createApiClient({
     baseUrl: '',
     getAuthToken,
-    defaultHeaders: () => {
-        const headers: Record<string, string> = {
-            Accept: 'application/json',
-        };
-
-        // Read appId from global state
-        const appId = getAppId();
-        if (appId) {
-            headers['X-App-Id'] = appId;
-        }
-
-        // Read organizationId from global state
-        const organizationId = getOrganizationId();
-        if (organizationId) {
-            headers['X-Org-Id'] = organizationId;
-        }
-
-        return headers;
-    },
+    defaultHeaders: apiHeaders,
     timeout: 30000,
 });
+
+/** Headers every API request carries: JSON accept plus the app and org scope from global state */
+export function apiHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+    };
+
+    const appId = getAppId();
+    if (appId) {
+        headers['X-App-Id'] = appId;
+    }
+
+    const organizationId = getOrganizationId();
+    if (organizationId) {
+        headers['X-Org-Id'] = organizationId;
+    }
+
+    return headers;
+}
 
 // Re-export types for convenience
 export { ApiError, getErrorMessage, getErrorMessages, isApiError } from '@ottabase/api';

@@ -1,7 +1,13 @@
 import { mediaLibraryHooks } from '@/hooks/mediaLibraryHooks';
 import { api, isApiError } from '@/lib/api';
+import { uploadMedia } from '@/lib/upload';
 import type { MediaKind, MediaLibraryItemLike } from '@ottabase/medialibrary';
-import { formatMediaFileSize, getMediaDisplayTitle, toMediaSelectionPayload } from '@ottabase/medialibrary';
+import {
+    formatMediaFileSize,
+    getMediaDisplayTitle,
+    getMediaKindFromMimeType,
+    toMediaSelectionPayload,
+} from '@ottabase/medialibrary';
 import { MediaPreview } from '@ottabase/medialibrary/react';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -19,10 +25,10 @@ import {
     IconCopy,
     IconDeviceFloppy,
     IconExternalLink,
-    IconLoader2,
     IconPhotoPlus,
     IconSearch,
     IconTrash,
+    IconUpload,
     IconX,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -56,14 +62,6 @@ interface MediaLibraryBrowserProps {
     onSelectItem?: (item: ReturnType<typeof toMediaSelectionPayload>, rawItem: MediaListItem) => void;
     /** Called when the user confirms a multi-selection; receives payloads in selection order. */
     onSelectItems?: (items: ReturnType<typeof toMediaSelectionPayload>[]) => void;
-}
-
-interface UploadApiResponse {
-    success?: boolean;
-    error?: string;
-    media?: {
-        id?: string;
-    };
 }
 
 const MEDIA_KIND_FILTERS: MediaKind[] = ['image', 'video', 'audio', 'document', 'archive', 'other'];
@@ -104,17 +102,19 @@ export function MediaLibraryBrowser({
     onSelectItem,
     onSelectItems,
 }: MediaLibraryBrowserProps) {
-    const rootRef = useRef<HTMLDivElement>(null);
+    const isPicker = mode === 'picker';
     const uploadInputRef = useRef<HTMLInputElement>(null);
+    const dragDepth = useRef(0);
     const [searchValue, setSearchValue] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeKind, setActiveKind] = useState<MediaKind | 'all'>('all');
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    // Multi-select: ordered list of selected IDs (preserves pick order for insertion)
-    const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
-    const [isUploading, setIsUploading] = useState(false);
-    // Tracks per-file progress for serial uploads so the overlay can show "X of Y"
-    const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+    // Picker mode: what the user tapped, in tap order (kept as items so a new search doesn't drop them)
+    const [picked, setPicked] = useState<MediaListItem[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
+    // Serial upload state for the inline progress strip
+    const [upload, setUpload] = useState<{ name: string; index: number; total: number; fraction: number } | null>(null);
+    const isUploading = upload !== null;
     const [deleteTarget, setDeleteTarget] = useState<MediaListItem | null>(null);
     const [formValues, setFormValues] = useState({
         title: '',
@@ -122,60 +122,33 @@ export function MediaLibraryBrowser({
         caption: '',
     });
 
-    const multiSelectedSet = useMemo(() => new Set(multiSelectedIds), [multiSelectedIds]);
+    const pickedOrder = useMemo(() => new Map(picked.map((item, index) => [item.id, index + 1])), [picked]);
 
-    // Toggle an item in/out of the multi-selection set
-    const toggleMultiSelect = useCallback((id: string) => {
-        setMultiSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-    }, []);
+    /** Tap to pick, tap again to drop; single mode keeps at most one */
+    const togglePick = useCallback(
+        (item: MediaListItem) => {
+            setPicked((prev) => {
+                if (prev.some((p) => p.id === item.id)) return prev.filter((p) => p.id !== item.id);
+                return allowMultiselect ? [...prev, item] : [item];
+            });
+        },
+        [allowMultiselect],
+    );
+
+    const confirmPicked = useCallback(
+        (items: MediaListItem[] = picked) => {
+            if (items.length === 0) return;
+            if (allowMultiselect && onSelectItems) onSelectItems(items.map(toMediaSelectionPayload));
+            else onSelectItem?.(toMediaSelectionPayload(items[0]), items[0]);
+        },
+        [allowMultiselect, onSelectItem, onSelectItems, picked],
+    );
 
     // Debounce search input so we don't fire a request on every keystroke
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchValue.trim()), 300);
         return () => clearTimeout(timer);
     }, [searchValue]);
-
-    // When upload overlay is visible, lock only the nearest local scroll container.
-    // Early-return when not uploading so DOM traversal is skipped entirely.
-    useEffect(() => {
-        if (!isUploading || typeof window === 'undefined') {
-            return;
-        }
-
-        const findScrollableAncestor = (element: HTMLElement | null): HTMLElement | null => {
-            let current = element?.parentElement ?? null;
-            while (current) {
-                const style = window.getComputedStyle(current);
-                const hasScrollableOverflow =
-                    /(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflow);
-                if (hasScrollableOverflow && current.scrollHeight > current.clientHeight) {
-                    return current;
-                }
-                current = current.parentElement;
-            }
-            return null;
-        };
-
-        const scrollContainer = findScrollableAncestor(rootRef.current);
-        if (!scrollContainer) return;
-
-        const prevOverflow = scrollContainer.style.overflow;
-        const prevOverflowY = scrollContainer.style.overflowY;
-        const prevTouchAction = scrollContainer.style.touchAction;
-        const prevOverscrollBehavior = scrollContainer.style.overscrollBehavior;
-
-        scrollContainer.style.overflow = 'hidden';
-        scrollContainer.style.overflowY = 'hidden';
-        scrollContainer.style.touchAction = 'none';
-        scrollContainer.style.overscrollBehavior = 'contain';
-
-        return () => {
-            scrollContainer.style.overflow = prevOverflow;
-            scrollContainer.style.overflowY = prevOverflowY;
-            scrollContainer.style.touchAction = prevTouchAction;
-            scrollContainer.style.overscrollBehavior = prevOverscrollBehavior;
-        };
-    }, [isUploading]);
 
     const whereClause = useMemo(() => {
         const clause: Record<string, unknown> = {
@@ -220,29 +193,6 @@ export function MediaLibraryBrowser({
         [items, selectedId],
     );
 
-    // Ordered list of full item objects for the current multi-selection (capped at 5 for the card stack visual)
-    const multiSelectedItems = useMemo(
-        () => multiSelectedIds.map((id) => items.find((item) => item.id === id)).filter(Boolean) as MediaListItem[],
-        [multiSelectedIds, items],
-    );
-
-    const multiSelectionSummary = useMemo(() => {
-        if (multiSelectedItems.length === 0) return null;
-        const totalSize = multiSelectedItems.reduce((sum, item) => sum + (item.fileSize || 0), 0);
-        // Build a readable kinds breakdown, e.g. "3 images · 1 video"
-        const kindCounts = multiSelectedItems.reduce<Record<string, number>>((acc, item) => {
-            acc[item.mediaKind] = (acc[item.mediaKind] || 0) + 1;
-            return acc;
-        }, {});
-        const kindsSummary = Object.entries(kindCounts)
-            .map(([kind, count]) => `${count} ${kind}${count !== 1 ? 's' : ''}`)
-            .join(' · ');
-        return { totalSize, kindsSummary };
-    }, [multiSelectedItems]);
-
-    // Cards shown in the stack — keep to 5 so the fan stays readable
-    const stackCards = multiSelectedItems.slice(0, 5);
-
     useEffect(() => {
         if (selectedItem && selectedId !== selectedItem.id) {
             setSelectedId(selectedItem.id);
@@ -257,49 +207,86 @@ export function MediaLibraryBrowser({
         });
     }, [selectedItem?.altText, selectedItem?.caption, selectedItem?.id, selectedItem?.title]);
 
+    const refetchList = mediaListQuery.refetch;
     const refetchItems = useCallback(async () => {
-        await mediaListQuery.refetch();
-    }, [mediaListQuery.refetch]);
+        await refetchList();
+    }, [refetchList]);
 
     const handleUploadFiles = useCallback(
         async (files: FileList | File[]) => {
-            const list = Array.from(files);
-            if (list.length === 0) {
-                return;
+            // The file input filters by type; dropped files need the same check
+            const all = Array.from(files);
+            const list = acceptKinds?.length
+                ? all.filter((file) => acceptKinds.includes(getMediaKindFromMimeType(file.type, file.name)))
+                : all;
+            if (list.length < all.length) {
+                toast.info(
+                    `Skipped ${all.length - list.length} file${all.length - list.length === 1 ? '' : 's'} of a kind this can't use`,
+                );
             }
+            if (list.length === 0) return;
 
-            setIsUploading(true);
-            setUploadProgress({ current: 0, total: list.length });
-            let lastUploadedId: string | null = null;
-
-            try {
-                for (const file of list) {
-                    setUploadProgress((prev) => (prev ? { ...prev, current: prev.current + 1 } : null));
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    const payload = await api<UploadApiResponse>('/api/upload', {
-                        method: 'POST',
-                        body: formData,
+            const uploadedIds: string[] = [];
+            const failures: string[] = [];
+            for (const [index, file] of list.entries()) {
+                setUpload({ name: file.name, index: index + 1, total: list.length, fraction: 0 });
+                try {
+                    const result = await uploadMedia(file, {
+                        onProgress: (fraction) => setUpload((prev) => (prev ? { ...prev, fraction } : prev)),
                     });
-
-                    lastUploadedId = payload?.media?.id ?? lastUploadedId;
+                    if (result.media?.id) uploadedIds.push(result.media.id);
+                } catch (error) {
+                    failures.push(`${file.name}: ${error instanceof Error ? error.message : 'upload failed'}`);
                 }
+            }
+            setUpload(null);
 
-                await refetchItems();
-                if (lastUploadedId) {
-                    setSelectedId(lastUploadedId);
-                }
-                toast.success(list.length === 1 ? 'Upload complete' : `${list.length} files uploaded`);
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : 'Upload failed');
-            } finally {
-                setIsUploading(false);
-                setUploadProgress(null);
+            const refreshed = await refetchList();
+            if (uploadedIds.length > 0) {
+                const fresh = (refreshed.data?.pages?.flatMap((page) => page.data) ?? []) as MediaListItem[];
+                const uploaded = uploadedIds
+                    .map((id) => fresh.find((item) => item.id === id))
+                    .filter((item): item is MediaListItem => !!item);
+                // Picker: what you just uploaded is what you meant to pick
+                if (isPicker) setPicked((prev) => (allowMultiselect ? [...prev, ...uploaded] : uploaded.slice(-1)));
+                else setSelectedId(uploadedIds[uploadedIds.length - 1]);
+                toast.success(uploadedIds.length === 1 ? 'Upload complete' : `${uploadedIds.length} files uploaded`);
+            }
+            if (failures.length > 0) {
+                toast.error(failures.length === 1 ? 'Upload failed' : `${failures.length} uploads failed`, {
+                    description: failures.join('\n'),
+                });
             }
         },
-        [refetchItems],
+        [acceptKinds, allowMultiselect, isPicker, refetchList],
     );
+
+    /** Drag files anywhere over the browser to upload them */
+    const dropHandlers = showUpload
+        ? {
+              onDragEnter: (event: React.DragEvent) => {
+                  if (!event.dataTransfer.types.includes('Files')) return;
+                  event.preventDefault();
+                  dragDepth.current += 1;
+                  setIsDragging(true);
+              },
+              onDragOver: (event: React.DragEvent) => {
+                  if (event.dataTransfer.types.includes('Files')) event.preventDefault();
+              },
+              onDragLeave: (event: React.DragEvent) => {
+                  if (!event.dataTransfer.types.includes('Files')) return;
+                  dragDepth.current = Math.max(0, dragDepth.current - 1);
+                  if (dragDepth.current === 0) setIsDragging(false);
+              },
+              onDrop: (event: React.DragEvent) => {
+                  if (!event.dataTransfer.types.includes('Files')) return;
+                  event.preventDefault();
+                  dragDepth.current = 0;
+                  setIsDragging(false);
+                  if (!isUploading) void handleUploadFiles(event.dataTransfer.files);
+              },
+          }
+        : {};
 
     const handleMetadataSave = useCallback(async () => {
         if (!selectedItem) {
@@ -353,23 +340,31 @@ export function MediaLibraryBrowser({
     }, [deleteTarget, refetchItems, selectedId]);
 
     return (
-        <div ref={rootRef} className="relative space-y-6">
-            {/* Global upload overlay: blocks the full browser (grid + details panel) during serial uploads */}
-            {isUploading && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
-                    <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-sm font-medium text-foreground">
-                        {uploadProgress && uploadProgress.total > 1
-                            ? `Uploading file ${uploadProgress.current} of ${uploadProgress.total}…`
-                            : 'Uploading…'}
+        <div {...dropHandlers} className={`relative space-y-6 ${isPicker ? 'px-4 pt-4 sm:px-6' : ''}`}>
+            {isDragging && (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/85">
+                    <p className="flex items-center gap-2 text-base font-medium">
+                        <IconUpload className="h-5 w-5 text-primary" aria-hidden="true" />
+                        Drop to upload
                     </p>
                 </div>
             )}
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
-                </div>
+            <div
+                className={`flex flex-col gap-4 lg:flex-row lg:justify-between ${isPicker ? 'lg:items-center' : 'lg:items-end'}`}
+            >
+                {/* In a picker the dialog already carries the title */}
+                {isPicker ? (
+                    showUpload && (
+                        <p className="hidden text-sm text-muted-foreground sm:block">
+                            Tap to select. Drop files anywhere here to upload them.
+                        </p>
+                    )
+                ) : (
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                        <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+                    </div>
+                )}
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     {showUpload && (
@@ -394,7 +389,7 @@ export function MediaLibraryBrowser({
                                 disabled={isUploading}
                             >
                                 <IconPhotoPlus className="mr-2 h-4 w-4" />
-                                {isUploading ? 'Uploading...' : 'Upload files'}
+                                {isUploading ? 'Uploading…' : 'Upload files'}
                             </Button>
                         </>
                     )}
@@ -425,19 +420,46 @@ export function MediaLibraryBrowser({
                 ))}
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-                <Card className="min-h-[32rem] rounded-xl border-transparent bg-muted/40">
-                    <CardHeader>
-                        <div className="flex items-center justify-between gap-4">
+            {upload && (
+                <div role="status" className="space-y-1.5 rounded-lg bg-muted/40 px-4 py-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="min-w-0 truncate">
+                            Uploading <span className="font-medium">{upload.name}</span>
+                            {upload.total > 1 ? ` (${upload.index} of ${upload.total})` : ''}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                            {Math.round(upload.fraction * 100)}%
+                        </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-background">
+                        <div
+                            className="h-full rounded-full bg-primary transition-[width] duration-200"
+                            style={{ width: `${Math.round(upload.fraction * 100)}%` }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className={`grid gap-6 ${isPicker ? '' : 'xl:grid-cols-[minmax(0,1fr)_20rem]'}`}>
+                {/* Inside a picker dialog the card would only add padding */}
+                <Card
+                    className={
+                        isPicker
+                            ? 'border-0 bg-transparent shadow-none'
+                            : 'min-h-[32rem] rounded-xl border-transparent bg-muted/40'
+                    }
+                >
+                    <CardHeader className={isPicker ? 'px-0 pt-0' : undefined}>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
                                 <CardTitle className="text-[0.9375rem] font-semibold">Library</CardTitle>
                                 <CardDescription className="text-sm text-muted-foreground">
                                     {totalCount} item{totalCount === 1 ? '' : 's'} available
                                 </CardDescription>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex w-full items-center gap-3 sm:w-auto">
                                 {/* Search moved here, next to the Library title */}
-                                <div className="relative min-w-[16rem]">
+                                <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
                                     <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         value={searchValue}
@@ -464,7 +486,7 @@ export function MediaLibraryBrowser({
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className={isPicker ? 'px-0' : undefined}>
                         {mediaListQuery.isLoading && items.length === 0 ? (
                             // Skeleton grid — card is muted, so pulse tiles use bg-background/60 to stay visible
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-busy="true">
@@ -490,74 +512,48 @@ export function MediaLibraryBrowser({
                             </div>
                         ) : (
                             <>
-                                {/* Multi-select action bar — shown when at least one item is selected */}
-                                {allowMultiselect && mode === 'picker' && multiSelectedIds.length > 0 && (
-                                    <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-                                        <span className="text-sm text-foreground">
-                                            {multiSelectedIds.length} item{multiSelectedIds.length === 1 ? '' : 's'}{' '}
-                                            selected
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setMultiSelectedIds([])}
-                                            >
-                                                Clear selection
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                onClick={() => {
-                                                    // Collect payloads in the order they were selected
-                                                    const ordered = multiSelectedIds
-                                                        .map((id) => items.find((item) => item.id === id))
-                                                        .filter(Boolean) as MediaListItem[];
-                                                    onSelectItems?.(ordered.map(toMediaSelectionPayload));
-                                                }}
-                                            >
-                                                Insert {multiSelectedIds.length} item
-                                                {multiSelectedIds.length === 1 ? '' : 's'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                                <div
+                                    className={`grid gap-4 ${isPicker ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'}`}
+                                >
                                     {items.map((item) => {
                                         const itemTitle = getMediaDisplayTitle(item);
-                                        const isSelected = selectedItem?.id === item.id;
-                                        const isMultiSelected = multiSelectedSet.has(item.id);
+                                        const order = pickedOrder.get(item.id);
+                                        const isSelected = isPicker
+                                            ? order !== undefined
+                                            : selectedItem?.id === item.id;
 
                                         return (
                                             <button
                                                 key={item.id}
                                                 type="button"
-                                                onClick={() => {
-                                                    if (allowMultiselect && mode === 'picker') {
-                                                        // In multi-select mode toggling is the primary action;
-                                                        // also update the detail panel to show the last-clicked item
-                                                        toggleMultiSelect(item.id);
-                                                        setSelectedId(item.id);
-                                                    } else {
-                                                        setSelectedId(item.id);
-                                                    }
-                                                }}
+                                                aria-pressed={isPicker ? isSelected : undefined}
+                                                onClick={() => (isPicker ? togglePick(item) : setSelectedId(item.id))}
+                                                // Double-click is a shortcut for "pick this one" in a single picker
                                                 onDoubleClick={() => {
-                                                    if (mode === 'picker' && !allowMultiselect && onSelectItem) {
-                                                        onSelectItem(toMediaSelectionPayload(item), item);
-                                                    }
+                                                    if (isPicker && !allowMultiselect) confirmPicked([item]);
                                                 }}
                                                 className={`relative overflow-hidden rounded-xl bg-background text-left transition-colors duration-normal ${
-                                                    isMultiSelected || isSelected
+                                                    isSelected
                                                         ? 'ring-2 ring-primary'
                                                         : 'ring-1 ring-border hover:bg-muted/40'
                                                 }`}
                                             >
-                                                {/* Checkmark badge for multi-select */}
-                                                {allowMultiselect && mode === 'picker' && isMultiSelected && (
-                                                    <span className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                                                        <IconCheck className="h-3 w-3" />
+                                                {/* Always-visible pick circle: empty, a tick, or the pick order */}
+                                                {isPicker && (
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className={`absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold shadow ${
+                                                            isSelected
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-background/80 ring-1 ring-border'
+                                                        }`}
+                                                    >
+                                                        {isSelected &&
+                                                            (allowMultiselect ? (
+                                                                order
+                                                            ) : (
+                                                                <IconCheck className="h-3.5 w-3.5" />
+                                                            ))}
                                                     </span>
                                                 )}
                                                 <div className="aspect-[4/3] overflow-hidden bg-muted/30">
@@ -579,13 +575,18 @@ export function MediaLibraryBrowser({
                                                         <p className="truncate text-sm font-medium text-foreground">
                                                             {itemTitle}
                                                         </p>
-                                                        <p className="truncate text-xs text-muted-foreground">
-                                                            {item.originalName}
-                                                        </p>
+                                                        {/* The title falls back to the file name; don't say it twice */}
+                                                        {item.originalName !== itemTitle && (
+                                                            <p className="truncate text-xs text-muted-foreground">
+                                                                {item.originalName}
+                                                            </p>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                        {formatCreatedAt(item.createdAt)}
-                                                    </p>
+                                                    {!isPicker && (
+                                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                            {formatCreatedAt(item.createdAt)}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </button>
                                         );
@@ -608,282 +609,218 @@ export function MediaLibraryBrowser({
                     </CardContent>
                 </Card>
 
-                <Card className="h-fit rounded-xl border-transparent bg-muted/40 xl:sticky xl:top-6">
-                    <CardHeader>
-                        {allowMultiselect && mode === 'picker' && multiSelectedIds.length > 1 ? (
-                            <>
-                                <CardTitle className="text-[0.9375rem] font-semibold">
-                                    {multiSelectedIds.length} files selected
-                                </CardTitle>
-                                <CardDescription>
-                                    Use &ldquo;Insert {multiSelectedIds.length} items&rdquo; above to add them all at
-                                    once.
-                                </CardDescription>
-                            </>
-                        ) : (
-                            <>
-                                <CardTitle className="text-[0.9375rem] font-semibold">
-                                    {mode === 'picker' ? 'Selected asset' : 'File details'}
-                                </CardTitle>
-                                <CardDescription>
-                                    {selectedItem
-                                        ? 'Inspect and manage the selected file.'
-                                        : 'Select a file to inspect it.'}
-                                </CardDescription>
-                            </>
-                        )}
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                        {/* ── Multi-select stacked-card view ── */}
-                        {allowMultiselect && mode === 'picker' && multiSelectedIds.length > 1 ? (
-                            <>
-                                {/* Fan of up to 5 thumbnails */}
-                                <div className="relative flex items-center justify-center" style={{ height: '160px' }}>
-                                    {stackCards.map((item, i) => {
-                                        const mid = (stackCards.length - 1) / 2;
-                                        const offset = i - mid;
-                                        // Spread cards in a fan: outermost cards are most rotated & offset
-                                        const rotate = offset * 9;
-                                        const translateX = offset * 22;
-                                        return (
-                                            <div
-                                                key={item.id}
-                                                className="absolute overflow-hidden rounded-xl border-2 border-background bg-muted/30 shadow-md"
-                                                style={{
-                                                    width: '100px',
-                                                    height: '130px',
-                                                    transform: `rotate(${rotate}deg) translateX(${translateX}px)`,
-                                                    zIndex: i + 1,
-                                                }}
-                                            >
-                                                <MediaPreview
-                                                    item={item}
-                                                    className="h-full w-full rounded-none border-0"
-                                                    fit="cover"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                    {/* +N badge when selection exceeds the 5-card stack */}
-                                    {multiSelectedIds.length > 5 && (
-                                        <div className="absolute bottom-0 right-6 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground shadow">
-                                            +{multiSelectedIds.length - 5}
+                {/* File details: the library page only; a picker shows its pick in the bottom bar */}
+                {!isPicker && (
+                    <Card className="h-fit rounded-xl border-transparent bg-muted/40 xl:sticky xl:top-6">
+                        <CardHeader>
+                            <CardTitle className="text-[0.9375rem] font-semibold">File details</CardTitle>
+                            <CardDescription>
+                                {selectedItem
+                                    ? 'Inspect and manage the selected file.'
+                                    : 'Select a file to inspect it.'}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            {selectedItem ? (
+                                <>
+                                    <div className="overflow-hidden rounded-xl bg-background ring-1 ring-border">
+                                        <div className="aspect-[4/3]">
+                                            <MediaPreview item={selectedItem} mode="detail" fit="contain" />
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                {/* Selection summary metadata */}
-                                {multiSelectionSummary && (
                                     <div className="grid gap-3 text-sm">
+                                        <div>
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                File name
+                                            </p>
+                                            <p className="mt-1 break-all text-foreground">
+                                                {selectedItem.originalName}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                Storage
+                                            </p>
+                                            <p className="mt-1 break-all text-foreground">{selectedItem.storageKey}</p>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                    Files
+                                                    Type
                                                 </p>
-                                                <p className="mt-1 font-medium text-foreground">
-                                                    {multiSelectedIds.length}
+                                                <p className="mt-1 text-foreground">{selectedItem.mimeType}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Provider
+                                                </p>
+                                                <p className="mt-1 text-foreground">{selectedItem.provider}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Size
+                                                </p>
+                                                <p className="mt-1 text-foreground">
+                                                    {formatMediaFileSize(selectedItem.fileSize)}
                                                 </p>
                                             </div>
                                             <div>
                                                 <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                    Total size
+                                                    Uploaded
                                                 </p>
                                                 <p className="mt-1 text-foreground">
-                                                    {formatMediaFileSize(multiSelectionSummary.totalSize)}
+                                                    {formatCreatedAt(selectedItem.createdAt)}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Breakdown
-                                            </p>
-                                            <p className="mt-1 text-foreground">{multiSelectionSummary.kindsSummary}</p>
-                                        </div>
                                     </div>
-                                )}
-
-                                <Button
-                                    type="button"
-                                    className="w-full"
-                                    onClick={() => {
-                                        onSelectItems?.(multiSelectedItems.map(toMediaSelectionPayload));
-                                    }}
-                                >
-                                    Insert {multiSelectedIds.length} items
-                                </Button>
-                            </>
-                        ) : selectedItem ? (
-                            <>
-                                <div className="overflow-hidden rounded-xl bg-background ring-1 ring-border">
-                                    <div className="aspect-[4/3]">
-                                        <MediaPreview item={selectedItem} mode="detail" fit="contain" />
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-3 text-sm">
-                                    <div>
-                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                            File name
-                                        </p>
-                                        <p className="mt-1 break-all text-foreground">{selectedItem.originalName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                            Storage
-                                        </p>
-                                        <p className="mt-1 break-all text-foreground">{selectedItem.storageKey}</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Type
-                                            </p>
-                                            <p className="mt-1 text-foreground">{selectedItem.mimeType}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Provider
-                                            </p>
-                                            <p className="mt-1 text-foreground">{selectedItem.provider}</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Size
-                                            </p>
-                                            <p className="mt-1 text-foreground">
-                                                {formatMediaFileSize(selectedItem.fileSize)}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Uploaded
-                                            </p>
-                                            <p className="mt-1 text-foreground">
-                                                {formatCreatedAt(selectedItem.createdAt)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {mode === 'page' && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Title</label>
-                                            <Input
-                                                value={formValues.title}
-                                                onChange={(event) =>
-                                                    setFormValues((currentValues) => ({
-                                                        ...currentValues,
-                                                        title: event.target.value,
-                                                    }))
-                                                }
-                                                placeholder="Homepage hero image"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Alt text</label>
-                                            <Textarea
-                                                value={formValues.altText}
-                                                onChange={(event) =>
-                                                    setFormValues((currentValues) => ({
-                                                        ...currentValues,
-                                                        altText: event.target.value,
-                                                    }))
-                                                }
-                                                placeholder="Describe this media for accessibility"
-                                                rows={3}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Caption</label>
-                                            <Textarea
-                                                value={formValues.caption}
-                                                onChange={(event) =>
-                                                    setFormValues((currentValues) => ({
-                                                        ...currentValues,
-                                                        caption: event.target.value,
-                                                    }))
-                                                }
-                                                placeholder="Optional caption shown below the media"
-                                                rows={3}
-                                            />
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            className="w-full"
-                                            onClick={handleMetadataSave}
-                                            disabled={updateMedia.isPending}
-                                        >
-                                            <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                                            {updateMedia.isPending ? 'Saving...' : 'Save metadata'}
-                                        </Button>
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col gap-2">
-                                    <Button
-                                        type="button"
-                                        variant={mode === 'picker' ? 'default' : 'outline'}
-                                        className="w-full"
-                                        // In multi-select mode, the action bar handles batch insertion;
-                                        // disable this button when more than one item is already selected
-                                        // so the user isn't confused about which path fires.
-                                        disabled={allowMultiselect && mode === 'picker' && multiSelectedIds.length > 1}
-                                        onClick={() => {
-                                            if (mode === 'picker' && onSelectItem) {
-                                                onSelectItem(toMediaSelectionPayload(selectedItem), selectedItem);
-                                            } else {
-                                                window.open(selectedItem.url, '_blank', 'noopener,noreferrer');
-                                            }
-                                        }}
-                                    >
-                                        {mode === 'picker' ? (
-                                            confirmLabel
-                                        ) : (
-                                            <>
-                                                <IconExternalLink className="mr-2 h-4 w-4" />
-                                                Open file
-                                            </>
-                                        )}
-                                    </Button>
 
                                     {mode === 'page' && (
-                                        <>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-foreground">Title</label>
+                                                <Input
+                                                    value={formValues.title}
+                                                    onChange={(event) =>
+                                                        setFormValues((currentValues) => ({
+                                                            ...currentValues,
+                                                            title: event.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder="Homepage hero image"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-foreground">Alt text</label>
+                                                <Textarea
+                                                    value={formValues.altText}
+                                                    onChange={(event) =>
+                                                        setFormValues((currentValues) => ({
+                                                            ...currentValues,
+                                                            altText: event.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder="Describe this media for accessibility"
+                                                    rows={3}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-foreground">Caption</label>
+                                                <Textarea
+                                                    value={formValues.caption}
+                                                    onChange={(event) =>
+                                                        setFormValues((currentValues) => ({
+                                                            ...currentValues,
+                                                            caption: event.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder="Optional caption shown below the media"
+                                                    rows={3}
+                                                />
+                                            </div>
                                             <Button
                                                 type="button"
-                                                variant="outline"
                                                 className="w-full"
-                                                onClick={() => handleCopyUrl(selectedItem.url)}
+                                                onClick={handleMetadataSave}
+                                                disabled={updateMedia.isPending}
                                             >
-                                                <IconCopy className="mr-2 h-4 w-4" />
-                                                Copy URL
+                                                <IconDeviceFloppy className="mr-2 h-4 w-4" />
+                                                {updateMedia.isPending ? 'Saving...' : 'Save metadata'}
                                             </Button>
+                                        </div>
+                                    )}
 
-                                            {allowDelete && (
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() =>
+                                                window.open(selectedItem.url, '_blank', 'noopener,noreferrer')
+                                            }
+                                        >
+                                            <IconExternalLink className="mr-2 h-4 w-4" />
+                                            Open file
+                                        </Button>
+
+                                        {mode === 'page' && (
+                                            <>
                                                 <Button
                                                     type="button"
-                                                    variant="destructive"
+                                                    variant="outline"
                                                     className="w-full"
-                                                    onClick={() => setDeleteTarget(selectedItem)}
+                                                    onClick={() => handleCopyUrl(selectedItem.url)}
                                                 >
-                                                    <IconTrash className="mr-2 h-4 w-4" />
-                                                    Delete permanently
+                                                    <IconCopy className="mr-2 h-4 w-4" />
+                                                    Copy URL
                                                 </Button>
-                                            )}
-                                        </>
-                                    )}
+
+                                                {allowDelete && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        className="w-full"
+                                                        onClick={() => setDeleteTarget(selectedItem)}
+                                                    >
+                                                        <IconTrash className="mr-2 h-4 w-4" />
+                                                        Delete permanently
+                                                    </Button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="rounded-lg border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+                                    Select a file from the library to view its preview and metadata.
                                 </div>
-                            </>
-                        ) : (
-                            <div className="rounded-lg border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
-                                Select a file from the library to view its preview and metadata.
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
             </div>
+
+            {isPicker && (
+                <div className="sticky bottom-0 z-20 -mx-4 flex items-center gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+                    {picked.length > 0 && (
+                        <div className="flex shrink-0 -space-x-2" aria-hidden="true">
+                            {picked.slice(-4).map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="h-9 w-9 overflow-hidden rounded-md bg-muted ring-2 ring-background"
+                                >
+                                    <MediaPreview
+                                        item={item}
+                                        className="h-full w-full rounded-none border-0"
+                                        fit="cover"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <p className="min-w-0 flex-1 truncate text-sm" aria-live="polite">
+                        {picked.length === 0
+                            ? allowMultiselect
+                                ? 'Nothing selected yet. Items go in the order you tap them.'
+                                : 'Nothing selected yet'
+                            : allowMultiselect
+                              ? `${picked.length} selected`
+                              : getMediaDisplayTitle(picked[0])}
+                    </p>
+                    {picked.length > 0 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setPicked([])}>
+                            Clear
+                        </Button>
+                    )}
+                    <Button type="button" size="sm" disabled={picked.length === 0} onClick={() => confirmPicked()}>
+                        {confirmLabel}
+                        {allowMultiselect && picked.length > 0 ? ` (${picked.length})` : ''}
+                    </Button>
+                </div>
+            )}
 
             <ConfirmDialog
                 open={Boolean(deleteTarget)}

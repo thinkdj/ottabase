@@ -1,6 +1,5 @@
-import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
-import type { MediaKind, toMediaSelectionPayload } from '@ottabase/medialibrary';
-import { Dialog, DialogContent } from '@ottabase/ui-shadcn';
+import { MediaPickerDialog } from '@/components/media-library/MediaPickerDialog';
+import type { MediaKind, MediaSelectionPayload } from '@ottabase/medialibrary';
 import { useEffect, useRef, useState } from 'react';
 
 interface MediaLibraryOpenDetail {
@@ -20,7 +19,7 @@ export function MediaLibraryPickerBridge() {
     const fieldRef = useRef<string | undefined>(undefined);
 
     /** Fires the shared window event for a single media selection payload. */
-    function dispatchSelected(payload: ReturnType<typeof toMediaSelectionPayload>) {
+    function dispatchSelected(payload: MediaSelectionPayload) {
         window.dispatchEvent(
             new CustomEvent('media-library-selected-item', {
                 detail: {
@@ -55,33 +54,16 @@ export function MediaLibraryPickerBridge() {
     }, []);
 
     return (
-        <Dialog
+        <MediaPickerDialog
             open={isOpen}
             onOpenChange={(nextOpen) => {
                 if (!nextOpen) closeAndReset();
             }}
-        >
-            <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-                <MediaLibraryBrowser
-                    title="Media picker"
-                    description="Search your uploads, inspect metadata, and insert the selected file into the editor."
-                    emptyTitle="No matching media yet"
-                    emptyDescription="Upload a file here to add it to the library and use it immediately."
-                    acceptKinds={acceptKinds}
-                    mode="picker"
-                    allowMultiselect={allowMultiselect}
-                    onSelectItem={(payload) => {
-                        // Single-select path: fire once and close
-                        dispatchSelected(payload);
-                        closeAndReset();
-                    }}
-                    onSelectItems={(payloads) => {
-                        // Multi-select path: fire for every selected item, then close
-                        payloads.forEach(dispatchSelected);
-                        closeAndReset();
-                    }}
-                />
-            </DialogContent>
-        </Dialog>
+            title={allowMultiselect ? 'Insert media' : 'Insert a file'}
+            acceptKinds={acceptKinds}
+            multiple={allowMultiselect}
+            // One event per item, in the order they were picked
+            onPick={(payloads) => payloads.forEach(dispatchSelected)}
+        />
     );
 }

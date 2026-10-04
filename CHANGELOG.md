@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Media picker reworked around tap-to-select.** One `MediaPickerDialog` (full screen on phones) replaces the three
+  hand-rolled dialogs for editor tools, the blog hero image and photo journals. Nothing is pre-selected; tap to pick,
+  tap again to drop, multi-picks are numbered in tap order, and a sticky bar shows thumbnails, "N selected", Clear and
+  the confirm button (the old sidebar button, the duplicate "Insert N items" bars and the card fan are gone). Drop files
+  anywhere on the library to upload them; uploads show byte progress in a strip instead of a blocking overlay, keep
+  going past a failed file, skip kinds the picker can't use, and are picked automatically. Uploads go through
+  `uploadMedia` (`src/lib/upload.ts`): XHR with the same headers as `api()`, no 30s timeout, and a 10 MB check before
+  sending. The hero image upload uses it too.
 - **One Visibility control for every blog editor.** Article, blurb, photo journal and translation editors share
   `PublishControl` (Draft / Published / Scheduled / Archived) in place of a status dropdown plus a loose date field. It
   says in plain words what saving will do ("Goes live Sat, 10 Oct, 09:00 BST (in 6 days)", "Saving takes it offline"),
