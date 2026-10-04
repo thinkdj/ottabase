@@ -8,7 +8,7 @@ import {
     revokeAllUserSessions,
     verifyPassword,
 } from '@ottabase/auth/backend';
-import { getLoginConfig } from '@ottabase/auth/config';
+import { getLoginConfig, isStrongPassword, PASSWORD_POLICY_MESSAGE } from '@ottabase/auth/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
@@ -29,7 +29,7 @@ import {
 } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
 import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
-import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
+import { getClientIpAddress, normalizeEmail, readJson } from '../lib/utils';
 
 export interface AuthRouteContext {
     request: Request;
@@ -294,9 +294,7 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     if (!password) {
         fieldErrors.password = ['Password is required'];
     } else if (!isStrongPassword(password)) {
-        fieldErrors.password = [
-            'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol',
-        ];
+        fieldErrors.password = [PASSWORD_POLICY_MESSAGE];
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -393,9 +391,7 @@ export async function handlePasswordChange(context: AuthRouteContext): Promise<R
     if (!newPassword) {
         fieldErrors.newPassword = ['New password is required'];
     } else if (!isStrongPassword(newPassword)) {
-        fieldErrors.newPassword = [
-            'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol',
-        ];
+        fieldErrors.newPassword = [PASSWORD_POLICY_MESSAGE];
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -647,9 +643,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
     if (!password) {
         fieldErrors.password = ['Password is required'];
     } else if (!isStrongPassword(password)) {
-        fieldErrors.password = [
-            'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol',
-        ];
+        fieldErrors.password = [PASSWORD_POLICY_MESSAGE];
     }
 
     if (name && name.length < 2) {

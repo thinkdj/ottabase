@@ -1,16 +1,11 @@
-import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { APP_META } from '@/ottabase/config';
 import { getLoginConfig } from '@ottabase/auth/config';
 import { LoginForm } from '@ottabase/auth/components';
 import {
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -21,141 +16,115 @@ import {
     Label,
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { AUTH_CARD_CLASS, AuthShell } from './AuthShell';
+
+type LoginConfig = ReturnType<typeof getLoginConfig> & { authSecretConfigured: boolean };
+
+// OAuth and magic-link failures come back as ?error=CODE
+const ERROR_MESSAGES: Record<string, string> = {
+    OAuthAccountNotLinked:
+        'An account already exists for this email. Sign in with your original method, then link this provider from your profile.',
+    OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
+    OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
+    Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
+    AccountProvisioning: 'Your account workspace could not be initialized. Please try signing in again.',
+};
+
+/** Error and success notice carried in the URL by redirects back to this page */
+function readUrlState() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('error');
+    const notice =
+        params.get('passwordChanged') === '1'
+            ? 'Password changed. Sign in with your new password.'
+            : params.get('verified') === '1'
+              ? 'Email verified. You can sign in now.'
+              : undefined;
+    return { error: code ? (ERROR_MESSAGES[code] ?? 'Sign-in failed. Please try again.') : undefined, notice };
+}
+
+/** Setup gaps worth flagging to a developer (never shown in production) */
+function getDevWarnings(config: LoginConfig): string[] {
+    const warnings: string[] = [];
+    if (!config.authSecretConfigured) warnings.push('AUTH_SECRET is not set, so a default (insecure) one is used.');
+    if (!config.showCredentials && !config.showMagicLink && config.socialProviders.length === 0) {
+        warnings.push('No sign-in method is enabled. Enable credentials, an OAuth provider or magic links.');
+    }
+    if (config.socialProviders.length === 0) {
+        warnings.push('No OAuth providers. Set the Google, GitHub, Discord, etc. client env vars.');
+    }
+    if (!config.showMagicLink) {
+        warnings.push(
+            'Magic links are off. Set DEV_EMAIL_TRAP_ENABLED locally, or EMAIL_SERVER + EMAIL_FROM / EMAIL_RESEND_API_KEY.',
+        );
+    }
+    if (!config.showCredentials) warnings.push('Password sign-in is off (AUTH_DISABLE_CREDENTIALS).');
+    return warnings;
+}
 
 export function LoginPage() {
     const navigate = useNavigate();
     const { login, isAuthenticated, isInitialized, sessionError } = useSession();
-    const [error, setError] = useState<string>();
+    const [urlState] = useState(readUrlState);
+    const [error, setError] = useState<string | undefined>(urlState.error);
     const [isLoading, setIsLoading] = useState(false);
     const [magicLinkSent, setMagicLinkSent] = useState(false);
-    const [warnings, setWarnings] = useState<string[]>([]);
     const [forgotOpen, setForgotOpen] = useState(false);
-    const [forgotEmail, setForgotEmail] = useState('');
-    const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
-    const [forgotError, setForgotError] = useState<string | null>(null);
+    // Bumped on each open so the dialog starts fresh with the email typed so far
+    const [forgotSeed, setForgotSeed] = useState({ email: '', key: 0 });
+    const [loginConfig, setLoginConfig] = useState<LoginConfig>(() => ({
+        ...getLoginConfig({} as Parameters<typeof getLoginConfig>[0]),
+        authSecretConfigured: false,
+    }));
     const hasNavigated = useRef(false);
     const redirectTarget = useRef(resolveAuthRedirect());
 
-    // Auto-detect configured providers from env
-    // This will check process.env for OAuth provider credentials
-    const [loginConfig, setLoginConfig] = useState(
-        () =>
-            ({
-                ...getLoginConfig({} as any),
-                authSecretConfigured: false,
-            }) as ReturnType<typeof getLoginConfig> & { authSecretConfigured: boolean },
-    );
-    const passwordChanged = new URLSearchParams(window.location.search).get('passwordChanged') === '1';
-    const emailVerified = new URLSearchParams(window.location.search).get('verified') === '1';
-
-    // Surface OAuth / magic-link failures that redirect back as ?error=CODE.
-    useEffect(() => {
-        const code = new URLSearchParams(window.location.search).get('error');
-        if (!code) return;
-        const messages: Record<string, string> = {
-            OAuthAccountNotLinked:
-                'An account already exists for this email. Sign in with your original method, then link this provider from your profile.',
-            OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
-            OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
-            Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
-            AccountProvisioning: 'Your account workspace could not be initialized. Please try signing in again.',
-        };
-        setError(messages[code] ?? 'Sign-in failed. Please try again.');
-    }, []);
-
     useEffect(() => {
         let mounted = true;
-
-        const loadConfig = async () => {
-            try {
-                const response = await fetch('/api/auth/config');
-                if (!response.ok) return;
-                const config = (await response.json()) as ReturnType<typeof getLoginConfig> & {
-                    authSecretConfigured: boolean;
-                };
-                if (mounted) setLoginConfig(config);
-            } catch {
-                // ignore
-            }
-        };
-
-        loadConfig();
+        fetch('/api/auth/config')
+            .then((res) => (res.ok ? (res.json() as Promise<LoginConfig>) : null))
+            .then((config) => {
+                if (mounted && config) setLoginConfig(config);
+            })
+            .catch(() => {});
         return () => {
             mounted = false;
         };
     }, []);
 
-    // Redirect if already authenticated
+    // Already signed in: go straight on
     useEffect(() => {
         if (hasNavigated.current || !isInitialized || sessionError || !isAuthenticated) return;
-
         hasNavigated.current = true;
         navigate({ to: redirectTarget.current, replace: true });
     }, [isAuthenticated, isInitialized, navigate, sessionError]);
 
-    // Check for missing configuration and show warnings (dev only)
-    useEffect(() => {
-        if (!import.meta.env.DEV) return;
-        const newWarnings: string[] = [];
+    const devWarnings = useMemo(() => (import.meta.env.DEV ? getDevWarnings(loginConfig) : []), [loginConfig]);
 
-        // Check for AUTH_SECRET
-        if (!loginConfig.authSecretConfigured) {
-            newWarnings.push('AUTH_SECRET not configured - using default (insecure for production)');
-        }
-
-        // Check for any configured auth methods
-        const hasAnySocialLogin = loginConfig.socialProviders.length > 0;
-        const hasMagicLink = loginConfig.showMagicLink;
-        const hasCredentials = loginConfig.showCredentials;
-
-        if (!hasAnySocialLogin && !hasMagicLink && !hasCredentials) {
-            newWarnings.push('No authentication methods configured. Enable credentials, OAuth, or Magic Link.');
-        } else if (!hasAnySocialLogin && !hasMagicLink) {
-            newWarnings.push('No OAuth providers or Magic Link configured. Only credentials login available.');
-        }
-
-        if (!hasAnySocialLogin) {
-            newWarnings.push(
-                'No OAuth providers configured. Set environment variables for Google, GitHub, Discord, etc.',
-            );
-        }
-
-        if (!hasMagicLink) {
-            newWarnings.push(
-                'Magic Link not configured. Set DEV_EMAIL_TRAP_ENABLED for local capture, or configure EMAIL_SERVER + EMAIL_FROM / EMAIL_RESEND_API_KEY in the worker environment.',
-            );
-        }
-
-        if (!hasCredentials) {
-            newWarnings.push('Credentials login disabled. Set AUTH_DISABLE_CREDENTIALS=false to enable.');
-        }
-
-        setWarnings(newWarnings);
-    }, [loginConfig]);
-
-    const handleSocialLogin = async (providerId: string) => {
+    /**
+     * Runs one sign-in attempt with shared loading and error handling. `run`
+     * returns true when the page is about to leave, so buttons stay disabled.
+     */
+    const attempt = async (run: () => Promise<boolean | void>, fallback: string) => {
         setIsLoading(true);
         setError(undefined);
-
         try {
-            const result = await signInWithProvider(providerId, {
-                redirectTo: redirectTarget.current,
-            });
-
-            if (!result.success) {
-                setError(result.error || 'Failed to sign in with provider');
-                setIsLoading(false);
-            }
-            // If successful, the page will redirect automatically
+            if (await run()) return;
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed');
-            setIsLoading(false);
+            setError(err instanceof Error ? err.message : fallback);
         }
+        setIsLoading(false);
     };
 
-    const handleCredentialsLogin = async ({
+    const handleSocialLogin = (providerId: string) =>
+        attempt(async () => {
+            const result = await signInWithProvider(providerId, { redirectTo: redirectTarget.current });
+            if (!result.success) throw new Error(result.error || 'Could not start sign-in with that provider');
+            return true; // the browser is leaving for the provider
+        }, 'Sign-in failed');
+
+    const handleCredentialsLogin = ({
         email,
         password,
         rememberMe,
@@ -163,219 +132,176 @@ export function LoginPage() {
         email: string;
         password: string;
         rememberMe: boolean;
-    }) => {
-        setIsLoading(true);
-        setError(undefined);
-
-        try {
+    }) =>
+        attempt(async () => {
             const result = await signInWithCredentials({ email, password }, { redirect: false });
-
-            if (!result.success) {
-                setError(result.error || 'Invalid credentials');
-                setIsLoading(false);
-                return;
-            }
-
-            if (result.session) {
-                login(result.session, { remember: rememberMe });
-            }
-
-            setIsLoading(false);
+            if (!result.success) throw new Error(result.error || 'Wrong email or password');
+            if (result.session) login(result.session, { remember: rememberMe });
             hasNavigated.current = true;
             navigate({ to: redirectTarget.current, replace: true });
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed');
-            setIsLoading(false);
-        }
-    };
+            return true;
+        }, 'Sign-in failed');
 
-    const handleMagicLinkSend = async (email: string) => {
-        setIsLoading(true);
-        setError(undefined);
-
-        try {
-            const result = await sendMagicLink(email, {
-                redirectTo: redirectTarget.current,
-            });
-
-            if (!result.success) {
-                setError(result.error || 'Failed to send magic link');
-                setIsLoading(false);
-                return;
-            }
-
+    const handleMagicLinkSend = (email: string) =>
+        attempt(async () => {
+            const result = await sendMagicLink(email, { redirectTo: redirectTarget.current });
+            if (!result.success) throw new Error(result.error || 'Could not send the sign-in link');
             setMagicLinkSent(true);
-            setIsLoading(false);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send magic link');
-            setIsLoading(false);
-        }
-    };
+        }, 'Could not send the sign-in link');
 
-    const handleForgotPassword = async () => {
-        if (!forgotEmail.trim()) {
-            setForgotError('Please enter your email address');
+    return (
+        <AuthShell
+            title="Sign in"
+            subtitle={`Welcome back to ${APP_META.appName}`}
+            notice={urlState.notice}
+            footer={
+                <>
+                    New here?{' '}
+                    <Link to="/register" className="font-medium text-foreground hover:underline">
+                        Create an account
+                    </Link>
+                </>
+            }
+        >
+            <LoginForm
+                title=""
+                description=""
+                className={`max-w-none ${AUTH_CARD_CLASS}`}
+                socialProviders={loginConfig.socialProviders}
+                showCredentials={loginConfig.showCredentials}
+                showMagicLink={loginConfig.showMagicLink}
+                onSocialLogin={handleSocialLogin}
+                onCredentialsLogin={handleCredentialsLogin}
+                onMagicLinkSend={handleMagicLinkSend}
+                onMagicLinkReset={() => {
+                    setMagicLinkSent(false);
+                    setError(undefined);
+                }}
+                onForgotPassword={(email) => {
+                    setForgotSeed((seed) => ({ email, key: seed.key + 1 }));
+                    setForgotOpen(true);
+                }}
+                isLoading={isLoading}
+                error={error}
+                magicLinkSuccess={magicLinkSent}
+            />
+
+            {devWarnings.length > 0 && (
+                <details className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+                    <summary className="cursor-pointer font-medium">
+                        Auth setup notes ({devWarnings.length}, dev only)
+                    </summary>
+                    <ul className="mt-2 list-disc space-y-1 pl-4">
+                        {devWarnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                        ))}
+                    </ul>
+                    <p className="mt-2 text-warning/80">Configure providers in wrangler.jsonc and .env files.</p>
+                </details>
+            )}
+
+            <ForgotPasswordDialog
+                key={forgotSeed.key}
+                open={forgotOpen}
+                onOpenChange={setForgotOpen}
+                initialEmail={forgotSeed.email}
+            />
+        </AuthShell>
+    );
+}
+
+function ForgotPasswordDialog({
+    open,
+    onOpenChange,
+    initialEmail,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    initialEmail: string;
+}) {
+    const [email, setEmail] = useState(initialEmail);
+    const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+    const [error, setError] = useState<string | null>(null);
+    const sending = status === 'sending';
+
+    const submit = async (e: FormEvent) => {
+        e.preventDefault();
+        const value = email.trim();
+        if (!value) {
+            setError('Enter the email you sign in with');
             return;
         }
-
-        setForgotStatus('sending');
-        setForgotError(null);
-
+        setStatus('sending');
+        setError(null);
         try {
-            const result = await requestPasswordReset(forgotEmail.trim());
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to send reset email');
-            }
-            setForgotStatus('sent');
+            const result = await requestPasswordReset(value);
+            if (!result.success) throw new Error(result.error || 'Could not send the reset email');
+            setStatus('sent');
         } catch (err) {
-            setForgotError(err instanceof Error ? err.message : 'Failed to send reset email');
-            setForgotStatus('idle');
+            setError(err instanceof Error ? err.message : 'Could not send the reset email');
+            setStatus('idle');
         }
     };
 
     return (
-        <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
-                        {APP_META.appName.charAt(0)}
-                    </span>
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome</h1>
-                        <p className="text-muted-foreground">Sign in to access your dashboard</p>
-                    </div>
-                </div>
-
-                {passwordChanged && (
-                    <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
-                        Password changed successfully. Please sign in with your new password.
-                    </div>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                {status === 'sent' ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Check your inbox</DialogTitle>
+                            <DialogDescription>
+                                If an account uses <strong className="text-foreground">{email.trim()}</strong>, a reset
+                                link is on its way.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button type="button" onClick={() => onOpenChange(false)}>
+                                Done
+                            </Button>
+                        </DialogFooter>
+                    </>
+                ) : (
+                    <form onSubmit={submit} noValidate className="grid gap-4">
+                        <DialogHeader>
+                            <DialogTitle>Reset your password</DialogTitle>
+                            <DialogDescription>We&apos;ll email you a link to choose a new one.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2">
+                            <Label htmlFor="forgot-email">Email</Label>
+                            <Input
+                                id="forgot-email"
+                                type="email"
+                                autoComplete="email"
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={sending}
+                                aria-invalid={error ? true : undefined}
+                                aria-describedby={error ? 'forgot-error' : undefined}
+                            />
+                            {error && (
+                                <p id="forgot-error" role="alert" className="text-sm text-destructive">
+                                    {error}
+                                </p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                                disabled={sending}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={sending}>
+                                {sending ? 'Sending…' : 'Send reset link'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 )}
-
-                {emailVerified && (
-                    <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
-                        Email verified successfully. Please sign in.
-                    </div>
-                )}
-
-                {/* Configuration Warnings — dev only */}
-                {import.meta.env.DEV && warnings.length > 0 && (
-                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                        <p className="flex items-center gap-2 font-medium">
-                            <AlertCircle className="h-4 w-4" />
-                            Configuration Warnings
-                        </p>
-                        <ul className="mt-2 space-y-1 text-xs">
-                            {warnings.map((warning, index) => (
-                                <li key={index}>• {warning}</li>
-                            ))}
-                        </ul>
-                        <p className="mt-2 border-t border-warning/30 pt-2 text-xs text-warning/80">
-                            See wrangler.jsonc and .env files to configure auth providers
-                        </p>
-                    </div>
-                )}
-
-                {/* Login Form */}
-                <LoginForm
-                    socialProviders={loginConfig.socialProviders}
-                    showCredentials={loginConfig.showCredentials}
-                    showMagicLink={loginConfig.showMagicLink}
-                    onSocialLogin={handleSocialLogin}
-                    onCredentialsLogin={handleCredentialsLogin}
-                    onMagicLinkSend={handleMagicLinkSend}
-                    onForgotPassword={() => {
-                        setForgotEmail('');
-                        setForgotStatus('idle');
-                        setForgotError(null);
-                        setForgotOpen(true);
-                    }}
-                    isLoading={isLoading}
-                    error={error}
-                    magicLinkSuccess={magicLinkSent}
-                    title="Sign in to your account"
-                    description="Choose your preferred login method"
-                    showSignUp
-                    onSignUpClick={() => navigate({ to: '/register' })}
-                />
-
-                {/* Sign Up Link */}
-                <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
-                    Don't have an account?{' '}
-                    <Link to="/register" className="font-medium text-foreground hover:underline">
-                        Create one now
-                    </Link>
-                </div>
-
-                {/* Production Info */}
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="gap-1.5">
-                        <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold text-success">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Production-Ready Auth
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                            Powered by Ottabase Auth with Cloudflare D1
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-xs text-muted-foreground">
-                        <p>
-                            <strong className="font-medium text-foreground">Credentials:</strong> Email/password
-                            authentication with secure hashing
-                        </p>
-                        <p>
-                            <strong className="font-medium text-foreground">Social Login:</strong> OAuth 2.0 providers
-                            (Google, GitHub, Discord, etc.)
-                        </p>
-                        <p>
-                            <strong className="font-medium text-foreground">Magic Link:</strong> Passwordless
-                            authentication via email
-                        </p>
-                        <p className="border-t border-border/60 pt-2">
-                            Sessions are JWT-based and stored in cookies for 30 days
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reset your password</DialogTitle>
-                        <DialogDescription>
-                            Enter the email address associated with your account. We&apos;ll send you a password reset
-                            link.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        <Label htmlFor="forgot-email">Email</Label>
-                        <Input
-                            id="forgot-email"
-                            type="email"
-                            value={forgotEmail}
-                            onChange={(e) => setForgotEmail(e.target.value)}
-                            placeholder="you@example.com"
-                        />
-                        {forgotError && <p className="text-sm text-destructive">{forgotError}</p>}
-                        {forgotStatus === 'sent' && (
-                            <p className="text-sm text-success">Reset email sent. Check your inbox.</p>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setForgotOpen(false)}
-                            disabled={forgotStatus === 'sending'}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="button" onClick={handleForgotPassword} disabled={forgotStatus === 'sending'}>
-                            {forgotStatus === 'sending' ? 'Sending...' : 'Send reset link'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

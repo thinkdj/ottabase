@@ -1,87 +1,118 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { APP_META } from '@/ottabase/config';
-import { verifyEmail } from '@/lib/auth-api';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { requestEmailVerification, verifyEmail } from '@/lib/auth-api';
+import { Button, Input, Label } from '@ottabase/ui-shadcn';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { AuthCard, AuthShell } from './AuthShell';
 
 export function VerifyEmailPage() {
     const navigate = useNavigate();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [error, setError] = useState<string | null>(null);
+    // Prefilled from the link so a failed check is one tap from a fresh email
+    const [email, setEmail] = useState(() => new URLSearchParams(window.location.search).get('email') || '');
+    const [resend, setResend] = useState<'idle' | 'sending' | 'sent'>('idle');
+    const [resendError, setResendError] = useState<string | null>(null);
 
     useEffect(() => {
         const run = async () => {
-            const searchParams = new URLSearchParams(window.location.search);
-            const token = searchParams.get('token') || '';
-            const email = searchParams.get('email') || '';
-
-            if (!token || !email) {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token') || '';
+            const linkEmail = params.get('email') || '';
+            if (!token || !linkEmail) {
                 setStatus('error');
-                setError('Invalid verification link.');
+                setError('This verification link is incomplete.');
                 return;
             }
-
-            const result = await verifyEmail(token, email);
+            const result = await verifyEmail(token, linkEmail);
             if (!result.success) {
                 setStatus('error');
-                setError(result.error || 'Email verification failed.');
+                setError(result.error || 'This verification link is invalid or has expired.');
                 return;
             }
-
             setStatus('success');
             setTimeout(() => navigate({ to: '/login', search: { verified: '1' } }), 1200);
         };
-
         run().catch((err) => {
             setStatus('error');
             setError(err instanceof Error ? err.message : 'Email verification failed.');
         });
     }, [navigate]);
 
-    return (
-        <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
-                        {APP_META.appName.charAt(0)}
-                    </span>
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Email Verification</h1>
-                        <p className="text-muted-foreground">Confirming your email address</p>
-                    </div>
-                </div>
+    const sendAgain = async (e: FormEvent) => {
+        e.preventDefault();
+        const value = email.trim();
+        if (!value) {
+            setResendError('Enter the email you signed up with');
+            return;
+        }
+        setResend('sending');
+        setResendError(null);
+        try {
+            const result = await requestEmailVerification(value);
+            if (!result.success) throw new Error(result.error || 'Could not send a new link');
+            setResend('sent');
+        } catch (err) {
+            setResendError(err instanceof Error ? err.message : 'Could not send a new link');
+            setResend('idle');
+        }
+    };
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="gap-1.5">
-                        <CardTitle className="text-[0.9375rem] font-semibold">Verification status</CardTitle>
-                        <CardDescription>We&apos;re confirming the link from your email</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                        {status === 'loading' && (
-                            <p className="text-muted-foreground" aria-busy="true">
-                                Verifying your email...
-                            </p>
-                        )}
-                        {status === 'success' && (
-                            <>
-                                <p className="font-medium text-success">Email verified successfully.</p>
-                                <p className="text-muted-foreground">Redirecting to login...</p>
-                            </>
-                        )}
-                        {status === 'error' && (
-                            <>
-                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive">
-                                    <p className="font-medium">Verification failed</p>
-                                    {error && <p className="mt-1 text-destructive/90">{error}</p>}
-                                </div>
-                                <Button type="button" variant="outline" onClick={() => navigate({ to: '/login' })}>
-                                    Back to login
-                                </Button>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+    if (status === 'error') {
+        return (
+            <AuthShell title="Link didn't work" subtitle={error ?? 'Email verification failed.'}>
+                <AuthCard>
+                    {resend === 'sent' ? (
+                        <p role="status">
+                            A new link is on its way to <strong>{email.trim()}</strong>. Open the newest email.
+                        </p>
+                    ) : (
+                        <form onSubmit={sendAgain} noValidate className="space-y-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="verify-email">Send a fresh link to</Label>
+                                <Input
+                                    id="verify-email"
+                                    type="email"
+                                    autoComplete="email"
+                                    placeholder="name@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    disabled={resend === 'sending'}
+                                    aria-invalid={resendError ? true : undefined}
+                                    aria-describedby={resendError ? 'verify-error' : undefined}
+                                />
+                                {resendError && (
+                                    <p id="verify-error" role="alert" className="text-destructive">
+                                        {resendError}
+                                    </p>
+                                )}
+                            </div>
+                            <Button type="submit" className="w-full" disabled={resend === 'sending'}>
+                                {resend === 'sending' ? 'Sending…' : 'Send a new link'}
+                            </Button>
+                        </form>
+                    )}
+                    <Button asChild variant="ghost" className="w-full">
+                        <Link to="/login">Back to sign in</Link>
+                    </Button>
+                </AuthCard>
+            </AuthShell>
+        );
+    }
+
+    return (
+        <AuthShell
+            title={status === 'success' ? 'Email verified' : 'Verifying your email'}
+            subtitle={status === 'success' ? 'Taking you to sign in…' : 'This only takes a moment'}
+        >
+            <div role="status" className="flex justify-center text-muted-foreground">
+                {status === 'success' ? (
+                    <CheckCircle2 className="h-6 w-6 text-success" aria-hidden="true" />
+                ) : (
+                    <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+                )}
+                <span className="sr-only">{status === 'success' ? 'Email verified' : 'Verifying your email'}</span>
             </div>
-        </div>
+        </AuthShell>
     );
 }

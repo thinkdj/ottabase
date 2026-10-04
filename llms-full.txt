@@ -10790,6 +10790,20 @@ const config = getLoginConfig(env);
 - `isEmailProviderConfigured(env)` - true if the dev trap, SMTP, or Resend is configured
 - `isCredentialsConfigured(env)` - true unless `AUTH_DISABLE_CREDENTIALS` is set
 - `getLoginConfig(env)` - all of the above combined into one config object
+- `getProviderDisplayName(id)` - human name for a provider id (`azure-ad` → `Microsoft`)
+
+### Password policy
+
+One policy for the forms and the server, so the live checklist and the API never disagree:
+
+```typescript
+import { isStrongPassword, checkPassword, PASSWORD_POLICY_MESSAGE } from '@ottabase/auth/config';
+
+if (!isStrongPassword(password)) return error(PASSWORD_POLICY_MESSAGE);
+checkPassword('abc'); // [{ rule: { id: 'length', label: '8+ characters', … }, met: false }, …]
+```
+
+`PASSWORD_RULES` and `PASSWORD_MIN_LENGTH` are exported too (also from the root entry).
 
 ## UI Components
 
@@ -10814,12 +10828,28 @@ const config = getLoginConfig(process.env);
     onSocialLogin={(id) => signInWithProvider(id)}
     onCredentialsLogin={({ email, password }) => signInWithCredentials({ email, password })}
     onMagicLinkSend={(email) => sendMagicLink(email)}
+    onMagicLinkReset={() => setLinkSent(false)} // "try again" without a page reload
+    onForgotPassword={(email) => openResetDialog(email)} // receives what was typed, to prefill
     title="Welcome back"
 />
 ```
 
-Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `RegisterForm`, `SocialLoginButtons` +
-`SocialLoginDivider`.
+`LoginForm` is email-first: one email is shared by the **Password** and **Email link** tabs, so switching keeps what was
+typed. Every error (social ones included) shows once at the top of the card. Pass `title=""` and `description=""` when
+the page already has its own heading.
+
+Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm` (both accept a controlled `email` /
+`onEmailChange`), `RegisterForm`, `SocialLoginButtons` + `SocialLoginDivider`, plus:
+
+- `PasswordInput` - password field with a show/hide toggle
+- `PasswordChecklist` - the password rules, ticked off live while typing (point the input's `aria-describedby` at its
+  `id`)
+
+`RegisterForm` uses both, links each field error through `aria-describedby` / `aria-invalid`, and moves focus to the
+first invalid field on submit.
+
+With Tailwind, add the components to `content` so their classes are generated: `packages/auth/src/components/**/*.tsx`
+inside this monorepo, or `node_modules/@ottabase/auth/dist/**/*.{js,mjs}` from npm.
 
 ## Environment Variables
 
@@ -10850,8 +10880,9 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so
-  labels, focus, and error semantics come from there.
+- **Accessibility**: the bundled UI components build on `@ottabase/ui-shadcn` primitives. Ids come from `useId`, so
+  several forms can share a page; errors use `role="alert"` and are tied to their fields; success states use
+  `role="status"`.
 - **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
   `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
   flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to

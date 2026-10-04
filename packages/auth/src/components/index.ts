@@ -1,6 +1,12 @@
 export { LoginForm, type LoginFormProps } from './LoginForm';
 export { CredentialsForm, type CredentialsFormProps } from './CredentialsForm';
 export { MagicLinkForm, type MagicLinkFormProps } from './MagicLinkForm';
+export {
+    PasswordChecklist,
+    PasswordInput,
+    type PasswordChecklistProps,
+    type PasswordInputProps,
+} from './PasswordFields';
 export { RegisterForm, type RegisterFormProps, type RegisterFormData } from './RegisterForm';
 export {
     SocialLoginButtons,

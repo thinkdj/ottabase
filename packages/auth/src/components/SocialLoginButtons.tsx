@@ -81,14 +81,12 @@ export interface SocialLoginDividerProps {
 }
 
 export function SocialLoginDivider({ text = 'or continue with', className = '' }: SocialLoginDividerProps) {
+    // Flex rules on both sides: no background patch, so it sits on any surface
     return (
-        <div className={`relative my-6 ${className}`}>
-            <div className="absolute inset-0 flex items-center">
-                <Separator />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">{text}</span>
-            </div>
+        <div className={`flex items-center gap-3 text-xs uppercase text-muted-foreground ${className}`}>
+            <Separator className="flex-1" />
+            <span>{text}</span>
+            <Separator className="flex-1" />
         </div>
     );
 }

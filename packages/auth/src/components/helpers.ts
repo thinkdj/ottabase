@@ -169,3 +169,19 @@ export function getLoginConfig(env: ProviderEnv) {
         hasEmailProvider: isEmailProviderConfigured(env),
     };
 }
+
+/** Display name for a provider id ("azure-ad" → "Microsoft"); unknown ids are title-cased */
+export function getProviderDisplayName(id: string): string {
+    const known = PROVIDER_CONFIG[id.toLowerCase()];
+    return known ? known.name : id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+// Password policy, shared with the worker (dependency-free)
+export {
+    checkPassword,
+    isStrongPassword,
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_POLICY_MESSAGE,
+    PASSWORD_RULES,
+    type PasswordRule,
+} from '../password';

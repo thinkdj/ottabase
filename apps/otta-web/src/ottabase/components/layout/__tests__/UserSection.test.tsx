@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -110,7 +110,7 @@ describe('UserSection', () => {
 
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByTitle('Logout'));
+        fireEvent.click(screen.getByTitle('Log out'));
 
         expect(screen.getByRole('alertdialog')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Log out?' })).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('UserSection', () => {
     it('closes the dialog without logging out when cancelled', () => {
         render(<UserSection />);
 
-        fireEvent.click(screen.getByTitle('Logout'));
+        fireEvent.click(screen.getByTitle('Log out'));
         fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -132,8 +132,8 @@ describe('UserSection', () => {
     it('logs out and redirects home after confirmation', () => {
         render(<UserSection />);
 
-        fireEvent.click(screen.getByTitle('Logout'));
-        fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+        fireEvent.click(screen.getByTitle('Log out'));
+        fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Log out' }));
 
         expect(mockSession.logout).toHaveBeenCalledTimes(1);
         expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });

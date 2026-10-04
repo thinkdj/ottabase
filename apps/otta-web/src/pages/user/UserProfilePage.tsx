@@ -31,6 +31,8 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
+import { PasswordChecklist, PasswordInput } from '@ottabase/auth/components';
+import { getProviderDisplayName, isStrongPassword, PASSWORD_POLICY_MESSAGE } from '@ottabase/auth/config';
 import { invalidateAuthSession } from '@ottabase/auth/react';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
@@ -336,10 +338,8 @@ export function UserProfilePage() {
             return;
         }
 
-        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(newPassword) || newPassword.length < 8) {
-            setPasswordError(
-                'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.',
-            );
+        if (!isStrongPassword(newPassword)) {
+            setPasswordError(PASSWORD_POLICY_MESSAGE);
             return;
         }
 
@@ -385,8 +385,8 @@ export function UserProfilePage() {
             {/* Header */}
             <div className="space-y-4">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Profile Settings</h1>
-                    <p className="text-muted-foreground">Manage your account settings and preferences</p>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your account</h1>
+                    <p className="text-muted-foreground">Profile, sign-in methods and security</p>
                 </div>
                 {MEDIA_LIBRARY_ENABLED && (
                     <div>
@@ -624,26 +624,6 @@ export function UserProfilePage() {
                     <CardDescription>Your account details and status</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* User ID */}
-                    <div className="space-y-2">
-                        <Label>User ID</Label>
-                        <div className="flex items-center gap-2">
-                            <code className="flex-1 rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border">
-                                {user.id}
-                            </code>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    navigator.clipboard.writeText(user.id);
-                                    toast.success('Copied', 'User ID copied to clipboard');
-                                }}
-                            >
-                                Copy
-                            </Button>
-                        </div>
-                    </div>
-
                     {/* Email Verified */}
                     <div className="space-y-2">
                         <Label>Email Status</Label>
@@ -698,31 +678,47 @@ export function UserProfilePage() {
                         </Label>
                         <p className="text-sm text-muted-foreground">
                             {user.createdAt
-                                ? new Date(user.createdAt).toLocaleString(undefined, {
+                                ? new Date(user.createdAt).toLocaleDateString(undefined, {
                                       year: 'numeric',
-                                      month: 'short',
+                                      month: 'long',
                                       day: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit',
                                   })
                                 : 'Unknown'}
                         </p>
                     </div>
+
+                    {/* Support and API work need the id; nobody else does */}
+                    <details className="text-sm">
+                        <summary className="cursor-pointer text-muted-foreground">Developer details</summary>
+                        <div className="mt-2 flex items-center gap-2">
+                            <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-3 py-2 text-xs ring-1 ring-border">
+                                {user.id}
+                            </code>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(user.id);
+                                    toast.success('Copied', 'User ID copied to clipboard');
+                                }}
+                            >
+                                Copy ID
+                            </Button>
+                        </div>
+                    </details>
                 </CardContent>
             </Card>
 
             <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Linked Providers</CardTitle>
-                    <CardDescription>Sign-in methods associated with this account</CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Sign-in methods</CardTitle>
+                    <CardDescription>Accounts you can use to sign in</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {isAccountsLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading linked providers...</p>
+                        <p className="text-sm text-muted-foreground">Loading…</p>
                     ) : linkedAccounts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            Only credential-based (email/password) sign-in is available.
-                        </p>
+                        <p className="text-sm text-muted-foreground">You sign in with your email.</p>
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {linkedAccounts.map((account) => (
@@ -730,9 +726,8 @@ export function UserProfilePage() {
                                     key={`${account.provider}-${account.createdAt || 'unknown'}`}
                                     className="flex flex-col gap-1 rounded-lg bg-background px-3 py-2 ring-1 ring-border"
                                 >
-                                    <span className="text-[0.9375rem] font-semibold">{account.provider}</span>
-                                    <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        {account.type}
+                                    <span className="text-[0.9375rem] font-semibold">
+                                        {getProviderDisplayName(account.provider)}
                                     </span>
                                     {account.createdAt && (
                                         <span className="text-xs text-muted-foreground">
@@ -751,20 +746,17 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* AI providers — personal keys. Dormant unless the ottaai package is enabled. */}
-            {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
-
             {/* Security */}
             <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
-                    <CardDescription>Manage your account security settings</CardDescription>
+                    <CardDescription>Keep your account safe</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                         <div>
                             <h4 className="text-sm font-medium">Password</h4>
-                            <p className="text-sm text-muted-foreground">Update your account password.</p>
+                            <p className="text-sm text-muted-foreground">Changing it signs you out everywhere.</p>
                         </div>
                         <Button
                             variant="outline"
@@ -774,23 +766,14 @@ export function UserProfilePage() {
                                 setIsPasswordDialogOpen(true);
                             }}
                         >
-                            Change Password
-                        </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="text-sm font-medium">Two-Factor Authentication</h4>
-                            <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Enable 2FA
+                            Change password
                         </Button>
                     </div>
                 </CardContent>
             </Card>
+
+            {/* AI providers (personal keys). Dormant unless the ottaai package is enabled. */}
+            {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
 
             <Dialog
                 open={isPasswordDialogOpen}
@@ -802,13 +785,19 @@ export function UserProfilePage() {
                 }}
             >
                 <DialogContent className="max-w-md">
-                    <DialogTitle>Change Password</DialogTitle>
-                    <div className="space-y-4">
+                    <DialogTitle>Change password</DialogTitle>
+                    <form
+                        className="space-y-4"
+                        noValidate
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            void handleChangePassword();
+                        }}
+                    >
                         <div className="space-y-2">
-                            <Label htmlFor="currentPassword">Current Password</Label>
-                            <Input
+                            <Label htmlFor="currentPassword">Current password</Label>
+                            <PasswordInput
                                 id="currentPassword"
-                                type="password"
                                 autoComplete="current-password"
                                 value={passwordForm.currentPassword}
                                 onChange={(e) =>
@@ -819,22 +808,22 @@ export function UserProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="newPassword">New Password</Label>
-                            <Input
+                            <Label htmlFor="newPassword">New password</Label>
+                            <PasswordInput
                                 id="newPassword"
-                                type="password"
                                 autoComplete="new-password"
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                                 disabled={isChangingPassword}
+                                aria-describedby="newPassword-rules"
                             />
+                            <PasswordChecklist id="newPassword-rules" password={passwordForm.newPassword} />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                            <Input
+                            <Label htmlFor="confirmPassword">Confirm new password</Label>
+                            <PasswordInput
                                 id="confirmPassword"
-                                type="password"
                                 autoComplete="new-password"
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) =>
@@ -845,31 +834,35 @@ export function UserProfilePage() {
                         </div>
 
                         {passwordError && (
-                            <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            <p
+                                role="alert"
+                                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                            >
                                 {passwordError}
                             </p>
                         )}
 
                         <div className="flex justify-end gap-2">
                             <Button
+                                type="button"
                                 variant="outline"
                                 onClick={() => setIsPasswordDialogOpen(false)}
                                 disabled={isChangingPassword}
                             >
                                 Cancel
                             </Button>
-                            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+                            <Button type="submit" disabled={isChangingPassword}>
                                 {isChangingPassword ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Updating...
+                                        Updating…
                                     </>
                                 ) : (
-                                    'Update Password'
+                                    'Update password'
                                 )}
                             </Button>
                         </div>
-                    </div>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>

@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Button, Input, Label, Alert, AlertDescription, Spinner, Checkbox } from '@ottabase/ui-shadcn';
+import { PasswordInput } from './PasswordFields';
 
 export interface CredentialsFormProps {
     onSubmit: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
     isLoading?: boolean;
     error?: string;
+    /** Controlled email (LoginForm shares one email across sign-in methods) */
+    email?: string;
+    onEmailChange?: (email: string) => void;
     emailLabel?: string;
     passwordLabel?: string;
     submitButtonText?: string;
     showForgotPassword?: boolean;
-    onForgotPassword?: () => void;
+    /** Receives the email typed so far, so a reset form can start prefilled */
+    onForgotPassword?: (email: string) => void;
     showRememberMe?: boolean;
     rememberMeLabel?: string;
     defaultRememberMe?: boolean;
@@ -20,6 +25,8 @@ export function CredentialsForm({
     onSubmit,
     isLoading = false,
     error,
+    email: controlledEmail,
+    onEmailChange,
     emailLabel = 'Email',
     passwordLabel = 'Password',
     submitButtonText = 'Sign in',
@@ -30,13 +37,16 @@ export function CredentialsForm({
     defaultRememberMe = true,
     className = '',
 }: CredentialsFormProps) {
-    const [email, setEmail] = useState('');
+    const id = useId();
+    const [ownEmail, setOwnEmail] = useState('');
+    const email = controlledEmail ?? ownEmail;
+    const setEmail = onEmailChange ?? setOwnEmail;
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(defaultRememberMe);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onSubmit({ email, password, rememberMe });
+        await onSubmit({ email: email.trim(), password, rememberMe });
     };
 
     return (
@@ -48,9 +58,9 @@ export function CredentialsForm({
             )}
 
             <div className="space-y-2">
-                <Label htmlFor="email">{emailLabel}</Label>
+                <Label htmlFor={`${id}-email`}>{emailLabel}</Label>
                 <Input
-                    id="email"
+                    id={`${id}-email`}
                     type="email"
                     placeholder="name@example.com"
                     value={email}
@@ -63,22 +73,21 @@ export function CredentialsForm({
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="password">{passwordLabel}</Label>
+                    <Label htmlFor={`${id}-password`}>{passwordLabel}</Label>
                     {showForgotPassword && onForgotPassword && (
                         <Button
                             type="button"
                             variant="link"
                             size="sm"
-                            onClick={onForgotPassword}
-                            className="px-0 font-normal"
+                            onClick={() => onForgotPassword(email.trim())}
+                            className="h-auto px-0 font-normal"
                         >
                             Forgot password?
                         </Button>
                     )}
                 </div>
-                <Input
-                    id="password"
-                    type="password"
+                <PasswordInput
+                    id={`${id}-password`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
@@ -90,12 +99,12 @@ export function CredentialsForm({
             {showRememberMe && (
                 <div className="flex items-center gap-2">
                     <Checkbox
-                        id="rememberMe"
+                        id={`${id}-remember`}
                         checked={rememberMe}
                         onCheckedChange={(value) => setRememberMe(value === true)}
                         disabled={isLoading}
                     />
-                    <Label htmlFor="rememberMe" className="text-sm">
+                    <Label htmlFor={`${id}-remember`} className="text-sm font-normal">
                         {rememberMeLabel}
                     </Label>
                 </div>

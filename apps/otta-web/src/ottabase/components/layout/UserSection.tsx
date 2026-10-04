@@ -60,8 +60,14 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
                         )}
                     </Link>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setLogoutConfirmOpen(true)} title="Logout">
-                    <LogOut className="h-4 w-4" />
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLogoutConfirmOpen(true)}
+                    title="Log out"
+                    aria-label="Log out"
+                >
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
                 </Button>
             </div>
 

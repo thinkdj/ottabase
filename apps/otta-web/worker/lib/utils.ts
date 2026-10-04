@@ -12,11 +12,6 @@ export function normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
 }
 
-export function isStrongPassword(password: string): boolean {
-    if (password.length < 8) return false;
-    return /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(password);
-}
-
 export function isValidIpAddress(rawValue: string | null): string {
     if (!rawValue) {
         return 'unknown';

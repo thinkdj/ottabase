@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui-shadcn';
 import { CheckCircle2 } from 'lucide-react';
+import { isStrongPassword } from '../password';
+import { PasswordChecklist, PasswordInput } from './PasswordFields';
 
 export interface RegisterFormData {
     name: string;
@@ -28,16 +30,37 @@ export interface RegisterFormProps {
     className?: string;
 }
 
+type FieldKey = keyof RegisterFormData | 'terms';
+
+function validate(data: RegisterFormData, needTerms: boolean, acceptedTerms: boolean) {
+    const errors: Partial<Record<FieldKey, string>> = {};
+    const name = data.name.trim();
+    if (!name) errors.name = 'Enter your name';
+    else if (name.length < 2) errors.name = 'Name must be at least 2 characters';
+
+    if (!data.email) errors.email = 'Enter your email';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.email = 'That email looks incomplete';
+
+    if (!data.password) errors.password = 'Choose a password';
+    else if (!isStrongPassword(data.password)) errors.password = 'Tick off every item above';
+
+    if (!data.confirmPassword) errors.confirmPassword = 'Type the password again';
+    else if (data.password !== data.confirmPassword) errors.confirmPassword = 'Passwords do not match';
+
+    if (needTerms && !acceptedTerms) errors.terms = 'Please accept the terms to continue';
+    return errors;
+}
+
 export function RegisterForm({
     onSubmit,
     isLoading = false,
     error,
     success = false,
-    nameLabel = 'Full Name',
+    nameLabel = 'Full name',
     emailLabel = 'Email',
     passwordLabel = 'Password',
-    confirmPasswordLabel = 'Confirm Password',
-    submitButtonText = 'Create Account',
+    confirmPasswordLabel = 'Confirm password',
+    submitButtonText = 'Create account',
     successMessage = 'Account created successfully!',
     showTermsCheckbox = false,
     termsText = 'I agree to the Terms of Service and Privacy Policy',
@@ -45,6 +68,7 @@ export function RegisterForm({
     termsContent,
     className = '',
 }: RegisterFormProps) {
+    const id = useId();
     const [formData, setFormData] = useState<RegisterFormData>({
         name: '',
         email: '',
@@ -52,85 +76,61 @@ export function RegisterForm({
         confirmPassword: '',
     });
     const [acceptedTerms, setAcceptedTerms] = useState(false);
-    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
 
-    const validateForm = (): boolean => {
-        const errors: Record<string, string> = {};
-
-        // Name validation
-        if (!formData.name.trim()) {
-            errors.name = 'Name is required';
-        } else if (formData.name.trim().length < 2) {
-            errors.name = 'Name must be at least 2 characters';
-        }
-
-        // Email validation
-        if (!formData.email) {
-            errors.email = 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            errors.email = 'Invalid email address';
-        }
-
-        // Password validation
-        if (!formData.password) {
-            errors.password = 'Password is required';
-        } else if (formData.password.length < 8) {
-            errors.password = 'Password must be at least 8 characters';
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(formData.password)) {
-            errors.password = 'Password must contain uppercase, lowercase, number, and special character';
-        }
-
-        // Confirm password validation
-        if (!formData.confirmPassword) {
-            errors.confirmPassword = 'Please confirm your password';
-        } else if (formData.password !== formData.confirmPassword) {
-            errors.confirmPassword = 'Passwords do not match';
-        }
-
-        // Terms acceptance
-        if (showTermsCheckbox && !acceptedTerms) {
-            errors.terms = 'You must accept the terms and conditions';
-        }
-
-        setValidationErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
-        await onSubmit(formData);
+    const clearError = (field: FieldKey) => {
+        if (!errors[field]) return;
+        setErrors((prev) => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
     };
 
     const handleChange = (field: keyof RegisterFormData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear validation error for this field
-        if (validationErrors[field]) {
-            setValidationErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
+        clearError(field);
     };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const found = validate(formData, showTermsCheckbox, acceptedTerms);
+        setErrors(found);
+        const first = Object.keys(found)[0];
+        if (first) {
+            document.getElementById(`${id}-${first}`)?.focus();
+            return;
+        }
+        await onSubmit({ ...formData, name: formData.name.trim(), email: formData.email.trim() });
+    };
+
+    /** aria wiring for a field: invalid flag plus its error (and any extra description) */
+    const describe = (field: FieldKey, extra?: string) => ({
+        'aria-invalid': errors[field] ? true : undefined,
+        'aria-describedby':
+            [errors[field] ? `${id}-${field}-error` : '', extra ?? ''].filter(Boolean).join(' ') || undefined,
+    });
+    const fieldError = (field: FieldKey) =>
+        errors[field] ? (
+            <p id={`${id}-${field}-error`} className="text-xs text-destructive">
+                {errors[field]}
+            </p>
+        ) : null;
 
     if (success) {
         return (
-            <div className={`space-y-4 ${className}`}>
-                <Alert className="border-green-500">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <AlertDescription className="text-green-700">{successMessage}</AlertDescription>
-                </Alert>
+            <div
+                role="status"
+                className={`flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 p-4 text-sm font-medium text-success ${className}`}
+            >
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {successMessage}
             </div>
         );
     }
 
     return (
-        <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
+        <form onSubmit={handleSubmit} noValidate className={`space-y-4 ${className}`}>
             {error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
@@ -138,24 +138,24 @@ export function RegisterForm({
             )}
 
             <div className="space-y-2">
-                <Label htmlFor="name">{nameLabel}</Label>
+                <Label htmlFor={`${id}-name`}>{nameLabel}</Label>
                 <Input
-                    id="name"
+                    id={`${id}-name`}
                     type="text"
-                    placeholder="John Doe"
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     disabled={isLoading}
                     required
                     autoComplete="name"
+                    {...describe('name')}
                 />
-                {validationErrors.name && <p className="text-xs text-destructive">{validationErrors.name}</p>}
+                {fieldError('name')}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="email">{emailLabel}</Label>
+                <Label htmlFor={`${id}-email`}>{emailLabel}</Label>
                 <Input
-                    id="email"
+                    id={`${id}-email`}
                     type="email"
                     placeholder="name@example.com"
                     value={formData.email}
@@ -163,75 +163,73 @@ export function RegisterForm({
                     disabled={isLoading}
                     required
                     autoComplete="email"
+                    {...describe('email')}
                 />
-                {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
+                {fieldError('email')}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="password">{passwordLabel}</Label>
-                <Input
-                    id="password"
-                    type="password"
+                <Label htmlFor={`${id}-password`}>{passwordLabel}</Label>
+                <PasswordInput
+                    id={`${id}-password`}
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
                     disabled={isLoading}
                     required
                     autoComplete="new-password"
+                    {...describe('password', `${id}-rules`)}
                 />
-                {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
-                <p className="text-xs text-muted-foreground">
-                    At least 8 characters with uppercase, lowercase, number, and symbol
-                </p>
+                <PasswordChecklist id={`${id}-rules`} password={formData.password} />
+                {fieldError('password')}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{confirmPasswordLabel}</Label>
-                <Input
-                    id="confirmPassword"
-                    type="password"
+                <Label htmlFor={`${id}-confirmPassword`}>{confirmPasswordLabel}</Label>
+                <PasswordInput
+                    id={`${id}-confirmPassword`}
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
                     disabled={isLoading}
                     required
                     autoComplete="new-password"
+                    {...describe('confirmPassword')}
                 />
-                {validationErrors.confirmPassword && (
-                    <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>
-                )}
+                {fieldError('confirmPassword')}
             </div>
 
             {showTermsCheckbox && (
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="terms"
-                        checked={acceptedTerms}
-                        onChange={(e) => {
-                            setAcceptedTerms(e.target.checked);
-                            if (validationErrors.terms && e.target.checked) {
-                                setValidationErrors((prev) => {
-                                    const newErrors = { ...prev };
-                                    delete newErrors.terms;
-                                    return newErrors;
-                                });
-                            }
-                        }}
-                        disabled={isLoading}
-                        className="h-4 w-4 shrink-0 accent-primary"
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal cursor-pointer leading-snug">
-                        {termsContent ??
-                            (onTermsClick ? (
-                                <button type="button" onClick={onTermsClick} className="text-primary hover:underline">
-                                    {termsText}
-                                </button>
-                            ) : (
-                                termsText
-                            ))}
-                    </Label>
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id={`${id}-terms`}
+                            checked={acceptedTerms}
+                            onChange={(e) => {
+                                setAcceptedTerms(e.target.checked);
+                                if (e.target.checked) clearError('terms');
+                            }}
+                            disabled={isLoading}
+                            className="h-4 w-4 shrink-0 accent-primary"
+                            {...describe('terms')}
+                        />
+                        <Label htmlFor={`${id}-terms`} className="cursor-pointer text-sm font-normal leading-snug">
+                            {termsContent ??
+                                (onTermsClick ? (
+                                    <button
+                                        type="button"
+                                        onClick={onTermsClick}
+                                        className="text-primary hover:underline"
+                                    >
+                                        {termsText}
+                                    </button>
+                                ) : (
+                                    termsText
+                                ))}
+                        </Label>
+                    </div>
+                    {fieldError('terms')}
                 </div>
             )}
-            {validationErrors.terms && <p className="text-xs text-destructive">{validationErrors.terms}</p>}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Spinner className="mr-2 h-4 w-4" />}

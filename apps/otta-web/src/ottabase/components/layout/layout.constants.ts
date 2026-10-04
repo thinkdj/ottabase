@@ -19,7 +19,7 @@ const NAV_LINKS_ALL: NavLink[] = [
     { to: '/blog', label: 'Blog' },
     { to: '/changelog', label: "What's New" },
     { to: '/shortlinks', label: 'Shortlinks' },
-    { to: '/dashboard', label: 'Profile Information', authRequired: true },
+    { to: '/dashboard', label: 'Dashboard', authRequired: true },
     { to: '/referrals', label: 'Referrals', authRequired: true },
     { to: '/analytics', label: 'Analytics', authRequired: true, adminOnly: true },
     { to: '/admin', label: 'Admin', authRequired: true, adminOnly: true },

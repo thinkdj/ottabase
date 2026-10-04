@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Sign-in and account flow reworked.** `LoginForm` is email-first: one email shared by the **Password** and **Email
+  link** tabs, errors (social ones too) shown once at the top, the forgot-password dialog prefilled with what was typed,
+  and "try again" after a magic link no longer reloads the page (`onMagicLinkReset`). Login, register, reset and verify
+  pages share one `AuthShell`; the dev-only "Production-Ready Auth" card, the duplicate sign-up box and the register
+  page's static security card are gone (setup warnings collapse into a dev-only details block). A single password policy
+  (`isStrongPassword`, `checkPassword`, `PASSWORD_RULES` on `@ottabase/auth/config`) now backs the worker and every
+  form, shown as a live `PasswordChecklist`; password fields get a show/hide toggle (`PasswordInput`); register errors
+  are tied to their fields and focus the first one. Reset shows a clear state for a broken link, and a failed email
+  verification offers a fresh link. `/dashboard` is a real signed-in home (destinations plus a verify-email nudge)
+  instead of a session JSON dump, and the nav calls it Dashboard. The account page hides the user id under "Developer
+  details", names providers properly, and drops the dead "Enable 2FA" button. The app's Tailwind config now scans
+  `packages/auth`, so auth-only classes are no longer purged from production CSS.
 - **Command palette is a real navigator.** Ctrl/⌘K (now in the default shortcuts, alongside `/`) and a new header Search
   button open a palette built from the app's own nav lists: main pages, the admin menu filtered by what the user may
   open, and the demo gallery, with recent picks first and a light/dark action. `@ottabase/spotlight` gains result

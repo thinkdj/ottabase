@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+    Alert,
+    AlertDescription,
     Card,
     CardContent,
     CardDescription,
@@ -15,7 +17,7 @@ import { CredentialsForm } from './CredentialsForm';
 import { MagicLinkForm } from './MagicLinkForm';
 
 export interface LoginFormProps {
-    // Title and description
+    /** Card heading; pass '' (with description '') when the page already has its own heading */
     title?: string;
     description?: string;
 
@@ -31,7 +33,10 @@ export interface LoginFormProps {
     onSocialLogin?: (providerId: string) => void;
     onCredentialsLogin?: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
     onMagicLinkSend?: (email: string) => Promise<void>;
-    onForgotPassword?: () => void;
+    /** "Try again" after a magic link was sent; clear `magicLinkSuccess` here */
+    onMagicLinkReset?: () => void;
+    /** Receives the email typed so far, so a reset form can start prefilled */
+    onForgotPassword?: (email: string) => void;
 
     // State
     isLoading?: boolean;
@@ -47,6 +52,10 @@ export interface LoginFormProps {
     defaultRememberMe?: boolean;
 }
 
+/**
+ * Email-first sign-in card: social buttons, then one email shared by the
+ * password and email-link methods (switching tabs keeps what was typed).
+ */
 export function LoginForm({
     title = 'Welcome back',
     description = 'Sign in to your account',
@@ -57,6 +66,7 @@ export function LoginForm({
     onSocialLogin,
     onCredentialsLogin,
     onMagicLinkSend,
+    onMagicLinkReset,
     onForgotPassword,
     isLoading = false,
     error,
@@ -69,18 +79,49 @@ export function LoginForm({
     defaultRememberMe = true,
 }: LoginFormProps) {
     const [activeTab, setActiveTab] = useState(defaultTab);
+    const [email, setEmail] = useState('');
 
+    const credentials = showCredentials && onCredentialsLogin && (
+        <CredentialsForm
+            onSubmit={onCredentialsLogin}
+            isLoading={isLoading}
+            email={email}
+            onEmailChange={setEmail}
+            showForgotPassword={!!onForgotPassword}
+            onForgotPassword={onForgotPassword}
+            showRememberMe={showRememberMe}
+            rememberMeLabel={rememberMeLabel}
+            defaultRememberMe={defaultRememberMe}
+        />
+    );
+    const magicLink = showMagicLink && onMagicLinkSend && (
+        <MagicLinkForm
+            onSubmit={onMagicLinkSend}
+            isLoading={isLoading}
+            success={magicLinkSuccess}
+            email={email}
+            onEmailChange={setEmail}
+            onReset={onMagicLinkReset}
+        />
+    );
     const hasSocial = socialProviders.length > 0;
-    const hasMultipleMethods = [showCredentials, showMagicLink].filter(Boolean).length > 1;
 
     return (
         <Card className={`w-full max-w-md ${className}`}>
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-                {description && <CardDescription>{description}</CardDescription>}
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {/* Social providers */}
+            {(title || description) && (
+                <CardHeader>
+                    {title && <CardTitle>{title}</CardTitle>}
+                    {description && <CardDescription>{description}</CardDescription>}
+                </CardHeader>
+            )}
+            <CardContent className={`space-y-6 ${title || description ? '' : 'pt-6'}`}>
+                {/* One place for every sign-in error, social ones included */}
+                {error && (
+                    <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+
                 {hasSocial && onSocialLogin && (
                     <>
                         <SocialLoginButtons
@@ -88,78 +129,23 @@ export function LoginForm({
                             onProviderClick={onSocialLogin}
                             isLoading={isLoading}
                         />
-                        {(showCredentials || showMagicLink) && <SocialLoginDivider text="or" />}
+                        {(credentials || magicLink) && <SocialLoginDivider text="or" />}
                     </>
                 )}
 
-                {/* Credentials and Magic Link */}
-                {(showCredentials || showMagicLink) && (
-                    <>
-                        {hasMultipleMethods ? (
-                            <Tabs
-                                value={activeTab}
-                                onValueChange={(v: string) => setActiveTab(v as 'credentials' | 'magic-link')}
-                            >
-                                <TabsList className="grid w-full grid-cols-2">
-                                    {showCredentials && <TabsTrigger value="credentials">Email & Password</TabsTrigger>}
-                                    {showMagicLink && <TabsTrigger value="magic-link">Magic Link</TabsTrigger>}
-                                </TabsList>
-
-                                {showCredentials && onCredentialsLogin && (
-                                    <TabsContent value="credentials">
-                                        <CredentialsForm
-                                            onSubmit={onCredentialsLogin}
-                                            isLoading={isLoading}
-                                            error={error}
-                                            showForgotPassword={!!onForgotPassword}
-                                            onForgotPassword={onForgotPassword}
-                                            showRememberMe={showRememberMe}
-                                            rememberMeLabel={rememberMeLabel}
-                                            defaultRememberMe={defaultRememberMe}
-                                        />
-                                    </TabsContent>
-                                )}
-
-                                {showMagicLink && onMagicLinkSend && (
-                                    <TabsContent value="magic-link">
-                                        <MagicLinkForm
-                                            onSubmit={onMagicLinkSend}
-                                            isLoading={isLoading}
-                                            error={error}
-                                            success={magicLinkSuccess}
-                                        />
-                                    </TabsContent>
-                                )}
-                            </Tabs>
-                        ) : (
-                            <>
-                                {showCredentials && onCredentialsLogin && (
-                                    <CredentialsForm
-                                        onSubmit={onCredentialsLogin}
-                                        isLoading={isLoading}
-                                        error={error}
-                                        showForgotPassword={!!onForgotPassword}
-                                        onForgotPassword={onForgotPassword}
-                                        showRememberMe={showRememberMe}
-                                        rememberMeLabel={rememberMeLabel}
-                                        defaultRememberMe={defaultRememberMe}
-                                    />
-                                )}
-
-                                {showMagicLink && onMagicLinkSend && (
-                                    <MagicLinkForm
-                                        onSubmit={onMagicLinkSend}
-                                        isLoading={isLoading}
-                                        error={error}
-                                        success={magicLinkSuccess}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </>
+                {credentials && magicLink ? (
+                    <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as typeof defaultTab)}>
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="credentials">Password</TabsTrigger>
+                            <TabsTrigger value="magic-link">Email link</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="credentials">{credentials}</TabsContent>
+                        <TabsContent value="magic-link">{magicLink}</TabsContent>
+                    </Tabs>
+                ) : (
+                    credentials || magicLink
                 )}
 
-                {/* Sign up link */}
                 {showSignUp && onSignUpClick && (
                     <div className="text-center text-sm">
                         Don't have an account?{' '}

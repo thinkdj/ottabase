@@ -51,6 +51,18 @@ export {
 } from './session';
 
 // ============================================================
+// PASSWORD POLICY (shared by forms and the worker)
+// ============================================================
+export {
+    checkPassword,
+    isStrongPassword,
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_POLICY_MESSAGE,
+    PASSWORD_RULES,
+    type PasswordRule,
+} from './password';
+
+// ============================================================
 // BACKEND HANDLER (Cloudflare Workers)
 // ============================================================
 export {

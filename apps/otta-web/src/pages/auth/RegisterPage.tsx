@@ -9,10 +9,10 @@ import {
     getStoredReferralCode,
 } from '@/lib/referrals';
 import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AuthCard, AuthShell } from './AuthShell';
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -61,7 +61,6 @@ export function RegisterPage() {
                 setVerificationSent(!!registerResult.verificationSent);
                 setRegisteredEmail(data.email);
                 clearStoredReferralCode();
-                setSuccess(true);
                 setIsLoading(false);
                 return;
             }
@@ -112,130 +111,94 @@ export function RegisterPage() {
         }
     };
 
-    return (
-        <div className="flex min-h-[80vh] items-center justify-center">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex items-center">
-                    <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                        <Link to="/login">
-                            <ArrowLeft className="h-4 w-4" />
-                            Back to Login
-                        </Link>
-                    </Button>
-                </div>
-
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-lg font-bold text-foreground ring-1 ring-border">
-                        {APP_META.appName.charAt(0)}
-                    </span>
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Create Account</h1>
-                        <p className="text-muted-foreground">Sign up to get started</p>
-                    </div>
-                    {referralCode && (
-                        <div className="w-full rounded-lg bg-background p-3 text-left text-sm ring-1 ring-border">
-                            <p className="font-medium">
-                                You were referred by: <strong>{referralCode}</strong>
-                            </p>
-                            {referralExpiry && (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                    Referral expires in {referralExpiry.daysRemaining} days
-                                </p>
-                            )}
-                        </div>
+    if (verificationRequired) {
+        return (
+            <AuthShell title="Check your email" subtitle="One more step before you can sign in">
+                <AuthCard>
+                    <p role="status">
+                        {verificationSent ? 'We sent a verification link to ' : 'Verify '}
+                        <strong>{registeredEmail}</strong>
+                        {verificationSent ? '. Open it, then sign in.' : ' before signing in.'}
+                    </p>
+                    {verificationSent && (
+                        <p className="text-muted-foreground">Nothing yet? Check spam, or send it again.</p>
                     )}
-                </div>
+                    {error && (
+                        <p role="alert" className="text-destructive">
+                            {error}
+                        </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" onClick={handleResendVerification} disabled={isLoading}>
+                            {isLoading ? 'Sending…' : verificationSent ? 'Send again' : 'Send verification email'}
+                        </Button>
+                        <Button asChild variant="ghost">
+                            <Link to="/login">Go to sign in</Link>
+                        </Button>
+                    </div>
+                </AuthCard>
+            </AuthShell>
+        );
+    }
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="gap-1.5">
-                        <CardTitle className="text-[0.9375rem] font-semibold">Registration</CardTitle>
-                        <CardDescription>Fill in your details to create a new account</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {verificationRequired ? (
-                            <div className="space-y-4 text-sm">
-                                <div className="rounded-lg bg-background p-4 ring-1 ring-border">
-                                    <p className="font-medium">Check your email to verify your account</p>
-                                    <p className="mt-1 text-muted-foreground">
-                                        We sent a verification link to <strong>{registeredEmail}</strong>. You must
-                                        verify your email before signing in.
-                                    </p>
-                                </div>
-                                {error && (
-                                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                                        {error}
-                                    </div>
-                                )}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={handleResendVerification}
-                                    disabled={isLoading}
-                                >
-                                    {verificationSent ? 'Resend verification email' : 'Send verification email'}
-                                </Button>
-                            </div>
-                        ) : (
-                            <RegisterForm
-                                onSubmit={handleRegister}
-                                isLoading={isLoading}
-                                error={error}
-                                success={success}
-                                successMessage="Account created! Redirecting to dashboard..."
-                                showTermsCheckbox
-                                termsContent={
-                                    <span>
-                                        I agree to the{' '}
-                                        <a
-                                            href="/legal/terms"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline"
-                                        >
-                                            Terms of Service
-                                        </a>{' '}
-                                        and{' '}
-                                        <a
-                                            href="/legal/privacy"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline"
-                                        >
-                                            Privacy Policy
-                                        </a>
-                                    </span>
-                                }
-                            />
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+    return (
+        <AuthShell
+            title="Create your account"
+            subtitle={`Join ${APP_META.appName}`}
+            footer={
+                <>
                     Already have an account?{' '}
                     <Link to="/login" className="font-medium text-foreground hover:underline">
                         Sign in
                     </Link>
+                </>
+            }
+        >
+            {referralCode && (
+                <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
+                    <p className="font-medium">
+                        Invited with code <strong>{referralCode}</strong>
+                    </p>
+                    {referralExpiry && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            The invite is valid for {referralExpiry.daysRemaining} more days
+                        </p>
+                    )}
                 </div>
+            )}
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="gap-1.5">
-                        <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
-                        <CardDescription className="text-xs">Your credentials are stored securely</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-xs text-muted-foreground">
-                        <p>
-                            <strong className="font-medium text-foreground">Password requirements:</strong> 8+ chars
-                            with uppercase, lowercase, number, and symbol
-                        </p>
-                        <p>
-                            <strong className="font-medium text-foreground">Registration:</strong> Creates your account
-                            and signs you in automatically
-                        </p>
-                        <p>Email verification can be enabled via worker configuration</p>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+            <AuthCard>
+                <RegisterForm
+                    onSubmit={handleRegister}
+                    isLoading={isLoading}
+                    error={error}
+                    success={success}
+                    successMessage="Account created. Taking you in…"
+                    showTermsCheckbox
+                    termsContent={
+                        <span>
+                            I agree to the{' '}
+                            <a
+                                href="/legal/terms"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                            >
+                                Terms of Service
+                            </a>{' '}
+                            and{' '}
+                            <a
+                                href="/legal/privacy"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                            >
+                                Privacy Policy
+                            </a>
+                        </span>
+                    }
+                />
+            </AuthCard>
+        </AuthShell>
     );
 }

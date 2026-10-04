@@ -19,7 +19,8 @@ vi.mock('@ottabase/auth/backend', () => ({
     verifyPassword: vi.fn(),
 }));
 
-vi.mock('@ottabase/auth/config', () => ({
+vi.mock('@ottabase/auth/config', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@ottabase/auth/config')>()),
     getLoginConfig: vi.fn(() => ({})),
 }));
 
