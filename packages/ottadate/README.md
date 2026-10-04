@@ -199,6 +199,9 @@ const fuzzy = OttaDate.createFuzzyDateTimePicker(container, {
 with Summer active). Empty, it opens on the grid of the coarsest allowed level: the decades grid in decade mode, else
 this decade's years. Nothing is pre-filled, so what you see selected is exactly what is stored.
 
+**Narrow hosts:** an inline panel shrinks to its container, and when it gets narrower than its default width the chips
+size to their words and wrap (a CSS container query), so no label is ever cut.
+
 **Keyboard:** one tab stop per grid (the selected cell, else today), arrow keys move within it, Home / End jump, PageUp
 / PageDown browse, Escape clears typed text first and then closes. On desktop the "Type it" field is focused on open, so
 click → type "summer 98" → Enter is the fastest path; on touch it is not, so the keyboard never covers the grid.

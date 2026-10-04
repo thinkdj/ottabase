@@ -1,30 +1,20 @@
 /**
  * OttaDate Demo Page
  *
- * Showcases all @ottabase/ottadate picker variants:
- * - DatePicker (single date)
- * - DateRangePicker
- * - DateTimePicker
- * - FuzzyDateTimePicker (zoom panel) + FuzzyDateTimeCompact (native selects)
+ * Leads with the fuzzy playground (FuzzyDateTimePicker + FuzzyDateTimeCompact,
+ * example memories, live stored value), then the exact-date pickers:
+ * DatePicker, DateRangePicker (with and without presets), DateTimePicker and
+ * the programmatic API.
  *
  * Each picker is mounted as a vanilla JS widget inside React refs.
  */
 
-import {
-    OttaDate,
-    encodeFuzzyDateTime,
-    formatFuzzyRange,
-    getDefaultRangePresets,
-    parseFuzzyInput,
-    type DatePickerInstance,
-    type DateRange,
-    type FuzzyDateTime,
-} from '@ottabase/ottadate';
-import { Input } from '@ottabase/ui-shadcn/input';
+import { OttaDate, getDefaultRangePresets, type DatePickerInstance, type DateRange } from '@ottabase/ottadate';
 import { Button } from '@ottabase/ui-shadcn/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn/card';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
+import { FuzzyPlayground } from './FuzzyPlayground';
 // Styles are imported once at the app level or here
 import '@ottabase/ottadate/styles.css';
 
@@ -214,198 +204,6 @@ function DateTimeDemo() {
     );
 }
 
-function FuzzyDateTimeDemo() {
-    const [fuzzy, setFuzzy] = useState<FuzzyDateTime | null>(null);
-
-    const { ref } = usePickerMount(
-        (el) =>
-            OttaDate.createFuzzyDateTimePicker(el, {
-                placeholder: 'Select an approximate date…',
-                onChange: (v) => setFuzzy(v),
-            }),
-        [],
-    );
-
-    return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-            <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime Picker</CardTitle>
-                <CardDescription>
-                    For dates you only partly remember. One panel that zooms like a map: tap a year, month or day to
-                    zoom in, tap the title to zoom out. Chips answer for the period on screen (Sometime, early/mid/late,
-                    seasons, morning to night), and the result line shows the exact range that gets stored. Or just type
-                    it: "summer 98", then Enter.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div ref={ref} />
-                {fuzzy && (
-                    <div className="space-y-2">
-                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
-                            "{fuzzy.label}"
-                        </div>
-                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                            {JSON.stringify(fuzzy, null, 2)}
-                        </pre>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-function FuzzyDateTimeInlineDemo() {
-    const [fuzzy, setFuzzy] = useState<FuzzyDateTime | null>(null);
-
-    const { ref } = usePickerMount(
-        (el) =>
-            OttaDate.createFuzzyDateTimePicker(el, {
-                inline: true,
-                onChange: (v) => setFuzzy(v),
-                resolutions: ['decade', 'year', 'month', 'day'],
-            }),
-        [],
-    );
-
-    return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-            <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Inline, Decades)</CardTitle>
-                <CardDescription>
-                    Inline, decades allowed, capped at day. Try "Early 1990s" (1990s, then Early), "Summer 1998" or
-                    "Late May 2010". Parts show as a band on the grid; ~ Roughly hatches the spill beyond it.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div ref={ref} />
-                {fuzzy && (
-                    <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                        {JSON.stringify(fuzzy, null, 2)}
-                    </pre>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-function FuzzyCompactDemo() {
-    const [fuzzy, setFuzzy] = useState<FuzzyDateTime | null>(null);
-
-    const { ref } = usePickerMount(
-        (el) =>
-            OttaDate.createFuzzyDateTimeCompact(el, {
-                placeholder: 'FuzzyDateTime',
-                onChange: (v) => setFuzzy(v),
-            }),
-        [],
-    );
-
-    return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-            <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy DateTime (Compact)</CardTitle>
-                <CardDescription>
-                    Same shell, native selects in label order: "Late · May · 2010". "Sometime" is the no-part answer,
-                    "Any month" / "Any day" stay coarse, years are grouped by decade. Smallest footprint, and the OS
-                    wheel on phones.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div ref={ref} className="max-w-xs" />
-                {fuzzy && (
-                    <div className="space-y-2">
-                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
-                            "{fuzzy.label}"
-                        </div>
-                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                            {JSON.stringify(fuzzy, null, 2)}
-                        </pre>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-function FuzzyCompactInlineDemo() {
-    const [fuzzy, setFuzzy] = useState<FuzzyDateTime | null>(null);
-
-    const { ref } = usePickerMount(
-        (el) =>
-            OttaDate.createFuzzyDateTimeCompact(el, {
-                inline: true,
-                onChange: (v) => setFuzzy(v),
-                resolutions: ['year', 'month', 'day'],
-            }),
-        [],
-    );
-
-    return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-            <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Fuzzy Compact (Inline)</CardTitle>
-                <CardDescription>
-                    Inline compact capped at day resolution, for embedded forms and sidebars.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div ref={ref} className="max-w-xs" />
-                {fuzzy && (
-                    <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                        {JSON.stringify(fuzzy, null, 2)}
-                    </pre>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-/** Type-to-parse: free-text memories → FuzzyDateTime via parseFuzzyInput */
-function FuzzyParseDemo() {
-    const [input, setInput] = useState('early 90s');
-    const parsed = parseFuzzyInput(input);
-
-    return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-            <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Type a Memory (parseFuzzyInput)</CardTitle>
-                <CardDescription>
-                    Free-text front-end to the same vocabulary: try "early 90s", "summer 98", "late may 2010", "21 july
-                    2026 9pm", "1996ish", "last night". Strict: anything unrecognized returns null instead of guessing.
-                    Both fuzzy pickers embed this as their "Type it" field.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="early 90s · summer 98 · 21 jul 2010…"
-                    className="max-w-sm"
-                />
-                {parsed ? (
-                    <div className="space-y-2">
-                        <div className="rounded-lg bg-background p-3 text-center text-sm italic ring-1 ring-border">
-                            "{parsed.label}" <span className="not-italic text-muted-foreground">·</span>{' '}
-                            <span className="not-italic text-xs text-muted-foreground">{formatFuzzyRange(parsed)}</span>{' '}
-                            <span className="not-italic text-muted-foreground">·</span>{' '}
-                            <code className="not-italic text-xs text-muted-foreground">
-                                {encodeFuzzyDateTime(parsed)}
-                            </code>
-                        </div>
-                        <pre className="overflow-auto rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                            {JSON.stringify(parsed, null, 2)}
-                        </pre>
-                    </div>
-                ) : (
-                    <div className="rounded-lg bg-background p-3 text-sm text-muted-foreground ring-1 ring-border">
-                        {input.trim() ? 'Could not parse that memory.' : 'Type something…'}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
 function ProgrammaticApiDemo() {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pickerRef = useRef<DatePickerInstance | null>(null);
@@ -477,44 +275,48 @@ function ProgrammaticApiDemo() {
 
 export function OttaDateDemoPage() {
     return (
-        <div className="space-y-8 max-w-4xl">
+        <div className="max-w-5xl space-y-12">
             <DemoPageHeader
                 title="OttaDate"
-                description="Framework-agnostic date picker with range, datetime, and fuzzy date support. All values are UTC unix timestamps by default."
+                description="Date pickers for exact dates and for the ones people only half remember. Framework-agnostic; values are UTC unix timestamps by default."
             />
 
-            {/* Date Picker */}
-            <DatePickerDemo />
+            <section className="space-y-5" aria-labelledby="ottadate-fuzzy">
+                <div className="space-y-1.5">
+                    <h2 id="ottadate-fuzzy" className="text-xl font-semibold tracking-tight">
+                        Fuzzy dates
+                    </h2>
+                    <p className="max-w-2xl text-sm text-muted-foreground">
+                        For dates people half remember: &quot;early 90s&quot;, &quot;summer 98&quot;, &quot;late May
+                        2010&quot;. Tap what you remember, as roughly as you like, or type it. Every value is stored
+                        with the exact range it covers, so it stays sortable and searchable.
+                    </p>
+                </div>
+                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <CardContent className="p-4 sm:p-6">
+                        <FuzzyPlayground />
+                    </CardContent>
+                </Card>
+            </section>
 
-            {/* Inline Date Picker */}
-            <DatePickerInlineDemo />
-
-            {/* Date Range Picker */}
-            <DateRangeDemo />
-
-            {/* Date Range with Presets */}
-            <DateRangePresetsDemo />
-
-            {/* DateTime Picker */}
-            <DateTimeDemo />
-
-            {/* Fuzzy DateTime Picker */}
-            <FuzzyDateTimeDemo />
-
-            {/* Fuzzy Inline with Limited Options */}
-            <FuzzyDateTimeInlineDemo />
-
-            {/* Fuzzy Compact (dropdown-based) */}
-            <FuzzyCompactDemo />
-
-            {/* Fuzzy Compact Inline */}
-            <FuzzyCompactInlineDemo />
-
-            {/* Type-to-parse */}
-            <FuzzyParseDemo />
-
-            {/* Programmatic API */}
-            <ProgrammaticApiDemo />
+            <section className="max-w-4xl space-y-5" aria-labelledby="ottadate-exact">
+                <div className="space-y-1.5">
+                    <h2 id="ottadate-exact" className="text-xl font-semibold tracking-tight">
+                        Exact dates
+                    </h2>
+                    <p className="max-w-2xl text-sm text-muted-foreground">
+                        Calendar pickers for a known day, range or moment.
+                    </p>
+                </div>
+                <div className="space-y-8">
+                    <DatePickerDemo />
+                    <DatePickerInlineDemo />
+                    <DateRangeDemo />
+                    <DateRangePresetsDemo />
+                    <DateTimeDemo />
+                    <ProgrammaticApiDemo />
+                </div>
+            </section>
         </div>
     );
 }

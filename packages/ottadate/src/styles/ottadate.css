@@ -690,10 +690,17 @@
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
+    /* Lets the chips reflow when a host squeezes the panel (see the container query below) */
+    container-type: inline-size;
 }
 
 .ottadate-fz [hidden] {
     display: none;
+}
+
+/* Inline panels shrink to a narrow container (small phones, slim sidebars) instead of overflowing */
+.ottadate--inline .ottadate-popover.ottadate-fz {
+    max-width: 100%;
 }
 
 .ottadate-fz .ottadate-footer {
@@ -887,17 +894,21 @@
 /* Answer chips: "Sometime" + parts for the period on screen */
 .ottadate-fz-chips {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* minmax(0, …) lets tracks shrink below their text width in narrow panels */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.25rem;
 }
 
 .ottadate-fz-chips--day {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .ottadate-fz-chip {
+    min-width: 0;
     height: 1.75rem;
-    padding: 0 0.375rem;
+    padding: 0 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
     border: 1px solid var(--od-border);
     border-radius: var(--od-radius-pill);
     background: var(--od-bg);
@@ -910,6 +921,19 @@
         background var(--od-transition),
         color var(--od-transition),
         border-color var(--od-transition);
+}
+
+/* Squeezed panel: chips size to their words and wrap, so no label gets cut */
+@container (max-width: 18.5rem) {
+    .ottadate-fz-chips {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .ottadate-fz-chip {
+        flex: 1 0 auto;
+        padding: 0 0.5rem;
+    }
 }
 
 .ottadate-fz-chip:hover:not([aria-pressed='true']) {
@@ -926,20 +950,20 @@
 
 .ottadate-fz-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.125rem;
 }
 
 .ottadate-fz-grid--years {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .ottadate-fz-grid--days {
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .ottadate-fz-grid--hours {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .ottadate-fz-cell {

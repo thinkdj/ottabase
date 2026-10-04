@@ -19,7 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   longer nest the clear button inside the open button. New headless pieces: `formatFuzzyRange(fuzzy)` and the selection
   controller's `select(level, at)`. Stored `FuzzyDateTime` values and labels are unchanged; DOM class names of the fuzzy
   pickers changed (`ottadate-fz-*`). The blog editor's "Originally Written" field uses the picker instead of a bare text
-  input.
+  input, and the otta-web OttaDate demo leads with a hands-on fuzzy playground (variant switches, example memories, live
+  stored value).
 
 - **RBAC: authorization is permission + scope, never role NAME.** Admin gates no longer trust the role names
   `owner`/`admin`/`platform_owner`. A role is now purely a bundle of permissions; every gate asks "does a grant **at the
