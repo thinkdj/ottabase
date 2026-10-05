@@ -605,15 +605,11 @@ const adminMigrationsRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/MigrationsPage'),
     'MigrationStatusPage',
 );
-const adminQueuesRoute = makeAdminRoute(
-    '/admin/infrastructure/queues',
-    () => import('@/pages/admin/infrastructure/QueuesPage'),
-    'AdminQueuePage',
-);
-const adminCronRoute = makeAdminRoute(
-    '/admin/infrastructure/cron',
-    () => import('@/pages/admin/infrastructure/CronPage'),
-    'AdminCronPage',
+const adminJobsRoute = makeAdminRoute(
+    '/admin/infrastructure/jobs',
+    () => import('@/pages/admin/infrastructure/jobs/JobsPage'),
+    'JobsPage',
+    { validateSearch: (s): { tab?: 'queue' } => (s.tab === 'queue' ? { tab: 'queue' } : {}) },
 );
 const adminDevMailRoute = makeAdminRoute(
     '/admin/infrastructure/dev-mail',
@@ -803,8 +799,7 @@ const coreRoutes = [
     adminKillSwitchesRoute,
     adminDatabaseRoute,
     adminMigrationsRoute,
-    adminQueuesRoute,
-    adminCronRoute,
+    adminJobsRoute,
     adminDevMailRoute,
     adminEmailRoute,
     adminPremiumRoute,

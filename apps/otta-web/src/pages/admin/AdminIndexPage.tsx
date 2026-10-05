@@ -145,7 +145,11 @@ export function AdminIndexPage() {
 function AttentionCard({ item }: { item: AttentionItem }) {
     return (
         <li className="rounded-xl border border-border/60 p-4">
-            <Link to={item.href as never} className="group flex items-start gap-3 outline-none">
+            <Link
+                to={item.href as never}
+                search={item.search as never}
+                className="group flex items-start gap-3 outline-none"
+            >
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${DOT[item.tone]}`} aria-hidden="true" />
                 <span className="flex-1 font-medium group-hover:underline">{item.label}</span>
                 <ArrowRight

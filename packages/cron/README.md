@@ -240,7 +240,15 @@ CronPresets.DAILY; // "0 0 * * *"
 CronPresets.HOURLY; // "0 * * * *"
 CronPresets.EVERY_5_MINUTES; // "*/5 * * * *"
 CronPresets.WEEKDAYS_9AM; // "0 9 * * 1-5"
+
+// Say it in words (throws on an invalid expression)
+describeCron('0 9 * * 1-5'); // "Weekdays at 09:00"
+describeCron('*/15 * * * 0,6'); // "Every 15 minutes on weekends"
+describeCron('0 0 1,15 * *'); // "On the 1st and 15th of every month at 00:00"
 ```
+
+The otta-web admin lists the database tasks under Admin, Infrastructure, Background jobs: each schedule in words with
+its next runs, a Run now button, pause and resume, and the queue's dead-letter jobs next to them.
 
 ## ScheduledTask Model
 

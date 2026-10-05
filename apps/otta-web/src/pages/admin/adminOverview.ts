@@ -27,6 +27,8 @@ export interface AttentionItem {
     /** "3 comments flagged by readers" */
     label: string;
     href: string;
+    /** Query string for the link, such as a tab */
+    search?: Record<string, string>;
     tone: AttentionTone;
     /** A few of the things themselves, each with somewhere to go */
     details?: { key: string; text: string; href: string }[];
@@ -152,7 +154,8 @@ export function useAdminOverview({ isPlatformAdmin }: { isPlatformAdmin: boolean
                 key: 'dead-letter',
                 count: deadLetters,
                 label: `${plural(deadLetters, 'job', 'jobs')} in the dead-letter queue`,
-                href: '/admin/infrastructure/queues',
+                href: '/admin/infrastructure/jobs',
+                search: { tab: 'queue' },
                 tone: 'destructive',
             });
         }

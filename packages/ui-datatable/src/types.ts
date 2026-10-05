@@ -211,6 +211,8 @@ export interface DataTableProps<TData> {
     emptyIcon?: React.ElementType;
     /** Whether to show column visibility toggle */
     showColumnVisibility?: boolean;
+    /** Show the search box (default: when a handler is given or the table filters on the client) */
+    showSearch?: boolean;
     /** Search value (controlled) */
     searchValue?: string;
     /** Search change handler */

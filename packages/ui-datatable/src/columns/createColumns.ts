@@ -152,7 +152,6 @@ export function actionsColumn<TData>(
         header: options?.header ?? '',
         enableSorting: false,
         enableHiding: false,
-        size: 60,
         cell: ({ row }) => {
             const data = row.original;
             const visibleActions = actions.filter((a) => !a.hidden?.(data));
@@ -174,7 +173,7 @@ export function actionsColumn<TData>(
                                 key: i,
                                 onClick: () => action.onClick(data),
                                 disabled: action.disabled?.(data),
-                                className: `inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                                className: `inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors ${
                                     action.variant === 'destructive'
                                         ? 'text-destructive hover:bg-destructive/10'
                                         : 'text-foreground hover:bg-accent'

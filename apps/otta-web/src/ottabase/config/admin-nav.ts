@@ -234,15 +234,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: RefreshCw,
             },
             {
-                title: 'Queues',
-                description: 'Background job queues, processing stats, and failed jobs.',
-                href: '/admin/infrastructure/queues',
-                icon: Layers,
-            },
-            {
-                title: 'Cron',
-                description: 'DB-driven scheduled tasks with run history.',
-                href: '/admin/infrastructure/cron',
+                title: 'Background jobs',
+                description: 'Scheduled tasks and queue jobs: what runs when, what failed, and the retry button.',
+                href: '/admin/infrastructure/jobs',
                 icon: Clock,
             },
             {

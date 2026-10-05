@@ -19,6 +19,20 @@ export function timeAgo(ms: number): string {
     return `${Math.floor(months / 12)}y ago`;
 }
 
+/** "in 5m", "in 2h", "in 3d" for a future Unix ms timestamp; a past one reads as timeAgo. */
+export function timeUntil(ms: number): string {
+    const seconds = Math.floor((ms - Date.now()) / 1000);
+    if (seconds < 0) return timeAgo(ms);
+    if (seconds < 60) return 'in under a minute';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `in ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `in ${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `in ${days}d`;
+    return `in ${Math.floor(days / 30)}mo`;
+}
+
 /**
  * Tracks when data was last refreshed and provides a live "Last refreshed X ago" label.
  *

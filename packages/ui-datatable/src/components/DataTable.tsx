@@ -43,6 +43,7 @@ export function DataTable<TData extends object>({
     showColumnVisibility = true,
     searchValue,
     onSearchChange,
+    showSearch = onSearchChange !== undefined || !table.options.manualFiltering,
     searchPlaceholder,
     bulkActions,
     toolbarRight,
@@ -65,8 +66,6 @@ export function DataTable<TData extends object>({
     const getSelectedRows = () => table.getSelectedRowModel().rows.map((r) => r.original);
     const clearSelection = () => table.resetRowSelection();
 
-    // A search box needs somewhere to go: a handler, or a table that filters on the client
-    const showSearch = onSearchChange !== undefined || !table.options.manualFiltering;
     const showToolbar =
         showSearch ||
         bulkActions !== undefined ||

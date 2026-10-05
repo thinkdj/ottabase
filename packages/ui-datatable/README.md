@@ -232,6 +232,7 @@ custom editors and filter server-side via `useListState`.
     isLoading?: boolean;
     emptyMessage?: string;
     showColumnVisibility?: boolean;
+    showSearch?: boolean;      // default: a handler is given, or the table filters on the client
     searchValue?: string;
     onSearchChange?: (value: string) => void;
     bulkActions?: DataTableBulkAction<T>[];

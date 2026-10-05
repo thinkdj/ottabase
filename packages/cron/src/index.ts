@@ -13,6 +13,7 @@ export { Scheduler, createScheduler, createTaskRepository } from './scheduler';
 
 // Cron Parser utilities
 export { parseCron, matchesCron, getNextRun, CronPresets } from './cron-parser';
+export { describeCron } from './describe';
 
 // Types - Handler
 export type {

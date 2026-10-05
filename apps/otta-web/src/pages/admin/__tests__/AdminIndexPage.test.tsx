@@ -106,7 +106,7 @@ describe('AdminIndexPage', () => {
         expect(screen.getByRole('link', { name: 'Spammer: Buy pills' })).toHaveAttribute('href', '/blog/hello');
         expect(screen.getByRole('link', { name: '1 job in the dead-letter queue' })).toHaveAttribute(
             'href',
-            '/admin/infrastructure/queues',
+            '/admin/infrastructure/jobs',
         );
         expect(screen.getByRole('link', { name: 'Read-only mode is on: nothing can be saved' })).toHaveAttribute(
             'href',

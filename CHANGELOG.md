@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Scheduled tasks and the queue share one Background jobs screen.** `/admin/infrastructure/jobs` replaces the Cron and
+  Queues pages. Scheduled tasks are a table that says each schedule in words ("Weekdays at 09:00") with the next run,
+  the last run and its state, Run now and Pause inline, and a side panel with the next three run times, the payload and
+  the last error; New task explains a schedule and its first run before it is saved. The Queue tab leads with the
+  dead-letter queue (retry or remove each job, or all of them, with the payload one click away), then what failed and
+  what ran lately, and totals per job type. `@ottabase/cron` gained `describeCron`, which turns any five-field
+  expression into those words.
 - **The admin overview shows what needs attention.** `/admin` opens with the things waiting on someone (comments readers
   flagged, with links to their posts; jobs in the dead-letter queue; posts scheduled to publish; a kill switch left on),
   then a few headline counts, the last eight audit entries in plain words, and the section directory as one compact list
