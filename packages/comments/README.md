@@ -110,6 +110,34 @@ GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
 >
 > RLS uses `TenantScoped` policy to automatically scope reads to the current organization.
 
+### The thread component
+
+`@ottabase/comments/react` ships one `CommentThread`: the composer, nested replies, reactions, edit for authors, report
+for everyone signed in, and hide, restore and delete for moderators. It takes data and callbacks, so the host owns
+fetching and error toasts. Deleted and hidden comments stay as placeholders so replies keep their place, and a reply
+whose parent is missing is shown at the root with a note. The worker blanks hidden bodies for readers; only moderators
+of the comment's org get the text back.
+
+```tsx
+import { CommentThread } from '@ottabase/comments/react';
+
+<CommentThread
+    comments={comments}
+    currentUserId={user?.id ?? null}
+    canModerate={isModerator}
+    signInPrompt={<p>Sign in to comment.</p>}
+    onPost={(body, parentId) => post(body, parentId)}
+    onEdit={(id, body) => edit(id, body)}
+    onReact={(id, emoji) => react(id, emoji)}
+    onReport={(id) => report(id)}
+    onModerate={(id, action) => moderate(id, action)}
+/>;
+```
+
+`buildCommentTree(comments)` (from the package root) is the pure tree builder behind it, with `orphans` for replies
+whose parent is not in the list. In the app, `useCommentThread({ targetType, targetId })` returns the comments and
+callbacks already wired to `/api/ottaorm/comments`.
+
 ### Client hooks
 
 ```typescript

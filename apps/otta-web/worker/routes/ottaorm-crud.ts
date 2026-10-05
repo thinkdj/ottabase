@@ -297,6 +297,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // ambient securityContext unchanged.
     let effectiveSecurityContext: typeof securityContext = securityContext;
     let commentReactionsToDeleteId: string | null = null;
+    let commentsOrgId: string | null = null;
     const crudRequest = await parseCrudRequest(request, url, '/api/ottaorm');
 
     if (!crudRequest) {
@@ -591,6 +592,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 return errorResponse('Comment not found', 404, { code: 'NOT_FOUND' });
             }
             effectiveSecurityContext = orgResolution.securityContext;
+            commentsOrgId = orgResolution.organizationId;
 
             if ((crudRequest.method === 'PATCH' || crudRequest.method === 'PUT') && crudRequest.body) {
                 const body = crudRequest.body as Record<string, unknown>;
@@ -626,7 +628,16 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 // tenant scoping is not authorship. Pass the AMBIENT (pre-swap) context and the
                 // comment's org so moderation authority is scoped to the comment's own org and
                 // can't be exercised cross-tenant via the caller's other-org permissions.
-                if (!isCommentOwnerOrModerator(comment, session, securityContext, orgResolution.organizationId)) {
+                // Anyone signed in may report an active comment: the only change is status to flagged.
+                const isReport =
+                    Object.keys(body).length === 1 && body.status === 'flagged' && comment.get('status') === 'active';
+                if (isReport && !user?.id) {
+                    return errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' });
+                }
+                if (
+                    !isReport &&
+                    !isCommentOwnerOrModerator(comment, session, securityContext, orgResolution.organizationId)
+                ) {
                     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
                 }
 
@@ -658,6 +669,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             );
             if (!orgResolution.ok) return orgResolution.response;
             effectiveSecurityContext = orgResolution.securityContext;
+            commentsOrgId = orgResolution.organizationId;
         }
     }
 
@@ -784,15 +796,27 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
     // Enrich comment list responses with author info (name, image, createdAt)
     if (crudRequest.model === 'comments' && crudRequest.method === 'GET' && result.data) {
+        const payload = result.data as { data?: any[]; pagination?: any } | any;
+        const rows: any[] = crudRequest.id
+            ? [payload]
+            : Array.isArray(payload.data)
+              ? payload.data
+              : Array.isArray(payload)
+                ? payload
+                : [];
+
+        // A hidden comment stays in the thread as a placeholder; only a moderator of its org
+        // (or a platform admin) gets its words back.
+        const viewerModerates =
+            securityContext.platformAdmin === true ||
+            (securityContext.organizationId != null &&
+                securityContext.organizationId === commentsOrgId &&
+                hasGrantedPermission((securityContext.permissions as string[] | undefined) ?? [], 'comments:moderate'));
+        for (const row of rows) {
+            if (row.status === 'hidden' && !viewerModerates) row.body = '';
+        }
+
         try {
-            const payload = result.data as { data?: any[]; pagination?: any } | any;
-            const rows: any[] = crudRequest.id
-                ? [payload]
-                : Array.isArray(payload.data)
-                  ? payload.data
-                  : Array.isArray(payload)
-                    ? payload
-                    : [];
             const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))] as string[];
             const commentIds = rows.map((r: any) => r.id).filter(Boolean) as string[];
 

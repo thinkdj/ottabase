@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **One comment thread for everything.** `CommentThread` (`@ottabase/comments/react`) now renders comments on blog posts
+  and in the demo instead of two hand-built trees. It adds reactions with a picker, editing your own comment, reporting
+  someone else's (any signed in user, `PATCH { status: 'flagged' }`), and hide, restore and delete for moderators.
+  Deleted and hidden comments stay as placeholders so replies keep their place, replies whose parent is missing are
+  shown at the root with a note, and the worker blanks hidden bodies unless the viewer moderates that org.
+  `useCommentThread` wires it to the API; `buildCommentTree` is the pure tree builder.
 - **Menu items move by drag, arrows or keyboard.** The menu editor lists items as rows you can drag onto each other,
   nudge up and down, indent under the item above or outdent, with Alt plus arrow keys doing the same from the drag
   handle. Moves show at once and persist through one new call, `PUT /api/brand/menus/:id/items/order`, backed by pure

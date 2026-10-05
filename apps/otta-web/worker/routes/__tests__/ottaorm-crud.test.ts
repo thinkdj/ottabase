@@ -1080,3 +1080,91 @@ describe('handleOttaormCrud (comments)', () => {
         });
     });
 });
+
+describe('handleOttaormCrud (comment reports and hidden bodies)', () => {
+    const stub = (data: Record<string, unknown>) => ({
+        get: (k: string) => data[k],
+        toJson: () => data,
+        toggleReaction: vi.fn(),
+    });
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it('lets any signed in user report an active comment they do not own', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Post } = await import('@ottabase/ottablog');
+        const { Comment } = await import('@ottabase/comments');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            permissions: [],
+        });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'comments',
+            method: 'PATCH',
+            id: 'c1',
+            body: { status: 'flagged' },
+        });
+        (Comment.find as any).mockResolvedValue(
+            stub({
+                id: 'c1',
+                targetType: 'post',
+                targetId: 'post-1',
+                organizationId: 'org-1',
+                userId: 'user-2',
+                status: 'active',
+            }),
+        );
+        (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
+        (executeSecureCrudRequest as any).mockResolvedValue({
+            success: true,
+            data: { id: 'c1', status: 'flagged' },
+            status: 200,
+        });
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(200);
+        expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+    });
+
+    it('blanks hidden comment bodies for readers and keeps them for moderators', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Post } = await import('@ottabase/ottablog');
+        const { CommentReaction } = await import('@ottabase/comments');
+        const { User } = await import('@ottabase/ottaorm/models');
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'comments',
+            method: 'GET',
+            query: { where: { targetType: 'post', targetId: 'post-1' } },
+        });
+        (Post.first as any).mockResolvedValue({ get: () => 'org-1' });
+        (User.whereIn as any).mockResolvedValue([]);
+        (CommentReaction.reactionsFor as any).mockResolvedValue(new Map());
+        const page = () => ({
+            success: true,
+            status: 200,
+            data: { data: [{ id: 'c1', userId: 'user-2', status: 'hidden', body: 'secret' }] },
+        });
+
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            permissions: [],
+        });
+        (executeSecureCrudRequest as any).mockResolvedValueOnce(page());
+        const reader = (await (await handleOttaormCrud(createContext())).json()) as any;
+        expect(reader.data[0].body).toBe('');
+
+        (getSecurityContext as any).mockResolvedValueOnce({
+            organizationId: 'org-1',
+            appId: 'otta-web',
+            permissions: ['comments:moderate'],
+        });
+        (executeSecureCrudRequest as any).mockResolvedValueOnce(page());
+        const moderator = (await (await handleOttaormCrud(createContext())).json()) as any;
+        expect(moderator.data[0].body).toBe('secret');
+    });
+});

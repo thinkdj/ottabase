@@ -6,28 +6,20 @@
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
-import { useComments, useCreateComment, type CommentType } from '@/hooks/commentHooks';
+import { useCommentThread } from '@/hooks/commentHooks';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import type { PostAuthor } from '@/types/blog';
+import { CommentThread } from '@ottabase/comments/react';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
-import {
-    formatDate,
-    formatShortDate,
-    type BlogPostData,
-    type ContentType,
-    type PhotoJournalItem,
-} from '@ottabase/ottablog';
+import { formatDate, type BlogPostData, type ContentType, type PhotoJournalItem } from '@ottabase/ottablog';
 import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import {
-    Alert,
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
     Badge,
     Button,
     DropdownMenu,
@@ -37,8 +29,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
     Input,
-    Skeleton,
-    Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostPath, localizedPostSearch } from './blogLinks';
@@ -54,7 +44,7 @@ import {
     Pencil,
     Tag,
 } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { LoadingState } from '@ottabase/ui-components';
 
 interface BlogPost {
@@ -201,117 +191,6 @@ function PostLanguageMenu({
     );
 }
 
-function getInitials(name?: string | null): string {
-    if (!name) return '??';
-    const parts = name.trim().split(' ').filter(Boolean);
-    if (parts.length === 0) return '??';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase();
-}
-
-interface CommentNodeProps {
-    comment: CommentType;
-    depth: number;
-    commentsByParent: Map<string | null, CommentType[]>;
-    canReply: boolean;
-    /** Shared "which comment's reply box is open" id — this comment's own isReplying is derived
-     *  from comparing its id against this, so only the affected node's visible UI actually
-     *  changes, even though the prop value itself is shared across the whole tree. */
-    replyingToId: string | null;
-    onToggleReply: (commentId: string) => void;
-    onSubmitReply: (comment: CommentType, text: string) => void;
-    isSubmittingReply: boolean;
-}
-
-/**
- * A single comment plus its nested replies. A real component (not a plain recursive function
- * called during BlogDetailPage's render) wrapped in React.memo, with its OWN local reply-draft
- * state — so typing in a reply box only re-renders this one leaf, not the entire (potentially
- * large) comment tree on every keystroke. commentsByParent/onToggleReply/onSubmitReply are
- * referentially stable across BlogDetailPage re-renders (memoized/useCallback), so memo actually
- * skips re-rendering siblings whose props haven't changed. Typing never changes replyingToId (it
- * only changes on open/cancel), so a keystroke never causes BlogDetailPage — or any sibling node
- * — to re-render at all.
- */
-const CommentNode = memo(function CommentNode({
-    comment,
-    depth,
-    commentsByParent,
-    canReply,
-    replyingToId,
-    onToggleReply,
-    onSubmitReply,
-    isSubmittingReply,
-}: CommentNodeProps) {
-    const [replyText, setReplyText] = useState('');
-    const isReplying = replyingToId === comment.id;
-    const children = commentsByParent.get(comment.id) ?? [];
-    // Nested replies indent ~1.25rem with a hairline thread line instead of boxed nesting
-    const indentClass = depth === 0 ? 'py-4' : 'ml-1 border-l border-border/60 pl-4 pt-4';
-
-    return (
-        <div className={indentClass}>
-            <div className="flex gap-3">
-                <Avatar className="h-8 w-8 ring-1 ring-border">
-                    <AvatarImage src={comment._user?.image || undefined} />
-                    <AvatarFallback className="text-xs font-medium">{getInitials(comment._user?.name)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
-                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            {formatShortDate(comment.createdAt)}
-                        </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{comment.body}</p>
-                    {canReply && depth < 3 && (
-                        <button
-                            type="button"
-                            className="mt-2 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:text-foreground"
-                            onClick={() => onToggleReply(comment.id)}
-                        >
-                            {isReplying ? 'Cancel reply' : 'Reply'}
-                        </button>
-                    )}
-                    {isReplying && (
-                        <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3">
-                            <Textarea
-                                placeholder="Write a reply..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                className="min-h-20 bg-background text-sm"
-                            />
-                            <div className="flex justify-end">
-                                <Button
-                                    size="sm"
-                                    onClick={() => onSubmitReply(comment, replyText)}
-                                    disabled={!replyText.trim() || isSubmittingReply}
-                                >
-                                    {isSubmittingReply ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Post reply
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            {children.map((child) => (
-                <CommentNode
-                    key={child.id}
-                    comment={child}
-                    depth={depth + 1}
-                    commentsByParent={commentsByParent}
-                    canReply={canReply}
-                    replyingToId={replyingToId}
-                    onToggleReply={onToggleReply}
-                    onSubmitReply={onSubmitReply}
-                    isSubmittingReply={isSubmittingReply}
-                />
-            ))}
-        </div>
-    );
-});
-
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
@@ -324,9 +203,6 @@ export function BlogDetailPage() {
     const [password, setPassword] = useState('');
     const [unlockError, setUnlockError] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
-    const [commentDraft, setCommentDraft] = useState('');
-    const [replyingToId, setReplyingToId] = useState<string | null>(null);
-    const [commentError, setCommentError] = useState<string | null>(null);
 
     // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
     // Any mutation on the posts entity auto-busts this cache via the global observer.
@@ -372,77 +248,12 @@ export function BlogDetailPage() {
     const allowComments = postForComments?.allowComments ?? true;
     const commentsTargetId = post?.id ?? unlockedPost?.id ?? null;
 
-    const createComment = useCreateComment();
-    const {
-        data: commentsData,
-        isLoading: isLoadingComments,
-        error: commentsError,
-        refetch: refetchComments,
-    } = useComments(
-        commentsTargetId
-            ? {
-                  where: { targetType: COMMENTS_TARGET_TYPE, targetId: commentsTargetId, status: 'active' },
-                  orderBy: 'createdAt',
-                  orderDirection: 'asc',
-              }
-            : undefined,
-        {
-            enabled: Boolean(commentsTargetId) && !isLocked && allowComments,
-        },
-    );
-
-    const comments = useMemo<CommentType[]>(() => {
-        if (Array.isArray(commentsData)) return commentsData;
-        return (commentsData as { data?: CommentType[] } | undefined)?.data ?? [];
-    }, [commentsData]);
-
-    const commentsByParent = useMemo(() => {
-        const map = new Map<string | null, CommentType[]>();
-        for (const comment of comments) {
-            const parentId = comment.parentId ?? null;
-            const list = map.get(parentId) ?? [];
-            list.push(comment);
-            map.set(parentId, list);
-        }
-        return map;
-    }, [comments]);
-
-    // Stable references (useCallback) so CommentNode's React.memo can actually skip
-    // re-rendering unaffected nodes — a new function identity on every BlogDetailPage render
-    // would defeat memoization regardless of how the props are shaped.
-    const toggleReply = useCallback((commentId: string) => {
-        setReplyingToId((current) => (current === commentId ? null : commentId));
-    }, []);
-
-    const handleSubmitReply = useCallback(
-        (parent: CommentType, text: string) => {
-            if (!text.trim() || !commentsTargetId) return;
-            if (!user?.id) {
-                setCommentError('Please sign in to reply.');
-                return;
-            }
-            setCommentError(null);
-            createComment.mutate(
-                {
-                    body: text.trim(),
-                    targetType: COMMENTS_TARGET_TYPE,
-                    targetId: commentsTargetId,
-                    parentId: parent.id,
-                    depth: (parent.depth ?? 0) + 1,
-                },
-                {
-                    onSuccess: () => {
-                        setReplyingToId(null);
-                        refetchComments();
-                    },
-                    onError: (err) => {
-                        setCommentError(err instanceof Error ? err.message : 'Failed to post reply.');
-                    },
-                },
-            );
-        },
-        [commentsTargetId, user?.id, createComment, refetchComments],
-    );
+    const thread = useCommentThread({
+        targetType: COMMENTS_TARGET_TYPE,
+        targetId: commentsTargetId,
+        enabled: !isLocked && allowComments,
+    });
+    const canModerate = user?.platformAdmin === true || hasGrantedPermission(user?.permissions, 'comments:moderate');
 
     // Loading state — pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
@@ -506,31 +317,6 @@ export function BlogDetailPage() {
         } finally {
             setIsUnlocking(false);
         }
-    };
-
-    const handleSubmitComment = () => {
-        if (!commentDraft.trim() || !commentsTargetId) return;
-        if (!user?.id) {
-            setCommentError('Please sign in to comment.');
-            return;
-        }
-        setCommentError(null);
-        createComment.mutate(
-            {
-                body: commentDraft.trim(),
-                targetType: COMMENTS_TARGET_TYPE,
-                targetId: commentsTargetId,
-            },
-            {
-                onSuccess: () => {
-                    setCommentDraft('');
-                    refetchComments();
-                },
-                onError: (err) => {
-                    setCommentError(err instanceof Error ? err.message : 'Failed to post comment.');
-                },
-            },
-        );
     };
 
     // Convert post to BlogPostData format
@@ -775,96 +561,32 @@ export function BlogDetailPage() {
                     )}
 
                     {allowComments && (
-                        <section className="mt-12 border-t border-border/60 pt-8">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-[0.9375rem] font-semibold">Comments</h2>
-                                <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {comments.length} comment{comments.length !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-
-                            {commentError && (
-                                <Alert variant="destructive" className="mt-4">
-                                    {commentError}
-                                </Alert>
-                            )}
-
-                            {!user?.id && (
-                                <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                                    <Link
-                                        to="/login"
-                                        className="underline underline-offset-4 transition-colors duration-normal hover:text-foreground"
-                                    >
-                                        Sign in
-                                    </Link>{' '}
-                                    to join the discussion.
-                                </div>
-                            )}
-
-                            <div className="mt-4 space-y-2 rounded-xl bg-muted/40 p-4">
-                                <Textarea
-                                    placeholder="Write a comment..."
-                                    value={commentDraft}
-                                    onChange={(e) => setCommentDraft(e.target.value)}
-                                    className="min-h-24 bg-background text-sm"
-                                    disabled={!user?.id}
-                                />
-                                <div className="flex justify-end">
-                                    <Button
-                                        size="sm"
-                                        onClick={handleSubmitComment}
-                                        disabled={!commentDraft.trim() || !user?.id || createComment.isPending}
-                                    >
-                                        {createComment.isPending ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : null}
-                                        Post comment
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {commentsError && (
-                                <Alert variant="destructive" className="mt-4">
-                                    {commentsError.message || 'Failed to load comments.'}
-                                </Alert>
-                            )}
-
-                            <div className="mt-4">
-                                {isLoadingComments ? (
-                                    <div className="space-y-4 py-4">
-                                        {[1, 2, 3].map((i) => (
-                                            <div key={i} className="flex gap-3">
-                                                <Skeleton className="h-8 w-8 rounded-full" />
-                                                <div className="flex-1 space-y-2">
-                                                    <Skeleton className="h-4 w-24" />
-                                                    <Skeleton className="h-4 w-full" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : comments.length === 0 ? (
-                                    <p className="rounded-xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-                                        No comments yet. Be the first to comment.
+                        <div className="mt-12 border-t border-border/60 pt-8">
+                            <CommentThread
+                                comments={thread.comments}
+                                currentUserId={user?.id ?? null}
+                                canModerate={canModerate}
+                                isLoading={thread.isLoading}
+                                error={thread.error}
+                                busy={thread.busy}
+                                signInPrompt={
+                                    <p className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                                        <Link
+                                            to="/login"
+                                            className="underline underline-offset-4 transition-colors duration-normal hover:text-foreground"
+                                        >
+                                            Sign in
+                                        </Link>{' '}
+                                        to join the discussion.
                                     </p>
-                                ) : (
-                                    <div>
-                                        {(commentsByParent.get(null) ?? []).map((comment) => (
-                                            <CommentNode
-                                                key={comment.id}
-                                                comment={comment}
-                                                depth={0}
-                                                commentsByParent={commentsByParent}
-                                                canReply={!!user?.id}
-                                                replyingToId={replyingToId}
-                                                onToggleReply={toggleReply}
-                                                onSubmitReply={handleSubmitReply}
-                                                isSubmittingReply={createComment.isPending}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </section>
+                                }
+                                onPost={thread.post}
+                                onEdit={thread.edit}
+                                onReact={thread.react}
+                                onReport={thread.report}
+                                onModerate={thread.moderate}
+                            />
+                        </div>
                     )}
                 </>
             )}

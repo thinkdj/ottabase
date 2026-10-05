@@ -57,6 +57,7 @@ export default defineConfig({
             // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
             '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),
             '@ottabase/forms/react': path.resolve(__dirname, '../../packages/forms/src/react.ts'),
+            '@ottabase/comments/react': path.resolve(__dirname, '../../packages/comments/src/react/index.ts'),
             '@ottabase/ui-datatable/react': path.resolve(__dirname, '../../packages/ui-datatable/src/react.ts'),
             '@ottabase/spotlight/react': path.resolve(__dirname, '../../packages/spotlight/src/react.ts'),
             '@ottabase/docs/react': path.resolve(__dirname, '../../packages/docs/src/react.ts'),

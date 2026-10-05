@@ -6,7 +6,9 @@
         "baseUrl": ".",
         "paths": {},
         "skipLibCheck": true,
-        "lib": ["esnext", "dom", "dom.iterable"]
+        "lib": ["esnext", "dom", "dom.iterable"],
+        "jsx": "react-jsx",
+        "types": ["vitest/globals", "@testing-library/jest-dom"]
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]
