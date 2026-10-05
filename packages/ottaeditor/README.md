@@ -20,6 +20,13 @@ const { editorRef, save, hasUnsavedChanges, undo, redo, canUndo, canRedo } = use
 });
 ```
 
+## Looks like the page
+
+Wrap the holder in Tailwind typography (`prose prose-slate dark:prose-invert max-w-none`) and the writing surface reads
+like the published post: `editorjs-reader.css` (loaded with the theme) gives paragraphs, headings, lists, quotes,
+warnings, delimiters and inline marks the spacing and sizes `@ottabase/ottarenderer` draws for readers, from the same
+design tokens, and centres the content on the reader's 48rem measure.
+
 ## Plugins
 
 ### EditorJS (13)

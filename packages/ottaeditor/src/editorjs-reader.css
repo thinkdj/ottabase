@@ -1,0 +1,247 @@
+/**
+ * The writing surface reads like the published page.
+ *
+ * The page wraps the editor in Tailwind typography (`prose`), which styles the semantic elements
+ * Editor.js emits: headings, links, images. Editor.js tools then add spacing and sizes of their own
+ * with higher specificity, and some blocks are not semantic elements at all (a paragraph is a div,
+ * a quote is two inputs, a list is nested divs). These rules bring those back to what
+ * @ottabase/ottarenderer draws for readers, from the same tokens.
+ */
+
+/* ---------------------------------------------------------------------------
+   Measure and rhythm
+   --------------------------------------------------------------------------- */
+
+/* Blocks carry no padding of their own; the spacing below is the reader's */
+.codex-editor .cdx-block {
+    padding: 0;
+}
+
+/* The reader's column, centred, with room for the block toolbar on either side */
+@media (min-width: 768px) {
+    .codex-editor .ce-block__content {
+        max-width: min(48rem, calc(100% - 7rem));
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Text
+   --------------------------------------------------------------------------- */
+
+.codex-editor .ce-paragraph {
+    margin: 1rem 0;
+    line-height: 1.625;
+}
+
+.codex-editor .ce-header {
+    padding: 0;
+}
+
+.codex-editor h1.ce-header {
+    font-size: 2.25em;
+    font-weight: 800;
+    line-height: 1.1111111;
+    margin: 0 0 0.8888889em;
+}
+
+.codex-editor h2.ce-header {
+    font-size: 1.5em;
+    font-weight: 700;
+    line-height: 1.3333333;
+    margin: 2em 0 1em;
+}
+
+.codex-editor h3.ce-header {
+    font-size: 1.25em;
+    font-weight: 600;
+    line-height: 1.6;
+    margin: 1.6em 0 0.6em;
+}
+
+.codex-editor h4.ce-header,
+.codex-editor h5.ce-header,
+.codex-editor h6.ce-header {
+    font-size: 1em;
+    font-weight: 600;
+    line-height: 1.5;
+    margin: 1.5em 0 0.5em;
+}
+
+/* Inline marks, as the renderer draws them */
+.codex-editor .cdx-marker,
+.codex-editor .inline-code {
+    line-height: 1.5;
+    display: inline-block;
+    border-radius: calc(var(--radius) - 2px);
+    padding: 0.05rem 0.35rem;
+    margin: 0 0.275rem 0 0;
+}
+
+.codex-editor .inline-code {
+    color: hsl(var(--destructive));
+    background: hsl(var(--muted));
+    font-size: 0.875em;
+}
+
+.codex-editor .cdx-marker {
+    background: hsl(var(--warning) / 0.35);
+    color: hsl(var(--foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Lists
+   --------------------------------------------------------------------------- */
+
+.codex-editor .cdx-nested-list {
+    margin: 1.25em 0;
+    padding-left: 1.625em;
+}
+
+.codex-editor .cdx-nested-list .cdx-nested-list {
+    margin: 0.5em 0 0;
+}
+
+.codex-editor .cdx-nested-list__item {
+    margin: 0.5em 0;
+    line-height: 1.625;
+}
+
+.codex-editor .cdx-nested-list__item::before {
+    color: hsl(var(--muted-foreground));
+    margin-right: 0.5em;
+}
+
+.codex-editor .cdx-checklist {
+    gap: 0.5rem;
+    margin: 1.25em 0;
+}
+
+.codex-editor .cdx-checklist__item-text {
+    line-height: 1.625;
+}
+
+.codex-editor .cdx-checklist__item-checkbox-check {
+    border-radius: calc(var(--radius) - 2px);
+    border-color: hsl(var(--border));
+    background: hsl(var(--background));
+}
+
+.codex-editor .cdx-checklist__item--checked .cdx-checklist__item-checkbox-check {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary));
+}
+
+.codex-editor .cdx-checklist__item--checked .cdx-checklist__item-checkbox-check svg path {
+    stroke: hsl(var(--primary-foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Quote: a large light line with a small uppercase source, no box
+   --------------------------------------------------------------------------- */
+
+.codex-editor .cdx-quote {
+    position: relative;
+    margin: 4rem 0;
+    padding: 0 0 0 2rem;
+    border: 0;
+    font-style: normal;
+    font-weight: 300;
+    quotes: none;
+}
+
+.codex-editor .cdx-quote::before {
+    content: '\201C';
+    position: absolute;
+    left: -0.25rem;
+    top: -1rem;
+    font-size: 4rem;
+    line-height: 1;
+    color: hsl(var(--muted-foreground) / 0.25);
+    pointer-events: none;
+}
+
+.codex-editor .cdx-quote .cdx-input {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    padding: 0;
+}
+
+.codex-editor .cdx-quote__text {
+    min-height: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1.625;
+}
+
+.codex-editor .cdx-quote__caption {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--muted-foreground));
+}
+
+.codex-editor .cdx-quote__caption::before {
+    content: '';
+    display: inline-block;
+    width: 2rem;
+    height: 1px;
+    margin-right: 0.75rem;
+    vertical-align: middle;
+    background: hsl(var(--border) / 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   Warning: the renderer's soft tile
+   --------------------------------------------------------------------------- */
+
+.codex-editor .cdx-warning {
+    margin: 1.5rem 0;
+    padding: 1rem 1rem 1rem 3.25rem;
+    border: 1px solid hsl(var(--warning) / 0.3);
+    background: hsl(var(--warning) / 0.1);
+    border-radius: calc(var(--radius) + 4px);
+}
+
+.codex-editor .cdx-warning::before {
+    left: 1rem;
+    margin-top: 0;
+}
+
+.codex-editor .cdx-warning .cdx-input {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    padding: 0;
+}
+
+.codex-editor .cdx-warning__title {
+    margin-bottom: 0.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+}
+
+.codex-editor .cdx-warning__message {
+    min-height: 0;
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: hsl(var(--muted-foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Delimiter
+   --------------------------------------------------------------------------- */
+
+.codex-editor .ce-delimiter {
+    margin: 1.25rem 0;
+}
+
+.codex-editor .ce-delimiter::before {
+    font-size: 2rem;
+    line-height: 2.5rem;
+    height: auto;
+    letter-spacing: 0.42rem;
+}

@@ -3,6 +3,7 @@
  */
 
 @import './ottaeditor-common.css';
+@import './editorjs-reader.css';
 
 /* Plus (+) Button — background chip with hairline ring; hover = tint deepen */
 .ce-toolbar__plus {

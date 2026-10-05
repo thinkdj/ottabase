@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The editor reads like the published page.** `@ottabase/ottaeditor` ships `editorjs-reader.css` with its theme:
+  paragraphs, headings, lists, checklists, quotes, warnings, delimiters and inline marks take the spacing, sizes and
+  colours `@ottabase/ottarenderer` gives readers, from the same tokens, and the content sits on the reader's 48rem
+  measure instead of Editor.js's 650px. What you see while writing is what the post looks like.
 - **Notifications have an inbox.** A bell in the header shows how many notifications are new and the latest eight;
   `/notifications` lists them all with an unread filter, Mark read and Mark all read; the account page has a switch per
   kind. Two things write to it today: a reply to your comment (with a link to the post) and being added to an
