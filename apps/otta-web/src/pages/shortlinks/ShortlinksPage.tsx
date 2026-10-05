@@ -1,572 +1,344 @@
-import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse } from '@/lib/api-types';
-import { useApiQuery } from '@ottabase/ottaorm/client';
+import { APP_ID } from '@/ottabase/config';
+import { isApiError } from '@ottabase/api';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
-import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
-import { formatShortDate, type DateInput } from '@ottabase/utils/timezone';
-import {
-    Alert,
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@ottabase/ui-shadcn';
-import {
-    BarChart3,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
-    Copy,
-    Edit,
-    Link2,
-    Plus,
-    Trash2,
-} from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { ConfirmDialog } from '@ottabase/ui-components';
+import { useDataTable, type DataTablePaginationState } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable } from '@ottabase/ui-datatable/react';
+import { Alert, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle, toast } from '@ottabase/ui-shadcn';
+import { formatShortDate } from '@ottabase/utils/timezone';
+import { keepPreviousData } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { BarChart3, Copy, Link2, Pencil, Trash2 } from 'lucide-react';
+import { useCallback, useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { ShortlinkForm } from './components/ShortlinkForm';
 
-type ShortlinksResponse = PaginatedResponse<ShortlinkRecord>;
+type Row = ShortlinkRecord & { clicks: number };
+interface ClicksResponse {
+    data: { dimension: string; value?: number; clicks?: number }[];
+}
+interface CreateBody {
+    fullUrl: string;
+    appId: string;
+    shortCode?: string;
+}
+
+/** The link people share: the code at the site root, which the worker resolves before the app does. */
+const shortUrl = (code: string) => `${window.location.origin}/${code}`;
+
+const errorText = (err: unknown, fallback: string) => (isApiError(err) ? err.message : fallback);
+
+async function copyText(text: string): Promise<boolean> {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 export function ShortlinksPage() {
-    const queryClient = useQueryClient();
-    const [actionError, setActionError] = useState<string | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [editingShortlink, setEditingShortlink] = useState<ShortlinkRecord | null>(null);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
-    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const { edit } = useSearch({ strict: false }) as { edit?: string };
+    const select = useCallback(
+        (id: string | null) => navigate({ to: '/shortlinks', search: { edit: id ?? undefined }, replace: true }),
+        [navigate],
+    );
 
-    // Pagination state
-    const [currentPage, setCurrentPage] = useState(1);
+    const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(15);
-    const {
-        data: shortlinksResponse,
-        error: queryError,
-        isFetching: loading,
-    } = useApiQuery<ShortlinksResponse>({
+    const [search, setSearch] = useState('');
+    const q = useDeferredValue(search.trim());
+    const [url, setUrl] = useState('');
+    const [code, setCode] = useState('');
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<ShortlinkRecord | null>(null);
+
+    const list = useApiQuery<PaginatedResponse<ShortlinkRecord>>({
         entity: 'shortlinks',
-        queryKey: ['list', currentPage, perPage],
-        endpoint: `/api/shortlinks?page=${currentPage}&per_page=${perPage}`,
-        queryOptions: {
-            meta: { errorPresentation: 'local' },
-        },
+        queryKey: ['list', page, perPage, q],
+        endpoint: `/api/shortlinks?page=${page}&per_page=${perPage}${q ? `&search=${encodeURIComponent(q)}` : ''}`,
+        queryOptions: { meta: { errorPresentation: 'local' }, placeholderData: keepPreviousData },
     });
-    const shortlinks = shortlinksResponse?.data ?? [];
-    const pagination = shortlinksResponse?.pagination ?? null;
-    const error = actionError ?? queryError?.message ?? null;
+    // Clicks live in Analytics Engine. Without it the column and the total simply stay away.
+    const clicks = useApiQuery<ClicksResponse>({
+        entity: 'analytics',
+        queryKey: ['shortlinks', 'clicks', 30],
+        endpoint: '/api/shortlinks/analytics?groupBy=shortCode&days=30',
+        queryOptions: { meta: { errorPresentation: 'silent' }, staleTime: 60_000 },
+    });
+    const clicksByCode = useMemo(
+        () =>
+            clicks.data
+                ? new Map(clicks.data.data.map((r) => [r.dimension, Math.round(r.clicks ?? r.value ?? 0)]))
+                : null,
+        [clicks.data],
+    );
+    const totalClicks = clicksByCode ? [...clicksByCode.values()].reduce((sum, n) => sum + n, 0) : 0;
 
-    useEffect(() => {
-        if (pagination && pagination.page !== currentPage) {
-            setCurrentPage(pagination.page);
-        }
-    }, [currentPage, pagination]);
+    const links = useMemo(() => list.data?.data ?? [], [list.data]);
+    const total = list.data?.pagination.total ?? 0;
+    const rows = useMemo<Row[]>(
+        () => links.map((link) => ({ ...link, clicks: clicksByCode?.get(link.shortCode) ?? 0 })),
+        [links, clicksByCode],
+    );
+    const editing = edit ? (links.find((link) => link.id === edit) ?? null) : null;
 
-    const handleCreate = () => {
-        setEditingShortlink(null);
-        setIsDialogOpen(true);
-    };
+    const create = useApiMutation<{ data: ShortlinkRecord }, CreateBody>({
+        endpoint: '/api/shortlinks',
+        invalidateEntities: ['shortlinks'],
+        mutationOptions: { meta: { errorPresentation: 'local' } },
+    });
+    const remove = useApiMutation<unknown, string>({
+        endpoint: (id) => `/api/shortlinks/${id}`,
+        method: 'DELETE',
+        invalidateEntities: ['shortlinks'],
+    });
 
-    const handleEdit = (shortlink: ShortlinkRecord) => {
-        setEditingShortlink(shortlink);
-        setIsDialogOpen(true);
-    };
+    const copyLink = useCallback(async (shortCode: string) => {
+        const link = shortUrl(shortCode);
+        toast.success((await copyText(link)) ? `Copied ${link}` : link);
+    }, []);
 
-    const handleDelete = async (id: string) => {
-        setDeleteDialog(id);
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deleteDialog) return;
-
-        const id = deleteDialog;
+    const shorten = async (event: FormEvent) => {
+        event.preventDefault();
+        setCreateError(null);
+        const custom = code.trim();
         try {
-            setActionError(null);
-            await api(`/api/shortlinks/${id}`, { method: 'DELETE' });
-            await queryClient.invalidateQueries({ queryKey: ['shortlinks'] });
+            const { data } = await create.mutateAsync({
+                fullUrl: url.trim(),
+                appId: APP_ID,
+                ...(custom ? { shortCode: custom } : {}),
+            });
+            const link = shortUrl(data.shortCode);
+            toast.success((await copyText(link)) ? `Copied ${link}` : `Created ${link}`, {
+                action: { label: 'Edit', onClick: () => void select(data.id) },
+            });
+            setUrl('');
+            setCode('');
         } catch (err) {
-            setActionError(isApiError(err) ? err.message : 'Failed to delete shortlink');
+            setCreateError(errorText(err, 'Could not create the link'));
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!pendingDelete) return;
+        try {
+            await remove.mutateAsync(pendingDelete.id);
+            toast.success('Link deleted');
+            if (edit === pendingDelete.id) void select(null);
+        } catch (err) {
+            toast.error(errorText(err, 'Could not delete the link'));
         } finally {
-            setDeleteDialog(null);
+            setPendingDelete(null);
         }
     };
 
-    const handleSuccess = async () => {
-        setIsDialogOpen(false);
-        setEditingShortlink(null);
-        setActionError(null);
-        await queryClient.invalidateQueries({ queryKey: ['shortlinks'] });
-    };
+    const columns = useMemo(
+        () => [
+            ...createColumns<Row>([
+                {
+                    key: 'shortCode',
+                    header: 'Short link',
+                    width: 200,
+                    cell: ({ row }) => <CodeCell code={row.shortCode} onCopy={() => void copyLink(row.shortCode)} />,
+                },
+                {
+                    key: 'fullUrl',
+                    header: 'Destination',
+                    cell: ({ row }) => (
+                        <a
+                            href={row.fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title={row.fullUrl}
+                            className="block max-w-[28rem] truncate text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                            {row.fullUrl}
+                        </a>
+                    ),
+                },
+                ...(clicksByCode
+                    ? [
+                          {
+                              key: 'clicks' as const,
+                              header: 'Clicks, 30 days',
+                              align: 'right' as const,
+                              cell: ({ row }: { row: Row }) => <span className="tabular-nums">{row.clicks}</span>,
+                          },
+                      ]
+                    : []),
+                { key: 'expiryDate', header: 'Expires', cell: ({ row }) => <Expiry value={row.expiryDate} /> },
+                { key: 'createdAt', header: 'Created', format: 'date', visible: false },
+            ]),
+            actionsColumn<Row>([
+                { label: 'Edit', icon: Pencil, onClick: (row) => void select(row.id) },
+                { label: 'Copy link', icon: Copy, onClick: (row) => void copyLink(row.shortCode) },
+                {
+                    label: 'Clicks',
+                    icon: BarChart3,
+                    onClick: (row) =>
+                        void navigate({ to: '/analytics', search: { tab: 'shortlinks', code: row.shortCode } }),
+                },
+                { label: 'Delete', icon: Trash2, variant: 'destructive', separator: true, onClick: setPendingDelete },
+            ]),
+        ],
+        [clicksByCode, copyLink, navigate, select],
+    );
 
-    const copyToClipboard = async (text: string, id: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopiedId(id);
-            setTimeout(() => setCopiedId(null), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
+    const pagination: DataTablePaginationState = { page, perPage, total };
+    const onPaginationChange = (next: DataTablePaginationState) => {
+        setPage(next.perPage === perPage ? next.page : 1);
+        setPerPage(next.perPage);
     };
-
-    const getExplicitUrl = (shortCode: string) => {
-        return `${window.location.origin}/shortlinks/go?code=${shortCode}`;
-    };
-
-    const formatDate = (date: DateInput | null) => {
-        if (date === null) return 'Never';
-        return formatShortDate(date) ?? 'Invalid date';
-    };
-
-    const isExpired = (expiryDate: DateInput | null) => {
-        if (expiryDate === null) return false;
-        return new Date(expiryDate).getTime() < Date.now();
-    };
-
-    // Pagination handlers
-    const goToPage = (page: number) => {
-        setActionError(null);
-        setCurrentPage(page);
-    };
-
-    const goToFirstPage = () => {
-        goToPage(1);
-    };
-
-    const goToLastPage = () => {
-        if (pagination) {
-            goToPage(pagination.totalPages);
-        }
-    };
-
-    const goToPrevPage = () => {
-        if (currentPage > 1) {
-            goToPage(currentPage - 1);
-        }
-    };
-
-    const goToNextPage = () => {
-        if (pagination && currentPage < pagination.totalPages) {
-            goToPage(currentPage + 1);
-        }
-    };
-
-    const handlePerPageChange = (value: string) => {
-        const newPerPage = parseInt(value, 10);
-        setActionError(null);
-        setPerPage(newPerPage);
-        setCurrentPage(1); // Reset to first page when changing page size
-    };
+    const { table } = useDataTable<Row>({
+        data: rows,
+        columns,
+        getRowId: (row) => row.id,
+        manualPagination: true,
+        manualSorting: true,
+        manualFiltering: true,
+        pagination,
+        onPaginationChange,
+        rowCount: total,
+    });
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <Link2 className="h-7 w-7 text-primary" />
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Shortlinks</h1>
-                    </div>
-                    <p className="text-muted-foreground">Create and manage short URLs for easy sharing</p>
+            <header className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                    <Link2 className="h-7 w-7 text-primary" />
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Shortlinks</h1>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                    <Button variant="outline" asChild>
-                        <Link to="/analytics" search={{ tab: 'shortlinks' }}>
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            Click Analytics
-                        </Link>
-                    </Button>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button onClick={handleCreate} size="lg">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create Link
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>{editingShortlink ? 'Edit Shortlink' : 'Create Shortlink'}</DialogTitle>
-                                <DialogDescription>
-                                    {editingShortlink
-                                        ? 'Update your shortlink details'
-                                        : 'Create a new shortlink to share with others'}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <ShortlinkForm
-                                shortlink={editingShortlink}
-                                onSuccess={handleSuccess}
-                                onCancel={() => setIsDialogOpen(false)}
-                            />
-                        </DialogContent>
-                    </Dialog>
+                <p className="text-muted-foreground">
+                    Paste a link, get a short one to share. Clicks are counted at the edge.
+                </p>
+            </header>
+
+            <form onSubmit={shorten} className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                    type="url"
+                    required
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://example.com/a/long/address"
+                    aria-label="Destination URL"
+                    className="h-11 flex-1 text-base"
+                />
+                <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="custom code (optional)"
+                    aria-label="Custom short code"
+                    pattern="[a-zA-Z0-9_\-]{2,50}"
+                    title="2 to 50 letters, numbers, hyphens or underscores"
+                    className="h-11 sm:w-56"
+                />
+                <Button type="submit" className="h-11" disabled={create.isPending}>
+                    {create.isPending ? 'Shortening' : 'Shorten'}
+                </Button>
+            </form>
+            {createError && <Alert variant="destructive">{createError}</Alert>}
+
+            <dl className="flex flex-wrap gap-x-10 gap-y-3">
+                <div>
+                    <dt className="text-sm text-muted-foreground">Links</dt>
+                    <dd className="text-2xl font-semibold tabular-nums">{total}</dd>
                 </div>
-            </div>
-
-            {/* Error Display */}
-            {error && <Alert variant="destructive">{error}</Alert>}
-
-            {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Total Links
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold tracking-tight">
-                            {pagination?.total ?? shortlinks.length}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Active Links
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold tracking-tight">
-                            {shortlinks.filter((link) => !isExpired(link.expiryDate)).length}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Shortlinks Table */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <CardTitle className="text-[0.9375rem] font-semibold">Your Links</CardTitle>
-                            <CardDescription>Manage and track your shortlinks</CardDescription>
-                        </div>
-                        {pagination && (
-                            <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                Showing {(pagination.page - 1) * pagination.perPage + 1} -{' '}
-                                {Math.min(pagination.page * pagination.perPage, pagination.total)} of {pagination.total}
-                            </div>
-                        )}
+                {clicksByCode && (
+                    <div>
+                        <dt className="text-sm text-muted-foreground">Clicks, last 30 days</dt>
+                        <dd className="text-2xl font-semibold tabular-nums">{totalClicks.toLocaleString()}</dd>
                     </div>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="space-y-2" aria-busy="true">
-                            <span className="sr-only">Loading shortlinks...</span>
-                            {Array.from({ length: 5 }, (_, i) => (
-                                <LoadingState key={i} count={1} height="h-12" className="rounded-lg" />
-                            ))}
-                        </div>
-                    ) : shortlinks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-background py-12 ring-1 ring-border">
-                            <Link2 className="h-10 w-10 text-muted-foreground/50" />
-                            <p className="text-sm text-muted-foreground">No shortlinks yet</p>
-                            <Button onClick={handleCreate} variant="outline" size="sm">
-                                Create your first link
-                            </Button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-auto rounded-xl bg-background ring-1 ring-border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Short Code
-                                            </TableHead>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Destination
-                                            </TableHead>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Link
-                                            </TableHead>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Type
-                                            </TableHead>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                App
-                                            </TableHead>
-                                            <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Expires
-                                            </TableHead>
-                                            <TableHead className="text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {shortlinks.map((link) => (
-                                            <TableRow key={link.id}>
-                                                {/* Short Code + Copy */}
-                                                <TableCell className="font-mono">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="font-medium">{link.shortCode}</span>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0"
-                                                            title="Copy Short Code"
-                                                            onClick={() =>
-                                                                copyToClipboard(link.shortCode, `${link.id}-code`)
-                                                            }
-                                                        >
-                                                            {copiedId === `${link.id}-code` ? (
-                                                                <span className="text-xs text-success">✓</span>
-                                                            ) : (
-                                                                <Copy className="h-3 w-3" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
+                )}
+            </dl>
 
-                                                {/* Destination URL + Copy */}
-                                                <TableCell className="max-w-[200px]">
-                                                    <div className="flex items-center gap-1">
-                                                        <a
-                                                            href={link.fullUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="truncate text-sm text-muted-foreground hover:text-foreground"
-                                                            title={link.fullUrl}
-                                                        >
-                                                            {link.fullUrl}
-                                                        </a>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 flex-shrink-0"
-                                                            title="Copy Destination URL"
-                                                            onClick={() =>
-                                                                copyToClipboard(link.fullUrl, `${link.id}-dest`)
-                                                            }
-                                                        >
-                                                            {copiedId === `${link.id}-dest` ? (
-                                                                <span className="text-xs text-success">✓</span>
-                                                            ) : (
-                                                                <Copy className="h-3 w-3" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
+            {list.error && <Alert variant="destructive">{list.error.message}</Alert>}
 
-                                                {/* Redirect Link + Copy */}
-                                                <TableCell className="max-w-[180px]">
-                                                    <div className="flex items-center gap-1">
-                                                        <a
-                                                            href={getExplicitUrl(link.shortCode)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="truncate text-sm text-primary hover:underline"
-                                                            title={getExplicitUrl(link.shortCode)}
-                                                        >
-                                                            {getExplicitUrl(link.shortCode)}
-                                                        </a>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 flex-shrink-0"
-                                                            title="Copy Redirect URL"
-                                                            onClick={() =>
-                                                                copyToClipboard(
-                                                                    getExplicitUrl(link.shortCode),
-                                                                    `${link.id}-link`,
-                                                                )
-                                                            }
-                                                        >
-                                                            {copiedId === `${link.id}-link` ? (
-                                                                <span className="text-xs text-success">✓</span>
-                                                            ) : (
-                                                                <Copy className="h-3 w-3" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
+            <DataTable
+                table={table}
+                isLoading={list.isLoading}
+                onRowClick={(row) => void select(row.id)}
+                emptyIcon={Link2}
+                emptyMessage={q ? 'No links match your search.' : 'No links yet. Paste a URL above to make one.'}
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search by code or destination"
+                pagination={pagination}
+                onPaginationChange={onPaginationChange}
+                pageSizeOptions={[15, 25, 50]}
+                showPagination={total > perPage}
+            />
 
-                                                {/* Type - quiet chip */}
-                                                <TableCell>
-                                                    <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium capitalize text-muted-foreground ring-1 ring-border">
-                                                        {link.type}
-                                                    </span>
-                                                </TableCell>
-
-                                                {/* App - quiet chip */}
-                                                <TableCell>
-                                                    <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
-                                                        {link.appId || 'default'}
-                                                    </span>
-                                                </TableCell>
-
-                                                {/* Expires */}
-                                                <TableCell>
-                                                    {isExpired(link.expiryDate) ? (
-                                                        <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-destructive ring-1 ring-destructive/40">
-                                                            Expired
-                                                        </span>
-                                                    ) : link.expiryDate ? (
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {formatDate(link.expiryDate)}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-muted-foreground">Never</span>
-                                                    )}
-                                                </TableCell>
-
-                                                {/* Actions */}
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0"
-                                                            onClick={() => handleEdit(link)}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                                            onClick={() => handleDelete(link.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-
-                            {/* Pagination Controls */}
-                            {pagination && pagination.totalPages > 1 && (
-                                <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                            Items per page
-                                        </span>
-                                        <Select value={String(perPage)} onValueChange={handlePerPageChange}>
-                                            <SelectTrigger className="w-20">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="10">10</SelectItem>
-                                                <SelectItem value="15">15</SelectItem>
-                                                <SelectItem value="25">25</SelectItem>
-                                                <SelectItem value="50">50</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="flex items-center gap-1">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={goToFirstPage}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronsLeft className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={goToPrevPage}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-
-                                        {/* Page numbers */}
-                                        <div className="flex items-center gap-1 px-2">
-                                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                                                const pageNum = Math.max(
-                                                    1,
-                                                    Math.min(currentPage - 2 + i, pagination.totalPages - 4 + i),
-                                                );
-                                                const adjustedPageNum = Math.max(
-                                                    1,
-                                                    Math.min(pageNum, pagination.totalPages),
-                                                );
-                                                return adjustedPageNum;
-                                            })
-                                                .filter((v, i, a) => a.indexOf(v) === i) // unique
-                                                .slice(0, 5)
-                                                .map((pageNum) => (
-                                                    <Button
-                                                        key={pageNum}
-                                                        variant={pageNum === currentPage ? 'default' : 'outline'}
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0"
-                                                        onClick={() => pageNum !== currentPage && goToPage(pageNum)}
-                                                        disabled={pageNum === currentPage}
-                                                    >
-                                                        {pageNum}
-                                                    </Button>
-                                                ))}
-                                        </div>
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={goToNextPage}
-                                            disabled={currentPage >= pagination.totalPages}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={goToLastPage}
-                                            disabled={currentPage >= pagination.totalPages}
-                                        >
-                                            <ChevronsRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-
-                                    <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Page {currentPage} of {pagination.totalPages}
-                                    </div>
-                                </div>
-                            )}
-                        </>
+            <Sheet open={editing !== null} onOpenChange={(open) => !open && void select(null)}>
+                <SheetContent
+                    side="right"
+                    className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg"
+                    aria-describedby={undefined}
+                >
+                    <SheetHeader className="border-b border-border px-6 py-4 text-left">
+                        <SheetTitle>Edit link</SheetTitle>
+                    </SheetHeader>
+                    {editing && (
+                        <ShortlinkForm
+                            key={editing.id}
+                            link={editing}
+                            onSaved={() => void select(null)}
+                            onCancel={() => void select(null)}
+                            onDelete={() => setPendingDelete(editing)}
+                        />
                     )}
-                </CardContent>
-            </Card>
+                </SheetContent>
+            </Sheet>
 
             <ConfirmDialog
-                open={deleteDialog !== null}
-                onOpenChange={(open) => !open && setDeleteDialog(null)}
-                title="Delete Shortlink?"
-                description="Are you sure you want to delete this shortlink?"
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                title="Delete this link?"
+                description={
+                    pendingDelete
+                        ? `${shortUrl(pendingDelete.shortCode)} will stop working for everyone who has it.`
+                        : ''
+                }
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText="Delete"
-                onConfirm={handleConfirmDelete}
+                onConfirm={confirmDelete}
             />
         </div>
     );
+}
+
+function CodeCell({ code, onCopy }: { code: string; onCopy: () => void }) {
+    return (
+        <span className="flex items-center gap-1">
+            <span className="font-mono font-medium">{code}</span>
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onCopy();
+                }}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label={`Copy link for ${code}`}
+                title="Copy link"
+            >
+                <Copy className="h-3.5 w-3.5" />
+            </button>
+        </span>
+    );
+}
+
+function Expiry({ value }: { value: ShortlinkRecord['expiryDate'] }) {
+    if (value == null) return <span className="text-muted-foreground">Never</span>;
+    if (new Date(value).getTime() < Date.now()) {
+        return (
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                Expired
+            </span>
+        );
+    }
+    return <span className="text-muted-foreground">{formatShortDate(value) ?? 'Invalid date'}</span>;
 }

@@ -244,16 +244,21 @@ const userMediaLibraryRoute = protectedRoute(
     'UserMediaLibraryPage',
 );
 
+const editSearch = (search: Record<string, unknown>): { edit?: string } => ({
+    edit: typeof search.edit === 'string' && search.edit ? search.edit : undefined,
+});
+
 const analyticsRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/analytics',
-    validateSearch: (search: Record<string, unknown>) => ({
+    validateSearch: (search: Record<string, unknown>): { tab: 'core' | 'shortlinks' | 'referrals'; code?: string } => ({
         tab:
             (search.tab as string) === 'referrals'
                 ? 'referrals'
                 : (search.tab as string) === 'shortlinks'
                   ? 'shortlinks'
                   : 'core',
+        code: typeof search.code === 'string' && search.code ? search.code : undefined,
     }),
     // Analytics Engine totals are platform-wide (no org), so the worker APIs are system-admin only;
     // this gate just avoids rendering a page whose data would 403.
@@ -268,8 +273,10 @@ const analyticsRoute = new Route({
     ),
 });
 
-const shortlinksRoute = publicRoute('/shortlinks', () =>
-    import('@/pages/shortlinks/ShortlinksPage').then((m) => ({ default: m.ShortlinksPage })),
+const shortlinksRoute = publicRoute(
+    '/shortlinks',
+    () => import('@/pages/shortlinks/ShortlinksPage').then((m) => ({ default: m.ShortlinksPage })),
+    { validateSearch: editSearch },
 );
 const referralsRoute = publicRoute('/referrals', () =>
     import('@/pages/referrals/ReferralsPage').then((m) => ({ default: m.ReferralsPage })),
@@ -410,9 +417,6 @@ const adminBlogStudioRoute = makeAdminRoute(
     'AdminBlogStudioPage',
 );
 // Taxonomy pages: the record open in the side panel lives in ?edit=<id|new>
-const editSearch = (search: Record<string, unknown>) => ({
-    edit: typeof search.edit === 'string' && search.edit ? search.edit : undefined,
-});
 const adminBlogTagsRoute = makeAdminRoute(
     '/admin/content/blog/tags',
     () => import('@/pages/admin/content/blog/AdminBlogTagsPage'),

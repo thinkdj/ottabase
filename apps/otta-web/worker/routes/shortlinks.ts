@@ -2,7 +2,7 @@ import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@otta
 import { getRequestCountry, trackEvent } from '@ottabase/analytics/track';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
-import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
+import { Shortlink, buildRedirectResponse, generateShortCode } from '@ottabase/shortlinks';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
@@ -46,19 +46,18 @@ export async function handleShortlinksList(context: ApiRouteContext): Promise<Re
     // requireAdminAccess() above already ran initDbConnection(env), which registers the
     // 'default' connection — no need to construct another D1Driver and re-register it here.
 
-    const { page, perPage, orderBy, order } = parsePaginationParams(url.searchParams);
+    const { page, perPage, orderBy, order, search } = parsePaginationParams(url.searchParams);
     const appId = url.searchParams.get('appId');
     const type = url.searchParams.get('type');
     const where: Record<string, unknown> = {};
     if (appId) where.appId = appId;
     if (type) where.type = type;
 
-    const paginationResult = await Shortlink.paginate(
-        page,
-        perPage,
-        Object.keys(where).length > 0 ? where : undefined,
-        { orderBy, orderDirection: order },
-    );
+    const filter = Object.keys(where).length > 0 ? where : undefined;
+    const options = { orderBy, orderDirection: order };
+    const paginationResult = search
+        ? await Shortlink.searchPaginate(search, ['shortCode', 'fullUrl'], page, perPage, filter, options)
+        : await Shortlink.paginate(page, perPage, filter, options);
 
     return paginatedJsonResponse({
         data: paginationResult.data.map((s) => s.toJson()),
@@ -67,6 +66,15 @@ export async function handleShortlinksList(context: ApiRouteContext): Promise<Re
         perPage: paginationResult.perPage,
         path: '/api/shortlinks',
     });
+}
+
+/** A generated code nobody holds yet. A clash is rare, so a few draws are plenty. */
+async function freeShortCode(): Promise<string | null> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateShortCode();
+        if (!(await Shortlink.findByCode(code))) return code;
+    }
+    return null;
 }
 
 export async function handleShortlinksCreate(context: ApiRouteContext): Promise<Response> {
@@ -93,22 +101,27 @@ export async function handleShortlinksCreate(context: ApiRouteContext): Promise<
         interstitialSeconds?: number | null;
     }>(request);
 
-    if (!body.fullUrl || !body.shortCode) {
-        return errorResponse('fullUrl and shortCode are required', 400);
+    if (!body.fullUrl) {
+        return errorResponse('fullUrl is required', 400);
     }
 
-    const existing = await Shortlink.findByCode(body.shortCode);
-    if (existing) {
-        return errorResponse('Short code already exists', 409, {
-            code: 'DUPLICATE_SHORT_CODE',
-        });
+    let shortCode = body.shortCode?.trim();
+    if (shortCode) {
+        if (await Shortlink.findByCode(shortCode)) {
+            return errorResponse('Short code already exists', 409, {
+                code: 'DUPLICATE_SHORT_CODE',
+            });
+        }
+    } else {
+        shortCode = await freeShortCode();
+        if (!shortCode) return errorResponse('Could not find a free short code, try again', 503);
     }
 
     try {
         const expiryDate = body.expiryDate ? new Date(body.expiryDate).getTime() : null;
         const shortlink = await Shortlink.create({
             fullUrl: body.fullUrl,
-            shortCode: body.shortCode,
+            shortCode,
             type: body.type || 'redirect',
             appId: body.appId || 'default',
             expiryDate: Number.isNaN(expiryDate) ? null : expiryDate,

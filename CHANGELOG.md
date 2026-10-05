@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Shortlinks start from a pasted URL.** The `/shortlinks` page is a paste bar plus a data table: paste a link, press
+  Shorten, and the short link is created with a generated readable code (`generateShortCode` in `@ottabase/shortlinks`,
+  the worker draws one when `shortCode` is omitted) and copied to the clipboard. The list searches code and destination
+  server side (`GET /api/shortlinks?search=`), shows clicks for the last 30 days per row when Analytics Engine is
+  configured, opens a row in a side panel editor (`?edit=<id>`), and links each row to the analytics tab filtered to its
+  code (`/analytics?tab=shortlinks&code=`). The analytics page's three tabs are now one section component driven by
+  config, and results show the period total with a bar per row.
 - **CRUD is a list with a side editor.** `ModelCrud` (`@ottabase/forms`) keeps the list on screen and opens a row in a
   side panel instead of swapping to detail, create and edit views; `selectedId` / `onSelectedIdChange` put the open
   record in the URL (`?edit=<id|new>`), `config.prepare` fills derived fields such as the slug, and delete is a

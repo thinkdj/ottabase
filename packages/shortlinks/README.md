@@ -98,6 +98,24 @@ it for HTML and inline script, so a stored `javascript:` target cannot execute.
 **Theme detection:** Both page helpers read `localStorage` for `'ottabase.theme'` (or your custom key) to apply
 light/dark mode. The value should be `'light'`, `'dark'`, or `'system'`.
 
+## Managing links
+
+The `/shortlinks` page in the app is the everyday surface. Paste a URL and press Shorten: the worker makes a readable
+six character code (`generateShortCode`, letters and digits without lookalikes) unless you typed a custom one, and the
+short link `https://your.site/<code>` is copied to the clipboard. The list is a data table with search over code and
+destination, a clicks column for the last 30 days when Analytics Engine is configured, and a side panel editor for the
+destination, code, type, expiry and interstitial. Each row links to the analytics tab filtered to its code.
+
+The admin API behind it:
+
+| Method   | Path                                      | Notes                                                  |
+| -------- | ----------------------------------------- | ------------------------------------------------------ | --------- | ------------------------- |
+| `GET`    | `/api/shortlinks?page=&per_page=&search=` | Paged list; `search` matches `shortCode` and `fullUrl` |
+| `POST`   | `/api/shortlinks`                         | `fullUrl` required; `shortCode` optional, generated    |
+| `PATCH`  | `/api/shortlinks/:id`                     | Any of the writable fields                             |
+| `DELETE` | `/api/shortlinks/:id`                     |                                                        |
+| `GET`    | `/api/shortlinks/analytics`               | `groupBy=country                                       | shortCode | day`, `days`, `shortCode` |
+
 ## Database Schema
 
 `shortlinks` table fields:

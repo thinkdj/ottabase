@@ -1,8 +1,6 @@
-import { api, isApiError } from '@/lib/api';
-import { APP_ID } from '@/ottabase/config';
-import type { ShortlinkRecord } from '@ottabase/shortlinks';
-import { ShortlinkTypes } from '@ottabase/shortlinks';
-import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
+import { isApiError } from '@ottabase/api';
+import { useApiMutation } from '@ottabase/ottaorm/client';
+import { ShortlinkTypes, type ShortlinkRecord } from '@ottabase/shortlinks';
 import {
     Alert,
     Button,
@@ -13,231 +11,169 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Switch,
+    toast,
 } from '@ottabase/ui-shadcn';
-import { useEffect, useState } from 'react';
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
+import { Trash2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 
 interface ShortlinkFormProps {
-    shortlink?: ShortlinkRecord | null;
-    onSuccess: () => void;
+    link: ShortlinkRecord;
+    onSaved: () => void;
     onCancel: () => void;
+    onDelete: () => void;
 }
 
-export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormProps) {
-    const [loading, setLoading] = useState(false);
+/** The side panel editor. New links come from the paste bar on the page, so this only edits. */
+export function ShortlinkForm({ link, onSaved, onCancel, onDelete }: ShortlinkFormProps) {
+    const [draft, setDraft] = useState({
+        fullUrl: link.fullUrl,
+        shortCode: link.shortCode,
+        type: link.type,
+        expiryDate: toDateTimeLocalInput(link.expiryDate),
+        interstitialEnabled: link.interstitialEnabled ?? false,
+        interstitialSeconds: link.interstitialSeconds ?? 10,
+    });
     const [error, setError] = useState<string | null>(null);
-    const [formData, setFormData] = useState({
-        fullUrl: '',
-        shortCode: '',
-        type: 'redirect',
-        appId: APP_ID,
-        expiryDate: '',
-        interstitialEnabled: false,
-        interstitialSeconds: 10,
+    const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) =>
+        setDraft((current) => ({ ...current, [key]: value }));
+
+    const save = useApiMutation<unknown, Record<string, unknown>>({
+        endpoint: `/api/shortlinks/${link.id}`,
+        method: 'PATCH',
+        invalidateEntities: ['shortlinks'],
+        mutationOptions: { meta: { errorPresentation: 'local' } },
     });
 
-    useEffect(() => {
-        if (shortlink) {
-            setFormData({
-                fullUrl: shortlink.fullUrl,
-                shortCode: shortlink.shortCode,
-                type: shortlink.type,
-                appId: shortlink.appId || APP_ID,
-                expiryDate: toDateTimeLocalInput(shortlink.expiryDate),
-                interstitialEnabled: shortlink.interstitialEnabled ?? false,
-                interstitialSeconds: shortlink.interstitialSeconds ?? 10,
-            });
-        } else {
-            setFormData((prev) => ({ ...prev, appId: APP_ID }));
-        }
-    }, [shortlink]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const submit = async (event: FormEvent) => {
+        event.preventDefault();
         setError(null);
-        setLoading(true);
-
+        const expiryMs = fromDateTimeLocalInput(draft.expiryDate);
         try {
-            const expiryMs = fromDateTimeLocalInput(formData.expiryDate);
-            const payload = {
-                fullUrl: formData.fullUrl.trim(),
-                shortCode: formData.shortCode.trim(),
-                type: formData.type,
-                appId: (formData.appId || APP_ID).trim(),
-                // Send an absolute instant: the worker runs in UTC and would misread local wall time
+            await save.mutateAsync({
+                fullUrl: draft.fullUrl.trim(),
+                shortCode: draft.shortCode.trim(),
+                type: draft.type,
+                // An absolute instant: the worker runs in UTC and would misread local wall time.
                 expiryDate: expiryMs ? new Date(expiryMs).toISOString() : null,
-                interstitialEnabled: formData.interstitialEnabled,
-                interstitialSeconds: formData.interstitialEnabled ? formData.interstitialSeconds : null,
-            };
-
-            if (shortlink) {
-                // Update existing shortlink
-                await api(`/api/shortlinks/${shortlink.id}`, {
-                    method: 'PATCH',
-                    body: payload,
-                });
-            } else {
-                // Create new shortlink
-                await api('/api/shortlinks', {
-                    method: 'POST',
-                    body: payload,
-                });
-            }
-
-            onSuccess();
+                interstitialEnabled: draft.interstitialEnabled,
+                interstitialSeconds: draft.interstitialEnabled ? draft.interstitialSeconds : null,
+            });
+            toast.success('Link saved');
+            onSaved();
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to save shortlink');
-        } finally {
-            setLoading(false);
+            setError(isApiError(err) ? err.message : 'Could not save the link');
         }
     };
 
-    const generateRandomCode = () => {
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        let code = '';
-        for (let i = 0; i < 6; i++) {
-            code += chars[Math.floor(Math.random() * chars.length)];
-        }
-        setFormData({ ...formData, shortCode: code });
-    };
+    const busy = save.isPending;
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <Alert variant="destructive">{error}</Alert>}
+        <form onSubmit={submit} className="flex flex-1 flex-col">
+            <div className="space-y-5 px-6 py-5">
+                {error && <Alert variant="destructive">{error}</Alert>}
 
-            <div className="space-y-2">
-                <Label htmlFor="fullUrl">
-                    Destination URL <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                    id="fullUrl"
-                    type="url"
-                    placeholder="https://example.com/very/long/url"
-                    value={formData.fullUrl}
-                    onChange={(e) => setFormData({ ...formData, fullUrl: e.target.value })}
-                    required
-                    disabled={loading}
-                />
-                <p className="text-xs text-muted-foreground">The full URL where this shortlink will redirect</p>
-            </div>
+                <div className="space-y-2">
+                    <Label htmlFor="fullUrl">Destination</Label>
+                    <Input
+                        id="fullUrl"
+                        type="url"
+                        required
+                        value={draft.fullUrl}
+                        onChange={(e) => set('fullUrl', e.target.value)}
+                        disabled={busy}
+                    />
+                </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="shortCode">
-                    Short Code <span className="text-destructive">*</span>
-                </Label>
-                <div className="flex gap-2">
+                <div className="space-y-2">
+                    <Label htmlFor="shortCode">Short code</Label>
                     <Input
                         id="shortCode"
-                        placeholder="my-link"
-                        value={formData.shortCode}
-                        onChange={(e) => setFormData({ ...formData, shortCode: e.target.value })}
                         required
-                        disabled={loading}
-                        className="flex-1"
-                        pattern="[a-zA-Z0-9_\-]+"
-                        title="Only letters, numbers, hyphens, and underscores"
+                        value={draft.shortCode}
+                        onChange={(e) => set('shortCode', e.target.value)}
+                        pattern="[a-zA-Z0-9_\-]{2,50}"
+                        title="2 to 50 letters, numbers, hyphens or underscores"
+                        className="font-mono"
+                        disabled={busy}
                     />
-                    <Button type="button" variant="outline" onClick={generateRandomCode} disabled={loading}>
-                        Random
+                    <p className="text-xs text-muted-foreground">Changing it breaks copies already shared.</p>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="type">Type</Label>
+                        <Select value={draft.type} onValueChange={(value) => set('type', value)} disabled={busy}>
+                            <SelectTrigger id="type">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(ShortlinkTypes).map((type) => (
+                                    <SelectItem key={type} value={type} className="capitalize">
+                                        {type}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="expiryDate">Expires</Label>
+                        <Input
+                            id="expiryDate"
+                            type="datetime-local"
+                            value={draft.expiryDate}
+                            onChange={(e) => set('expiryDate', e.target.value)}
+                            disabled={busy}
+                        />
+                        <p className="text-xs text-muted-foreground">Empty means never.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-3 rounded-xl bg-muted/40 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <Label htmlFor="interstitial">Show a countdown page first</Label>
+                        <Switch
+                            id="interstitial"
+                            checked={draft.interstitialEnabled}
+                            onCheckedChange={(checked) => set('interstitialEnabled', checked)}
+                            disabled={busy}
+                        />
+                    </div>
+                    {draft.interstitialEnabled && (
+                        <div className="flex items-center gap-3">
+                            <Label htmlFor="interstitialSeconds" className="shrink-0">
+                                Seconds
+                            </Label>
+                            <Input
+                                id="interstitialSeconds"
+                                type="number"
+                                min={1}
+                                max={60}
+                                step={1}
+                                value={draft.interstitialSeconds}
+                                onChange={(e) => set('interstitialSeconds', Number(e.target.value))}
+                                className="w-24"
+                                disabled={busy}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-2 border-t border-border px-6 py-4">
+                <Button type="button" variant="ghost" className="text-destructive" onClick={onDelete} disabled={busy}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                </Button>
+                <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={busy}>
+                        {busy ? 'Saving' : 'Save'}
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Unique identifier for your link (e.g., "gh" for github)</p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
-                    <Select
-                        value={formData.type}
-                        onValueChange={(value) => setFormData({ ...formData, type: value })}
-                        disabled={loading}
-                    >
-                        <SelectTrigger id="type">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.values(ShortlinkTypes).map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="appId">App ID</Label>
-                    <Input
-                        id="appId"
-                        placeholder={APP_ID}
-                        value={formData.appId}
-                        readOnly
-                        disabled
-                        className="cursor-not-allowed bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">Scoped to current app (from config)</p>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
-                <Input
-                    id="expiryDate"
-                    type="datetime-local"
-                    value={formData.expiryDate}
-                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                    disabled={loading}
-                />
-                <p className="text-xs text-muted-foreground">Leave empty for links that never expire</p>
-            </div>
-
-            <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <input
-                        id="interstitialEnabled"
-                        type="checkbox"
-                        aria-label="Show interstitial"
-                        checked={formData.interstitialEnabled}
-                        onChange={(e) =>
-                            setFormData({
-                                ...formData,
-                                interstitialEnabled: e.target.checked,
-                            })
-                        }
-                        disabled={loading}
-                        className="rounded"
-                    />
-                    <Label htmlFor="interstitialEnabled">Show interstitial</Label>
-                </div>
-                <p className="text-xs text-muted-foreground">Display a countdown page before redirecting.</p>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="interstitialSeconds">Countdown Seconds</Label>
-                <Input
-                    id="interstitialSeconds"
-                    type="number"
-                    min={1}
-                    max={60}
-                    step={1}
-                    value={formData.interstitialSeconds}
-                    onChange={(e) =>
-                        setFormData({
-                            ...formData,
-                            interstitialSeconds: Number(e.target.value),
-                        })
-                    }
-                    disabled={loading || !formData.interstitialEnabled}
-                />
-                <p className="text-xs text-muted-foreground">Defaults to 10 seconds when enabled.</p>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                    {loading ? 'Saving...' : shortlink ? 'Update Link' : 'Create Link'}
-                </Button>
             </div>
         </form>
     );
