@@ -5,7 +5,9 @@ Cloudflare Images.
 
 ## Features
 
-- **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
+- **Clean UI** - Minimal design in the app's theme tokens, with dropzone and button variants; the dropzone is a real
+  button, so it works with Tab and Enter and shows a focus ring. Add `packages/ottaupload/src/client/**/*.tsx` (or the
+  npm `dist`) to your Tailwind `content` so its classes are generated.
 - **Drag & Drop** - Native drag-and-drop with visual feedback
 - **Progress Tracking** - Real-time upload progress
 - **Multiple Files** - Batch upload with configurable limits

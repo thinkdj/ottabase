@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Small fixes from the audit.** The referral link now leads the Referrals page (with a native Share button where the
+  browser offers one), and the username it is built from moves below it. Long code blocks open on their first lines with
+  a working "Show all N lines" button, instead of a top-right toggle that never collapsed by default. The header
+  language switcher only renders when `i18nConfig.enabledLanguages` lists two or more languages (the template now ships
+  with `['en']`; add a language once the app's strings are translated). Brand Kits warn before leaving with unsaved
+  edits, like the other editors. The upload box (`@ottabase/ottaupload`) is a real button (Tab, Enter, focus ring) and
+  uses the theme tokens instead of fixed grey and blue; the app's Tailwind config now scans the package.
 - **Shared building blocks.** `Card` is now the house surface by default (muted tint, no border, no shadow), with
   `variant="outline"` for the bordered look; the 248 copies of the class string are gone. `Alert` is the one notice box,
   with `destructive`, `warning`, `success` and `info` variants replacing 48 hand-rolled boxes. New in

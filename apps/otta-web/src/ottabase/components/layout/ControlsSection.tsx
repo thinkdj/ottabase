@@ -74,10 +74,12 @@ export function ControlsSection() {
         <div className="flex items-center gap-1">
             {appConfig.features.spotlight.enabled && <SearchButton />}
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
-            {/* Language is the least urgent control — it yields first on narrow headers */}
-            <span className="hidden sm:inline-flex">
-                <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
-            </span>
+            {/* Only once there is a choice; the least urgent control, so it yields first on narrow headers */}
+            {i18nConfig.enabledLanguages.length > 1 && (
+                <span className="hidden sm:inline-flex">
+                    <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
+                </span>
+            )}
             {isAuthenticated && <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />}
         </div>
     );

@@ -91,8 +91,8 @@ console.log(hello);`}
 | `hideCopyButton`       | `boolean`                   | `false`       | Hide only the copy button                                                                          |
 | `highlightLines`       | `string` \| `number[]` \| … | —             | Lines to highlight (e.g. `'3,5-7'` or `[3,5,6,7]`)                                                 |
 | `tabSize`              | `number`                    | `4`           | Indentation width (CSS tab-size)                                                                   |
-| `collapsible`          | `boolean`                   | `false`       | Allow expand/collapse when lines exceed threshold                                                  |
-| `collapsibleThreshold` | `number`                    | `20`          | Line count above which block becomes collapsible                                                   |
+| `collapsible`          | `boolean`                   | `false`       | Long blocks open on their first lines with a "Show all N lines" button underneath                  |
+| `collapsibleThreshold` | `number`                    | `20`          | Lines shown while collapsed; blocks up to this length never collapse                               |
 | `className`            | `string`                    | `''`          | Additional CSS classes for the wrapper element                                                     |
 
 ## Supported Languages

@@ -3,6 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
+import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
+import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
@@ -298,6 +300,13 @@ export function AdminBrandKitDetailPage() {
     const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('light');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+    // Unsaved-change detection over exactly the fields Save persists
+    const baseline = useMemo(() => (kit ? savableSnapshot(kit) : null), [kit]);
+    const isDirty = isNew ? true : baseline !== null && savableSnapshot(draft) !== baseline;
+    // A new kit is always "dirty" for Save; the leave guard only cares whether anything was typed
+    const [newBaseline] = useState(() => savableSnapshot(draft));
+    const { blocker, allowNavigateRef } = useEditorLeaveGuard(isNew ? savableSnapshot(draft) !== newBaseline : isDirty);
+
     useEffect(() => {
         if (kit) {
             // Preview in the scheme the brand actually ships with
@@ -340,6 +349,7 @@ export function AdminBrandKitDetailPage() {
             toast.success('Brand Kit created');
             queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
+            allowNavigateRef.current = true;
             navigate({ to: '/admin/appearance/brand-kits/$kitId', params: { kitId: created.id } });
         },
         onError: () => toast.error('Failed to create'),
@@ -352,16 +362,13 @@ export function AdminBrandKitDetailPage() {
             toast.success('Brand Kit deleted');
             queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
+            allowNavigateRef.current = true;
             navigate({ to: '/admin/appearance/brand-kits' });
         },
         onError: () => toast.error('Failed to delete'),
     });
 
     const saving = isNew ? createMutation.isPending : updateMutation.isPending;
-
-    // Unsaved-change detection over exactly the fields Save persists
-    const baseline = useMemo(() => (kit ? savableSnapshot(kit) : null), [kit]);
-    const isDirty = isNew ? true : baseline !== null && savableSnapshot(draft) !== baseline;
 
     const handleSave = () => {
         if (saving || (!isNew && !isDirty)) return;
@@ -532,6 +539,7 @@ export function AdminBrandKitDetailPage() {
 
     return (
         <div className="space-y-8">
+            <UnsavedChangesDialog blocker={blocker} />
             <div className="space-y-4">
                 <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
                     <Link to="/admin/appearance/brand-kits">

@@ -1,7 +1,7 @@
 'use client';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
 import hljs from 'highlight.js/lib/core';
-import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 
 // Import common languages
@@ -110,13 +110,15 @@ function CodeBlockInner({
     className = '',
 }: CodeBlockProps) {
     const [copied, setCopied] = useState(false);
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
 
     // lineNumberStart: default 1 if not set, or if 0 / alphabets / invalid
     const start = Math.max(1, Math.floor(Number(lineNumberStart)) || 1);
 
     const lines = code.split('\n');
     const shouldCollapse = collapsible && lines.length > collapsibleThreshold;
+    // Long blocks open on their first lines, with the rest one click away
+    const collapsed = shouldCollapse && !expanded;
     const highlightSet = highlightLines ? parseHighlightLines(highlightLines) : null;
 
     const highlightedHtml = useMemo(() => {
@@ -129,7 +131,8 @@ function CodeBlockInner({
     }, [code, language]);
 
     // Split highlighted HTML by lines so we can render line numbers inline (scroll together)
-    const lineHtmls = useMemo(() => highlightedHtml.split('\n'), [highlightedHtml]);
+    const allLineHtmls = useMemo(() => highlightedHtml.split('\n'), [highlightedHtml]);
+    const lineHtmls = collapsed ? allLineHtmls.slice(0, collapsibleThreshold) : allLineHtmls;
 
     const handleCopy = async () => {
         try {
@@ -182,18 +185,7 @@ function CodeBlockInner({
             )}
 
             <div className="code-block-content relative">
-                {shouldCollapse && (
-                    <button
-                        type="button"
-                        onClick={() => setExpanded(!expanded)}
-                        className="code-block-collapse-btn absolute top-1 right-2 z-10 flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50"
-                    >
-                        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                        {expanded ? 'Collapse' : `Expand (${lines.length} lines)`}
-                    </button>
-                )}
-
-                {(!shouldCollapse || expanded) && (
+                {
                     <pre
                         className={`code-block-pre !m-0 overflow-x-auto overflow-y-auto ${showLineNumbers ? 'code-block-with-lines' : ''}`}
                         style={preStyle}
@@ -221,14 +213,22 @@ function CodeBlockInner({
                         ) : (
                             <code
                                 className={`hljs language-${language} !bg-transparent`}
-                                dangerouslySetInnerHTML={{ __html: sanitizeBlockHtml(highlightedHtml) }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeBlockHtml(lineHtmls.join('\n')) }}
                             />
                         )}
                     </pre>
-                )}
+                }
 
-                {shouldCollapse && !expanded && (
-                    <div className="p-4 text-xs text-muted-foreground">{lines.length} lines • Click to expand</div>
+                {shouldCollapse && (
+                    <button
+                        type="button"
+                        onClick={() => setExpanded(!expanded)}
+                        aria-expanded={expanded}
+                        className="code-block-collapse-btn flex w-full items-center justify-center gap-1 border-t border-border/60 bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {expanded ? 'Show less' : `Show all ${lines.length} lines`}
+                    </button>
                 )}
             </div>
         </div>

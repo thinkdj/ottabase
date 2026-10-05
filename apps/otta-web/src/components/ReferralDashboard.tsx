@@ -1,7 +1,7 @@
 /**
  * ReferralDashboard Component
  *
- * Displays referral stats, referral link, and allows users to manage their referral username.
+ * The referral link first, then stats, then the username it is built from and recent activity.
  */
 
 import { api } from '@/lib/api';
@@ -13,8 +13,18 @@ import {
 } from '@/lib/referrals';
 import { validateReferralUsername } from '@ottabase/referrals';
 import { ConfirmDialog } from '@ottabase/ui-components';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
-import { Copy, X } from 'lucide-react';
+import {
+    Alert,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
+import { Copy, Share2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -169,13 +179,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     }
 
     if (error) {
-        return (
-            <Card className="border border-destructive">
-                <CardContent className="pt-6">
-                    <p className="text-destructive">Error: {error}</p>
-                </CardContent>
-            </Card>
-        );
+        return <Alert variant="destructive">{error}</Alert>;
     }
 
     if (!data) {
@@ -189,134 +193,153 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     }
 
     const referralLink = data.user.referralUsername ? buildReferralLink(data.user.referralUsername) : null;
+    const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+    const handleShare = () => {
+        if (!referralLink) return;
+        navigator.share({ title: 'Join me', url: referralLink }).catch(() => {});
+    };
 
     const totalPages = trackingData?.pagination.totalPages || 1;
+
+    const usernameForm = (
+        <div className="space-y-2">
+            <div className="flex gap-2">
+                <Input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="e.g. johndoe"
+                    aria-label="Referral username"
+                    className="flex-1"
+                />
+                <Button onClick={handleUpdateUsername} disabled={updating || !newUsername}>
+                    {updating ? 'Saving…' : referralLink ? 'Change' : 'Create link'}
+                </Button>
+            </div>
+            {usernameError && (
+                <p role="alert" className="text-sm text-destructive">
+                    {usernameError}
+                </p>
+            )}
+            <p className="text-sm text-muted-foreground">3 to 20 characters: letters, numbers and underscores.</p>
+        </div>
+    );
 
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Referral Dashboard</h1>
-                <p className="text-muted-foreground mt-2">Manage your referral links and track conversions</p>
+                <h1 className="text-3xl font-bold tracking-tight">Referrals</h1>
+                <p className="mt-2 text-muted-foreground">Share your link. Every sign-up through it counts as yours.</p>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* The link is the whole point, so it leads; without a username, picking one leads instead */}
+            {referralLink ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Your link</CardTitle>
+                        <CardDescription>Anyone who signs up through it is your referral.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                            type="text"
+                            value={referralLink}
+                            readOnly
+                            aria-label="Referral link"
+                            onFocus={(e) => e.currentTarget.select()}
+                            className="font-mono text-sm"
+                        />
+                        <div className="flex shrink-0 gap-2">
+                            <Button onClick={handleCopyLink}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy
+                            </Button>
+                            {canShare && (
+                                <Button variant="outline" onClick={handleShare}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    Share
+                                </Button>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Pick a username to get your link</CardTitle>
+                        <CardDescription>Your link is built from it, so choose something easy to say.</CardDescription>
+                    </CardHeader>
+                    <CardContent>{usernameForm}</CardContent>
+                </Card>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardDescription>Total Clicks</CardDescription>
+                        <CardDescription>Clicks</CardDescription>
                         <CardTitle className="text-3xl">{data.stats.total}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardDescription>Conversions</CardDescription>
-                        <CardTitle className="text-3xl text-green-600">{data.stats.completed}</CardTitle>
+                        <CardDescription>Signed up</CardDescription>
+                        <CardTitle className="text-3xl text-success">{data.stats.completed}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-3">
                         <CardDescription>Pending</CardDescription>
-                        <CardTitle className="text-3xl text-yellow-600">{data.stats.pending}</CardTitle>
+                        <CardTitle className="text-3xl text-warning">{data.stats.pending}</CardTitle>
                     </CardHeader>
                 </Card>
             </div>
 
-            {/* Username Management */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Your Referral Username</CardTitle>
-                    <CardDescription>Choose a unique username for your referral links</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <div className="flex gap-2">
-                            <Input
-                                type="text"
-                                value={newUsername}
-                                onChange={(e) => setNewUsername(e.target.value)}
-                                placeholder="e.g., johndoe"
-                                className="flex-1"
-                            />
-                            <Button onClick={handleUpdateUsername} disabled={updating || !newUsername}>
-                                {updating ? 'Updating...' : 'Update'}
-                            </Button>
-                        </div>
-                        {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
-                        <p className="text-sm text-muted-foreground">
-                            3-20 characters, letters/numbers/underscore only
-                        </p>
-                    </div>
-
-                    {data.user.referralUsername && (
-                        <Card className="border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-                            <CardContent className="pt-4">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                    <strong>Warning:</strong> Changing your username will invalidate your old referral
-                                    links and may affect pending conversions.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Referral Link */}
             {referralLink && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Your Referral Link</CardTitle>
-                        <CardDescription>Share this link to earn referrals</CardDescription>
+                        <CardTitle>Username</CardTitle>
+                        <CardDescription>Your link is built from it.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex gap-2">
-                            <Input type="text" value={referralLink} readOnly />
-                            <Button onClick={handleCopyLink} variant="secondary">
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copy
-                            </Button>
-                        </div>
+                    <CardContent className="space-y-3">
+                        {usernameForm}
+                        <Alert variant="warning">
+                            Changing it breaks links you have already shared and may affect pending conversions.
+                        </Alert>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Stored Referral Info (if user arrived via referral) */}
             {storedCode && (
-                <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-                    <CardHeader>
-                        <CardTitle>You Were Referred!</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Referral Code</p>
-                                <p className="font-medium font-mono">{storedCode}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Expires</p>
-                                <p className="font-medium">{expiryInfo.expiresAt?.toLocaleDateString() || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Days Remaining</p>
-                                <p className="font-medium">{expiryInfo.daysRemaining || 0}</p>
-                            </div>
+                <Alert variant="info" className="space-y-3">
+                    <p className="font-medium">You were referred</p>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <p className="text-muted-foreground">Code</p>
+                            <p className="font-mono font-medium">{storedCode}</p>
                         </div>
-
-                        <ConfirmDialog
-                            trigger={
-                                <Button variant="destructive" size="sm">
-                                    <X className="h-4 w-4 mr-2" />
-                                    Clear Stored Referral
-                                </Button>
-                            }
-                            title="Clear Stored Referral?"
-                            description="This will remove the stored referral code from your browser. This action cannot be undone."
-                            tone="destructive"
-                            secondaryActionText="Cancel"
-                            primaryActionText="Clear"
-                            onConfirm={handleClearStoredReferral}
-                        />
-                    </CardContent>
-                </Card>
+                        <div>
+                            <p className="text-muted-foreground">Expires</p>
+                            <p className="font-medium">{expiryInfo.expiresAt?.toLocaleDateString() || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-muted-foreground">Days left</p>
+                            <p className="font-medium">{expiryInfo.daysRemaining || 0}</p>
+                        </div>
+                    </div>
+                    <ConfirmDialog
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <X className="mr-2 h-4 w-4" />
+                                Forget this referral
+                            </Button>
+                        }
+                        title="Forget this referral?"
+                        description="The stored referral code is removed from this browser. This cannot be undone."
+                        tone="destructive"
+                        secondaryActionText="Cancel"
+                        primaryActionText="Forget"
+                        onConfirm={handleClearStoredReferral}
+                    />
+                </Alert>
             )}
 
             {/* Recent Tracking with Pagination */}

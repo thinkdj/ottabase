@@ -38,7 +38,7 @@ export function I18nDemoPage() {
                     <CardDescription>Interactive component to change the application language</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-4">
-                    <LanguageSwitcher languages={i18nConfig.enabledLanguages} />
+                    <LanguageSwitcher />
                     <p className="text-sm text-muted-foreground">Click to switch between available languages</p>
                 </CardContent>
             </Card>

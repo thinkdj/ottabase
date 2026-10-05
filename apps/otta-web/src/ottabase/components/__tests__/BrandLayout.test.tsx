@@ -79,7 +79,8 @@ vi.mock('@/ottabase/config', () => ({
     appConfig: { features: { spotlight: { enabled: true, shortcuts: ['mod+k', '/'] } } },
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
-    i18nConfig: { enabledLanguages: ['en'] },
+    // Two languages: the switcher only renders once there is a choice
+    i18nConfig: { enabledLanguages: ['en', 'es'] },
 }));
 vi.mock('@ottabase/ui-shadcn', () => ({
     cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
