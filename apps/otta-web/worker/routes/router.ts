@@ -63,6 +63,7 @@ import {
     handleAdminRoleUpdate,
     handleAdminRolesList,
 } from './admin-roles';
+import { handleAdminFlaggedComments } from './admin-comments';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './admin-users';
 import {
     handleAiComplete,
@@ -317,6 +318,7 @@ apiRouter.get('/api/audit/logs', h(handleAuditLogs));
 apiRouter.get('/api/admin/users', h(handleAdminUsers));
 apiRouter.get('/api/admin/users/search', h(handleAdminUserSearch));
 apiRouter.get('/api/admin/users/:userId', (c) => handleAdminUserById(ctxOf(c), c.params.userId));
+apiRouter.get('/api/admin/comments/flagged', h(handleAdminFlaggedComments));
 apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
 apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
 apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));

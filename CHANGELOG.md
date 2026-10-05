@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The admin overview shows what needs attention.** `/admin` opens with the things waiting on someone (comments readers
+  flagged, with links to their posts; jobs in the dead-letter queue; posts scheduled to publish; a kill switch left on),
+  then a few headline counts, the last eight audit entries in plain words, and the section directory as one compact list
+  instead of a wall of cards. Flagged comments come from the new `GET /api/admin/comments/flagged` endpoint, which keeps
+  an organization admin inside their own organization. Every number fails quietly, so an admin who may not read a
+  platform-wide count simply does not get it.
 - **Admin lists share one data table.** Users, Organizations, Organization members and Content now render through
   `@ottabase/ui-datatable` the way Shortlinks does: one search box, one pager, one loading and empty state, and a click
   on a row opens the thing (a person's access, an organization's members, a post's editor). The package gained

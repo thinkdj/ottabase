@@ -113,8 +113,9 @@ export async function handleShortlinksCreate(context: ApiRouteContext): Promise<
             });
         }
     } else {
-        shortCode = await freeShortCode();
-        if (!shortCode) return errorResponse('Could not find a free short code, try again', 503);
+        const generated = await freeShortCode();
+        if (!generated) return errorResponse('Could not find a free short code, try again', 503);
+        shortCode = generated;
     }
 
     try {

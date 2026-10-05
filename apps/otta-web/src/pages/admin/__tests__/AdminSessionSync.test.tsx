@@ -1,3 +1,4 @@
+import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,30 +15,11 @@ vi.mock('@/ottabase/config/admin-nav', () => ({
     getEnabledAdminNav: () => [],
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({
-    Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    CardDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    CardTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
-    Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
-    Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+vi.mock('@/ottabase/config', () => ({ PACKAGES_ENABLED: {} }));
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
     useLocation: () => ({ pathname: '/admin' }),
-}));
-
-vi.mock('lucide-react', () => ({
-    ArrowRight: () => null,
-    LayoutDashboard: () => null,
-    Menu: () => null,
-    Search: () => null,
-    X: () => null,
 }));
 
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -51,10 +33,13 @@ describe('admin session synchronization', () => {
 
     it('reads the shared session without initiating another sync', () => {
         render(
-            <>
+            <OttaQueryProvider
+                apiClient={vi.fn().mockResolvedValue({})}
+                visibilityScope={{ appId: 'app', organizationId: null, principalId: null }}
+            >
                 <AdminLayout>Admin content</AdminLayout>
                 <AdminIndexPage />
-            </>,
+            </OttaQueryProvider>,
         );
 
         expect(useSession).toHaveBeenCalledTimes(2);

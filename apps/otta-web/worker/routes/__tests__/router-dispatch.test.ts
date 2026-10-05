@@ -76,6 +76,9 @@ vi.mock('../admin-roles', () => ({
     handleAdminRolesList: handlerMock('handleAdminRolesList'),
 }));
 
+vi.mock('../admin-comments', () => ({
+    handleAdminFlaggedComments: handlerMock('handleAdminFlaggedComments'),
+}));
 vi.mock('../admin-users', () => ({
     handleAdminUserById: handlerMock('handleAdminUserById'),
     handleAdminUserSearch: handlerMock('handleAdminUserSearch'),
@@ -267,6 +270,7 @@ import {
     handleAdminRoleUpdate,
     handleAdminRolesList,
 } from '../admin-roles';
+import { handleAdminFlaggedComments } from '../admin-comments';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from '../admin-users';
 import { handleAuditLogs } from '../audit';
 import {
@@ -522,6 +526,12 @@ describe('router dispatch parity', () => {
     });
 
     describe('admin users', () => {
+        it('GET /api/admin/comments/flagged dispatches to the moderation queue', async () => {
+            const { response } = await dispatch('GET', '/api/admin/comments/flagged');
+            expect(handleAdminFlaggedComments).toHaveBeenCalledTimes(1);
+            expect(await response!.text()).toBe('handleAdminFlaggedComments');
+        });
+
         it('GET /api/admin/users/search dispatches to search, not user-by-id', async () => {
             const { response, context } = await dispatch('GET', '/api/admin/users/search');
             expect(handleAdminUserSearch).toHaveBeenCalledTimes(1);
