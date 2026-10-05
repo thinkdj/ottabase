@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The demo gallery is grouped and complete.** Demos sit in five sections (Design and layout, Content, Data and forms,
+  Platform, Cloudflare) on the index page and in the side navigation, with one search over label, title and description
+  shared by both (`searchDemos`, `groupDemos` in `demoItems.ts`). The nine Cloudflare pages that were only reachable
+  from the Cloudflare overview (D1, KV, R2, Images, Hyperdrive, Queues, Rate Limiting, Realtime, PDF Playground) are now
+  gallery items, the overview is the group's link, and phones get a jump list in place of the hidden sidebar.
 - **The account page shows where you are signed in and lets you connect providers.** A new "Where you are signed in"
   card lists every open session (device from the sign-in request, when it started, the current one marked) with Sign out
   per device and Sign out other devices, backed by `GET/DELETE /api/users/me/sessions[/:id]` and `listUserSessions` /

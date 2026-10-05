@@ -1,14 +1,15 @@
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input } from '@ottabase/ui-shadcn';
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
-import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { Layout, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEMO_ITEMS } from './demoItems';
+import { DEMO_ITEMS, groupDemos, searchDemos } from './demoItems';
 import './demo.css';
 
 export function DemoLayout() {
     const location = useLocation();
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const contentRef = useRef<HTMLElement | null>(null);
 
@@ -20,11 +21,15 @@ export function DemoLayout() {
         window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     }, [location.pathname]);
 
-    const filteredItems = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return DEMO_ITEMS;
-        return DEMO_ITEMS.filter((item) => item.label.toLowerCase().includes(q));
-    }, [search]);
+    const sections = useMemo(() => groupDemos(searchDemos(search)), [search]);
+    const linkClass = (active: boolean) =>
+        cn(
+            'h-8 w-full justify-start gap-2.5 font-normal',
+            active
+                ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+        );
+    const current = DEMO_ITEMS.find((item) => location.pathname === item.to)?.to ?? '/demo';
 
     return (
         <div className="otta-demo flex min-h-[calc(100vh-3.5rem)]">
@@ -39,7 +44,8 @@ export function DemoLayout() {
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                                placeholder="Search…"
+                                placeholder="Search"
+                                aria-label="Filter demos"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="h-8 pl-8 pr-8 text-sm"
@@ -56,19 +62,13 @@ export function DemoLayout() {
                             )}
                         </div>
                     </div>
-                    <nav className="-mr-1 space-y-1 overflow-y-auto pr-1">
-                        {/* Overview link – always shown */}
+                    <nav className="-mr-1 space-y-4 overflow-y-auto pr-1" aria-label="Demos">
                         {!search && (
                             <Button
                                 asChild
                                 variant="ghost"
                                 size="sm"
-                                className={cn(
-                                    'h-8 w-full justify-start gap-2.5 font-normal',
-                                    location.pathname === '/demo' || location.pathname === '/demo/'
-                                        ? 'bg-muted font-medium text-foreground hover:bg-muted'
-                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                                )}
+                                className={linkClass(location.pathname === '/demo' || location.pathname === '/demo/')}
                             >
                                 <Link to="/demo">
                                     <Layout className="h-4 w-4 shrink-0 opacity-80" />
@@ -76,29 +76,28 @@ export function DemoLayout() {
                                 </Link>
                             </Button>
                         )}
-                        {filteredItems.map((item, index) => {
-                            const active = location.pathname.startsWith(item.to);
-                            return (
-                                <Button
-                                    key={String(index) + '-' + String(item.to)}
-                                    asChild
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn(
-                                        'h-8 w-full justify-start gap-2.5 font-normal',
-                                        active
-                                            ? 'bg-muted font-medium text-foreground hover:bg-muted'
-                                            : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                                    )}
-                                >
-                                    <Link to={item.to}>
-                                        <item.icon className="h-4 w-4 shrink-0 opacity-80" />
-                                        {item.label}
-                                    </Link>
-                                </Button>
-                            );
-                        })}
-                        {search && filteredItems.length === 0 && (
+                        {sections.map(({ group, items }) => (
+                            <div key={group.id} className="space-y-0.5">
+                                <h3 className="px-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                                    {group.label}
+                                </h3>
+                                {items.map((item) => (
+                                    <Button
+                                        key={item.to}
+                                        asChild
+                                        variant="ghost"
+                                        size="sm"
+                                        className={linkClass(location.pathname === item.to)}
+                                    >
+                                        <Link to={item.to}>
+                                            <item.icon className="h-4 w-4 shrink-0 opacity-80" />
+                                            {item.label}
+                                        </Link>
+                                    </Button>
+                                ))}
+                            </div>
+                        ))}
+                        {search && sections.length === 0 && (
                             <p className="px-3 py-2 text-xs text-muted-foreground">No matches</p>
                         )}
                     </nav>
@@ -107,9 +106,29 @@ export function DemoLayout() {
 
             {/* Content */}
             <main ref={contentRef} className="min-w-0 flex-1 overflow-auto bg-background">
-                <div className="container mx-auto max-w-6xl px-8 py-10">
-                    <div className="mb-6">
+                <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                         <Breadcrumbs />
+                        {/* Phones have no sidebar: the same list as a select */}
+                        <label className="md:hidden">
+                            <span className="sr-only">Jump to a demo</span>
+                            <select
+                                value={current}
+                                onChange={(e) => void navigate({ to: e.target.value as never })}
+                                className="h-9 max-w-[60vw] rounded-lg border border-input bg-background px-2 text-sm"
+                            >
+                                <option value="/demo">All demos</option>
+                                {groupDemos().map(({ group, items }) => (
+                                    <optgroup key={group.id} label={group.label}>
+                                        {items.map((item) => (
+                                            <option key={item.to} value={item.to}>
+                                                {item.label}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                        </label>
                     </div>
                     <Outlet />
                 </div>

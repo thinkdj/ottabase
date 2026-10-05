@@ -33,13 +33,50 @@ import {
     Timer,
     Type,
     Upload,
+    FileOutput,
+    Gauge,
+    HardDrive,
+    Image as ImageIcon,
+    KeyRound,
+    ListOrdered,
+    Radio,
+    ShieldAlert,
     Wind,
     Zap,
 } from 'lucide-react';
 import type { ElementType } from 'react';
 
+export type DemoGroupId = 'design' | 'content' | 'data' | 'platform' | 'cloudflare';
+
+export interface DemoGroup {
+    id: DemoGroupId;
+    label: string;
+    description: string;
+    /** A page that introduces the whole group, when there is one */
+    overview?: string;
+}
+
+/** Gallery sections, in display order */
+export const DEMO_GROUPS: DemoGroup[] = [
+    {
+        id: 'design',
+        label: 'Design and layout',
+        description: 'Theming, the layout engine, navigation and the UI kits.',
+    },
+    { id: 'content', label: 'Content', description: 'Writing, rendering, media, dates and languages.' },
+    { id: 'data', label: 'Data and forms', description: 'The ORM, forms, selects, tables, state and config.' },
+    { id: 'platform', label: 'Platform', description: 'Auth, email, notifications, analytics, logs and jobs.' },
+    {
+        id: 'cloudflare',
+        label: 'Cloudflare',
+        description: 'Every binding the worker can use, each with a live page.',
+        overview: '/demo/cloudflare',
+    },
+];
+
 export interface DemoItem {
     to: string;
+    group: DemoGroupId;
     icon: ElementType;
     /** Short label for sidemenu */
     label: string;
@@ -54,6 +91,7 @@ export interface DemoItem {
 export const DEMO_ITEMS: DemoItem[] = [
     {
         to: '/demo/theming',
+        group: 'design',
         icon: Paintbrush,
         label: 'Brand Engine (Theming)',
         title: 'Theming Configurator',
@@ -62,6 +100,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/layout',
+        group: 'design',
         icon: Layout,
         label: 'Layout Engine (Dynamic)',
         title: 'Dynamic Layout Engine',
@@ -71,6 +110,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/medialibrary',
+        group: 'content',
         icon: Blocks,
         label: 'Media Library',
         title: 'Media Library',
@@ -79,6 +119,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ottaeditor',
+        group: 'content',
         icon: Type,
         label: 'OttaEditor',
         title: 'OttaEditor',
@@ -87,6 +128,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ui-cropper',
+        group: 'content',
         icon: Crop,
         label: 'Image Cropper',
         title: 'Image Cropper',
@@ -96,6 +138,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/split-pane',
+        group: 'design',
         icon: SplitSquareHorizontal,
         label: 'Split Pane',
         title: 'Split Pane',
@@ -105,6 +148,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/codeblock',
+        group: 'content',
         icon: Highlighter,
         label: 'Code Highlighting',
         title: 'Code Highlighting',
@@ -114,6 +158,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/state',
+        group: 'data',
         icon: Settings,
         label: 'Global State Management',
         title: 'Global State Management',
@@ -123,6 +168,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ottaorm',
+        group: 'data',
         icon: Database,
         label: 'OttaORM',
         title: 'OttaORM',
@@ -131,6 +177,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/comments',
+        group: 'content',
         icon: IconMessageCircle,
         label: 'Comments',
         title: 'Comments',
@@ -139,6 +186,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ottaforms',
+        group: 'data',
         icon: FileText,
         label: 'OttaForms',
         title: 'OttaForms',
@@ -148,6 +196,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ottaselect',
+        group: 'data',
         icon: List,
         label: 'OttaSelect',
         title: 'OttaSelect',
@@ -156,6 +205,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ui-datatable',
+        group: 'data',
         icon: Layout,
         label: 'DataTable',
         title: 'DataTable',
@@ -165,6 +215,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/logger',
+        group: 'platform',
         icon: FileStack,
         label: 'Logger',
         title: 'Logger',
@@ -172,16 +223,8 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
-        to: '/demo/cloudflare',
-        icon: Cloud,
-        label: 'Cloudflare Services',
-        title: 'Cloudflare Services',
-        description:
-            'Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2, Queues, Images, PubSub, and Rate Limiting',
-        buttonVariant: 'outline',
-    },
-    {
         to: '/demo/cloudflare/ai',
+        group: 'cloudflare',
         icon: Bot,
         label: 'OttaAI Playground',
         title: 'OttaAI Playground',
@@ -191,6 +234,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/cloudflare/pdf',
+        group: 'cloudflare',
         icon: FileText,
         label: 'PDF Rendering',
         title: 'Cloudflare PDF Rendering',
@@ -199,6 +243,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/cloudflare/file-upload',
+        group: 'cloudflare',
         icon: Upload,
         label: 'File Upload',
         title: 'File Upload Package',
@@ -208,6 +253,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/timezone',
+        group: 'content',
         icon: Clock,
         label: 'Timezone Utils',
         title: 'Timezone Utilities',
@@ -217,6 +263,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/api',
+        group: 'data',
         icon: Zap,
         label: 'API Client',
         title: 'API Client',
@@ -225,6 +272,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/renderer',
+        group: 'content',
         icon: Code,
         label: 'Content Renderer',
         title: 'OttaRenderer',
@@ -233,6 +281,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/email',
+        group: 'platform',
         icon: Mail,
         label: 'Email Templates',
         title: 'Email Templates',
@@ -241,6 +290,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/notifications',
+        group: 'platform',
         icon: Bell,
         label: 'Notifications',
         title: 'Notifications',
@@ -250,6 +300,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/spotlight',
+        group: 'design',
         icon: ScanSearch,
         label: 'Spotlight',
         title: 'Spotlight',
@@ -258,6 +309,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/menus',
+        group: 'design',
         icon: PanelTop,
         label: 'Menu Renderer',
         title: 'OttaMenu',
@@ -266,6 +318,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/analytics',
+        group: 'platform',
         icon: Zap,
         label: 'Analytics',
         title: 'Analytics',
@@ -274,6 +327,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/auth',
+        group: 'platform',
         icon: ShieldCheck,
         label: 'Auth Session',
         title: 'Auth Session',
@@ -282,6 +336,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/brand-engine',
+        group: 'design',
         icon: Palette,
         label: 'Brand Engine',
         title: 'Brand Engine',
@@ -290,6 +345,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ottadate',
+        group: 'content',
         icon: Calendar,
         label: 'OttaDate',
         title: 'OttaDate',
@@ -299,6 +355,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/i18n',
+        group: 'content',
         icon: Languages,
         label: 'Internationalization (i18n)',
         title: 'Internationalization',
@@ -307,6 +364,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/breadcrumbs',
+        group: 'design',
         icon: Navigation,
         label: 'Breadcrumbs',
         title: 'Smart Breadcrumbs',
@@ -316,6 +374,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/mantine',
+        group: 'design',
         icon: Layout,
         label: 'Mantine UI',
         title: 'Mantine Demo',
@@ -324,6 +383,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/shadcn',
+        group: 'design',
         icon: Palette,
         label: 'shadcn/ui',
         title: 'shadcn/ui Demo',
@@ -332,6 +392,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/cron',
+        group: 'platform',
         icon: Timer,
         label: 'Cron Scheduler',
         title: 'Cron Scheduler',
@@ -341,6 +402,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ui-tailwind',
+        group: 'design',
         icon: Wind,
         label: 'Tailwind (Preset)',
         title: 'Tailwind (Preset)',
@@ -350,6 +412,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ui-components',
+        group: 'design',
         icon: Blocks,
         label: 'UI Components',
         title: 'UI Components',
@@ -358,6 +421,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/ui-base',
+        group: 'design',
         icon: Layers,
         label: 'UI Base',
         title: 'UI Base',
@@ -367,6 +431,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/scripts',
+        group: 'platform',
         icon: Terminal,
         label: 'Scripts (CLI)',
         title: 'Scripts (CLI)',
@@ -375,6 +440,7 @@ export const DEMO_ITEMS: DemoItem[] = [
     },
     {
         to: '/demo/config',
+        group: 'data',
         icon: Settings,
         label: 'Config',
         title: 'Config',
@@ -382,4 +448,99 @@ export const DEMO_ITEMS: DemoItem[] = [
             'Centralized app configuration: createAppConfig, defineOttabaseConfig, package gating, and env resolution.',
         buttonVariant: 'outline',
     },
+    {
+        to: '/demo/cloudflare/d1',
+        group: 'cloudflare',
+        icon: Database,
+        label: 'D1 Database',
+        title: 'D1 Database',
+        description: 'SQLite at the edge: typed queries, migrations and CRUD against the bound D1 database.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/kv',
+        group: 'cloudflare',
+        icon: KeyRound,
+        label: 'KV Storage',
+        title: 'KV Storage',
+        description: 'Key-value reads and writes with TTLs and metadata, the store behind sessions and caches.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/r2',
+        group: 'cloudflare',
+        icon: HardDrive,
+        label: 'R2 Storage',
+        title: 'R2 Storage',
+        description: 'Object storage for uploads and exports, with signed access and no egress fees.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/images',
+        group: 'cloudflare',
+        icon: ImageIcon,
+        label: 'Images',
+        title: 'Cloudflare Images',
+        description: 'Upload, resize and deliver images through Cloudflare Images.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/hyperdrive',
+        group: 'cloudflare',
+        icon: Gauge,
+        label: 'Hyperdrive',
+        title: 'Hyperdrive',
+        description: 'Connection pooling and query caching for an external Postgres or MySQL database.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/queues',
+        group: 'cloudflare',
+        icon: ListOrdered,
+        label: 'Queues',
+        title: 'Queues',
+        description: 'Producers, consumers and retries on Cloudflare Queues for work that can wait.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/rate-limiting',
+        group: 'cloudflare',
+        icon: ShieldAlert,
+        label: 'Rate Limiting',
+        title: 'Rate Limiting',
+        description: 'Per key request throttling with the Rate Limiting binding, and what a blocked call sees.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/realtime',
+        group: 'cloudflare',
+        icon: Radio,
+        label: 'Realtime',
+        title: 'Realtime Pub/Sub',
+        description: 'WebSocket channels over Durable Objects with offline buffering and presence.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/pdf/playground',
+        group: 'cloudflare',
+        icon: FileOutput,
+        label: 'PDF Playground',
+        title: 'PDF Playground',
+        description: 'Render a document to PDF with Browser Rendering and tune the page, margins and headers.',
+        buttonVariant: 'outline',
+    },
 ];
+
+/** Items that match a query in their label, title or description; everything when the query is empty. */
+export function searchDemos(query: string, items: DemoItem[] = DEMO_ITEMS): DemoItem[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => `${item.label} ${item.title} ${item.description}`.toLowerCase().includes(q));
+}
+
+/** The gallery sections in order, each with its items; a section with nothing in it is left out. */
+export function groupDemos(items: DemoItem[] = DEMO_ITEMS): { group: DemoGroup; items: DemoItem[] }[] {
+    return DEMO_GROUPS.map((group) => ({ group, items: items.filter((item) => item.group === group.id) })).filter(
+        (section) => section.items.length > 0,
+    );
+}
