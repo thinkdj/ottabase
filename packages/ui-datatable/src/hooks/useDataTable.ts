@@ -18,7 +18,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UseDataTableOptions, UseDataTableReturn } from '../types';
 
 /**
@@ -36,9 +36,7 @@ import type { UseDataTableOptions, UseDataTableReturn } from '../types';
  * });
  * ```
  */
-export function useDataTable<TData extends Record<string, unknown>>(
-    options: UseDataTableOptions<TData>,
-): UseDataTableReturn<TData> {
+export function useDataTable<TData extends object>(options: UseDataTableOptions<TData>): UseDataTableReturn<TData> {
     const {
         data,
         columns,
@@ -47,14 +45,15 @@ export function useDataTable<TData extends Record<string, unknown>>(
         enableMultiRowSelection = true,
         enableColumnVisibility = true,
 
-        // Server-side state
+        // Server-side state: a `list` from useListState sets all of it
+        list,
         sorting: serverSorting,
         onSortingChange: onServerSortingChange,
-        pagination: serverPagination,
-        onPaginationChange: onServerPaginationChange,
-        manualSorting = false,
-        manualPagination = false,
-        manualFiltering = false,
+        pagination: serverPagination = list?.pagination,
+        onPaginationChange: onServerPaginationChange = list?.onPaginationChange,
+        manualSorting = Boolean(list),
+        manualPagination = Boolean(list),
+        manualFiltering = Boolean(list),
         rowCount,
 
         // Client-side defaults
@@ -68,6 +67,10 @@ export function useDataTable<TData extends Record<string, unknown>>(
     // ── Internal state ───────────────────────────────────────
 
     const [clientSorting, setClientSorting] = useState<SortingState>(initialSorting);
+    const [clientPagination, setClientPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: initialPageSize,
+    });
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     // Columns declared `visible: false` (createColumns meta) start hidden; explicit initialColumnVisibility wins
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -119,23 +122,32 @@ export function useDataTable<TData extends Record<string, unknown>>(
                 pageSize: serverPagination.perPage,
             };
         }
-        return { pageIndex: 0, pageSize: initialPageSize };
-    }, [manualPagination, serverPagination, initialPageSize]);
+        return clientPagination;
+    }, [manualPagination, serverPagination, clientPagination]);
 
     const handlePaginationChange = useCallback(
         (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
             const newPagination = typeof updater === 'function' ? updater(paginationState) : updater;
 
-            if (manualPagination && onServerPaginationChange && serverPagination) {
-                onServerPaginationChange({
+            if (manualPagination) {
+                onServerPaginationChange?.({
                     page: newPagination.pageIndex + 1, // Convert back to 1-indexed
                     perPage: newPagination.pageSize,
-                    total: serverPagination.total,
                 });
+            } else {
+                setClientPagination(newPagination);
             }
         },
-        [manualPagination, onServerPaginationChange, serverPagination, paginationState],
+        [manualPagination, onServerPaginationChange, paginationState],
     );
+
+    // A page past the end (rows deleted, a filter narrowed) falls back to the last page once the count is known.
+    const lastPage = list && rowCount ? Math.ceil(rowCount / list.perPage) : 0;
+    const listPage = list?.page;
+    const setListPage = list?.setPage;
+    useEffect(() => {
+        if (setListPage && lastPage && listPage && listPage > lastPage) setListPage(lastPage);
+    }, [lastPage, listPage, setListPage]);
 
     // ── Table instance ───────────────────────────────────────
 
@@ -168,7 +180,7 @@ export function useDataTable<TData extends Record<string, unknown>>(
                   onPaginationChange: handlePaginationChange as never,
                   manualPagination,
                   ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
-                  ...(manualPagination && rowCount ? { rowCount } : {}),
+                  ...(manualPagination ? { rowCount: rowCount ?? 0 } : {}),
               }
             : {}),
 

@@ -30,8 +30,27 @@ export interface DataTablePaginationState {
     page: number;
     /** Items per page */
     perPage: number;
-    /** Total number of items (from server) */
-    total: number;
+}
+
+// ── List state (server-driven lists) ─────────────────────────
+
+/** What `useListState` returns: the page, page size and search of a list the server pages */
+export interface ListState {
+    page: number;
+    perPage: number;
+    /** What the search box shows */
+    search: string;
+    /** The search to send: trimmed, and settled once typing pauses */
+    query: string;
+    /** `page=2&perPage=25&search=ada`, ready to append to an endpoint */
+    params: string;
+    setPage: (page: number) => void;
+    /** A new search starts from the first page once it settles */
+    setSearch: (value: string) => void;
+    /** Back to the first page. Call it when a filter outside the table changes. */
+    reset: () => void;
+    pagination: DataTablePaginationState;
+    onPaginationChange: (next: DataTablePaginationState) => void;
 }
 
 // ── Row Actions ──────────────────────────────────────────────
@@ -120,6 +139,8 @@ export interface UseDataTableOptions<TData> {
     enableColumnVisibility?: boolean;
 
     // ── Server-side state (controlled) ───────────────────────
+    /** State from `useListState`: turns on server mode and drives the pager. Pass `rowCount` with it. */
+    list?: ListState;
     /** Server-side sorting state */
     sorting?: DataTableSortingState | null;
     /** Callback when sort changes */
@@ -204,13 +225,9 @@ export interface DataTableProps<TData> {
     toolbarLeft?: React.ReactNode;
     /** Additional className */
     className?: string;
-    /** Pagination state for server-side pagination display */
-    pagination?: DataTablePaginationState;
-    /** On pagination change for server-side */
-    onPaginationChange?: (pagination: DataTablePaginationState) => void;
-    /** Page size options */
+    /** Page size options (default 10, 20, 30, 50, 100) */
     pageSizeOptions?: number[];
-    /** Show pagination */
+    /** Show the row count and pager under the table. Page controls appear once there is more than one page's worth. */
     showPagination?: boolean;
     /** Compact mode – reduced padding */
     compact?: boolean;
@@ -222,51 +239,4 @@ export interface DataTableProps<TData> {
     stickyHeader?: boolean;
     /** Max height for scrollable body (enables sticky header) */
     maxHeight?: string | number;
-}
-
-// ── Server Table Options ─────────────────────────────────────
-
-/**
- * Options for useServerTable — integrates with OttaORM's useList/useInfiniteList
- */
-export interface UseServerTableOptions<TData> {
-    /** Entity name for OttaORM (e.g. 'todos') */
-    entityName: string;
-    /** TanStack Table column definitions */
-    columns: ColumnDef<TData, unknown>[];
-    /** Items per page (default: 10) */
-    perPage?: number;
-    /** Default sort column */
-    defaultSort?: string;
-    /** Default sort direction */
-    defaultSortDirection?: 'asc' | 'desc';
-    /** Enable row selection */
-    enableRowSelection?: boolean;
-    /** Initial column visibility */
-    initialColumnVisibility?: VisibilityState;
-    /** Row ID accessor */
-    getRowId?: (row: TData) => string;
-    /** API base path (default: '/api/ottaorm') */
-    apiPath?: string;
-    /** Custom fetch function */
-    fetchFn?: typeof fetch;
-    /** Page size options */
-    pageSizeOptions?: number[];
-}
-
-export interface UseServerTableReturn<TData> extends UseDataTableReturn<TData> {
-    /** Loading state */
-    isLoading: boolean;
-    /** Error state */
-    error: Error | null;
-    /** Refetch data */
-    refetch: () => void;
-    /** Current search query */
-    searchQuery: string;
-    /** Change search */
-    setSearchQuery: (query: string) => void;
-    /** Server pagination state */
-    pagination: DataTablePaginationState;
-    /** Server sorting state */
-    serverSorting: DataTableSortingState | null;
 }

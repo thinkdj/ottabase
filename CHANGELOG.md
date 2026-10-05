@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Admin lists share one data table.** Users, Organizations, Organization members and Content now render through
+  `@ottabase/ui-datatable` the way Shortlinks does: one search box, one pager, one loading and empty state, and a click
+  on a row opens the thing (a person's access, an organization's members, a post's editor). The package gained
+  `useListState` (page, page size and a search that is sent once typing pauses, with `params` ready for the request) in
+  place of the fetch-bound `useServerTable`; `DataTable` reads paging from the table instance, so client-side paging
+  works and the pager shows only the row count until there is more than a page. `Chip` joins `@ottabase/ui-components`
+  for the status, plan and type labels those lists share.
 - **The demo gallery is grouped and complete.** Demos sit in five sections (Design and layout, Content, Data and forms,
   Platform, Cloudflare) on the index page and in the side navigation, with one search over label, title and description
   shared by both (`searchDemos`, `groupDemos` in `demoItems.ts`). The nine Cloudflare pages that were only reachable

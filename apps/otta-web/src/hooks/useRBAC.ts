@@ -22,7 +22,7 @@ import type {
 } from '@/types/rbac';
 import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/client';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 // ============================================================================
@@ -202,6 +202,8 @@ export function useOrganizationMembers(organizationId: string, page = 1, perPage
         endpoint: `/api/admin/organizations/${organizationId}/members?${queryParams}`,
         queryOptions: {
             enabled: !!organizationId,
+            // Turning a page keeps the current rows on screen until the next ones arrive
+            placeholderData: keepPreviousData,
         },
     });
 }

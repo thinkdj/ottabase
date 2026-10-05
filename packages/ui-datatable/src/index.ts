@@ -12,7 +12,7 @@
 
 // ── Hooks ────────────────────────────────────────────────────
 export { useDataTable } from './hooks/useDataTable';
-export { useServerTable } from './hooks/useServerTable';
+export { useListState, type ListStateOptions } from './hooks/useListState';
 
 // ── Utilities (pure, UI-free) ────────────────────────────────
 export { truncateText } from './utils/text';
@@ -25,10 +25,9 @@ export type {
     DataTableAction,
     DataTableBulkAction,
     DataTableColumnDef,
+    ListState,
     UseDataTableOptions,
     UseDataTableReturn,
-    UseServerTableOptions,
-    UseServerTableReturn,
 } from './types';
 
 // ── Re-exports from TanStack Table (convenience) ─────────────

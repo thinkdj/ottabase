@@ -13,6 +13,8 @@ import { DataTableViewOptions } from './DataTableViewOptions';
 
 interface DataTableToolbarProps<TData> {
     table: Table<TData>;
+    /** Whether to render the search box (default: when a handler is given or the table filters on the client) */
+    showSearch?: boolean;
     /** Controlled search value */
     searchValue?: string;
     /** Search change handler */
@@ -43,6 +45,7 @@ export function DataTableToolbar<TData>({
     table,
     searchValue: controlledSearch,
     onSearchChange,
+    showSearch = onSearchChange !== undefined || !table.options.manualFiltering,
     searchPlaceholder = 'Search...',
     showColumnVisibility = true,
     bulkActions,
@@ -111,7 +114,7 @@ export function DataTableToolbar<TData>({
                         {toolbarLeft}
 
                         {/* Search input */}
-                        {(onSearchChange || !controlledSearch) && (
+                        {showSearch && (
                             <div className="relative max-w-sm">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                                 <input

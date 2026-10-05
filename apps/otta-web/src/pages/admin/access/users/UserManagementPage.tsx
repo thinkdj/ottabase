@@ -1,36 +1,17 @@
 /**
- * User Management Page (Admin)
- *
- * System-wide user management for admins
+ * Users (admin): everyone with an account, and the way into what each person may do.
  */
-
+import type { PaginatedResponse } from '@/lib/api-types';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-    Badge,
-    Button,
-    Input,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@ottabase/ui-shadcn';
-import type { PaginatedResponse } from '@ottabase/utils/pagination';
-import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Mail, Search, Shield } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { LoadingState, EmptyState } from '@ottabase/ui-components';
-
-const PER_PAGE = 25;
-
-const CHIP_CLASS =
-    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
-const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const MICRO_LABEL_CLASS = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+import { Chip } from '@ottabase/ui-components';
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable } from '@ottabase/ui-datatable/react';
+import { Alert, Avatar, AvatarFallback, AvatarImage } from '@ottabase/ui-shadcn';
+import { formatShortDate } from '@ottabase/utils/timezone';
+import { keepPreviousData } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { ShieldCheck, Users } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
 
 interface User {
     id: string;
@@ -42,236 +23,113 @@ interface User {
     role?: 'admin' | 'user';
 }
 
+const NO_USERS: User[] = [];
+
+const initials = (user: User) =>
+    (user.name || user.email || '?')
+        .split(/[\s@]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase();
+
 export function UserManagementPage() {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Debounce search to avoid hammering the API on every keystroke.
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-            setCurrentPage(1); // Reset to first page on new search
-        }, 300);
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [searchTerm]);
-
-    const queryParams = useMemo(() => {
-        const params = new URLSearchParams();
-        params.set('page', String(currentPage));
-        params.set('per_page', String(PER_PAGE));
-        if (debouncedSearch) params.set('search', debouncedSearch);
-        return params.toString();
-    }, [currentPage, debouncedSearch]);
-
-    const { data: response, isLoading } = useApiQuery<PaginatedResponse<User>>({
+    const navigate = useNavigate();
+    const list = useListState();
+    const users = useApiQuery<PaginatedResponse<User>>({
         entity: 'users',
-        queryKey: ['admin-users', queryParams],
-        endpoint: `/api/admin/users?${queryParams}`,
-        queryOptions: { staleTime: 2 * 60 * 1000 },
+        queryKey: ['admin-users', list.params],
+        endpoint: `/api/admin/users?${list.params}`,
+        queryOptions: { placeholderData: keepPreviousData, meta: { errorPresentation: 'local' } },
     });
+    const rows = users.data?.data ?? NO_USERS;
+    const total = users.data?.pagination.total;
 
-    const users = response?.data ?? [];
-    const pagination = response?.pagination;
+    const openAccess = useCallback(
+        (user: User) => void navigate({ to: '/admin/access/users/$userId/rbac', params: { userId: user.id } }),
+        [navigate],
+    );
 
-    const getUserInitials = (user: User) => {
-        if (user.name) {
-            return user.name
-                .split(' ')
-                .filter((n) => n.length > 0)
-                .map((n) => n[0])
-                .join('')
-                .toUpperCase();
-        }
-        return user.email?.[0]?.toUpperCase() || '?';
-    };
+    const columns = useMemo(
+        () => [
+            ...createColumns<User>([
+                {
+                    key: 'name',
+                    header: 'User',
+                    cell: ({ row }) => (
+                        <span className="flex min-w-[14rem] items-center gap-3">
+                            <Avatar className="h-8 w-8 shrink-0 ring-1 ring-border">
+                                <AvatarImage src={row.image || undefined} />
+                                <AvatarFallback className="text-xs">{initials(row)}</AvatarFallback>
+                            </Avatar>
+                            <span className="min-w-0">
+                                <span className="block truncate font-medium">{row.name || 'No name'}</span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                    {row.email || 'No email'}
+                                </span>
+                            </span>
+                        </span>
+                    ),
+                },
+                {
+                    key: 'role',
+                    header: 'Role',
+                    width: 110,
+                    cell: ({ row }) => <Chip>{row.role === 'admin' ? 'Admin' : 'User'}</Chip>,
+                },
+                {
+                    key: 'emailVerified',
+                    header: 'Email',
+                    width: 130,
+                    cell: ({ row }) =>
+                        row.emailVerified ? <Chip dot="success">Verified</Chip> : <Chip dot="warning">Unverified</Chip>,
+                },
+                {
+                    key: 'createdAt',
+                    header: 'Joined',
+                    width: 130,
+                    cell: ({ row }) => <span className="text-muted-foreground">{formatShortDate(row.createdAt)}</span>,
+                },
+                {
+                    key: 'id',
+                    header: 'ID',
+                    visible: false,
+                    cell: ({ row }) => <code className="font-mono text-xs text-muted-foreground">{row.id}</code>,
+                },
+            ]),
+            actionsColumn<User>([{ label: 'Access', icon: ShieldCheck, onClick: openAccess }]),
+        ],
+        [openAccess],
+    );
 
-    const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0;
-    const pageEnd = pagination ? Math.min(pagination.page * pagination.perPage, pagination.total) : 0;
+    const { table } = useDataTable<User>({ data: rows, columns, getRowId: (row) => row.id, list, rowCount: total });
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="space-y-4">
-                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                    <Link to="/admin">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Admin
-                    </Link>
-                </Button>
-
-                <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User Management</h1>
-                    <p className="max-w-3xl text-muted-foreground">View and manage all users across the system</p>
+            <header className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                    <Users className="h-7 w-7 text-primary" />
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Users</h1>
                 </div>
-            </div>
+                <p className="text-muted-foreground">
+                    Everyone with an account. Open a person to manage their roles and organizations.
+                </p>
+            </header>
 
-            {/* Stats */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl bg-muted/40 p-5">
-                    <p className={MICRO_LABEL_CLASS}>Total Users</p>
-                    <p className="mt-2 text-2xl font-semibold">{pagination?.total ?? '—'}</p>
-                </div>
-            </div>
+            {users.error && <Alert variant="destructive">{users.error.message}</Alert>}
 
-            {/* Users Table */}
-            <section className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-[0.9375rem] font-semibold">All Users</h2>
-                    <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-9 pl-10"
-                        />
-                    </div>
-                </div>
-
-                {isLoading ? (
-                    <div className="space-y-3" aria-busy="true">
-                        <span className="sr-only">Loading users…</span>
-                        <LoadingState count={5} height="h-12" />
-                    </div>
-                ) : users.length === 0 ? (
-                    <EmptyState title="No users found matching your search" />
-                ) : (
-                    <div className="overflow-hidden rounded-xl border border-border/60">
-                        <Table>
-                            <TableHeader className="bg-muted/40">
-                                <TableRow className="border-border/60 hover:bg-transparent">
-                                    <TableHead className={TH_CLASS}>User</TableHead>
-                                    <TableHead className={TH_CLASS}>Email</TableHead>
-                                    <TableHead className={TH_CLASS}>Role</TableHead>
-                                    <TableHead className={TH_CLASS}>Status</TableHead>
-                                    <TableHead className={TH_CLASS}>Joined</TableHead>
-                                    <TableHead className={`${TH_CLASS} text-right`}>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.map((user) => (
-                                    <TableRow
-                                        key={user.id}
-                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
-                                    >
-                                        <TableCell className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8 ring-1 ring-border">
-                                                    <AvatarImage src={user.image || undefined} />
-                                                    <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <div className="font-medium">{user.name || 'No name'}</div>
-                                                    <code className="font-mono text-xs text-muted-foreground">
-                                                        {user.id}
-                                                    </code>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <Mail className="h-4 w-4 text-muted-foreground" />
-                                                {user.email || 'No email'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            {user.role === 'admin' ? (
-                                                <Badge variant="outline" className={`gap-1 ${CHIP_CLASS}`}>
-                                                    <Shield className="h-3 w-3" />
-                                                    Admin
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className={CHIP_CLASS}>
-                                                    User
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            {user.emailVerified ? (
-                                                <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
-                                                    <span
-                                                        className="h-1.5 w-1.5 rounded-full bg-success"
-                                                        aria-hidden="true"
-                                                    />
-                                                    Verified
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className={`gap-1.5 ${CHIP_CLASS}`}>
-                                                    <span
-                                                        className="h-1.5 w-1.5 rounded-full bg-warning"
-                                                        aria-hidden="true"
-                                                    />
-                                                    Pending
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3">
-                                            <div className="flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                <Calendar className="h-4 w-4" />
-                                                {new Date(user.createdAt).toLocaleDateString()}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="px-4 py-3 text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-muted-foreground hover:text-foreground"
-                                                asChild
-                                            >
-                                                <Link
-                                                    to="/admin/access/users/$userId/rbac"
-                                                    params={{ userId: user.id }}
-                                                >
-                                                    View
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </section>
-
-            {/* Pagination Controls */}
-            {!isLoading && pagination && pagination.total > PER_PAGE && (
-                <div className="flex items-center justify-between">
-                    <p className={MICRO_LABEL_CLASS}>
-                        Showing {pageStart}–{pageEnd} of {pagination.total} users
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={pagination.page <= 1}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Prev
-                        </Button>
-                        <span className={MICRO_LABEL_CLASS}>
-                            Page {pagination.page} of {pagination.totalPages}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => p + 1)}
-                            disabled={pagination.page >= pagination.totalPages}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <DataTable
+                table={table}
+                isLoading={users.isLoading}
+                onRowClick={openAccess}
+                emptyIcon={Users}
+                emptyMessage={list.query ? 'No one matches your search.' : 'No users yet.'}
+                searchValue={list.search}
+                onSearchChange={list.setSearch}
+                searchPlaceholder="Search by name or email"
+                pageSizeOptions={[25, 50, 100]}
+            />
         </div>
     );
 }

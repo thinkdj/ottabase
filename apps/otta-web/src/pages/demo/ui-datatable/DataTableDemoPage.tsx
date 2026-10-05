@@ -4,8 +4,8 @@
 // Demonstrates @ottabase/ui-datatable with the Todo model
 // ============================================================
 
-import type { DataTableBulkAction, DataTablePaginationState, DataTableSortingState } from '@ottabase/ui-datatable';
-import { useDataTable } from '@ottabase/ui-datatable';
+import type { DataTableBulkAction, DataTableSortingState } from '@ottabase/ui-datatable';
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
 import { actionsColumn, createColumns, DataTable, selectColumn } from '@ottabase/ui-datatable/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { CheckCircle2, Edit2, Info, Trash2, X, XCircle } from 'lucide-react';
@@ -221,22 +221,28 @@ return (
     />
 );
 
-// ── Server-side with OttaORM ─────────────────
-import { useServerTable } from '@ottabase/ui-datatable';
+// ── Server-side: the server pages and searches ──
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
 
-const { table, isLoading, pagination, setSearchQuery } = useServerTable({
-    entityName: 'todos',
+const list = useListState({ perPage: 20 });
+const todos = useApiQuery({
+    entity: 'todos',
+    queryKey: ['list', list.params],
+    endpoint: \`/api/ottaorm/todos?\${list.params}\`,
+});
+const { table } = useDataTable({
+    data: todos.data?.data ?? [],
     columns,
-    perPage: 20,
-    defaultSort: 'createdAt',
+    list,
+    rowCount: todos.data?.pagination.total,
 });
 
 return (
     <DataTable
         table={table}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearchChange={setSearchQuery}
+        isLoading={todos.isLoading}
+        searchValue={list.search}
+        onSearchChange={list.setSearch}
     />
 );`}</code>
                     </pre>
@@ -256,7 +262,7 @@ return (
                         />
                         <FeatureItem
                             title="Server-Side Integration"
-                            description="useServerTable hook integrates with OttaORM's CRUD API for sort/filter/paginate"
+                            description="useListState owns the page, page size and search of a list the server pages"
                         />
                         <FeatureItem
                             title="Column Visibility"
@@ -379,15 +385,10 @@ function ServerSideDemo() {
         column: 'createdAt',
         direction: 'desc',
     });
-    const [pagination, setPagination] = useState<DataTablePaginationState>({
-        page: 1,
-        perPage: 10,
-        total: MOCK_TODOS.length,
-    });
-    const [search, setSearch] = useState('');
+    const list = useListState({ perPage: 10 });
 
     // Simulate server filtering
-    const filtered = MOCK_TODOS.filter((t) => !search || t.title.toLowerCase().includes(search.toLowerCase()));
+    const filtered = MOCK_TODOS.filter((t) => t.title.toLowerCase().includes(list.query.toLowerCase()));
 
     // Simulate server sorting
     const sorted = [...filtered].sort((a, b) => {
@@ -399,23 +400,15 @@ function ServerSideDemo() {
     });
 
     // Simulate server pagination
-    const start = (pagination.page - 1) * pagination.perPage;
-    const pageData = sorted.slice(start, start + pagination.perPage);
-
-    const serverPagination: DataTablePaginationState = {
-        ...pagination,
-        total: filtered.length,
-    };
+    const start = (list.page - 1) * list.perPage;
+    const pageData = sorted.slice(start, start + list.perPage);
 
     const { table } = useDataTable<Todo>({
         data: pageData,
         columns: todoColumns,
-        manualSorting: true,
-        manualPagination: true,
+        list,
         sorting,
         onSortingChange: setSorting,
-        pagination: serverPagination,
-        onPaginationChange: setPagination,
         rowCount: filtered.length,
     });
 
@@ -424,20 +417,16 @@ function ServerSideDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Server-Side Pagination & Sorting</CardTitle>
                 <CardDescription>
-                    Simulates server-driven data with manual sorting, pagination, and search. In production, use{' '}
-                    <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
-                        useServerTable()
-                    </code>{' '}
-                    to connect to OttaORM.
+                    Simulates server-driven data with manual sorting, pagination, and search.{' '}
+                    <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">useListState()</code>{' '}
+                    holds the page and search; the request is yours to make.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <DataTable
                     table={table}
-                    searchValue={search}
-                    onSearchChange={setSearch}
-                    pagination={serverPagination}
-                    onPaginationChange={setPagination}
+                    searchValue={list.search}
+                    onSearchChange={list.setSearch}
                     showPagination
                     showColumnVisibility
                 />

@@ -4,14 +4,14 @@ import { isApiError } from '@ottabase/api';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ConfirmDialog } from '@ottabase/ui-components';
-import { useDataTable, type DataTablePaginationState } from '@ottabase/ui-datatable';
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
 import { actionsColumn, createColumns, DataTable } from '@ottabase/ui-datatable/react';
 import { Alert, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle, toast } from '@ottabase/ui-shadcn';
 import { formatShortDate } from '@ottabase/utils/timezone';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { BarChart3, Copy, Link2, Pencil, Trash2 } from 'lucide-react';
-import { useCallback, useDeferredValue, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { ShortlinkForm } from './components/ShortlinkForm';
 
 type Row = ShortlinkRecord & { clicks: number };
@@ -46,19 +46,16 @@ export function ShortlinksPage() {
         [navigate],
     );
 
-    const [page, setPage] = useState(1);
-    const [perPage, setPerPage] = useState(15);
-    const [search, setSearch] = useState('');
-    const q = useDeferredValue(search.trim());
+    const list = useListState({ perPage: 15 });
     const [url, setUrl] = useState('');
     const [code, setCode] = useState('');
     const [createError, setCreateError] = useState<string | null>(null);
     const [pendingDelete, setPendingDelete] = useState<ShortlinkRecord | null>(null);
 
-    const list = useApiQuery<PaginatedResponse<ShortlinkRecord>>({
+    const links = useApiQuery<PaginatedResponse<ShortlinkRecord>>({
         entity: 'shortlinks',
-        queryKey: ['list', page, perPage, q],
-        endpoint: `/api/shortlinks?page=${page}&per_page=${perPage}${q ? `&search=${encodeURIComponent(q)}` : ''}`,
+        queryKey: ['list', list.params],
+        endpoint: `/api/shortlinks?${list.params}`,
         queryOptions: { meta: { errorPresentation: 'local' }, placeholderData: keepPreviousData },
     });
     // Clicks live in Analytics Engine. Without it the column and the total simply stay away.
@@ -77,13 +74,12 @@ export function ShortlinksPage() {
     );
     const totalClicks = clicksByCode ? [...clicksByCode.values()].reduce((sum, n) => sum + n, 0) : 0;
 
-    const links = useMemo(() => list.data?.data ?? [], [list.data]);
-    const total = list.data?.pagination.total ?? 0;
+    const total = links.data?.pagination.total ?? 0;
     const rows = useMemo<Row[]>(
-        () => links.map((link) => ({ ...link, clicks: clicksByCode?.get(link.shortCode) ?? 0 })),
-        [links, clicksByCode],
+        () => (links.data?.data ?? []).map((link) => ({ ...link, clicks: clicksByCode?.get(link.shortCode) ?? 0 })),
+        [links.data, clicksByCode],
     );
-    const editing = edit ? (links.find((link) => link.id === edit) ?? null) : null;
+    const editing = edit ? (rows.find((link) => link.id === edit) ?? null) : null;
 
     const create = useApiMutation<{ data: ShortlinkRecord }, CreateBody>({
         endpoint: '/api/shortlinks',
@@ -188,22 +184,7 @@ export function ShortlinksPage() {
         [clicksByCode, copyLink, navigate, select],
     );
 
-    const pagination: DataTablePaginationState = { page, perPage, total };
-    const onPaginationChange = (next: DataTablePaginationState) => {
-        setPage(next.perPage === perPage ? next.page : 1);
-        setPerPage(next.perPage);
-    };
-    const { table } = useDataTable<Row>({
-        data: rows,
-        columns,
-        getRowId: (row) => row.id,
-        manualPagination: true,
-        manualSorting: true,
-        manualFiltering: true,
-        pagination,
-        onPaginationChange,
-        rowCount: total,
-    });
+    const { table } = useDataTable<Row>({ data: rows, columns, getRowId: (row) => row.id, list, rowCount: total });
 
     return (
         <div className="space-y-8">
@@ -255,21 +236,20 @@ export function ShortlinksPage() {
                 )}
             </dl>
 
-            {list.error && <Alert variant="destructive">{list.error.message}</Alert>}
+            {links.error && <Alert variant="destructive">{links.error.message}</Alert>}
 
             <DataTable
                 table={table}
-                isLoading={list.isLoading}
+                isLoading={links.isLoading}
                 onRowClick={(row) => void select(row.id)}
                 emptyIcon={Link2}
-                emptyMessage={q ? 'No links match your search.' : 'No links yet. Paste a URL above to make one.'}
-                searchValue={search}
-                onSearchChange={setSearch}
+                emptyMessage={
+                    list.query ? 'No links match your search.' : 'No links yet. Paste a URL above to make one.'
+                }
+                searchValue={list.search}
+                onSearchChange={list.setSearch}
                 searchPlaceholder="Search by code or destination"
-                pagination={pagination}
-                onPaginationChange={onPaginationChange}
                 pageSizeOptions={[15, 25, 50]}
-                showPagination={total > perPage}
             />
 
             <Sheet open={editing !== null} onOpenChange={(open) => !open && void select(null)}>

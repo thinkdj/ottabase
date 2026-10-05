@@ -138,10 +138,7 @@ export function ModelTable<T extends Record<string, unknown>>({
 
     // ── Pagination state bridge ──────────────────────────────
 
-    const pagination = useMemo<DataTablePaginationState>(
-        () => ({ page, perPage, total: total ?? data.length }),
-        [page, perPage, total, data.length],
-    );
+    const pagination = useMemo<DataTablePaginationState>(() => ({ page, perPage }), [page, perPage]);
 
     const handlePaginationChange = useCallback(
         (newPagination: DataTablePaginationState) => {
@@ -173,7 +170,7 @@ export function ModelTable<T extends Record<string, unknown>>({
         onSortingChange: handleSortingChange,
         pagination,
         onPaginationChange: handlePaginationChange,
-        rowCount: total,
+        rowCount: total ?? data.length,
     });
 
     // ── Create button for toolbar ────────────────────────────
@@ -205,9 +202,8 @@ export function ModelTable<T extends Record<string, unknown>>({
                 searchPlaceholder={searchPlaceholder || `Search ${displayNamePlural.toLowerCase()}...`}
                 showColumnVisibility
                 toolbarRight={createButton}
-                pagination={pagination}
-                onPaginationChange={handlePaginationChange}
-                showPagination={!!(onPageChange && total !== undefined && total > perPage)}
+                pageSizeOptions={[perPage]}
+                showPagination={!!onPageChange}
             />
         </div>
     );

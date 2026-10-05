@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { actionsColumn, createColumns, selectColumn } from '../src/columns/createColumns';
 import { DataTable } from '../src/components/DataTable';
 import { useDataTable } from '../src/hooks/useDataTable';
+import { useListState } from '../src/hooks/useListState';
 import type { DataTableAction, DataTableColumnDef } from '../src/types';
 import { formatCellValue } from '../src/utils/formatters';
 import { truncateText } from '../src/utils/text';
@@ -477,12 +478,85 @@ describe('DataTable component', () => {
         expect(onRowClick).not.toHaveBeenCalled();
     });
 
-    it('renders pagination controls', () => {
-        render(<TestTable />);
+    it('shows the row count, and page controls only once there is more than a page', () => {
+        const { unmount } = render(<TestTable />);
+        expect(screen.getByText('1 to 5 of 5')).toBeDefined();
+        expect(screen.queryByLabelText('Next page')).toBeNull();
+        unmount();
 
-        expect(screen.getByLabelText('First page')).toBeDefined();
-        expect(screen.getByLabelText('Previous page')).toBeDefined();
-        expect(screen.getByLabelText('Next page')).toBeDefined();
-        expect(screen.getByLabelText('Last page')).toBeDefined();
+        const many = Array.from({ length: 23 }, (_, i) => ({ ...TEST_DATA[0], id: String(i), name: `Row ${i}` }));
+        render(<TestTable data={many} />);
+        expect(screen.getByText('1 to 10 of 23')).toBeDefined();
+        expect(screen.getByText('Page 1 of 3')).toBeDefined();
+        fireEvent.click(screen.getByLabelText('Next page'));
+        expect(screen.getByText('11 to 20 of 23')).toBeDefined();
+        fireEvent.click(screen.getByLabelText('Last page'));
+        expect(screen.getByText('Page 3 of 3')).toBeDefined();
+        expect(screen.getByLabelText('Next page')).toHaveProperty('disabled', true);
+        fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '50' } });
+        expect(screen.getByText('1 to 23 of 23')).toBeDefined();
+    });
+
+    it('hides the search box when the server filters and no handler is given', () => {
+        function ServerTable({ onSearchChange }: { onSearchChange?: (value: string) => void }) {
+            const columns = createColumns<TestItem>(TEST_COLUMNS);
+            const list = useListState();
+            const { table } = useDataTable<TestItem>({ data: TEST_DATA, columns, list, rowCount: 5 });
+            return <DataTable table={table} onSearchChange={onSearchChange} searchPlaceholder="Find" />;
+        }
+        const { unmount } = render(<ServerTable />);
+        expect(screen.queryByPlaceholderText('Find')).toBeNull();
+        unmount();
+        render(<ServerTable onSearchChange={() => {}} />);
+        expect(screen.getByPlaceholderText('Find')).toBeDefined();
+    });
+});
+
+// ── useListState ─────────────────────────────────────────────
+
+describe('useListState', () => {
+    it('pages, searches after a pause and starts a new search from page one', async () => {
+        const { result } = renderHook(() => useListState({ perPage: 20, searchDelay: 10 }));
+        expect(result.current.params).toBe('page=1&perPage=20');
+
+        act(() => result.current.onPaginationChange({ page: 3, perPage: 20 }));
+        expect(result.current.page).toBe(3);
+
+        act(() => result.current.setSearch('  ada '));
+        expect(result.current.search).toBe('  ada ');
+        expect(result.current.query).toBe('');
+        expect(result.current.page).toBe(3);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+        expect(result.current.query).toBe('ada');
+        expect(result.current.page).toBe(1);
+        expect(result.current.params).toBe('page=1&perPage=20&search=ada');
+
+        act(() => result.current.setPage(2));
+        act(() => result.current.setSearch(''));
+        expect(result.current.query).toBe('');
+        expect(result.current.page).toBe(1);
+
+        act(() => result.current.onPaginationChange({ page: 1, perPage: 50 }));
+        act(() => result.current.setPage(4));
+        act(() => result.current.reset());
+        expect(result.current.pagination).toEqual({ page: 1, perPage: 50 });
+    });
+
+    it('drives useDataTable in server mode and falls back to the last page', () => {
+        const columns = createColumns<TestItem>([{ key: 'name', header: 'Name' }]);
+        const { result } = renderHook(() => {
+            const list = useListState({ perPage: 2 });
+            const table = useDataTable<TestItem>({ data: TEST_DATA.slice(0, 2), columns, list, rowCount: 5 });
+            return { list, table: table.table };
+        });
+        expect(result.current.table.options.manualPagination).toBe(true);
+        expect(result.current.table.getPageCount()).toBe(3);
+        expect(result.current.table.getRowModel().rows).toHaveLength(2);
+
+        act(() => result.current.table.nextPage());
+        expect(result.current.list.page).toBe(2);
+
+        act(() => result.current.list.setPage(9));
+        expect(result.current.list.page).toBe(3);
     });
 });

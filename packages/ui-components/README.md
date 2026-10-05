@@ -4,6 +4,19 @@ Shared UI components for Ottabase applications.
 
 ## Components
 
+### Chip
+
+The small uppercase label lists use for a status, plan or type, with an optional coloured dot.
+
+```tsx
+import { Chip } from '@ottabase/ui-components';
+
+<Chip dot="success">Active</Chip>
+<Chip>Pro</Chip>
+```
+
+- `dot?`: `success`, `warning`, `destructive`, `info` or `muted`
+
 ### ConfirmDialog
 
 A shared confirmation dialog wrapper built on top of `@ottabase/ui-shadcn`'s alert dialog primitives.
@@ -223,6 +236,7 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 ## Available Atomic Imports
 
 - `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
+- `@ottabase/ui-components/chip` - Chip component
 - `@ottabase/ui-components/confirm-dialog` - ConfirmDialog component
 - `@ottabase/ui-components/empty-state` - EmptyState component
 - `@ottabase/ui-components/loading-state` - LoadingState component

@@ -22,9 +22,7 @@ import { truncateText } from '../utils/text';
  * ]);
  * ```
  */
-export function createColumns<TData extends Record<string, unknown>>(
-    defs: DataTableColumnDef<TData>[],
-): ColumnDef<TData, unknown>[] {
+export function createColumns<TData extends object>(defs: DataTableColumnDef<TData>[]): ColumnDef<TData, unknown>[] {
     return defs.map((def) => {
         const column: ColumnDef<TData, unknown> = {
             // Use the key as accessor

@@ -10,7 +10,7 @@ import { clsx } from 'clsx';
 import { Inbox } from 'lucide-react';
 import type { DataTableProps } from '../types';
 import { DataTableColumnHeader } from './DataTableColumnHeader';
-import { DataTablePagination } from './DataTablePagination';
+import { DataTablePagination, DEFAULT_PAGE_SIZE_OPTIONS } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
 import { LoadingState } from '@ottabase/ui-components';
 
@@ -18,7 +18,7 @@ import { LoadingState } from '@ottabase/ui-components';
  * DataTable — the primary table renderer.
  *
  * Renders header, body, toolbar, and pagination from a TanStack Table instance.
- * Designed to be composed with `useDataTable()` or `useServerTable()`.
+ * Designed to be composed with `useDataTable()`, with `useListState()` for server-paged lists.
  *
  * @example
  * ```tsx
@@ -33,7 +33,7 @@ import { LoadingState } from '@ottabase/ui-components';
  * );
  * ```
  */
-export function DataTable<TData extends Record<string, unknown>>({
+export function DataTable<TData extends object>({
     table,
     onRowClick,
     onCellClick,
@@ -48,9 +48,7 @@ export function DataTable<TData extends Record<string, unknown>>({
     toolbarRight,
     toolbarLeft,
     className,
-    pagination,
-    onPaginationChange,
-    pageSizeOptions,
+    pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
     showPagination = true,
     compact = false,
     striped = false,
@@ -67,14 +65,16 @@ export function DataTable<TData extends Record<string, unknown>>({
     const getSelectedRows = () => table.getSelectedRowModel().rows.map((r) => r.original);
     const clearSelection = () => table.resetRowSelection();
 
-    // Show toolbar if we have search, bulk actions, custom slots, or column visibility
+    // A search box needs somewhere to go: a handler, or a table that filters on the client
+    const showSearch = onSearchChange !== undefined || !table.options.manualFiltering;
     const showToolbar =
-        onSearchChange !== undefined ||
-        searchValue !== undefined ||
+        showSearch ||
         bulkActions !== undefined ||
         toolbarRight !== undefined ||
         toolbarLeft !== undefined ||
         showColumnVisibility;
+    // The pager only makes sense for a table that pages, on the client or the server
+    const paged = Boolean(table.options.manualPagination || table.options.getPaginationRowModel);
 
     const cellPadding = compact ? 'px-2 py-1.5' : 'px-3 py-2.5';
     const headerPadding = compact ? 'px-2 py-2' : 'px-3 py-3';
@@ -85,6 +85,7 @@ export function DataTable<TData extends Record<string, unknown>>({
             {showToolbar && (
                 <DataTableToolbar
                     table={table}
+                    showSearch={showSearch}
                     searchValue={searchValue}
                     onSearchChange={onSearchChange}
                     searchPlaceholder={searchPlaceholder}
@@ -254,14 +255,8 @@ export function DataTable<TData extends Record<string, unknown>>({
             </div>
 
             {/* Pagination */}
-            {showPagination && (
-                <DataTablePagination
-                    table={table}
-                    pagination={pagination}
-                    onPaginationChange={onPaginationChange}
-                    pageSizeOptions={pageSizeOptions}
-                    selectedCount={selectedCount}
-                />
+            {showPagination && paged && !isLoading && (
+                <DataTablePagination table={table} pageSizeOptions={pageSizeOptions} selectedCount={selectedCount} />
             )}
         </div>
     );

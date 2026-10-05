@@ -11,5 +11,5 @@ export default defineConfig({
     },
     clean: true,
     treeshake: true,
-    external: ['@tanstack/react-table', '@tanstack/react-query', 'clsx', 'lucide-react', 'react', 'react-dom'],
+    external: ['@tanstack/react-table', 'clsx', 'lucide-react', 'react', 'react-dom'],
 });

@@ -1,7 +1,9 @@
-import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { useLastRefreshed } from '@/hooks/useLastRefreshed';
+/**
+ * Members of one organization: who is in, their role and state, and invites still open.
+ */
 import {
     useInviteMember,
+    useOrganization,
     useOrganizationMembers,
     useRemoveMember,
     useUpdateMember,
@@ -11,161 +13,209 @@ import {
 import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
 import { organizationIdAtom } from '@/ottabase/state/appState';
-import type { MemberRole, OrganizationMemberRecord } from '@/types/rbac';
-import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
+import type { MemberRole, MemberStatus, OrganizationMemberRecord } from '@/types/rbac';
+import { ConfirmDialog } from '@ottabase/ui-components';
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable } from '@ottabase/ui-datatable/react';
 import {
+    Alert,
     Button,
     Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    NativeSelect,
+    NativeSelectOption,
 } from '@ottabase/ui-shadcn';
+import { formatShortDate } from '@ottabase/utils/timezone';
 import { Link, useParams } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
-import { ArrowLeft, ChevronLeft, ChevronRight, Edit, RefreshCw, Trash2, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Pencil, Trash2, UserPlus, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
+const ROLES: MemberRole[] = ['owner', 'admin', 'member'];
+const STATUSES: MemberStatus[] = ['active', 'invited', 'suspended'];
+const NO_MEMBERS: OrganizationMemberRecord[] = [];
+
+const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Unknown error');
 
 export function OrganizationMembersPage() {
     const toast = useRBACToast();
     const { organizationId = '' } = useParams({ strict: false }) as { organizationId?: string };
     const setOrganizationId = useSetAtom(organizationIdAtom);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
-    const [deleteDialog, setDeleteDialog] = useState<{ memberId: string; userId?: string } | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const {
-        data: response,
-        isLoading,
-        isRefetching,
-        error,
-        refetch,
-    } = useOrganizationMembers(organizationId, currentPage);
-    const members: OrganizationMemberRecord[] = response?.data ?? [];
-    const pagination = response?.pagination;
-    const { label: lastRefreshedLabel, touch: touchRefreshed } = useLastRefreshed({
-        isReady: !isLoading && !error,
-    });
+    /** `'invite'` opens an empty form; a record opens it filled in */
+    const [editing, setEditing] = useState<OrganizationMemberRecord | 'invite' | null>(null);
+    const [pendingRemove, setPendingRemove] = useState<OrganizationMemberRecord | null>(null);
+
+    const list = useListState();
+    const organization = useOrganization(organizationId);
+    const members = useOrganizationMembers(organizationId, list.page, list.perPage);
+    const rows = members.data?.data ?? NO_MEMBERS;
+    const total = members.data?.pagination.total;
+
     const inviteMutation = useInviteMember();
     const updateMemberMutation = useUpdateMember();
     const updateRoleMutation = useUpdateMemberRole();
     const updateStatusMutation = useUpdateMemberStatus();
     const removeMutation = useRemoveMember();
 
+    // The rest of the admin area follows the organization being looked at.
+    const { reset } = list;
     useEffect(() => {
         if (!organizationId) return;
         setOrganizationId(organizationId);
-        setCurrentPage(1);
+        reset();
         try {
             localStorage.setItem(CURRENT_ORG_KEY, organizationId);
         } catch {
-            // ignore storage failures
+            // storage may be unavailable
         }
-    }, [organizationId, setOrganizationId]);
+    }, [organizationId, reset, setOrganizationId]);
 
-    const handleRefresh = async () => {
-        await refetch();
-        touchRefreshed();
-    };
-
-    const handleInvite = () => {
-        setEditingMember(null);
-        setIsDialogOpen(true);
-    };
-
-    const handleEdit = (member: OrganizationMemberRecord) => {
-        setEditingMember(member);
-        setIsDialogOpen(true);
-    };
-
-    const handleDelete = async (member: OrganizationMemberRecord) => {
-        setDeleteDialog({ memberId: member.id, userId: member.userId ?? undefined });
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deleteDialog) return;
-
-        removeMutation.mutate(
-            { ...deleteDialog, organizationId },
-            {
-                onSuccess: () => {
-                    toast.rbac.memberRemoved();
-                    setDeleteDialog(null);
+    const { mutate: mutateRole } = updateRoleMutation;
+    const { mutate: mutateStatus } = updateStatusMutation;
+    const changeRole = useCallback(
+        (userId: string, role: MemberRole) =>
+            mutateRole(
+                { userId, role, organizationId },
+                {
+                    onSuccess: () => toast.rbac.memberUpdated(),
+                    onError: (err) => toast.error('Failed to update role', errorText(err)),
                 },
-                onError: (err) => {
-                    toast.error('Failed to remove member', err instanceof Error ? err.message : 'Unknown error');
+            ),
+        [mutateRole, organizationId, toast],
+    );
+    const changeStatus = useCallback(
+        (userId: string, status: MemberStatus) =>
+            mutateStatus(
+                { userId, status, organizationId },
+                {
+                    onSuccess: () => toast.rbac.memberUpdated(),
+                    onError: (err) => toast.error('Failed to update status', errorText(err)),
                 },
-            },
-        );
-    };
+            ),
+        [mutateStatus, organizationId, toast],
+    );
 
-    // Optimistic role change with instant UI feedback
-    const handleQuickRoleChange = async (userId: string, newRole: MemberRole) => {
-        updateRoleMutation.mutate(
-            { userId, role: newRole, organizationId },
-            {
-                onSuccess: () => {
-                    toast.rbac.memberUpdated();
-                },
-                onError: (err) => {
-                    toast.error('Failed to update role', err instanceof Error ? err.message : 'Unknown error');
-                },
-            },
-        );
-    };
-
-    const handleQuickStatusChange = async (userId: string, newStatus: 'active' | 'invited' | 'suspended') => {
-        updateStatusMutation.mutate(
-            { userId, status: newStatus, organizationId },
-            {
-                onSuccess: () => {
-                    toast.rbac.memberUpdated();
-                },
-                onError: (err) => {
-                    toast.error('Failed to update status', err instanceof Error ? err.message : 'Unknown error');
-                },
-            },
-        );
-    };
-
-    const handleSubmit = async (data: InviteMemberFormData) => {
+    const save = async (data: InviteMemberFormData) => {
         try {
-            if (editingMember) {
-                const memberUserId = editingMember.userId;
-                if (!memberUserId) return;
+            if (editing && editing !== 'invite') {
+                if (!editing.userId) return;
                 await updateMemberMutation.mutateAsync({
                     organizationId,
-                    userId: memberUserId,
+                    userId: editing.userId,
                     role: data.role,
-                    status: data.status ?? editingMember.status,
+                    status: data.status ?? editing.status,
                 });
                 toast.rbac.memberUpdated();
             } else {
-                await inviteMutation.mutateAsync({
-                    ...data,
-                    organizationId,
-                });
+                await inviteMutation.mutateAsync({ ...data, organizationId });
                 toast.rbac.memberInvited();
             }
-            setIsDialogOpen(false);
-            setEditingMember(null);
+            setEditing(null);
         } catch (err) {
             throw new Error(isApiError(err) ? err.message : 'Failed to invite member');
         }
     };
+
+    const confirmRemove = () => {
+        if (!pendingRemove) return;
+        removeMutation.mutate(
+            { memberId: pendingRemove.id, userId: pendingRemove.userId ?? undefined, organizationId },
+            {
+                onSuccess: () => toast.rbac.memberRemoved(),
+                onError: (err) => toast.error('Failed to remove member', errorText(err)),
+                onSettled: () => setPendingRemove(null),
+            },
+        );
+    };
+
+    const busy = updateRoleMutation.isPending || updateStatusMutation.isPending;
+    const columns = useMemo(
+        () => [
+            ...createColumns<OrganizationMemberRecord>([
+                { key: 'user', header: 'Member', cell: ({ row }) => <MemberCell member={row} /> },
+                {
+                    key: 'role',
+                    header: 'Role',
+                    width: 130,
+                    cell: ({ row }) => (
+                        <NativeSelect
+                            value={row.role}
+                            aria-label={`Role of ${memberName(row)}`}
+                            disabled={!row.userId || busy}
+                            onChange={(e) => row.userId && changeRole(row.userId, e.target.value as MemberRole)}
+                            size="sm"
+                            className="w-32 capitalize"
+                        >
+                            {ROLES.map((role) => (
+                                <NativeSelectOption key={role} value={role} className="capitalize">
+                                    {role}
+                                </NativeSelectOption>
+                            ))}
+                        </NativeSelect>
+                    ),
+                },
+                {
+                    key: 'status',
+                    header: 'Status',
+                    width: 140,
+                    cell: ({ row }) => (
+                        <NativeSelect
+                            value={row.status}
+                            aria-label={`Status of ${memberName(row)}`}
+                            disabled={!row.userId || busy}
+                            onChange={(e) => row.userId && changeStatus(row.userId, e.target.value as MemberStatus)}
+                            size="sm"
+                            className="w-36 capitalize"
+                        >
+                            {STATUSES.map((status) => (
+                                <NativeSelectOption key={status} value={status} className="capitalize">
+                                    {status}
+                                </NativeSelectOption>
+                            ))}
+                        </NativeSelect>
+                    ),
+                },
+                {
+                    key: 'invitedAt',
+                    header: 'Invited',
+                    width: 130,
+                    cell: ({ row }) => (
+                        <span className="text-muted-foreground">
+                            {row.invitedAt ? formatShortDate(row.invitedAt) : ''}
+                        </span>
+                    ),
+                },
+                {
+                    key: 'joinedAt',
+                    header: 'Joined',
+                    width: 130,
+                    cell: ({ row }) => (
+                        <span className="text-muted-foreground">
+                            {row.joinedAt ? formatShortDate(row.joinedAt) : ''}
+                        </span>
+                    ),
+                },
+            ]),
+            actionsColumn<OrganizationMemberRecord>([
+                { label: 'Edit', icon: Pencil, onClick: setEditing, disabled: (row) => !row.userId },
+                { label: 'Remove', icon: Trash2, variant: 'destructive', onClick: setPendingRemove },
+            ]),
+        ],
+        [busy, changeRole, changeStatus],
+    );
+
+    const { table } = useDataTable<OrganizationMemberRecord>({
+        data: rows,
+        columns,
+        getRowId: (row) => row.id,
+        list,
+        rowCount: total,
+    });
 
     return (
         <div className="space-y-8">
@@ -176,267 +226,91 @@ export function OrganizationMembersPage() {
                         Back to Organizations
                     </Link>
                 </Button>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organization Members</h1>
-                        <p className="max-w-3xl text-muted-foreground">Manage members and their roles</p>
+                        <div className="flex items-center gap-2">
+                            <Users className="h-7 w-7 text-primary" />
+                            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                                {organization.data?.name ?? 'Members'}
+                            </h1>
+                        </div>
+                        <p className="text-muted-foreground">
+                            Who is in this organization and what each person may do. Invites stay open until the invitee
+                            signs up.
+                        </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <span className="pr-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            {lastRefreshedLabel}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={handleRefresh}
-                            disabled={isLoading || isRefetching}
-                        >
-                            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-                        </Button>
-                        <Button onClick={handleInvite} className="gap-2">
-                            <UserPlus className="h-4 w-4" />
-                            Invite Member
-                        </Button>
-                    </div>
-                </div>
+                    <Button onClick={() => setEditing('invite')} className="shrink-0 gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        Invite member
+                    </Button>
+                </header>
             </div>
 
-            <div className="space-y-4">
-                {error && (
-                    <ApiErrorDisplay
-                        error={error instanceof Error ? error : new Error('Failed to load members')}
-                        onRetry={() => refetch()}
-                    />
-                )}
+            {members.error && <Alert variant="destructive">{members.error.message}</Alert>}
 
-                {isLoading ? (
-                    <div className="space-y-3" aria-busy="true">
-                        <span className="sr-only">Loading members…</span>
-                        <LoadingState count={5} height="h-12" />
-                    </div>
-                ) : members.length === 0 ? (
-                    <EmptyState title="No members found. Invite the first member!" />
-                ) : (
-                    <div className="overflow-hidden rounded-xl border border-border/60">
-                        <Table>
-                            <TableHeader className="bg-muted/40">
-                                <TableRow className="border-border/60 hover:bg-transparent">
-                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        User
-                                    </TableHead>
-                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Role
-                                    </TableHead>
-                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Status
-                                    </TableHead>
-                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Invited
-                                    </TableHead>
-                                    <TableHead className="h-auto px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Joined
-                                    </TableHead>
-                                    <TableHead className="h-auto px-4 py-3 text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Actions
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {members.map((member) => {
-                                    // Pending email invites (not yet linked to an account) carry a
-                                    // null userId — they can't be looked up by userId server-side,
-                                    // so quick-edit actions are disabled until the invitee signs up
-                                    // and the invite is activated.
-                                    const isPending = !member.userId;
-                                    const invitedEmail = (member as unknown as { invitedEmail?: string | null })
-                                        .invitedEmail;
+            <DataTable
+                table={table}
+                isLoading={members.isLoading}
+                emptyIcon={Users}
+                emptyMessage="No members yet. Invite the first one."
+                pageSizeOptions={[25, 50, 100]}
+            />
 
-                                    return (
-                                        <TableRow
-                                            key={member.id}
-                                            className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
-                                        >
-                                            <TableCell className="px-4 py-3">
-                                                <div className="min-w-0 space-y-0.5">
-                                                    <div className="truncate font-medium">
-                                                        {isPending
-                                                            ? 'Pending invite'
-                                                            : member.user?.name || 'Unknown user'}
-                                                    </div>
-                                                    <div className="truncate text-xs text-muted-foreground">
-                                                        {isPending
-                                                            ? invitedEmail || 'Awaiting signup'
-                                                            : member.user?.email || member.userId}
-                                                    </div>
-                                                    {!isPending && (
-                                                        <code className="text-[0.6875rem] text-muted-foreground">
-                                                            {member.userId}
-                                                        </code>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3">
-                                                <Select
-                                                    value={member.role}
-                                                    onValueChange={(value: MemberRole) =>
-                                                        member.userId && handleQuickRoleChange(member.userId, value)
-                                                    }
-                                                    disabled={
-                                                        isPending ||
-                                                        updateRoleMutation.isPending ||
-                                                        updateStatusMutation.isPending
-                                                    }
-                                                >
-                                                    <SelectTrigger className="h-9 w-32">
-                                                        <span className="capitalize">{member.role}</span>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="owner">Owner</SelectItem>
-                                                        <SelectItem value="admin">Admin</SelectItem>
-                                                        <SelectItem value="member">Member</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3">
-                                                <Select
-                                                    value={member.status}
-                                                    onValueChange={(value: 'active' | 'invited' | 'suspended') =>
-                                                        member.userId && handleQuickStatusChange(member.userId, value)
-                                                    }
-                                                    disabled={
-                                                        isPending ||
-                                                        updateRoleMutation.isPending ||
-                                                        updateStatusMutation.isPending
-                                                    }
-                                                >
-                                                    <SelectTrigger className="h-9 w-36">
-                                                        <span className="capitalize">{member.status}</span>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="active">Active</SelectItem>
-                                                        <SelectItem value="invited">Invited</SelectItem>
-                                                        <SelectItem value="suspended">Suspended</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                {member.invitedAt
-                                                    ? new Date(member.invitedAt).toLocaleDateString()
-                                                    : '-'}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-'}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-muted-foreground hover:text-foreground"
-                                                        onClick={() => handleEdit(member)}
-                                                        disabled={
-                                                            isPending ||
-                                                            updateRoleMutation.isPending ||
-                                                            updateStatusMutation.isPending ||
-                                                            updateMemberMutation.isPending
-                                                        }
-                                                        title={
-                                                            isPending
-                                                                ? 'This invite is pending signup and cannot be edited yet'
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-muted-foreground hover:text-destructive"
-                                                        onClick={() => handleDelete(member)}
-                                                        disabled={removeMutation.isPending}
-                                                        title={isPending ? 'Cancel pending invite' : undefined}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </div>
-
-            {/* Pagination Controls */}
-            {!isLoading && pagination && pagination.total > pagination.perPage && (
-                <div className="flex items-center justify-between">
-                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Showing {(pagination.page - 1) * pagination.perPage + 1}–
-                        {Math.min(pagination.page * pagination.perPage, pagination.total)} of {pagination.total} members
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={pagination.page <= 1}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Prev
-                        </Button>
-                        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Page {pagination.page} of {pagination.totalPages}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => p + 1)}
-                            disabled={pagination.page >= pagination.totalPages}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Invite/Edit Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{editingMember ? 'Edit Member' : 'Invite Member'}</DialogTitle>
+                        <DialogTitle>{editing === 'invite' ? 'Invite member' : 'Edit member'}</DialogTitle>
                         <DialogDescription>
-                            {editingMember
-                                ? 'Update member role and status'
-                                : 'Invite a new member to this organization'}
+                            {editing === 'invite'
+                                ? 'Add someone by account or email address.'
+                                : 'Change their role and status.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <InviteMemberForm
-                        organizationId={organizationId}
-                        editingMember={editingMember}
-                        onSubmit={handleSubmit}
-                        onCancel={() => setIsDialogOpen(false)}
-                    />
+                    {editing && (
+                        <InviteMemberForm
+                            key={editing === 'invite' ? 'invite' : editing.id}
+                            organizationId={organizationId}
+                            editingMember={editing === 'invite' ? null : editing}
+                            onSubmit={save}
+                            onCancel={() => setEditing(null)}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
             <ConfirmDialog
-                open={!!deleteDialog}
-                onOpenChange={(open) => !open && setDeleteDialog(null)}
-                title="Remove Member?"
-                description="This will remove the member from the organization. They will lose access immediately."
+                open={pendingRemove !== null}
+                onOpenChange={(open) => !open && setPendingRemove(null)}
+                title={pendingRemove?.userId ? `Remove ${memberName(pendingRemove)}?` : 'Cancel this invite?'}
+                description={
+                    pendingRemove?.userId
+                        ? 'They lose access to this organization right away.'
+                        : 'The invitation stops working. You can invite them again later.'
+                }
                 tone="destructive"
-                secondaryActionText="Cancel"
-                primaryActionText="Remove"
-                onConfirm={handleConfirmDelete}
+                secondaryActionText="Keep"
+                primaryActionText={pendingRemove?.userId ? 'Remove' : 'Cancel invite'}
+                onConfirm={confirmRemove}
+                confirmProps={{ disabled: removeMutation.isPending }}
             />
         </div>
+    );
+}
+
+const memberName = (member: OrganizationMemberRecord) =>
+    member.user?.name || member.user?.email || member.invitedEmail || member.userId || 'pending invite';
+
+/** Name and email, or the address an open invite went to */
+function MemberCell({ member }: { member: OrganizationMemberRecord }) {
+    const pending = !member.userId;
+    return (
+        <span className="block min-w-0">
+            <span className="block truncate font-medium">
+                {pending ? 'Pending invite' : member.user?.name || 'Unknown user'}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">
+                {pending ? member.invitedEmail || 'Awaiting signup' : member.user?.email || member.userId}
+            </span>
+        </span>
     );
 }

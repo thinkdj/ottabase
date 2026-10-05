@@ -1,8 +1,5 @@
 /**
- * Admin Content List Page
- *
- * Unified content management for all content types (blog, changelog, docs, news, announcements).
- * Lists all posts with filtering, status management, and CRUD operations.
+ * Content (admin): every post of every type in one list, with a quick way to share a thought.
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import type { PaginatedResponse } from '@/lib/api-types';
@@ -17,56 +14,28 @@ import {
     type PostStatus,
 } from '@ottabase/ottablog';
 import { createModelHooks, useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
+import { Chip, ConfirmDialog, type ChipTone } from '@ottabase/ui-components';
+import { useDataTable, useListState } from '@ottabase/ui-datatable';
+import { actionsColumn, createColumns, DataTable } from '@ottabase/ui-datatable/react';
 import {
     Alert,
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
     Button,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-    Input,
     NativeSelect,
     NativeSelectOption,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
     Textarea,
+    toast,
 } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
-import {
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Edit,
-    Eye,
-    FileText,
-    Filter,
-    Loader2,
-    Plus,
-    Search,
-    Send,
-    Star,
-    Trash2,
-} from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { ChevronDown, Eye, FileText, Loader2, Plus, Send, Star, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { BlogImportExport } from './BlogImportExport';
 import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
-
-/** Debounce delay for search input (ms) */
-const SEARCH_DEBOUNCE_MS = 300;
 
 interface BlogPost {
     id: string;
@@ -89,85 +58,53 @@ interface BlogPost {
 }
 
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
+const NO_POSTS: BlogPost[] = [];
 
-const POSTS_PER_PAGE = 20;
+const STATUS_DOT: Record<PostStatus, ChipTone> = {
+    published: 'success',
+    draft: 'muted',
+    scheduled: 'warning',
+    archived: 'destructive',
+};
 
-/** Content type tabs - all singular for consistency */
-// Derived, never hand-listed: the package owns the taxonomy, so a new content type
-// gets a tab for free and a tab can never disagree with the badge or the New menu.
+/** Content type tabs, derived so a new type gets a tab for free */
 const CONTENT_TYPE_TABS: Array<{ value: ContentType | 'all'; label: string }> = [
     { value: 'all', label: 'All' },
     ...Object.entries(CONTENT_TYPES).map(([value, { label }]) => ({ value: value as ContentType, label })),
 ];
 
+const postTitle = (post: BlogPost) =>
+    post.contentType === 'blurb' ? post.blurbText || post.excerpt || post.title : post.title;
+
 export function AdminBlogListPage() {
     const surface = useBlogSurface();
-    const [searchInput, setSearchInput] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const navigate = useNavigate();
+    const list = useListState({ perPage: 20 });
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
     const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | 'all'>('all');
-    const [currentPage, setCurrentPage] = useState(1);
     const [blurbText, setBlurbText] = useState('');
-    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
-    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
-        open: false,
-        title: '',
-        message: '',
-    });
+    const [pendingDelete, setPendingDelete] = useState<BlogPost | null>(null);
 
-    // Debounce search input to reduce API calls
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchInput.trim());
-            setCurrentPage(1); // Reset to page 1 when search changes
-        }, SEARCH_DEBOUNCE_MS);
-        return () => clearTimeout(timer);
-    }, [searchInput]);
+    const where = useMemo(() => {
+        const clause: Record<string, unknown> = {};
+        if (statusFilter !== 'all') clause.status = statusFilter;
+        if (contentTypeFilter !== 'all') clause.contentType = contentTypeFilter;
+        return Object.keys(clause).length ? `&where=${encodeURIComponent(JSON.stringify(clause))}` : '';
+    }, [statusFilter, contentTypeFilter]);
+    const endpoint = `/api/ottaorm/posts?${list.params}&orderBy=updatedAt&orderDirection=desc${where}`;
 
-    const queryParams = useMemo(() => {
-        const whereClause: Record<string, unknown> = {};
-        if (statusFilter !== 'all') whereClause.status = statusFilter;
-        if (contentTypeFilter !== 'all') whereClause.contentType = contentTypeFilter;
-
-        const params = new URLSearchParams();
-        params.set('page', String(currentPage));
-        params.set('perPage', String(POSTS_PER_PAGE));
-        params.set('orderBy', 'updatedAt');
-        params.set('orderDirection', 'desc');
-        if (debouncedSearch) {
-            params.set('search', debouncedSearch);
-        }
-        if (Object.keys(whereClause).length > 0) {
-            params.set('where', JSON.stringify(whereClause));
-        }
-        return params.toString();
-    }, [currentPage, debouncedSearch, statusFilter, contentTypeFilter]);
-
-    // Fetch posts with pagination and server-side filtering + search
-    const {
-        data: postsResponse,
-        isLoading,
-        error,
-    } = useApiQuery<PaginatedResponse<BlogPost>>({
+    const posts = useApiQuery<PaginatedResponse<BlogPost>>({
         entity: 'posts',
-        queryKey: ['admin-posts', queryParams],
-        endpoint: `/api/ottaorm/posts?${queryParams}`,
-        queryOptions: ADMIN_LIST_QUERY_CONFIG,
+        queryKey: ['admin-posts', endpoint],
+        endpoint,
+        queryOptions: {
+            ...ADMIN_LIST_QUERY_CONFIG,
+            placeholderData: keepPreviousData,
+            meta: { errorPresentation: 'local' },
+        },
     });
-
-    const posts = postsResponse?.data ?? [];
-    const pagination = postsResponse?.pagination ?? null;
-    const totalCount = pagination?.total ?? posts.length;
-    const pageStart = pagination
-        ? pagination.total === 0
-            ? 0
-            : (pagination.page - 1) * pagination.perPage + 1
-        : posts.length === 0
-          ? 0
-          : (currentPage - 1) * POSTS_PER_PAGE + 1;
-    const pageEnd = pagination
-        ? Math.min(pagination.page * pagination.perPage, pagination.total)
-        : Math.min(currentPage * POSTS_PER_PAGE, posts.length);
+    const rows = posts.data?.data ?? NO_POSTS;
+    const total = posts.data?.pagination.total;
 
     const updatePost = blogPostHooks.useUpdate();
     const deletePost = blogPostHooks.useDelete();
@@ -177,97 +114,110 @@ export function AdminBlogListPage() {
         invalidateEntities: ['posts'],
     });
 
-    const handleCreateBlurb = async (status: 'draft' | 'published') => {
+    const filterBy = (apply: () => void) => {
+        apply();
+        list.reset();
+    };
+
+    const shareBlurb = async (status: 'draft' | 'published') => {
         const text = blurbText.trim();
         if (!text) return;
         try {
             await createBlurb.mutateAsync({ text, status });
             setBlurbText('');
-            setCurrentPage(1);
+            list.reset();
+            toast.success(status === 'published' ? 'Thought published' : 'Draft saved');
         } catch (error) {
-            setAlertDialog({
-                open: true,
-                title: 'Could not save blurb',
-                message: error instanceof Error ? error.message : 'Please try again.',
+            toast.error('Could not save the thought', {
+                description: error instanceof Error ? error.message : 'Please try again.',
             });
         }
     };
 
-    useEffect(() => {
-        if (!pagination) return;
-        const totalPages = Math.max(1, pagination.totalPages);
-        if (currentPage > totalPages) {
-            setCurrentPage(totalPages);
-        }
-    }, [pagination, currentPage]);
-
-    // Toggle highlight/featured status
-    const handleToggleFeatured = (id: string, currentValue: boolean) => {
-        updatePost.mutate({ id, data: { isFeatured: !currentValue } });
-    };
-
-    // Reset to page 1 when filters change
-    const handleFilterChange = (callback: () => void) => {
-        callback();
-        setCurrentPage(1);
-    };
-
-    const handleDelete = (id: string, title: string) => {
-        setDeleteDialog({ id, title });
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deleteDialog) return;
-
+    const confirmDelete = async () => {
+        if (!pendingDelete) return;
         try {
-            await deletePost.mutateAsync(deleteDialog.id);
-        } catch (err) {
-            console.error('Failed to delete blog post:', err);
-            const failedTitle = deleteDialog.title;
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: `Failed to delete "${failedTitle}". Please try again.`,
-            });
+            await deletePost.mutateAsync(pendingDelete.id);
+            toast.success('Post deleted');
+        } catch {
+            toast.error(`Could not delete "${pendingDelete.title}"`);
         } finally {
-            setDeleteDialog(null);
+            setPendingDelete(null);
         }
     };
 
-    const getStatusBadge = (status: PostStatus) => {
-        const dots: Record<PostStatus, string> = {
-            published: 'bg-success',
-            draft: 'bg-muted-foreground/40',
-            scheduled: 'bg-warning',
-            archived: 'bg-destructive',
-        };
-        return (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${dots[status]}`} />
-                {POST_STATUSES[status].label}
-            </span>
-        );
-    };
+    const { mutate: mutatePost } = updatePost;
+    const toggleFeatured = useCallback(
+        (post: BlogPost) => mutatePost({ id: post.id, data: { isFeatured: !post.isFeatured } }),
+        [mutatePost],
+    );
+    const openEditor = useCallback(
+        (post: BlogPost) => void navigate({ to: surface.editPath(post.id) as never }),
+        [navigate, surface],
+    );
 
-    const getContentTypeBadge = (contentType: ContentType) => {
-        return (
-            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                {contentTypeLabel(contentType)}
-            </span>
-        );
-    };
+    const columns = useMemo(
+        () => [
+            ...createColumns<BlogPost>([
+                {
+                    key: 'title',
+                    header: 'Content',
+                    cell: ({ row }) => (
+                        <PostCell post={row} editPath={surface.editPath(row.id)} onToggleFeatured={toggleFeatured} />
+                    ),
+                },
+                {
+                    key: 'status',
+                    header: 'Status',
+                    width: 130,
+                    cell: ({ row }) => <Chip dot={STATUS_DOT[row.status]}>{POST_STATUSES[row.status].label}</Chip>,
+                },
+                {
+                    key: 'contentType',
+                    header: 'Type',
+                    width: 130,
+                    cell: ({ row }) => <Chip>{contentTypeLabel(row.contentType)}</Chip>,
+                },
+                {
+                    key: 'authorId',
+                    header: 'Author',
+                    width: 150,
+                    cell: ({ row }) => <span className="text-muted-foreground">{row.author?.name || ''}</span>,
+                },
+                {
+                    key: 'updatedAt',
+                    header: 'When',
+                    width: 190,
+                    cell: ({ row }) => <span className="text-muted-foreground">{whenText(row)}</span>,
+                },
+            ]),
+            actionsColumn<BlogPost>([
+                {
+                    label: 'View',
+                    icon: Eye,
+                    hidden: (post) => post.status !== 'published',
+                    onClick: (post) =>
+                        window.open(getPublicContentPath(post.slug, post.contentType), '_blank', 'noopener'),
+                },
+                { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: setPendingDelete },
+            ]),
+        ],
+        [surface, toggleFeatured],
+    );
+
+    const { table } = useDataTable<BlogPost>({ data: rows, columns, getRowId: (row) => row.id, list, rowCount: total });
+
+    const filtered = list.query || statusFilter !== 'all' || contentTypeFilter !== 'all';
 
     return (
         <div className="space-y-8">
             <BlogAdminNav />
 
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1.5">
                     <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Publish articles, quick thoughts, photo journals, changelogs, documentation, news, and
-                        announcements.
+                        Articles, quick thoughts, photo journals, changelogs, documentation, news and announcements.
                     </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -291,14 +241,13 @@ export function AdminBlogListPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-            </div>
+            </header>
 
-            {/* Content Type Tabs */}
             <div className="flex w-fit max-w-full flex-wrap items-center gap-1 rounded-lg bg-muted/40 p-1">
                 {CONTENT_TYPE_TABS.map(({ value, label }) => (
                     <button
                         key={value}
-                        onClick={() => handleFilterChange(() => setContentTypeFilter(value))}
+                        onClick={() => filterBy(() => setContentTypeFilter(value))}
                         aria-pressed={contentTypeFilter === value}
                         className={`inline-flex h-8 items-center whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
                             contentTypeFilter === value
@@ -339,13 +288,13 @@ export function AdminBlogListPage() {
                     <div className="mt-3 flex flex-wrap justify-end gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => void handleCreateBlurb('draft')}
+                            onClick={() => void shareBlurb('draft')}
                             disabled={!blurbText.trim() || blurbText.length > BLURB_MAX_LENGTH || createBlurb.isPending}
                         >
                             Save draft
                         </Button>
                         <Button
-                            onClick={() => void handleCreateBlurb('published')}
+                            onClick={() => void shareBlurb('published')}
                             disabled={!blurbText.trim() || blurbText.length > BLURB_MAX_LENGTH || createBlurb.isPending}
                         >
                             {createBlurb.isPending ? (
@@ -359,282 +308,105 @@ export function AdminBlogListPage() {
                 </section>
             )}
 
-            {/* Filters */}
-            <div className="rounded-xl bg-muted/40 p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Search articles, thoughts, and photo journals..."
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            className="h-9 pl-9"
-                        />
-                        {isLoading && debouncedSearch && (
-                            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                        )}
-                    </div>
+            {posts.error && <Alert variant="destructive">{posts.error.message}</Alert>}
 
-                    {/* Status Filter */}
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
-                        <NativeSelect
-                            value={statusFilter}
-                            onChange={(e) =>
-                                handleFilterChange(() => setStatusFilter(e.target.value as PostStatus | 'all'))
-                            }
-                            aria-label="Filter by status"
-                        >
-                            <NativeSelectOption value="all">All Status</NativeSelectOption>
-                            {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                                <NativeSelectOption key={value} value={value}>
-                                    {label}
-                                </NativeSelectOption>
-                            ))}
-                        </NativeSelect>
-                    </div>
-                </div>
-            </div>
-
-            {/* Error State */}
-            {error && <Alert variant="destructive">{error.message}</Alert>}
-
-            {/* Posts List */}
-            <section className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-[0.9375rem] font-semibold">
-                        {contentTypeFilter === 'all' ? 'Content' : contentTypeLabel(contentTypeFilter)}
-                    </h2>
-                    <span className="inline-flex items-center rounded-full bg-background px-2.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        {totalCount} item{totalCount !== 1 ? 's' : ''}
-                    </span>
-                </div>
-                {isLoading ? (
-                    <div className="space-y-2" aria-busy="true">
-                        <span className="sr-only">Loading posts...</span>
-                        <LoadingState count={6} height="h-16" />
-                    </div>
-                ) : posts.length === 0 ? (
-                    <EmptyState
-                        icon={<FileText />}
-                        title="No posts found"
-                        description={
-                            totalCount === 0
-                                ? 'Get started by creating your first one.'
-                                : 'Try adjusting your search or filters.'
-                        }
-                        action={
-                            <Button asChild>
-                                <Link
-                                    to={surface.newPath}
-                                    search={
-                                        contentTypeFilter !== 'all' ? { contentType: contentTypeFilter } : undefined
-                                    }
-                                >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {contentTypeFilter === 'all'
-                                        ? 'Create Post'
-                                        : `Create ${contentTypeLabel(contentTypeFilter)}`}
-                                </Link>
-                            </Button>
-                        }
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border/60">
-                        <Table>
-                            <TableHeader className="bg-muted/40">
-                                <TableRow className="border-border/60 hover:bg-transparent">
-                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Content
-                                    </TableHead>
-                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Status
-                                    </TableHead>
-                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Type
-                                    </TableHead>
-                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Author
-                                    </TableHead>
-                                    <TableHead className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Publish
-                                    </TableHead>
-                                    <TableHead className="text-right text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        Actions
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {posts.map((post) => (
-                                    <TableRow
-                                        key={post.id}
-                                        className="border-border/60 transition-colors duration-normal hover:bg-muted/40"
-                                    >
-                                        <TableCell className="max-w-[360px]">
-                                            <div className="flex items-start gap-3">
-                                                {post.contentType !== 'blurb' && (
-                                                    <button
-                                                        type="button"
-                                                        title={
-                                                            post.isFeatured ? 'Remove highlight' : 'Highlight this post'
-                                                        }
-                                                        className="mt-1 shrink-0 text-muted-foreground transition-colors duration-normal hover:text-warning"
-                                                        onClick={() => handleToggleFeatured(post.id, post.isFeatured)}
-                                                        disabled={updatePost.isPending}
-                                                    >
-                                                        {post.isFeatured ? (
-                                                            <Star className="h-4 w-4 fill-warning text-warning" />
-                                                        ) : (
-                                                            <Star className="h-4 w-4" />
-                                                        )}
-                                                    </button>
-                                                )}
-                                                <div className="min-w-0">
-                                                    <Link
-                                                        to={surface.editPath(post.id)}
-                                                        className="font-medium hover:underline line-clamp-1"
-                                                    >
-                                                        {post.contentType === 'blurb'
-                                                            ? post.blurbText || post.excerpt || post.title
-                                                            : post.title}
-                                                    </Link>
-                                                    {post.contentType === 'photo' ? (
-                                                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                                                            {post.photoAlbum?.length ?? 0}{' '}
-                                                            {(post.photoAlbum?.length ?? 0) === 1
-                                                                ? 'photograph'
-                                                                : 'photographs'}
-                                                            {post.photoNote ? ` · ${post.photoNote}` : ''}
-                                                        </p>
-                                                    ) : post.contentType !== 'blurb' && post.excerpt ? (
-                                                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                                            {post.excerpt}
-                                                        </p>
-                                                    ) : null}
-                                                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                                        <Clock className="h-3 w-3" />
-                                                        {post.contentType === 'blurb'
-                                                            ? 'Short thought'
-                                                            : post.contentType === 'photo'
-                                                              ? 'Photo-first story'
-                                                              : post.readingTimeMinutes
-                                                                ? `${post.readingTimeMinutes} min read`
-                                                                : '—'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{getStatusBadge(post.status)}</TableCell>
-                                        <TableCell>{getContentTypeBadge(post.contentType)}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">
-                                            {post.author?.name || '—'}
-                                        </TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">
-                                            {post.status === 'published'
-                                                ? `Published ${formatShortDate(post.publishedAt)}`
-                                                : post.status === 'scheduled'
-                                                  ? `Scheduled ${formatShortDate(post.publishAt)}`
-                                                  : `Updated ${formatShortDate(post.updatedAt)}`}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="icon" asChild>
-                                                    <a
-                                                        href={getPublicContentPath(post.slug, post.contentType)}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        aria-label="View"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </a>
-                                                </Button>
-                                                <Button variant="ghost" size="icon" asChild>
-                                                    <Link to={surface.editPath(post.id)}>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Link>
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleDelete(post.id, post.title)}
-                                                    disabled={deletePost.isPending}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </section>
-
-            {/* Pagination Controls */}
-            {!isLoading && pagination && pagination.total > 0 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        Showing {pageStart} to {pageEnd} of {pagination.total} results
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={pagination.page <= 1}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Previous
-                        </Button>
-                        <span className="px-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Page {pagination.page} of {pagination.totalPages}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setCurrentPage((p) => p + 1)}
-                            disabled={pagination.page >= pagination.totalPages}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <DataTable
+                table={table}
+                isLoading={posts.isLoading}
+                onRowClick={openEditor}
+                emptyIcon={FileText}
+                emptyMessage={filtered ? 'Nothing matches these filters.' : 'Nothing published yet. Start with New.'}
+                searchValue={list.search}
+                onSearchChange={list.setSearch}
+                searchPlaceholder="Search titles and text"
+                toolbarRight={
+                    <NativeSelect
+                        value={statusFilter}
+                        onChange={(e) => filterBy(() => setStatusFilter(e.target.value as PostStatus | 'all'))}
+                        aria-label="Filter by status"
+                        className="h-9 w-auto"
+                    >
+                        <NativeSelectOption value="all">Any status</NativeSelectOption>
+                        {Object.entries(POST_STATUSES).map(([value, { label }]) => (
+                            <NativeSelectOption key={value} value={value}>
+                                {label}
+                            </NativeSelectOption>
+                        ))}
+                    </NativeSelect>
+                }
+                pageSizeOptions={[20, 50, 100]}
+            />
 
             <ConfirmDialog
-                open={deleteDialog !== null}
-                onOpenChange={(open) => !open && setDeleteDialog(null)}
-                title="Delete Post?"
-                description={`Are you sure you want to delete "${deleteDialog?.title}"?`}
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                title="Delete this post?"
+                description={pendingDelete ? `"${postTitle(pendingDelete)}" is gone for good.` : ''}
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText="Delete"
-                onConfirm={handleConfirmDelete}
+                onConfirm={confirmDelete}
                 confirmProps={{ disabled: deletePost.isPending }}
                 cancelProps={{ disabled: deletePost.isPending }}
             />
-
-            <AlertDialog
-                open={alertDialog.open}
-                onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
-                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
-                            OK
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
+    );
+}
+
+function whenText(post: BlogPost) {
+    if (post.status === 'published') return `Published ${formatShortDate(post.publishedAt)}`;
+    if (post.status === 'scheduled') return `Scheduled ${formatShortDate(post.publishAt)}`;
+    return `Updated ${formatShortDate(post.updatedAt)}`;
+}
+
+function detailText(post: BlogPost) {
+    if (post.contentType === 'photo') {
+        const count = post.photoAlbum?.length ?? 0;
+        const photos = `${count} ${count === 1 ? 'photograph' : 'photographs'}`;
+        return post.photoNote ? `${photos}, ${post.photoNote}` : photos;
+    }
+    if (post.contentType === 'blurb') return '';
+    return post.excerpt || (post.readingTimeMinutes ? `${post.readingTimeMinutes} min read` : '');
+}
+
+/** Title with the highlight star, and one line of detail under it */
+function PostCell({
+    post,
+    editPath,
+    onToggleFeatured,
+}: {
+    post: BlogPost;
+    editPath: string;
+    onToggleFeatured: (post: BlogPost) => void;
+}) {
+    const detail = detailText(post);
+    return (
+        <span className="flex min-w-[16rem] max-w-[28rem] items-start gap-2">
+            {post.contentType !== 'blurb' && (
+                <button
+                    type="button"
+                    aria-pressed={post.isFeatured}
+                    aria-label={post.isFeatured ? 'Remove highlight' : 'Highlight this post'}
+                    title={post.isFeatured ? 'Remove highlight' : 'Highlight this post'}
+                    className="mt-0.5 shrink-0 rounded text-muted-foreground transition-colors duration-normal hover:text-warning"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFeatured(post);
+                    }}
+                >
+                    <Star className={`h-4 w-4 ${post.isFeatured ? 'fill-warning text-warning' : ''}`} />
+                </button>
+            )}
+            <span className="min-w-0">
+                <Link
+                    to={editPath as never}
+                    onClick={(e) => e.stopPropagation()}
+                    className="line-clamp-1 font-medium hover:underline"
+                >
+                    {postTitle(post)}
+                </Link>
+                {detail && <span className="mt-0.5 line-clamp-1 block text-xs text-muted-foreground">{detail}</span>}
+            </span>
+        </span>
     );
 }

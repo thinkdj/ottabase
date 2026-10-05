@@ -36,7 +36,6 @@
         "@tanstack/react-table": "^8.21.3"
     },
     "peerDependencies": {
-        "@tanstack/react-query": "catalog:",
         "clsx": "catalog:",
         "lucide-react": "catalog:",
         "react": "catalog:",
@@ -51,7 +50,6 @@
         }
     },
     "devDependencies": {
-        "@tanstack/react-query": "catalog:",
         "@testing-library/jest-dom": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",
