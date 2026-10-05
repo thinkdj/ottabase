@@ -16,7 +16,8 @@ applications with dynamic data sources and CrudHub integration.
 - **Real-time search** - Debounced search with client-side or server-side filtering
 - **CrudHub Integration** - Built-in async collection fetching support
 - **Loading & Error states** - Beautiful loading indicators and error handling
-- **Keyboard navigation** - Full keyboard support (Arrow keys, Enter, Escape)
+- **Search-as-you-type** - Type on the trigger to open and filter; Enter picks the first match
+- **Create inline** - `onCreate` offers "Create 'x'" when nothing matches
 - **Dark mode** - Full dark mode support with Tailwind CSS
 
 ## Installation
@@ -234,6 +235,9 @@ interface OttaSelectProps {
     searchDebounceMs?: number; // Default: 300
     searchPlaceholder?: string; // Default: 'Search...'
 
+    // Create inline: offered when the typed name matches no item
+    onCreate?: (name: string) => void | Promise<OttaSelectInputItem | void>;
+
     // UI
     size?: 'xs' | 'sm' | 'md' | 'lg'; // Default: 'md'
     placeholder?: string; // Default: 'Select an option'
@@ -302,12 +306,31 @@ const items4 = [
 ];
 ```
 
+## Create Inline
+
+Pass `onCreate` and typing a name that matches no item offers **Create "name"** as the last option. Enter on it (or a
+click) calls `onCreate(name)`; return the created item and it is selected straight away.
+
+```tsx
+<OttaSelect
+    mode="multiple"
+    items={tags}
+    value={selected}
+    onChange={setSelected}
+    onCreate={(name) => createTag.mutateAsync({ name, slug: slugify(name) })}
+/>
+```
+
 ## Keyboard Navigation
 
-- **Arrow Down/Up**: Navigate through items
-- **Enter**: Select focused item
-- **Escape**: Close dropdown
-- **Space/Enter** (on trigger): Open dropdown
+The trigger is a combobox: start typing on it and the list opens filtered to what you typed, with the first match
+focused, so **type, Enter** picks it.
+
+- **Any letter** (on the trigger): Open and search
+- **Arrow Down/Up**: Move through the matches (and the Create row)
+- **Enter**: Pick the focused match (the first one unless you moved)
+- **Escape**: Close
+- **Space/Enter** (on the trigger): Open
 
 ## Dark Mode
 

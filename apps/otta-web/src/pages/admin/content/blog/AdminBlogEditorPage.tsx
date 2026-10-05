@@ -98,7 +98,6 @@ import {
     KeyRound,
     Layers,
     Loader2,
-    Plus,
     Redo2,
     Save,
     Search,
@@ -452,8 +451,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
     // Tag state
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-    const [newTagName, setNewTagName] = useState('');
-    const [isCreatingTag, setIsCreatingTag] = useState(false);
 
     // Category state (many-to-many via PostCategoryLink)
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -2086,68 +2083,12 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     setSelectedTagIds(items.map((i) => i.id));
                                 }}
                                 searchable
-                                placeholder="Search tags..."
+                                placeholder="Search or add tags…"
                                 emptyMessage="No tags found"
                                 clearable
+                                // Enter on an unknown name creates the tag and selects it
+                                onCreate={(name) => createTag.mutateAsync({ name, slug: generateSlug(name) })}
                             />
-
-                            {/* Create new tag inline */}
-                            <div className="flex gap-2">
-                                <Input
-                                    value={newTagName}
-                                    onChange={(e) => setNewTagName(e.target.value)}
-                                    placeholder="New tag name..."
-                                    className="text-sm"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            if (newTagName.trim() && !isCreatingTag) {
-                                                setIsCreatingTag(true);
-                                                createTag
-                                                    .mutateAsync({
-                                                        name: newTagName.trim(),
-                                                        slug: generateSlug(newTagName.trim()),
-                                                    })
-                                                    .then((created) => {
-                                                        const newId = (created as { id?: string })?.id;
-                                                        if (newId) setSelectedTagIds((prev) => [...prev, newId]);
-                                                        setNewTagName('');
-                                                    })
-                                                    .catch(() => {})
-                                                    .finally(() => setIsCreatingTag(false));
-                                            }
-                                        }
-                                    }}
-                                />
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    disabled={!newTagName.trim() || isCreatingTag}
-                                    onClick={() => {
-                                        if (newTagName.trim() && !isCreatingTag) {
-                                            setIsCreatingTag(true);
-                                            createTag
-                                                .mutateAsync({
-                                                    name: newTagName.trim(),
-                                                    slug: generateSlug(newTagName.trim()),
-                                                })
-                                                .then((created) => {
-                                                    const newId = (created as { id?: string })?.id;
-                                                    if (newId) setSelectedTagIds((prev) => [...prev, newId]);
-                                                    setNewTagName('');
-                                                })
-                                                .catch(() => {})
-                                                .finally(() => setIsCreatingTag(false));
-                                        }
-                                    }}
-                                >
-                                    {isCreatingTag ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Plus className="h-4 w-4" />
-                                    )}
-                                </Button>
-                            </div>
                         </CardContent>
                     </Card>
 

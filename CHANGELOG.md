@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **OttaSelect is a real search-as-you-type field.** Typing on the trigger opens the list filtered to what you typed
+  with the first match focused, so type-then-Enter picks it (the first match used to need an arrow key first). A new
+  `onCreate` prop offers "Create 'x'" when nothing matches and selects what it returns; the blog editor's tag picker
+  uses it in place of a separate "New tag name" box. The trigger, list and options carry combobox, listbox and option
+  roles.
 - **Roles and permissions are one screen.** `/admin/access/rbac` lists the roles on the left and edits the selected one
   on the right: tick the permissions the server actually checks, see which ones a wildcard grant already includes,
   review "adding 2, removing 1" and save, with a leave guard for unsaved edits. It replaces the RBAC landing page, the

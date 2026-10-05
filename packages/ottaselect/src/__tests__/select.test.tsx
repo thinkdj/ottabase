@@ -120,7 +120,7 @@ describe('OttaSelect Component', () => {
             expect(root.className).toContain(
                 '[--otta-select-trigger-min-height:calc(1.625rem_+_var(--otta-select-space)*2)]',
             );
-            expect(screen.getByRole('button', { name: 'Pick an item' })).toBeTruthy();
+            expect(screen.getByRole('combobox', { name: 'Pick an item' })).toBeTruthy();
         });
 
         it('derives spacing from a damped --otta-select-space unit, never raw --spacing-element', () => {
