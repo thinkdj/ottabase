@@ -57,11 +57,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -75,10 +70,6 @@ import {
     Label,
     NativeSelect,
     NativeSelectOption,
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useQueryClient } from '@tanstack/react-query';
@@ -86,31 +77,22 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import * as Diff from 'diff';
 import {
     ArrowLeft,
-    Languages,
-    Braces,
+    ChevronRight,
     Calendar,
     Download,
     Eye,
-    FileText,
-    FolderTree,
-    History,
     Image as ImageIcon,
     KeyRound,
-    Layers,
     Loader2,
     Redo2,
     Save,
-    Search,
-    Settings,
     SplitSquareHorizontal,
-    StickyNote,
-    Tag,
     Trash2,
     Undo2,
     User,
     X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 interface BlogPost {
     id: string;
@@ -322,6 +304,38 @@ function getTextFromData(value: unknown): string {
     }
 
     return text.trim();
+}
+
+/** A collapsed extra under the editor: open it when you need it, the writing stays in front. */
+function Extra({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+    return (
+        <details className="group py-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                    {title}
+                </span>
+                {hint && <span className="text-xs font-normal text-muted-foreground">{hint}</span>}
+            </summary>
+            <div className="pb-2 pt-3">{children}</div>
+        </details>
+    );
+}
+
+/** One group of post settings in the side column */
+function Section({ title, tone, children }: { title: string; tone?: 'destructive'; children: ReactNode }) {
+    return (
+        <section className="space-y-3">
+            <h2
+                className={`text-[0.6875rem] font-semibold uppercase tracking-wide ${
+                    tone === 'destructive' ? 'text-destructive' : 'text-muted-foreground'
+                }`}
+            >
+                {title}
+            </h2>
+            {children}
+        </section>
+    );
 }
 
 export function AdminBlogEditorPage() {
@@ -596,7 +610,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const slugCheckSequence = useRef(0);
 
     // Active tab
-    const [activeTab, setActiveTab] = useState('content');
     const [writingLanguage, setWritingLanguage] = useState<string | null>(null);
     const [translationDirty, setTranslationDirty] = useState(false);
     const [translationActionsTarget, setTranslationActionsTarget] = useState<HTMLDivElement | null>(null);
@@ -796,8 +809,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         } else {
             await footnotesEditor.clear();
         }
-
-        setActiveTab('content');
     };
 
     const previewPublishedAt = fromDateTimeLocalInput(publishAt) ?? initialData?.publishedAt ?? null;
@@ -1317,103 +1328,95 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         }
     };
 
+    const publicPrefix = getPublicContentPath('slug', contentType).slice(0, -'slug'.length);
+    const slugProblem = slugStatus === 'taken' || !!slugError;
+    const writingLanguageName =
+        supportedLanguages.find((item) => item.code === (writingLanguage ?? baseLanguage))?.name ?? writingLanguage;
+
     return (
-        <div className="space-y-6 pb-16">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
+        <div className="pb-24">
+            {/* Top bar: what is saved, which language you write in, and the one save action */}
+            <div className="sticky top-0 z-20 mb-8 border-b border-border/60 bg-background/95 py-2 backdrop-blur">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link to={surface.contentPath}>
+                        <Link to={surface.contentPath} aria-label="Back to posts">
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                            {isEditMode ? 'Edit Post' : 'New Post'}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {isEditMode ? 'Update your blog post' : 'Create a new blog post'}
-                        </p>
-                    </div>
-                </div>
-
-                <div
-                    ref={setTranslationActionsTarget}
-                    className={isWritingTranslation ? 'flex flex-wrap items-center gap-2' : 'hidden'}
-                />
-                <div className={isWritingTranslation ? 'hidden' : 'flex flex-wrap items-center gap-2'}>
+                    <h1 className="sr-only">{isEditMode ? 'Edit post' : 'New post'}</h1>
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                        {/* What is saved now; the Visibility panel holds what saving will change it to */}
+                        {/* What is saved now; the Visibility section holds what saving will change it to */}
                         <span
                             aria-hidden="true"
                             className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[initialData?.status ?? 'draft']}`}
                         />
                         {POST_STATUSES[initialData?.status ?? 'draft'].label}
                     </span>
-                    {isEditMode && initialData && status === 'published' && (
-                        <Button variant="ghost" asChild>
-                            <a
-                                href={getPublicContentPath(initialData.slug, initialData.contentType)}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Eye className="mr-2 h-4 w-4" /> View post
-                            </a>
-                        </Button>
-                    )}
-                    <PublishActions
-                        status={status}
-                        savedStatus={initialData?.status}
-                        isSaving={isSaving}
-                        saveDisabled={saveDisabled}
-                        onSave={() => handleSave(false)}
-                        onPublishNow={() => handleSave(true)}
-                    />
+                    <NativeSelect
+                        id="writing-language"
+                        aria-label="Writing language"
+                        title={
+                            isEditMode
+                                ? 'Pick a language to write a translation'
+                                : 'Save the post once to start translating'
+                        }
+                        value={writingLanguage ?? baseLanguage}
+                        onChange={(event) => changeWritingLanguage(event.target.value)}
+                        disabled={!isEditMode}
+                        wrapperClassName="w-44"
+                    >
+                        <NativeSelectOption value={baseLanguage}>
+                            {supportedLanguages.find((item) => item.code === baseLanguage)?.name ?? baseLanguage}{' '}
+                            (Original)
+                        </NativeSelectOption>
+                        {supportedLanguages
+                            .filter((item) => item.code !== baseLanguage)
+                            .map((item) => (
+                                <NativeSelectOption key={item.code} value={item.code}>
+                                    {item.name}
+                                </NativeSelectOption>
+                            ))}
+                    </NativeSelect>
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                        <div
+                            ref={setTranslationActionsTarget}
+                            className={isWritingTranslation ? 'flex flex-wrap items-center gap-2' : 'hidden'}
+                        />
+                        <div className={isWritingTranslation ? 'hidden' : 'flex flex-wrap items-center gap-2'}>
+                            {isEditMode && initialData && status === 'published' && (
+                                <Button variant="ghost" asChild>
+                                    <a
+                                        href={getPublicContentPath(initialData.slug, initialData.contentType)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <Eye className="mr-2 h-4 w-4" /> View post
+                                    </a>
+                                </Button>
+                            )}
+                            <PublishActions
+                                status={status}
+                                savedStatus={initialData?.status}
+                                isSaving={isSaving}
+                                saveDisabled={saveDisabled}
+                                onSave={() => handleSave(false)}
+                                onPublishNow={() => handleSave(true)}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/40 p-4">
-                <div className="space-y-1">
-                    <Label htmlFor="writing-language" className="flex items-center gap-2">
-                        <Languages className="h-4 w-4" /> Writing language
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                        {isWritingTranslation
-                            ? 'Editing a translation. Save and publish this language independently.'
-                            : 'Editing the original post. Choose a language to write a translation.'}
-                    </p>
-                    {!isEditMode && (
-                        <p className="text-xs text-muted-foreground">Save your post once to start translating.</p>
-                    )}
-                    {isWritingTranslation && isDirty && (
-                        <p className="text-xs text-muted-foreground">
-                            Your unsaved original is kept while you translate.
-                        </p>
-                    )}
-                </div>
-                <NativeSelect
-                    id="writing-language"
-                    value={writingLanguage ?? baseLanguage}
-                    onChange={(event) => changeWritingLanguage(event.target.value)}
-                    disabled={!isEditMode}
-                    className="w-full sm:w-64"
-                >
-                    <NativeSelectOption value={baseLanguage}>
-                        {supportedLanguages.find((item) => item.code === baseLanguage)?.name ?? baseLanguage} (Original)
-                    </NativeSelectOption>
-                    {supportedLanguages
-                        .filter((item) => item.code !== baseLanguage)
-                        .map((item) => (
-                            <NativeSelectOption key={item.code} value={item.code}>
-                                {item.name}
-                            </NativeSelectOption>
-                        ))}
-                </NativeSelect>
-            </div>
+            {isWritingTranslation && (
+                <p className="mb-6 text-sm text-muted-foreground">
+                    Writing the {writingLanguageName} translation. It saves and publishes on its own.
+                    {isDirty && ' Your unsaved original is kept meanwhile.'}
+                </p>
+            )}
+
             {/* Keep the original editors mounted so switching languages preserves their draft. */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column - Main Content */}
-                <div className="lg:col-span-2 space-y-6">
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-start">
+                <main className="min-w-0 flex-1">
                     {isWritingTranslation && postId && initialData && (
                         <AdminBlogTranslationsPanel
                             key={writingLanguage}
@@ -1425,292 +1428,208 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         />
                     )}
                     <div className={isWritingTranslation ? 'hidden' : 'space-y-6'}>
-                        {/* Title & Slug */}
-                        <Card>
-                            <CardContent className="pt-6 space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="title">Title</Label>
-                                    <Input
-                                        id="title"
-                                        value={title}
-                                        onChange={(e) => handleTitleChange(e.target.value)}
-                                        onBlur={handleTitleBlur}
-                                        placeholder="Enter post title..."
-                                        className="text-lg font-semibold"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="slug">Slug</Label>
-                                    <Input
-                                        id="slug"
-                                        value={slug}
-                                        onChange={(e) => {
-                                            slugCheckSequence.current++;
-                                            setSlug(e.target.value);
-                                            setSlugStatus('idle');
-                                        }}
-                                        onBlur={handleSlugBlur}
-                                        placeholder="url-friendly-slug"
-                                        aria-invalid={slugStatus === 'taken' || !!slugError}
-                                        className={
-                                            slugStatus === 'taken' || slugError
-                                                ? 'border-destructive focus-visible:ring-destructive'
-                                                : undefined
-                                        }
-                                    />
-                                    {slugError && <p className="text-xs text-destructive">{slugError}</p>}
-                                    {slugStatus === 'checking' && (
-                                        <p className="text-xs text-muted-foreground">Checking slug...</p>
-                                    )}
-                                    {slugStatus === 'taken' && (
-                                        <p className="text-xs text-destructive">Slug already in use.</p>
-                                    )}
-                                    {slugStatus === 'available' && (
-                                        <p className="text-xs text-muted-foreground">Slug is available.</p>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div className="space-y-1">
+                            <label htmlFor="title" className="sr-only">
+                                Title
+                            </label>
+                            <input
+                                id="title"
+                                value={title}
+                                onChange={(e) => handleTitleChange(e.target.value)}
+                                onBlur={handleTitleBlur}
+                                placeholder="Title"
+                                className="w-full border-0 bg-transparent px-0 py-1 text-3xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/40 md:text-4xl"
+                            />
+                            <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+                                <label htmlFor="slug" className="font-mono text-muted-foreground">
+                                    {publicPrefix}
+                                </label>
+                                <input
+                                    id="slug"
+                                    value={slug}
+                                    onChange={(e) => {
+                                        slugCheckSequence.current++;
+                                        setSlug(e.target.value);
+                                        setSlugStatus('idle');
+                                    }}
+                                    onBlur={handleSlugBlur}
+                                    placeholder="url-friendly-slug"
+                                    aria-invalid={slugProblem}
+                                    className={`min-w-[10rem] flex-1 border-0 bg-transparent px-0 font-mono text-sm outline-none placeholder:text-muted-foreground/40 ${
+                                        slugProblem ? 'text-destructive' : 'text-foreground'
+                                    }`}
+                                />
+                                {slugError && <span className="text-xs text-destructive">{slugError}</span>}
+                                {slugStatus === 'checking' && (
+                                    <span className="text-xs text-muted-foreground">Checking</span>
+                                )}
+                                {slugStatus === 'taken' && (
+                                    <span className="text-xs text-destructive">Already in use</span>
+                                )}
+                                {slugStatus === 'available' && (
+                                    <span className="text-xs text-muted-foreground">Available</span>
+                                )}
+                            </div>
+                        </div>
 
-                        {/* Content Tabs */}
-                        <Tabs value={activeTab} onValueChange={setActiveTab}>
-                            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-                                <TabsTrigger value="content" className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4" />
-                                    Content
-                                </TabsTrigger>
-                                <TabsTrigger value="notes" className="flex items-center gap-2">
-                                    <StickyNote className="h-4 w-4" />
-                                    Notes
-                                </TabsTrigger>
-                                <TabsTrigger value="footnotes" className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4" />
-                                    Footnotes
-                                </TabsTrigger>
-                                <TabsTrigger value="seo" className="flex items-center gap-2">
-                                    <Search className="h-4 w-4" />
-                                    SEO
-                                </TabsTrigger>
-                                <TabsTrigger value="meta" className="flex items-center gap-2">
-                                    <Braces className="h-4 w-4" />
-                                    Custom Meta
-                                </TabsTrigger>
-                            </TabsList>
+                        <div>
+                            {/* Undo/Redo and Export toolbar */}
+                            <div className="flex items-center gap-1 mb-3">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => mainEditor.undo()}
+                                    disabled={!mainEditor.canUndo}
+                                    title="Undo (Ctrl+Z)"
+                                >
+                                    <Undo2 className="h-4 w-4 mr-1" />
+                                    Undo
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => mainEditor.redo()}
+                                    disabled={!mainEditor.canRedo}
+                                    title="Redo (Ctrl+Shift+Z)"
+                                >
+                                    <Redo2 className="h-4 w-4 mr-1" />
+                                    Redo
+                                </Button>
+                                <div className="ml-auto">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm">
+                                                <Download className="h-4 w-4 mr-1" />
+                                                Export
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                                onClick={async () => {
+                                                    const json = await mainEditor.exportJSON();
+                                                    downloadText(json ?? '', 'post-content.json');
+                                                }}
+                                            >
+                                                Export JSON
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={async () => {
+                                                    const md = await mainEditor.exportMarkdown();
+                                                    downloadText(md ?? '', 'post-content.md');
+                                                }}
+                                            >
+                                                Export Markdown
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
+                            <div
+                                ref={mainEditor.editorRef}
+                                className="min-h-[60vh] prose prose-slate dark:prose-invert max-w-none rounded-xl bg-background p-4 ring-1 ring-border/60 transition-shadow focus-within:ring-border"
+                            />
+                        </div>
 
-                            <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">Main Content</CardTitle>
-                                        <CardDescription>
-                                            Write your post content using the rich text editor
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {/* Undo/Redo and Export toolbar */}
-                                        <div className="flex items-center gap-1 mb-3">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => mainEditor.undo()}
-                                                disabled={!mainEditor.canUndo}
-                                                title="Undo (Ctrl+Z)"
-                                            >
-                                                <Undo2 className="h-4 w-4 mr-1" />
-                                                Undo
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => mainEditor.redo()}
-                                                disabled={!mainEditor.canRedo}
-                                                title="Redo (Ctrl+Shift+Z)"
-                                            >
-                                                <Redo2 className="h-4 w-4 mr-1" />
-                                                Redo
-                                            </Button>
-                                            <div className="ml-auto">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <Download className="h-4 w-4 mr-1" />
-                                                            Export
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem
-                                                            onClick={async () => {
-                                                                const json = await mainEditor.exportJSON();
-                                                                downloadText(json ?? '', 'post-content.json');
-                                                            }}
-                                                        >
-                                                            Export JSON
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={async () => {
-                                                                const md = await mainEditor.exportMarkdown();
-                                                                downloadText(md ?? '', 'post-content.md');
-                                                            }}
-                                                        >
-                                                            Export Markdown
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </div>
-                                        <div
-                                            ref={mainEditor.editorRef}
-                                            className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                        <div className="divide-y divide-border/60 border-y border-border/60">
+                            <Extra title="Excerpt" hint={excerpt.trim() ? 'Written' : 'Made from the content'}>
+                                <Textarea
+                                    value={excerpt}
+                                    onChange={(e) => setExcerpt(e.target.value)}
+                                    placeholder="Brief summary of the post..."
+                                    rows={3}
+                                />
+                            </Extra>
+                            <Extra title="Private notes" hint="Only authors see these">
+                                <div
+                                    ref={notesEditor.editorRef}
+                                    className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
+                                />
+                            </Extra>
+                            <Extra title="Footnotes" hint="Shown at the end of the post">
+                                <div
+                                    ref={footnotesEditor.editorRef}
+                                    className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                />
+                            </Extra>
+                            <Extra
+                                title="Search"
+                                hint={seoTitle || seoDescription ? 'Custom' : 'Uses the title and excerpt'}
+                            >
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoTitle">SEO Title</Label>
+                                        <Input
+                                            id="seoTitle"
+                                            value={seoTitle}
+                                            onChange={(e) => setSeoTitle(e.target.value)}
+                                            placeholder={title || 'Defaults to post title'}
                                         />
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="mt-6">
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">Excerpt</CardTitle>
-                                        <CardDescription>
-                                            Short summary shown in listings (auto-generated if empty)
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
+                                        <p className="text-xs text-muted-foreground">{seoTitle.length}/60 characters</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoDescription">Meta Description</Label>
                                         <Textarea
-                                            value={excerpt}
-                                            onChange={(e) => setExcerpt(e.target.value)}
-                                            placeholder="Brief summary of the post..."
+                                            id="seoDescription"
+                                            value={seoDescription}
+                                            onChange={(e) => setSeoDescription(e.target.value)}
+                                            placeholder="Brief description for search results..."
                                             rows={3}
                                         />
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">Private Notes</CardTitle>
-                                        <CardDescription>
-                                            Personal notes for the author (not shown publicly)
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div
-                                            ref={notesEditor.editorRef}
-                                            className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
-                                        />
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">
-                                            Footnotes & References
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Add footnotes, citations, and references (shown at the end of the post)
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div
-                                            ref={footnotesEditor.editorRef}
-                                            className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
-                                        />
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">SEO Settings</CardTitle>
-                                        <CardDescription>Optimize your post for search engines</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="seoTitle">SEO Title</Label>
-                                            <Input
-                                                id="seoTitle"
-                                                value={seoTitle}
-                                                onChange={(e) => setSeoTitle(e.target.value)}
-                                                placeholder={title || 'Defaults to post title'}
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                {seoTitle.length}/60 characters
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="seoDescription">Meta Description</Label>
-                                            <Textarea
-                                                id="seoDescription"
-                                                value={seoDescription}
-                                                onChange={(e) => setSeoDescription(e.target.value)}
-                                                placeholder="Brief description for search results..."
-                                                rows={3}
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                {seoDescription.length}/160 characters
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="seoKeywords">Keywords</Label>
-                                            <Input
-                                                id="seoKeywords"
-                                                value={seoKeywords}
-                                                onChange={(e) => setSeoKeywords(e.target.value)}
-                                                placeholder="keyword1, keyword2, keyword3"
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                id="seoNoIndex"
-                                                aria-label="Hide from search engines"
-                                                checked={seoNoIndex}
-                                                onChange={(e) => setSeoNoIndex(e.target.checked)}
-                                                className="rounded"
-                                            />
-                                            <Label htmlFor="seoNoIndex">Hide from search engines (noindex)</Label>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="meta" className="mt-4 data-[state=inactive]:hidden">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-[0.9375rem] font-semibold">Custom Meta</CardTitle>
-                                        <CardDescription>
-                                            Free-form key/value metadata stored on the post. Not used by the blog engine
-                                            itself &mdash; available to themes, plugins, and custom renderers.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <JsonEditor
-                                            value={(meta ?? {}) as JsonValue}
-                                            onChange={(next) =>
-                                                setMeta(
-                                                    next && typeof next === 'object' && !Array.isArray(next)
-                                                        ? (next as Record<string, unknown>)
-                                                        : {},
-                                                )
-                                            }
-                                            rootLabel="meta"
-                                            collapseAtDepth={3}
-                                        />
-                                        <p className="mt-2 text-xs text-muted-foreground">
-                                            Add custom keys &amp; values (strings, numbers, booleans, arrays, objects).
-                                            Saved as JSON on the post&apos;s <code>meta</code> column.
+                                        <p className="text-xs text-muted-foreground">
+                                            {seoDescription.length}/160 characters
                                         </p>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
-
-                        <CrosspostsField value={crossposts} onChange={setCrossposts} noun="post" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoKeywords">Keywords</Label>
+                                        <Input
+                                            id="seoKeywords"
+                                            value={seoKeywords}
+                                            onChange={(e) => setSeoKeywords(e.target.value)}
+                                            placeholder="keyword1, keyword2, keyword3"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="seoNoIndex"
+                                            aria-label="Hide from search engines"
+                                            checked={seoNoIndex}
+                                            onChange={(e) => setSeoNoIndex(e.target.checked)}
+                                            className="rounded"
+                                        />
+                                        <Label htmlFor="seoNoIndex">Hide from search engines (noindex)</Label>
+                                    </div>
+                                </div>
+                            </Extra>
+                            <Extra title="Custom meta" hint="For themes and plugins">
+                                <JsonEditor
+                                    value={(meta ?? {}) as JsonValue}
+                                    onChange={(next) =>
+                                        setMeta(
+                                            next && typeof next === 'object' && !Array.isArray(next)
+                                                ? (next as Record<string, unknown>)
+                                                : {},
+                                        )
+                                    }
+                                    rootLabel="meta"
+                                    collapseAtDepth={3}
+                                />
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    Add custom keys &amp; values (strings, numbers, booleans, arrays, objects). Saved as
+                                    JSON on the post&apos;s <code>meta</code> column.
+                                </p>
+                            </Extra>
+                            <Extra title="Cross-posts">
+                                <CrosspostsField value={crossposts} onChange={setCrossposts} noun="post" />
+                            </Extra>
+                        </div>
                     </div>
-                </div>
+                </main>
 
-                {/* Right Column - Settings */}
-                <div className="space-y-6">
+                <aside
+                    aria-label="Post settings"
+                    className="w-full shrink-0 space-y-8 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:w-80 lg:overflow-y-auto lg:pb-8"
+                >
                     {isWritingTranslation && (
                         <div className="space-y-2 rounded-xl border bg-muted/40 p-4">
                             <h2 className="text-sm font-semibold">Post settings</h2>
@@ -1732,15 +1651,71 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </Button>
                         </div>
                     )}
-                    {/* Hero Image */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                Hero Image
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                    <Section title="Visibility">
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="postLanguage">Canonical language</Label>
+                                <NativeSelect
+                                    id="postLanguage"
+                                    aria-label="Canonical language"
+                                    value={language}
+                                    onChange={(e) => setLanguage(e.target.value)}
+                                    wrapperClassName="w-full"
+                                >
+                                    {supportedLanguages.map((item) => (
+                                        <NativeSelectOption key={item.code} value={item.code}>
+                                            {item.name} ({item.code})
+                                        </NativeSelectOption>
+                                    ))}
+                                </NativeSelect>
+                                <p className="text-xs text-muted-foreground">
+                                    The original post language. Use Writing language above to edit localized versions.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="contentType">Content Type</Label>
+                                <NativeSelect
+                                    id="contentType"
+                                    aria-label="Content type"
+                                    value={contentType}
+                                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                                    wrapperClassName="w-full"
+                                >
+                                    {Object.entries(CONTENT_TYPES)
+                                        .filter(([value]) => value !== 'blurb' && value !== 'photo')
+                                        .map(([value, { label }]) => (
+                                            <NativeSelectOption key={value} value={value}>
+                                                {label}
+                                            </NativeSelectOption>
+                                        ))}
+                                </NativeSelect>
+                            </div>
+
+                            <PublishControl
+                                label="Original post visibility"
+                                status={status}
+                                onStatusChange={setStatus}
+                                publishAt={publishAt}
+                                onPublishAtChange={setPublishAt}
+                                savedStatus={initialData?.status}
+                                publishedAt={initialData?.publishedAt}
+                                disabled={isSaving}
+                            />
+
+                            <div className="space-y-2">
+                                <Label htmlFor="originalDate">Originally Written</Label>
+                                <FuzzyDateField
+                                    id="originalDate"
+                                    value={originalDate}
+                                    onChange={setOriginalDate}
+                                    placeholder='e.g. "Late May 2010", "Summer 1998"'
+                                />
+                            </div>
+                        </div>
+                    </Section>
+                    <Section title="Hero image">
+                        <div className="space-y-4">
                             {heroImage?.url ? (
                                 <div
                                     className={`relative rounded-lg transition-colors ${
@@ -1851,228 +1826,20 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     100–3000 px. Leave blank to use natural height.
                                 </p>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <MediaPickerDialog
+                            open={isHeroMediaPickerOpen}
+                            onOpenChange={setIsHeroMediaPickerOpen}
+                            title="Choose a hero image"
+                            acceptKinds={['image']}
+                            confirmLabel="Use as hero"
+                            onPick={([item]) => handleHeroMediaSelect(item)}
+                        />
+                    </Section>
+                    <Section title="Organize">
+                        <div className="space-y-2">
+                            <Label>Tags</Label>
 
-                    <MediaPickerDialog
-                        open={isHeroMediaPickerOpen}
-                        onOpenChange={setIsHeroMediaPickerOpen}
-                        title="Choose a hero image"
-                        acceptKinds={['image']}
-                        confirmLabel="Use as hero"
-                        onPick={([item]) => handleHeroMediaSelect(item)}
-                    />
-
-                    {/* Post Settings */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <Settings className="h-4 w-4 text-muted-foreground" />
-                                Settings
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="postLanguage">Canonical language</Label>
-                                <NativeSelect
-                                    id="postLanguage"
-                                    aria-label="Canonical language"
-                                    value={language}
-                                    onChange={(e) => setLanguage(e.target.value)}
-                                    wrapperClassName="w-full"
-                                >
-                                    {supportedLanguages.map((item) => (
-                                        <NativeSelectOption key={item.code} value={item.code}>
-                                            {item.name} ({item.code})
-                                        </NativeSelectOption>
-                                    ))}
-                                </NativeSelect>
-                                <p className="text-xs text-muted-foreground">
-                                    The original post language. Use Writing language above to edit localized versions.
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="contentType">Content Type</Label>
-                                <NativeSelect
-                                    id="contentType"
-                                    aria-label="Content type"
-                                    value={contentType}
-                                    onChange={(e) => setContentType(e.target.value as ContentType)}
-                                    wrapperClassName="w-full"
-                                >
-                                    {Object.entries(CONTENT_TYPES)
-                                        .filter(([value]) => value !== 'blurb' && value !== 'photo')
-                                        .map(([value, { label }]) => (
-                                            <NativeSelectOption key={value} value={value}>
-                                                {label}
-                                            </NativeSelectOption>
-                                        ))}
-                                </NativeSelect>
-                            </div>
-
-                            <PublishControl
-                                label="Original post visibility"
-                                status={status}
-                                onStatusChange={setStatus}
-                                publishAt={publishAt}
-                                onPublishAtChange={setPublishAt}
-                                savedStatus={initialData?.status}
-                                publishedAt={initialData?.publishedAt}
-                                disabled={isSaving}
-                            />
-
-                            <div className="space-y-2">
-                                <Label htmlFor="originalDate">Originally Written</Label>
-                                <FuzzyDateField
-                                    id="originalDate"
-                                    value={originalDate}
-                                    onChange={setOriginalDate}
-                                    placeholder='e.g. "Late May 2010", "Summer 1998"'
-                                />
-                            </div>
-
-                            <div className="space-y-3 pt-2">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="isFeatured"
-                                        aria-label="Featured post"
-                                        checked={isFeatured}
-                                        onChange={(e) => setIsFeatured(e.target.checked)}
-                                        className="rounded"
-                                    />
-                                    <Label htmlFor="isFeatured">Featured Post</Label>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="allowComments"
-                                        aria-label="Allow comments"
-                                        checked={allowComments}
-                                        onChange={(e) => setAllowComments(e.target.checked)}
-                                        className="rounded"
-                                    />
-                                    <Label htmlFor="allowComments">Allow Comments</Label>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="isProtected"
-                                        aria-label="Password protect post"
-                                        checked={isProtected}
-                                        onChange={(e) => {
-                                            const next = e.target.checked;
-                                            setIsProtected(next);
-                                            if (!next) {
-                                                setPassword('');
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    <Label htmlFor="isProtected" className="flex items-center gap-1.5">
-                                        <KeyRound className="h-4 w-4" />
-                                        Password protect post
-                                    </Label>
-                                </div>
-                                {isProtected && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="postPassword">Password</Label>
-                                            <Input
-                                                id="postPassword"
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder={
-                                                    initialData?.isProtected
-                                                        ? 'Leave blank to keep current'
-                                                        : 'Set password'
-                                                }
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                {initialData?.isProtected
-                                                    ? 'Enter a new password to change it.'
-                                                    : 'Readers will need this password to view the full post.'}
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="passwordHint">Password hint (optional)</Label>
-                                            <Input
-                                                id="passwordHint"
-                                                type="text"
-                                                value={passwordHint}
-                                                onChange={(e) => setPasswordHint(e.target.value)}
-                                                placeholder="e.g. Our wedding date"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                Shown on the lock screen to help readers.
-                                            </p>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Series */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <Layers className="h-4 w-4 text-muted-foreground" />
-                                Series
-                            </CardTitle>
-                            <CardDescription>Group this post with related content</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="seriesSelect">Series</Label>
-                                <OttaSelect
-                                    mode="single"
-                                    items={seriesItems}
-                                    value={selectedSeriesItem}
-                                    onChange={(value) => {
-                                        setSeriesId((value as OttaSelectItem | null)?.id ?? null);
-                                    }}
-                                    searchable
-                                    clearable
-                                    placeholder="Select series..."
-                                    emptyMessage="No series found"
-                                />
-                            </div>
-
-                            {seriesId && (
-                                <div className="space-y-2">
-                                    <Label>Order in Series</Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        value={seriesOrder || ''}
-                                        onChange={(e) =>
-                                            setSeriesOrder(e.target.value ? parseInt(e.target.value, 10) : null)
-                                        }
-                                        placeholder="1, 2, 3..."
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Position within the series (e.g., Part 1, Part 2)
-                                    </p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Tags */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <Tag className="h-4 w-4 text-muted-foreground" />
-                                Tags
-                            </CardTitle>
-                            <CardDescription>Categorize your post with tags</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
                             {/* OttaSelect search-ahead multi-select */}
                             <OttaSelect
                                 mode="multiple"
@@ -2089,19 +1856,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                 // Enter on an unknown name creates the tag and selects it
                                 onCreate={(name) => createTag.mutateAsync({ name, slug: generateSlug(name) })}
                             />
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Categories</Label>
 
-                    {/* Category */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <FolderTree className="h-4 w-4 text-muted-foreground" />
-                                Categories
-                            </CardTitle>
-                            <CardDescription>Assign categories to this post</CardDescription>
-                        </CardHeader>
-                        <CardContent>
                             <OttaSelect
                                 mode="multiple"
                                 items={categoryItems}
@@ -2116,19 +1874,128 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                 emptyMessage="No categories found"
                                 showChips
                             />
-                        </CardContent>
-                    </Card>
+                        </div>
 
-                    {/* Version History */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                                <History className="h-4 w-4 text-muted-foreground" />
-                                Version History
-                            </CardTitle>
-                            <CardDescription>Track changes and restore previous versions</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="seriesSelect">Series</Label>
+                            <OttaSelect
+                                mode="single"
+                                items={seriesItems}
+                                value={selectedSeriesItem}
+                                onChange={(value) => {
+                                    setSeriesId((value as OttaSelectItem | null)?.id ?? null);
+                                }}
+                                searchable
+                                clearable
+                                placeholder="Select series..."
+                                emptyMessage="No series found"
+                            />
+                        </div>
+
+                        {seriesId && (
+                            <div className="space-y-2">
+                                <Label>Order in Series</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    value={seriesOrder || ''}
+                                    onChange={(e) =>
+                                        setSeriesOrder(e.target.value ? parseInt(e.target.value, 10) : null)
+                                    }
+                                    placeholder="1, 2, 3..."
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Position within the series (e.g., Part 1, Part 2)
+                                </p>
+                            </div>
+                        )}
+                    </Section>
+                    <Section title="Options">
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="isFeatured"
+                                    aria-label="Featured post"
+                                    checked={isFeatured}
+                                    onChange={(e) => setIsFeatured(e.target.checked)}
+                                    className="rounded"
+                                />
+                                <Label htmlFor="isFeatured">Featured Post</Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="allowComments"
+                                    aria-label="Allow comments"
+                                    checked={allowComments}
+                                    onChange={(e) => setAllowComments(e.target.checked)}
+                                    className="rounded"
+                                />
+                                <Label htmlFor="allowComments">Allow Comments</Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="isProtected"
+                                    aria-label="Password protect post"
+                                    checked={isProtected}
+                                    onChange={(e) => {
+                                        const next = e.target.checked;
+                                        setIsProtected(next);
+                                        if (!next) {
+                                            setPassword('');
+                                        }
+                                    }}
+                                    className="rounded"
+                                />
+                                <Label htmlFor="isProtected" className="flex items-center gap-1.5">
+                                    <KeyRound className="h-4 w-4" />
+                                    Password protect post
+                                </Label>
+                            </div>
+                            {isProtected && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="postPassword">Password</Label>
+                                        <Input
+                                            id="postPassword"
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder={
+                                                initialData?.isProtected
+                                                    ? 'Leave blank to keep current'
+                                                    : 'Set password'
+                                            }
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            {initialData?.isProtected
+                                                ? 'Enter a new password to change it.'
+                                                : 'Readers will need this password to view the full post.'}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="passwordHint">Password hint (optional)</Label>
+                                        <Input
+                                            id="passwordHint"
+                                            type="text"
+                                            value={passwordHint}
+                                            onChange={(e) => setPasswordHint(e.target.value)}
+                                            placeholder="e.g. Our wedding date"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Shown on the lock screen to help readers.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </Section>
+                    <Section title="Versions">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="maxVersionsToKeep">Keep Previous Versions</Label>
                                 <NativeSelect
@@ -2252,30 +2119,17 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     No version history yet. Versions are created when you save changes.
                                 </p>
                             )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Danger Zone */}
+                        </div>
+                    </Section>
                     {isEditMode && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-[0.9375rem] font-semibold text-destructive">
-                                    Danger Zone
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Button
-                                    variant="destructive"
-                                    className="w-full"
-                                    onClick={() => setDeletePostDialog(true)}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Post
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        <Section title="Danger zone" tone="destructive">
+                            <Button variant="destructive" className="w-full" onClick={() => setDeletePostDialog(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Post
+                            </Button>
+                        </Section>
                     )}
-                </div>
+                </aside>
             </div>
 
             <ConfirmDialog

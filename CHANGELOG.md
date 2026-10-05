@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The blog editor puts the writing first.** The title is a large heading field with the public path and slug under it,
+  the editor fills the column, and everything else (excerpt, private notes, footnotes, search settings, custom meta,
+  cross-posts) sits below as collapsed sections instead of tabs. Post settings moved from seven cards to a sticky side
+  column with plain headings (Visibility, Hero image, Organize, Options, Versions, Danger zone), and a slim sticky top
+  bar holds the saved status, the writing language and the save action.
 - **One comment thread for everything.** `CommentThread` (`@ottabase/comments/react`) now renders comments on blog posts
   and in the demo instead of two hand-built trees. It adds reactions with a picker, editing your own comment, reporting
   someone else's (any signed in user, `PATCH { status: 'flagged' }`), and hide, restore and delete for moderators.
