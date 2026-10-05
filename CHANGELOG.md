@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Menu items move by drag, arrows or keyboard.** The menu editor lists items as rows you can drag onto each other,
+  nudge up and down, indent under the item above or outdent, with Alt plus arrow keys doing the same from the drag
+  handle. Moves show at once and persist through one new call, `PUT /api/brand/menus/:id/items/order`, backed by pure
+  helpers in `@ottabase/ottamenu` (`moveItem`, `indentItem`, `outdentItem`, `placeItem`, `orderChanges`). Items are
+  edited in a side panel instead of inline forms, and both the menus list and a menu's header say where the menu is
+  shown (its layout slots) with an "Assign to slots" action right there.
 - **Shortlinks start from a pasted URL.** The `/shortlinks` page is a paste bar plus a data table: paste a link, press
   Shorten, and the short link is created with a generated readable code (`generateShortCode` in `@ottabase/shortlinks`,
   the worker draws one when `shortCode` is omitted) and copied to the clipboard. The list searches code and destination

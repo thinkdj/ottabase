@@ -87,6 +87,22 @@ const tree: MenuItemTreeNode[] = buildItemTree(items);
 // Each node has { ...item, children: MenuItemTreeNode[] }
 ```
 
+### Moving items
+
+Editors reorder the flat list with pure helpers; each returns a new list with `sortOrder` renumbered per parent:
+
+```ts
+import { indentItem, moveItem, orderChanges, outdentItem, placeItem } from '@ottabase/ottamenu';
+
+const next = moveItem(items, id, -1); // swap with the sibling above (+1 for below)
+indentItem(items, id); // last child of the sibling above
+outdentItem(items, id); // out of its parent, right after it
+placeItem(items, id, targetId, 'before'); // a drop before or after another item
+orderChanges(items, next); // [{ id, parentId, sortOrder }] for only what moved
+```
+
+`PUT /api/brand/menus/:id/items/order` (brand-engine) takes that `items` list and writes it in one round trip.
+
 ## Menu Slot Renderer
 
 Render menus assigned to named layout slots. Works with resolved data from the `GET /api/brand` response — no extra

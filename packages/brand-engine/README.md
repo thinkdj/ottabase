@@ -179,23 +179,24 @@ const url = buildGoogleFontUrl('Inter', [400, 600]);
 
 Wire in your Cloudflare Worker via handlers from `@ottabase/brand-engine/handlers`.
 
-| Method | Path                        | Description                                   |
-| ------ | --------------------------- | --------------------------------------------- |
-| GET    | `/api/brand`                | Resolved brand config (per-app)               |
-| GET    | `/api/brand/presets`        | List available theme presets (JSON)           |
-| GET    | `/api/brand/kits`           | List brand kits for app                       |
-| POST   | `/api/brand/kits`           | Create brand kit (expands preset if selected) |
-| PUT    | `/api/brand/kits/:id`       | Update brand kit (re-expands preset)          |
-| DELETE | `/api/brand/kits/:id`       | Delete brand kit                              |
-| POST   | `/api/brand/kits/:id/clone` | Clone brand kit                               |
-| POST   | `/api/brand/kits/:id/logo`  | Upload logo (logo, logo-dark, icon, og-image) |
-| GET    | `/api/brand/layouts`        | List layout templates                         |
-| PUT    | `/api/brand/layouts`        | Create/update layout template (own app only)  |
-| GET    | `/api/brand/mappings`       | List route mappings                           |
-| PUT    | `/api/brand/mappings`       | Replace route mappings (all-or-nothing)       |
-| GET    | `/api/brand/menu-slots`     | Resolved menu slot assignments (with menus)   |
-| GET    | `/api/brand/menu-slots/raw` | Raw slot assignments (admin editing)          |
-| PUT    | `/api/brand/menu-slots`     | Replace all slot assignments                  |
+| Method | Path                               | Description                                                |
+| ------ | ---------------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/brand`                       | Resolved brand config (per-app)                            |
+| GET    | `/api/brand/presets`               | List available theme presets (JSON)                        |
+| GET    | `/api/brand/kits`                  | List brand kits for app                                    |
+| POST   | `/api/brand/kits`                  | Create brand kit (expands preset if selected)              |
+| PUT    | `/api/brand/kits/:id`              | Update brand kit (re-expands preset)                       |
+| DELETE | `/api/brand/kits/:id`              | Delete brand kit                                           |
+| POST   | `/api/brand/kits/:id/clone`        | Clone brand kit                                            |
+| POST   | `/api/brand/kits/:id/logo`         | Upload logo (logo, logo-dark, icon, og-image)              |
+| GET    | `/api/brand/layouts`               | List layout templates                                      |
+| PUT    | `/api/brand/layouts`               | Create/update layout template (own app only)               |
+| GET    | `/api/brand/mappings`              | List route mappings                                        |
+| PUT    | `/api/brand/mappings`              | Replace route mappings (all-or-nothing)                    |
+| GET    | `/api/brand/menu-slots`            | Resolved menu slot assignments (with menus)                |
+| PUT    | `/api/brand/menus/:id/items/order` | Move several menu items at once (parent and position each) |
+| GET    | `/api/brand/menu-slots/raw`        | Raw slot assignments (admin editing)                       |
+| PUT    | `/api/brand/menu-slots`            | Replace all slot assignments                               |
 
 Updating a layout template that belongs to another app returns 404. `PUT /api/brand/mappings` validates every entry
 (`mappings` array; `pathPattern`, `layoutTemplateId`, `brandKitId` strings; `tokenOverridesJson` valid JSON) before it

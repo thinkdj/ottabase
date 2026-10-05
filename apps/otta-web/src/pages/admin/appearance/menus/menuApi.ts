@@ -3,6 +3,7 @@
  */
 
 import { api } from '@/lib/api';
+import type { MenuItemMove } from '@ottabase/ottamenu';
 
 const BRAND_MENUS = '/api/brand/menus';
 
@@ -58,6 +59,10 @@ export const menuApi = {
             method: 'PUT',
             body,
         }),
+
+    /** Move several items at once: each entry sets the item's parent and position */
+    reorder: (menuId: string, items: MenuItemMove[]) =>
+        api<MenuWithItemsDto>(`${BRAND_MENUS}/${menuId}/items/order`, { method: 'PUT', body: { items } }),
 
     deleteItem: (menuId: string, itemId: string) =>
         api<{ success: boolean }>(`${BRAND_MENUS}/${menuId}/items/${itemId}`, { method: 'DELETE' }),

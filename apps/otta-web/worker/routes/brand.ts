@@ -26,6 +26,7 @@ import {
     handlePutLayout,
     handlePutMappings,
     handlePutMenuSlots,
+    handleReorderMenuItems,
     handleUpdateBrandKit,
     handleUpdateMenu,
     handleUpdateMenuItem,
@@ -178,6 +179,13 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
             if (guard instanceof Response) return guard;
             return handleDeleteMenu(request, envBrand, id, appId);
         }
+    }
+
+    const menuOrderMatch = route.match(/^\/api\/brand\/menus\/([^/]+)\/items\/order$/);
+    if (menuOrderMatch && method === 'PUT') {
+        const guard = await requireBrandEditAccess(context, null, appId);
+        if (guard instanceof Response) return guard;
+        return handleReorderMenuItems(request, envBrand, menuOrderMatch[1], appId);
     }
 
     const menuItemsMatch = route.match(/^\/api\/brand\/menus\/([^/]+)\/items\/([^/]+)$/);

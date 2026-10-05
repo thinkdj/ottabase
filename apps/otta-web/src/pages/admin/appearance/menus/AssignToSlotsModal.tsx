@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { menuSlotsApi, type MenuSlotAssignmentItem, type MenuSlotRenderType } from '../brand/brandApi';
 import { menuApi, type MenuWithItemsDto } from './menuApi';
+import { slotLabel } from './menuSlots';
 import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 const RENDER_TYPES: MenuSlotRenderType[] = ['sidebar', 'flyout', 'mega', 'navbar', 'dropdown', 'footer'];
@@ -32,10 +33,6 @@ const RENDER_TYPES: MenuSlotRenderType[] = ['sidebar', 'flyout', 'mega', 'navbar
 /** Stable empty arrays to avoid useEffect dependency churn (prevents infinite loop) */
 const EMPTY_SLOTS: MenuSlotAssignmentItem[] = [];
 const EMPTY_MENUS: MenuWithItemsDto[] = [];
-
-function slotLabel(slot: string): string {
-    return slot.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 export interface AssignToSlotsModalProps {
     open: boolean;

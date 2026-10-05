@@ -3,13 +3,14 @@
 // GET /api/brand/menus (list), GET /api/brand/menus/slug/:slug (by slug with items)
 // POST /api/brand/menus, PUT /api/brand/menus/:id, DELETE /api/brand/menus/:id
 // POST /api/brand/menus/:id/items, PUT /api/brand/menus/:id/items/:itemId, DELETE /api/brand/menus/:id/items/:itemId
+// PUT /api/brand/menus/:id/items/order (move several items in one round trip)
 // All mutations call warmBrandCache (menus are part of brand API response).
 // Max 100 items per menu enforced to keep KV cache and DOM rendering performant.
 // ---------------------------------------------------------------------------
 
 const MAX_ITEMS_PER_MENU = 100;
 
-import type { MenuItemDto } from '@ottabase/ottamenu';
+import type { MenuItemDto, MenuItemMove } from '@ottabase/ottamenu';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { Menu } from '../persistence/Menu.model';
@@ -290,4 +291,54 @@ export async function handleDeleteMenuItem(
     await item.destroy();
     await warmBrandCache(env, { appId: appId ?? null });
     return jsonResponse({ success: true }, 200);
+}
+
+/** PUT /api/brand/menus/:id/items/order: set parent and position for several items at once */
+export async function handleReorderMenuItems(
+    request: Request,
+    env: BrandApiEnv,
+    menuId: string,
+    appId: string | null,
+): Promise<Response> {
+    const menu = (await Menu.find(menuId)) as InstanceType<typeof Menu> | null;
+    if (!menu) return errorResponse('Menu not found', 404);
+    const mApp = menu.get('appId') as string | null;
+    if (mApp !== null && appId !== mApp) return errorResponse('Menu not found', 404);
+
+    const body = (await request.json().catch(() => null)) as { items?: unknown } | null;
+    if (!Array.isArray(body?.items)) return errorResponse('items must be an array', 400);
+    const moves = body.items as Partial<MenuItemMove>[];
+
+    const items = (await MenuItem.where({ menuId })) as InstanceType<typeof MenuItem>[];
+    const byId = new Map(items.map((item) => [item.get('id') as string, item]));
+    const parentOf = new Map(
+        items.map((item) => [item.get('id') as string, (item.get('parentId') as string | null) ?? null]),
+    );
+
+    // Check every move before writing any
+    for (const move of moves) {
+        if (typeof move.id !== 'string' || !byId.has(move.id)) return errorResponse('Unknown menu item', 400);
+        const parentId = move.parentId ?? null;
+        if (parentId !== null && !byId.has(parentId)) return errorResponse('Unknown parent item', 400);
+        if (!Number.isFinite(Number(move.sortOrder))) return errorResponse('sortOrder must be a number', 400);
+        parentOf.set(move.id, parentId);
+    }
+    for (const id of parentOf.keys()) {
+        const seen = new Set([id]);
+        let current = parentOf.get(id) ?? null;
+        while (current) {
+            if (seen.has(current)) return errorResponse('An item cannot sit inside itself', 400);
+            seen.add(current);
+            current = parentOf.get(current) ?? null;
+        }
+    }
+
+    for (const move of moves) {
+        const item = byId.get(move.id as string)!;
+        item.set('parentId', move.parentId ?? null);
+        item.set('sortOrder', Number(move.sortOrder));
+        await item.save();
+    }
+    await warmBrandCache(env, { appId: appId ?? null });
+    return jsonResponse(await menuWithItems(menu), 200);
 }

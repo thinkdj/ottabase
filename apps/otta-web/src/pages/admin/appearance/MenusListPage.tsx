@@ -1,9 +1,17 @@
 // ---------------------------------------------------------------------------
-// Menus list – Create, navigate to detail, assign to slots (Ottamenu)
+// Menus list: create, open a menu, see where each one is shown (Ottamenu)
 // ---------------------------------------------------------------------------
 
-import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
+import { useBrand } from '@ottabase/brand-engine-react';
+import { ConfirmDialog, EmptyState, LoadingState } from '@ottabase/ui-components';
+import {
+    Badge,
+    Button,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@ottabase/ui-shadcn';
 import { IconArrowRight, IconDotsVertical, IconMenu2, IconPlus, IconPuzzle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -11,10 +19,12 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AssignToSlotsModal } from './menus/AssignToSlotsModal';
 import { menuApi, type MenuWithItemsDto } from './menus/menuApi';
+import { slotLabel, slotsForMenu } from './menus/menuSlots';
 
 export function AdminMenusListPage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { config } = useBrand();
     const [slotsModalOpen, setSlotsModalOpen] = useState(false);
     const [slotsModalMenuId, setSlotsModalMenuId] = useState<string | null>(null);
     const [deleteMenuId, setDeleteMenuId] = useState<string | null>(null);
@@ -41,11 +51,10 @@ export function AdminMenusListPage() {
 
     if (isLoading) {
         return (
-            <div className="space-y-8" aria-busy="true">
-                <span className="sr-only">Loading menus...</span>
-                <LoadingState count={1} height="h-20" />
+            <div className="space-y-8">
+                <LoadingState kind="text" count={2} label="Loading menus" />
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <LoadingState count={6} height="h-28" />
+                    <LoadingState kind="blocks" count={6} height="h-28" />
                 </div>
             </div>
         );
@@ -53,21 +62,21 @@ export function AdminMenusListPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Menus</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Menus</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Define navigation menus (sidebar, header, etc.). Assign to slots or use static nav links.
+                        Navigation for the header, sidebar, footer and more. A menu shows up where its slots put it.
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openSlotsModal()}>
-                        <IconPuzzle className="h-4 w-4 mr-2" />
+                        <IconPuzzle className="mr-2 h-4 w-4" />
                         Assign to slots
                     </Button>
                     <Button onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
-                        <IconPlus className="h-4 w-4 mr-2" />
-                        Create Menu
+                        <IconPlus className="mr-2 h-4 w-4" />
+                        New menu
                     </Button>
                 </div>
             </div>
@@ -78,49 +87,41 @@ export function AdminMenusListPage() {
                 preselectedMenuId={slotsModalMenuId}
             />
 
-            <section className="space-y-4">
-                <div className="space-y-1">
-                    <h2 className="text-[0.9375rem] font-semibold">Your Menus</h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                        {menus.length === 0
-                            ? 'No menus yet. Create one and assign to slots to override default nav.'
-                            : 'Click a menu to edit items. Use slug "sidebar" for main sidebar nav.'}
-                    </p>
+            {menus.length === 0 ? (
+                <EmptyState
+                    icon={<IconMenu2 />}
+                    title="No menus yet"
+                    description="Make one, add its items, then assign it to a slot to replace the built-in navigation."
+                    action={
+                        <Button onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
+                            <IconPlus className="mr-2 h-4 w-4" />
+                            New menu
+                        </Button>
+                    }
+                />
+            ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {menus.map((menu) => (
+                        <MenuCard
+                            key={menu.id}
+                            menu={menu}
+                            slots={slotsForMenu(config?.menuSlots, menu.id)}
+                            onAssignToSlots={() => openSlotsModal(menu.id)}
+                            onDelete={() => setDeleteMenuId(menu.id)}
+                            deleting={deleteMutation.isPending}
+                        />
+                    ))}
                 </div>
-                {menus.length === 0 ? (
-                    <EmptyState
-                        icon={<IconMenu2 />}
-                        title="No menus"
-                        action={
-                            <Button onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
-                                <IconPlus className="h-4 w-4 mr-2" />
-                                Create your first menu
-                            </Button>
-                        }
-                    />
-                ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {menus.map((menu) => (
-                            <MenuCard
-                                key={menu.id}
-                                menu={menu}
-                                onAssignToSlots={() => openSlotsModal(menu.id)}
-                                onDelete={() => setDeleteMenuId(menu.id)}
-                                deleting={deleteMutation.isPending}
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
+            )}
 
             <ConfirmDialog
                 open={deleteMenuId !== null}
                 onOpenChange={(open) => !open && setDeleteMenuId(null)}
-                title="Delete Menu?"
-                description="All items in this menu will be removed. This action cannot be undone."
+                title="Delete this menu?"
+                description="Its items go with it, and any slot showing it falls back to the built-in navigation."
                 tone="destructive"
                 secondaryActionText="Cancel"
-                primaryActionText={deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                primaryActionText={deleteMutation.isPending ? 'Deleting' : 'Delete'}
                 onConfirm={() => (deleteMenuId ? deleteMutation.mutateAsync(deleteMenuId) : undefined)}
             />
         </div>
@@ -129,11 +130,13 @@ export function AdminMenusListPage() {
 
 function MenuCard({
     menu,
+    slots,
     onAssignToSlots,
     onDelete,
     deleting,
 }: {
     menu: MenuWithItemsDto;
+    slots: string[];
     onAssignToSlots: () => void;
     onDelete: () => void;
     deleting: boolean;
@@ -145,17 +148,16 @@ function MenuCard({
             className="group flex h-full flex-col rounded-xl bg-muted/40 p-4 outline-none transition-colors duration-normal hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="min-w-0 flex-1 space-y-1">
                     <h3 className="truncate text-[0.9375rem] font-semibold">{menu.name}</h3>
-                    <span className="inline-flex max-w-full items-center rounded-full bg-background px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
-                        <span className="truncate">{menu.slug}</span>
-                    </span>
+                    <p className="truncate font-mono text-xs text-muted-foreground">{menu.slug}</p>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label={`Actions for ${menu.name}`}
                             className="h-8 w-8 shrink-0 opacity-0 transition-colors group-hover:opacity-100 focus-visible:opacity-100"
                             onClick={(e) => {
                                 e.preventDefault();
@@ -173,7 +175,7 @@ function MenuCard({
                                 onAssignToSlots();
                             }}
                         >
-                            <IconPuzzle className="h-4 w-4 mr-2" />
+                            <IconPuzzle className="mr-2 h-4 w-4" />
                             Assign to slots
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -189,9 +191,20 @@ function MenuCard({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                {slots.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">Not shown anywhere yet</span>
+                ) : (
+                    slots.map((slot) => (
+                        <Badge key={slot} variant="secondary" className="rounded-full font-normal">
+                            {slotLabel(slot)}
+                        </Badge>
+                    ))
+                )}
+            </div>
             <div className="mt-3 flex items-center justify-between gap-2">
                 <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {menu.items.length} items
+                    {menu.items.length} {menu.items.length === 1 ? 'item' : 'items'}
                 </span>
                 <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </div>
