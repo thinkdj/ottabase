@@ -184,7 +184,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             },
             {
                 title: 'Roles & Permissions',
-                description: 'Manage RBAC roles and the permissions matrix.',
+                description: 'Pick a role, tick what it allows, save.',
                 href: '/admin/access/rbac',
                 icon: UserCog,
             },

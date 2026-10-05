@@ -545,20 +545,16 @@ const adminOrganizationSettingsRoute = makeAdminRoute(
     'OrganizationSettingsPage',
     { scope: 'org' },
 );
+// One page: the role list, its permissions and the pending changes; ?role=<id|new> selects
 const adminRBACRoute = makeAdminRoute(
     '/admin/access/rbac',
-    () => import('@/pages/admin/access/rbac/RBACAdminPage'),
-    'RBACAdminPage',
-);
-const adminRBACRolesRoute = makeAdminRoute(
-    '/admin/access/rbac/roles',
-    () => import('@/pages/admin/access/rbac/RBACRolesPage'),
-    'RBACRolesPage',
-);
-const adminRBACPermissionsRoute = makeAdminRoute(
-    '/admin/access/rbac/permissions',
-    () => import('@/pages/admin/access/rbac/PermissionsMatrixPage'),
-    'PermissionsMatrixPage',
+    () => import('@/pages/admin/access/rbac/RolesPage'),
+    'RolesPage',
+    {
+        validateSearch: (search: Record<string, unknown>) => ({
+            role: typeof search.role === 'string' && search.role ? search.role : undefined,
+        }),
+    },
 );
 
 // ─── /admin/security ─────────────────────────────────────────────────────────
@@ -794,8 +790,6 @@ const coreRoutes = [
     adminOrganizationMembersRoute,
     adminOrganizationSettingsRoute,
     adminRBACRoute,
-    adminRBACRolesRoute,
-    adminRBACPermissionsRoute,
     adminAuditRoute,
     adminSecurityRLSRoute,
     adminKillSwitchesRoute,

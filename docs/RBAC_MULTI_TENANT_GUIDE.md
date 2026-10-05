@@ -162,8 +162,7 @@ http://localhost:3003/admin/access/users/:userId/rbac            # User RBAC Ass
 
 # RBAC Management
 http://localhost:3003/admin/access/rbac                          # RBAC Admin Dashboard
-http://localhost:3003/admin/access/rbac/roles                    # Roles Management
-http://localhost:3003/admin/access/rbac/permissions              # Permissions Matrix
+http://localhost:3003/admin/access/rbac                          # Roles and their permissions
 
 # Organization Management
 http://localhost:3003/admin/access/organizations                 # Organizations List
@@ -439,39 +438,20 @@ Features:
 - Pagination and filtering
 - Real-time updates
 
-### RBAC Admin
+### Roles
 
-**Route:** `/admin/access/rbac` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACAdminPage.tsx`
+**Route:** `/admin/access/rbac` **File:** `apps/otta-web/src/pages/admin/access/rbac/RolesPage.tsx`
 
-Dashboard with links to:
+One screen: the role list on the left (custom roles, then system roles), the selected role on the right.
 
-- Roles Management
-- Permissions Matrix
-- Audit Logs
-
-### Roles Management
-
-**Route:** `/admin/access/rbac/roles` **File:** `apps/otta-web/src/pages/admin/access/rbac/RBACRolesPage.tsx`
-
-Features:
-
-- Create custom roles
-- Edit role permissions
-- Delete roles (except system roles)
-- View role hierarchy (System/Org/App)
-
-### Permissions Matrix
-
-**Route:** `/admin/access/rbac/permissions` **File:**
-`apps/otta-web/src/pages/admin/access/rbac/PermissionsMatrixPage.tsx`
-
-Features:
-
-- Visual matrix: Roles × Permissions
-- Tab filtering: All / System / Org / App
-- Click checkboxes to grant/revoke permissions
-- Color-coded badges for role types
-- Groups permissions by category
+- Tick the permissions the server actually checks (`PERMISSION_CATALOG` in `@ottabase/utils/permissions`), grouped by
+  area. A permission already covered by a wildcard grant (`posts:*`, `*:*`) shows ticked and says which grant includes
+  it.
+- Nothing saves until you press **Save changes**; the bar at the bottom counts what is being added and removed, and
+  **Discard** puts it back. Leaving with unsaved edits asks first.
+- Wildcard grants are listed as chips and can be added for the rare case that needs one.
+- System roles are read-only (they are defined in code and reconciled on deploy); create a custom role instead.
+- `?role=<id>` selects a role, `?role=new` starts a new one, so links into a specific role work.
 
 ### Audit Log Viewer
 

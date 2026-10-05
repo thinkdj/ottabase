@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Roles and permissions are one screen.** `/admin/access/rbac` lists the roles on the left and edits the selected one
+  on the right: tick the permissions the server actually checks, see which ones a wildcard grant already includes,
+  review "adding 2, removing 1" and save, with a leave guard for unsaved edits. It replaces the RBAC landing page, the
+  roles table (which took permissions as a comma-separated string) and the all-roles matrix (which saved on every tick);
+  their routes are gone, and so is `useTogglePermission`.
 - **Small fixes from the audit.** The referral link now leads the Referrals page (with a native Share button where the
   browser offers one), and the username it is built from moves below it. Long code blocks open on their first lines with
   a working "Show all N lines" button, instead of a top-right toggle that never collapsed by default. The header
