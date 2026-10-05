@@ -37,16 +37,12 @@ import { getProviderDisplayName, isStrongPassword, PASSWORD_POLICY_MESSAGE } fro
 import { invalidateAuthSession } from '@ottabase/auth/react';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
-
-interface LinkedAccountRecord {
-    provider: string;
-    type: string;
-    createdAt?: number | null;
-}
+import { ActiveSessions } from './ActiveSessions';
+import { SignInMethods, type LinkedAccountRecord } from './SignInMethods';
 
 interface UserProfileRecord {
     id: string;
@@ -58,11 +54,18 @@ interface UserProfileRecord {
     createdAt?: number | null;
     updatedAt?: number | null;
     linkedAccounts?: LinkedAccountRecord[];
+    hasPassword?: boolean;
 }
 
 type SessionProfileUpdate = Partial<
     Pick<UserProfileRecord, 'name' | 'email' | 'image' | 'timezone' | 'emailVerified' | 'createdAt' | 'updatedAt'>
 >;
+
+const LINK_ERRORS: Record<string, string> = {
+    OAuthAccountInUse: 'That account is already connected to a different user.',
+    SessionRequired: 'Your session ended before the provider answered. Sign in and try again.',
+    OAuthCallback: 'The provider did not complete the connection. Try again.',
+};
 
 function getSessionTimezone(user: SessionUser | null): string {
     const timezone: unknown = user?.timezone;
@@ -86,6 +89,7 @@ export function UserProfilePage() {
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);
+    const [hasPassword, setHasPassword] = useState(false);
     const [avatarModalOpen, setAvatarModalOpen] = useState(false);
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
     const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
@@ -159,6 +163,7 @@ export function UserProfilePage() {
                 const data = await api<UserProfileRecord>('/api/users/me');
                 if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
+                    setHasPassword(data?.hasPassword === true);
                     const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
                     setFormData((prev) => ({
                         ...prev,
@@ -184,6 +189,16 @@ export function UserProfilePage() {
             cancelled = true;
         };
     }, [updateUser, user?.id]);
+
+    // Back from connecting a provider: say how it went, then drop the flag from the address
+    const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { linked?: string; linkError?: string };
+    useEffect(() => {
+        if (!search.linked && !search.linkError) return;
+        if (search.linked) toast.success(`${getProviderDisplayName(search.linked)} connected`);
+        else toast.error(LINK_ERRORS[search.linkError ?? ''] ?? 'Could not connect that account');
+        navigate({ to: '/profile', search: {} as never, replace: true });
+    }, [search.linked, search.linkError, navigate]);
 
     const userInitials = user?.name
         ? user.name
@@ -706,42 +721,12 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Sign-in methods</CardTitle>
-                    <CardDescription>Accounts you can use to sign in</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {isAccountsLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading…</p>
-                    ) : linkedAccounts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">You sign in with your email.</p>
-                    ) : (
-                        <div className="flex flex-wrap gap-2">
-                            {linkedAccounts.map((account) => (
-                                <div
-                                    key={`${account.provider}-${account.createdAt || 'unknown'}`}
-                                    className="flex flex-col gap-1 rounded-lg bg-background px-3 py-2 ring-1 ring-border"
-                                >
-                                    <span className="text-[0.9375rem] font-semibold">
-                                        {getProviderDisplayName(account.provider)}
-                                    </span>
-                                    {account.createdAt && (
-                                        <span className="text-xs text-muted-foreground">
-                                            Connected{' '}
-                                            {new Date(account.createdAt).toLocaleDateString(undefined, {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                            })}
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <SignInMethods
+                linkedAccounts={linkedAccounts}
+                hasPassword={hasPassword}
+                loading={isAccountsLoading}
+                onChanged={setLinkedAccounts}
+            />
 
             {/* Security */}
             <Card>
@@ -768,6 +753,8 @@ export function UserProfilePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <ActiveSessions />
 
             {/* AI providers (personal keys). Dormant unless the ottaai package is enabled. */}
             {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}

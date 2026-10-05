@@ -176,6 +176,9 @@ export function getProviderDisplayName(id: string): string {
     return known ? known.name : id.charAt(0).toUpperCase() + id.slice(1);
 }
 
+// Device words for the account page's session list (dependency-free)
+export { describeUserAgent } from '../user-agent';
+
 // Password policy, shared with the worker (dependency-free)
 export {
     checkPassword,

@@ -549,6 +549,17 @@ DB access goes through the existing OttaORM models (`User`, `Account`, `Verifica
 `crypto.subtle`, which Cloudflare Workers implements natively, so the package has no runtime dependency on Node crypto
 or any third-party crypto/JWT library.
 
+## Sessions and connected providers
+
+Every session lives in the KV registry with its creation time and the signing in browser's User-Agent as metadata.
+`listUserSessions(userId, env)` returns them newest first, `revokeOtherSessions(userId, keepId, env)` tombstones all but
+one, and `getSession` now carries `sessionId` so an account page can mark the current device. `describeUserAgent(ua)`
+(from `@ottabase/auth/config`) turns the User-Agent into "Chrome on Windows".
+
+`GET /api/auth/signin/:provider?link=1` while signed in connects that provider to the current account instead of signing
+in: the callback writes the `accounts` row and returns to `callbackUrl` with `?linked=<provider>` or
+`?linkError=OAuthAccountInUse|SessionRequired`.
+
 ## License
 
 MIT

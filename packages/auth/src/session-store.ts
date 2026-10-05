@@ -130,6 +130,10 @@ function ensureOrmConnection(env: AuthEnv): void {
     registerConnection('default', createD1Driver(env.OBCF_D1));
 }
 
+function trimUserAgent(userAgent: string | null | undefined): string | null {
+    return (userAgent ?? '').trim().slice(0, 200) || null;
+}
+
 function sessionRegistryKey(userId: string, jti: string): string {
     return userKey('auth', userId, 'sess', jti);
 }
@@ -181,6 +185,8 @@ interface RegistrySnapshot {
     name: string | null;
     image: string | null;
     emailVerified: number | null;
+    /** The browser that opened the session, shown as the device on the account page. */
+    ua?: string | null;
 }
 
 async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContext> {
@@ -305,6 +311,8 @@ export interface CreateSessionInput {
     organizationId?: string | null;
     roles?: string[];
     permissions?: string[];
+    /** The signing in browser's User-Agent; filled from the request by createSessionCookieForUser. */
+    userAgent?: string | null;
 }
 
 export interface CreatedSession {
@@ -333,8 +341,10 @@ async function writeRegistrySnapshot(
     env: AuthEnv,
 ): Promise<void> {
     if (!env.OBCF_KV) return;
+    // Creation time and device ride along as metadata so listing a user's sessions needs no reads
     await env.OBCF_KV.put(sessionRegistryKey(userId, jti), JSON.stringify(snapshot), {
         expirationTtl: maxAgeSeconds,
+        metadata: { c: snapshot.c, ua: snapshot.ua ?? null },
     });
 }
 
@@ -408,6 +418,7 @@ export async function createSessionForUser(
         name: input.name ?? null,
         image: input.image ?? null,
         emailVerified: input.emailVerified ?? null,
+        ua: trimUserAgent(input.userAgent),
     };
 
     // KV is guaranteed bound by the guard at the top of this function.
@@ -467,7 +478,11 @@ export async function createSessionCookieForUser(
     options?: CreateAuthConfigOptions,
 ): Promise<{ cookie: string; session: CreatedSession }> {
     const maxAgeSeconds = resolveSessionMaxAge(env, options);
-    const session = await createSessionForUser(input, env, options);
+    const session = await createSessionForUser(
+        { userAgent: request.headers.get('user-agent'), ...input },
+        env,
+        options,
+    );
     return { cookie: buildSessionCookie(session.token, env, request, maxAgeSeconds), session };
 }
 
@@ -484,6 +499,7 @@ function parseSnapshot(raw: string | null): RegistrySnapshot | null {
             permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
             platformAdmin: parsed.platformAdmin === true,
             createdAt: parsed.createdAt ?? null,
+            ua: typeof parsed.ua === 'string' ? parsed.ua : null,
             name: parsed.name ?? null,
             image: parsed.image ?? null,
             emailVerified: parsed.emailVerified ?? null,
@@ -518,6 +534,7 @@ async function refreshSnapshotIfStale(
             name: context.name,
             image: context.image,
             emailVerified: context.emailVerified,
+            ua: snapshot.ua ?? null,
         };
         // Rewrite so the version matches and subsequent requests skip the D1 read.
         await writeRegistrySnapshot(userId, jti, refreshed, resolveSessionMaxAge(env, options), env).catch(() => {});
@@ -652,7 +669,7 @@ export async function getSession(
         }
     }
 
-    return { user: buildUser(payload, snapshot), expires: (payload.exp ?? 0) * 1000 };
+    return { user: buildUser(payload, snapshot), expires: (payload.exp ?? 0) * 1000, sessionId: payload.jti };
 }
 
 /** Revoke a single session (used by normal sign-out). Fails loudly so callers can surface it. */
@@ -683,4 +700,50 @@ export async function revokeAllUserSessions(
     // Millisecond granularity so a session reissued in the same second as the revoke
     // (e.g. change-password-then-stay-signed-in) is not wrongly invalidated.
     await env.OBCF_KV.put(revokedSinceKey(userId), String(Date.now()), { expirationTtl: maxAgeSeconds });
+}
+
+export interface UserSessionInfo {
+    /** The session's token id */
+    id: string;
+    createdAt: number;
+    userAgent: string | null;
+    expiresAt: number | null;
+}
+
+/** Every open session of a user from the KV registry, newest first. */
+export async function listUserSessions(userId: string, env: AuthEnv): Promise<UserSessionInfo[]> {
+    const kv = env.OBCF_KV;
+    if (!kv) return [];
+    // Strip a placeholder rather than guess how the key builder joins an empty segment
+    const prefix = sessionRegistryKey(userId, 'x').slice(0, -1);
+    const { keys } = await kv.list<{ c?: number; ua?: string | null }>({ prefix });
+    const sessions = await Promise.all(
+        keys.map(async (key) => {
+            let meta = key.metadata;
+            if (!meta || !Number.isFinite(Number(meta.c))) {
+                // A record written before metadata existed: read the snapshot itself
+                const snapshot = parseSnapshot(await kv.get(key.name));
+                meta = { c: snapshot?.c ?? 0, ua: snapshot?.ua ?? null };
+            }
+            return {
+                id: key.name.slice(prefix.length),
+                createdAt: Number(meta.c) || 0,
+                userAgent: meta.ua ?? null,
+                expiresAt: key.expiration ? key.expiration * 1000 : null,
+            };
+        }),
+    );
+    return sessions.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Sign out every other device: a tombstone for each session except the one making the request. */
+export async function revokeOtherSessions(
+    userId: string,
+    keepId: string,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<number> {
+    const others = (await listUserSessions(userId, env)).filter((session) => session.id !== keepId);
+    await Promise.all(others.map((session) => revokeSession(userId, session.id, env, options)));
+    return others.length;
 }

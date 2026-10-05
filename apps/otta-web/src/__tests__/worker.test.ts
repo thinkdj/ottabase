@@ -94,6 +94,7 @@ describe('Cloudflare Worker API', () => {
             (getSession as any).mockResolvedValue({ user: { id: 'user-1' } });
             const findSpy = vi.spyOn(User, 'find').mockResolvedValue({
                 toJson: () => userJson,
+                get: (key: string) => (key === 'passwordHash' ? 'hash' : null),
             } as any);
 
             const resp = await worker.fetch(createRequest('/api/users/me'), env);
@@ -101,6 +102,7 @@ describe('Cloudflare Worker API', () => {
             const data = (await resp.json()) as any;
             expect(data).toMatchObject(userJson);
             expect(Array.isArray(data.linkedAccounts)).toBe(true);
+            expect(data.hasPassword).toBe(true);
 
             findSpy.mockRestore();
         });

@@ -5,14 +5,17 @@ import {
     handleAuthRequest,
     hashPassword,
     hashToken,
+    listUserSessions,
     revokeAllUserSessions,
+    revokeOtherSessions,
+    revokeSession,
     verifyPassword,
 } from '@ottabase/auth/backend';
 import { getLoginConfig, isStrongPassword, PASSWORD_POLICY_MESSAGE } from '@ottabase/auth/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User, VerificationToken } from '@ottabase/ottaorm/models';
+import { Account, OrganizationMember, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
@@ -506,7 +509,8 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         }
         const userJson = user.toJson();
         const linkedAccounts = await getUserLinkedAccounts(userId);
-        return jsonResponse({ ...userJson, linkedAccounts }, 200);
+        // Whether a password exists decides if a connected account may be disconnected
+        return jsonResponse({ ...userJson, linkedAccounts, hasPassword: Boolean(user.get('passwordHash')) }, 200);
     }
 
     if (request.method === 'PATCH') {
@@ -844,4 +848,60 @@ export async function handleAuthApiRequest(context: AuthRouteContext): Promise<R
 
     const response = await handleAuthRequest(request, env as any, getAuthOptions(env));
     return withAuthCors(response);
+}
+
+/** GET /api/users/me/sessions: every open session of the caller, newest first, the current one marked */
+export async function handleUserSessionsList(context: AuthRouteContext): Promise<Response> {
+    const { request, env } = context;
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    if (!session?.user?.id) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    const sessions = await listUserSessions(session.user.id, env as any);
+    return jsonResponse({ data: sessions.map((item) => ({ ...item, current: item.id === session.sessionId })) }, 200);
+}
+
+/** DELETE /api/users/me/sessions signs out every other device; with an id, that one device. */
+export async function handleUserSessionRevoke(context: AuthRouteContext, id: string | null): Promise<Response> {
+    const { request, env } = context;
+    const options = getAuthOptions(env);
+    const session = await getSession(request, env as any, options);
+    if (!session?.user?.id) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    if (id === null) {
+        const revoked = session.sessionId
+            ? await revokeOtherSessions(session.user.id, session.sessionId, env as any, options)
+            : 0;
+        return jsonResponse({ success: true, revoked }, 200);
+    }
+    if (id === session.sessionId) {
+        return errorResponse('Use sign out for this device', 400, { code: 'CURRENT_SESSION' });
+    }
+    await revokeSession(session.user.id, id, env as any, options);
+    return jsonResponse({ success: true, revoked: 1 }, 200);
+}
+
+/** DELETE /api/users/me/accounts/:provider disconnects a provider, keeping at least one way to sign in */
+export async function handleUserAccountUnlink(context: AuthRouteContext, provider: string): Promise<Response> {
+    const { request, env } = context;
+    if (!env.OBCF_D1) {
+        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
+    }
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    const userId = session?.user?.id;
+    if (!userId) return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    const user = await User.find(userId);
+    if (!user) return errorResponse('User not found', 404, { code: 'NOT_FOUND' });
+
+    const accounts = await Account.forUser(userId);
+    const matching = accounts.filter((account) => account.get('provider') === provider);
+    if (matching.length === 0) return errorResponse('That account is not connected', 404, { code: 'NOT_FOUND' });
+
+    const waysLeft = (user.get('passwordHash') ? 1 : 0) + accounts.length - matching.length;
+    if (waysLeft === 0) {
+        return errorResponse('Set a password before disconnecting your only sign-in method', 400, {
+            code: 'LAST_SIGN_IN_METHOD',
+        });
+    }
+    for (const account of matching) await Account.delete(String(account.get('id')));
+    return jsonResponse({ success: true, linkedAccounts: await getUserLinkedAccounts(userId) }, 200);
 }

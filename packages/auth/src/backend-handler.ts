@@ -43,7 +43,15 @@ export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAutho
 export type { FirstUserBootstrapResult } from './bootstrap';
 export { hashPassword, verifyPassword, hashToken } from './crypto';
 export { bootstrapFirstUser, provisionPlatformOwnerOrganization } from './bootstrap';
-export { getSession, revokeAllUserSessions, revokeSession, createSessionCookieForUser } from './session-store';
+export {
+    getSession,
+    listUserSessions,
+    revokeAllUserSessions,
+    revokeOtherSessions,
+    revokeSession,
+    createSessionCookieForUser,
+} from './session-store';
+export type { UserSessionInfo } from './session-store';
 
 const CSRF_COOKIE_BASE = 'ottabase.csrf-token';
 const CSRF_COOKIE_MAX_AGE = 60 * 60; // 1 hour
@@ -280,10 +288,20 @@ async function handleOAuthSignIn(
 
     const url = new URL(request.url);
     const callbackUrl = sanitizeCallbackPath(url.searchParams.get('callbackUrl'));
+
+    // Connecting a provider to the signed in account: remember who asked, so the callback
+    // links the identity to them instead of signing somebody in.
+    let linkUserId: string | null = null;
+    if (url.searchParams.get('link') === '1') {
+        const current = await getSession(request, env, options);
+        if (!current) return errorRedirect(env, options, 'SessionRequired');
+        linkUserId = current.user.id;
+    }
+
     const state = randomToken(16);
     const { codeVerifier, codeChallenge } = await createPkcePair();
 
-    const statePayload = { state, codeVerifier, callbackUrl, providerId, purpose: 'oauth-state' };
+    const statePayload = { state, codeVerifier, callbackUrl, providerId, purpose: 'oauth-state', linkUserId };
     const stateToken = await signJwt(statePayload, resolveAuthSecret(env), { expiresInSeconds: OAUTH_STATE_MAX_AGE });
     const stateCookie = serializeCookie(oauthStateCookieName(env), stateToken, {
         maxAgeSeconds: OAUTH_STATE_MAX_AGE,
@@ -349,6 +367,7 @@ async function handleOAuthCallback(
         callbackUrl: string;
         providerId: string;
         purpose?: string;
+        linkUserId?: string | null;
     }>(stateToken, resolveAuthSecret(env));
 
     if (
@@ -392,6 +411,17 @@ async function handleOAuthCallback(
             provider: providerId,
             providerAccountId: profile.providerAccountId,
         });
+
+        if (statePayload.linkUserId) {
+            return linkProviderToUser(request, env, options, {
+                userId: statePayload.linkUserId,
+                providerId,
+                profile,
+                tokens,
+                existingAccount,
+                callbackUrl: statePayload.callbackUrl,
+            });
+        }
 
         if (existingAccount) {
             const user = await User.find(String(existingAccount.get('userId')));
@@ -498,6 +528,62 @@ async function handleOAuthCallback(
             ['Set-Cookie', clearState],
         ],
     });
+}
+
+/**
+ * Finish a `?link=1` sign-in: attach the provider identity to the account that asked for it
+ * and go back to the page it came from with `?linked=<provider>` or `?linkError=<code>`.
+ * No session is issued; the one that started the link stays as it is.
+ */
+async function linkProviderToUser(
+    request: Request,
+    env: AuthEnv,
+    options: CreateAuthConfigOptions,
+    link: {
+        userId: string;
+        providerId: string;
+        profile: Awaited<ReturnType<typeof fetchUserProfile>>;
+        tokens: Awaited<ReturnType<typeof exchangeCodeForTokens>>;
+        existingAccount: Awaited<ReturnType<typeof Account.first>>;
+        callbackUrl: string;
+    },
+): Promise<Response> {
+    const back = (query: Record<string, string>) => {
+        const location = new URL(`${resolveFrontendUrl(env)}${link.callbackUrl}`);
+        for (const [key, value] of Object.entries(query)) location.searchParams.set(key, value);
+        const clearState = clearCookie(oauthStateCookieName(env), {
+            secure: resolveSecureCookie(env, request),
+            path: '/api/auth',
+        });
+        return new Response(null, {
+            status: 302,
+            headers: [
+                ['Location', location.toString()],
+                ['Set-Cookie', clearState],
+            ],
+        });
+    };
+
+    const current = await getSession(request, env, options);
+    if (!current || current.user.id !== link.userId) return back({ linkError: 'SessionRequired' });
+
+    const owner = link.existingAccount ? String(link.existingAccount.get('userId')) : null;
+    if (owner && owner !== link.userId) return back({ linkError: 'OAuthAccountInUse' });
+    if (!owner) {
+        await Account.create({
+            userId: link.userId,
+            type: 'oauth',
+            provider: link.providerId,
+            providerAccountId: link.profile.providerAccountId,
+            accessToken: link.tokens.access_token ?? null,
+            refreshToken: link.tokens.refresh_token ?? null,
+            idToken: link.tokens.id_token ?? null,
+            tokenType: link.tokens.token_type ?? null,
+            scope: link.tokens.scope ?? null,
+            expiresAt: link.tokens.expires_in ? Math.floor(Date.now() / 1000) + Number(link.tokens.expires_in) : null,
+        });
+    }
+    return back({ linked: link.providerId });
 }
 
 async function handleMagicLinkSend(

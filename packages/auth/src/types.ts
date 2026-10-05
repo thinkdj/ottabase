@@ -30,6 +30,8 @@ export interface Session {
     user: SessionUser;
     /** Epoch milliseconds. */
     expires: number;
+    /** The token id of this session, so a device list can mark the current one. */
+    sessionId?: string;
 }
 
 /** Claims embedded in the signed session JWT. */

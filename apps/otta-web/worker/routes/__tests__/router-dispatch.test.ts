@@ -94,6 +94,9 @@ vi.mock('../auth', () => ({
     handlePasswordResetConfirm: handlerMock('handlePasswordResetConfirm'),
     handlePasswordResetRequest: handlerMock('handlePasswordResetRequest'),
     handleUserProfile: handlerMock('handleUserProfile'),
+    handleUserAccountUnlink: handlerMock('handleUserAccountUnlink'),
+    handleUserSessionRevoke: handlerMock('handleUserSessionRevoke'),
+    handleUserSessionsList: handlerMock('handleUserSessionsList'),
     handleVerifyEmail: handlerMock('handleVerifyEmail'),
     handleVerifyEmailResend: handlerMock('handleVerifyEmailResend'),
 }));

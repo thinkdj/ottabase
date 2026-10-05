@@ -30,6 +30,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
     Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
     AccountProvisioning: 'Your account workspace could not be initialized. Please try signing in again.',
+    SessionRequired: 'Sign in first, then connect that provider from your profile.',
 };
 
 /** Error and success notice carried in the URL by redirects back to this page */

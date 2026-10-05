@@ -5,6 +5,8 @@ import {
     createSessionCookieForUser,
     createSessionForUser,
     getSession,
+    listUserSessions,
+    revokeOtherSessions,
     resolveAuthSecret,
     resolveSessionCookieName,
     resolveSessionMaxAge,
@@ -29,6 +31,12 @@ function createFakeKv() {
         },
         async delete(key: string) {
             store.delete(key);
+        },
+        async list({ prefix }: { prefix: string }) {
+            return {
+                keys: [...store.keys()].filter((name) => name.startsWith(prefix)).map((name) => ({ name })),
+                list_complete: true,
+            };
         },
     } as any;
 }
@@ -354,5 +362,49 @@ describe('createSessionCookieForUser', () => {
         );
         expect(cookie).toContain('Secure');
         expect(cookie).toContain(`__Host-${SESSION_COOKIE_BASE}=`);
+    });
+});
+
+describe('session list and sign out elsewhere', () => {
+    it('lists every open session newest first, with the device from the sign in request', async () => {
+        const env = createEnv();
+        const input = { id: 'user-1', email: 'ada@example.com' };
+        const phone = new Request('https://app.example.com/api/auth/callback/credentials', {
+            headers: { 'user-agent': 'Mozilla/5.0 (iPhone) Safari/604.1' },
+        });
+        const first = await createSessionCookieForUser(input, env, phone);
+        await delay(2);
+        const second = await createSessionForUser(
+            { ...input, userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/124.0 Safari/537.36' },
+            env,
+        );
+
+        const sessions = await listUserSessions('user-1', env);
+        expect(sessions.map((s) => s.id)).toEqual([second.jti, first.session.jti]);
+        expect(sessions[1].userAgent).toContain('iPhone');
+        expect(sessions[0].createdAt).toBeGreaterThan(sessions[1].createdAt);
+    });
+
+    it('signs out the other sessions and keeps the current one', async () => {
+        const env = createEnv();
+        const input = { id: 'user-1', email: 'ada@example.com' };
+        const keep = await createSessionCookieForUser(input, env, cookieHeaderRequest(''));
+        const other = await createSessionCookieForUser(input, env, cookieHeaderRequest(''));
+
+        expect(await revokeOtherSessions('user-1', keep.session.jti, env)).toBe(1);
+        expect(await getSession(cookieHeaderRequest(keep.cookie.split(';')[0]), env)).not.toBeNull();
+        expect(await getSession(cookieHeaderRequest(other.cookie.split(';')[0]), env)).toBeNull();
+        expect((await listUserSessions('user-1', env)).map((s) => s.id)).toEqual([keep.session.jti]);
+    });
+
+    it('tells the current session apart', async () => {
+        const env = createEnv();
+        const { cookie, session } = await createSessionCookieForUser(
+            { id: 'user-1', email: 'ada@example.com' },
+            env,
+            cookieHeaderRequest(''),
+        );
+        const current = await getSession(cookieHeaderRequest(cookie.split(';')[0]), env);
+        expect(current?.sessionId).toBe(session.jti);
     });
 });

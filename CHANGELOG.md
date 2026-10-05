@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The account page shows where you are signed in and lets you connect providers.** A new "Where you are signed in"
+  card lists every open session (device from the sign-in request, when it started, the current one marked) with Sign out
+  per device and Sign out other devices, backed by `GET/DELETE /api/users/me/sessions[/:id]` and `listUserSessions` /
+  `revokeOtherSessions` in `@ottabase/auth`. Sign-in methods now offer Connect buttons for configured providers
+  (`/api/auth/signin/:provider?link=1`, which attaches the identity to the signed in account instead of signing in) and
+  Disconnect (`DELETE /api/users/me/accounts/:provider`), refused when it would remove the only way in.
+  `describeUserAgent` turns a User-Agent into "Chrome on Windows".
 - **The blog editor puts the writing first.** The title is a large heading field with the public path and slug under it,
   the editor fills the column, and everything else (excerpt, private notes, footnotes, search settings, custom meta,
   cross-posts) sits below as collapsed sections instead of tabs. Post settings moved from seven cards to a sticky side

@@ -81,6 +81,9 @@ import {
 import { handleAuditLogs } from './audit';
 import {
     handleAuthConfig,
+    handleUserAccountUnlink,
+    handleUserSessionRevoke,
+    handleUserSessionsList,
     handleAuthApiRequest,
     handleAuthRegister,
     handlePasswordChange,
@@ -284,6 +287,10 @@ apiRouter.post('/api/auth/password/reset/confirm', h(handlePasswordResetConfirm)
 apiRouter.post('/api/auth/password/change', h(handlePasswordChange));
 apiRouter.all('/api/auth/*', h(handleAuthApiRequest));
 apiRouter.on(['GET', 'PATCH'], '/api/users/me', h(handleUserProfile));
+apiRouter.get('/api/users/me/sessions', h(handleUserSessionsList));
+apiRouter.delete('/api/users/me/sessions', (c) => handleUserSessionRevoke(ctxOf(c), null));
+apiRouter.delete('/api/users/me/sessions/*', (c) => handleUserSessionRevoke(ctxOf(c), c.params['*']));
+apiRouter.delete('/api/users/me/accounts/*', (c) => handleUserAccountUnlink(ctxOf(c), c.params['*']));
 
 // -------------------------------------------------------
 // Email
