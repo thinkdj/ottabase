@@ -65,6 +65,9 @@ vi.mock('@/components/LanguageSwitcher', () => ({
 vi.mock('@/components/OrganizationSwitcher', () => ({
     OrganizationSwitcher: () => <div data-testid="org-switcher" />,
 }));
+vi.mock('@/components/NotificationBell', () => ({
+    NotificationBell: () => <div data-testid="notification-bell" />,
+}));
 vi.mock('@/components/ReferralTracker', () => ({
     ReferralTracker: () => <div data-testid="referral-tracker" />,
 }));

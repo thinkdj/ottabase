@@ -1,5 +1,6 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
 import { Comment, CommentReaction } from '@ottabase/comments';
+import { NotificationModel, NotificationPreference } from '@ottabase/notifications';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/ottaorm';
 import {
@@ -133,6 +134,9 @@ function registerAppModels(env: CloudflareEnv): void {
         : [];
     const packageModels = [
         ...(packages.comments ? [Comment, CommentReaction] : []),
+        // The in-app inbox and its preferences: every app has them
+        NotificationModel,
+        NotificationPreference,
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
         ...(packages.ottaai ? [AiProviderCredential] : []),

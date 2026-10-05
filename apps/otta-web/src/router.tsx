@@ -238,6 +238,11 @@ const resetPasswordRoute = publicRoute('/reset-password', () =>
 
 const dashboardRoute = protectedRoute('/dashboard', () => import('@/pages/auth/DashboardPage'), 'DashboardPage');
 const userProfileRoute = protectedRoute('/profile', () => import('@/pages/user/UserProfilePage'), 'UserProfilePage');
+const notificationsRoute = protectedRoute(
+    '/notifications',
+    () => import('@/pages/notifications/NotificationsPage'),
+    'NotificationsPage',
+);
 const userMediaLibraryRoute = protectedRoute(
     '/media-library',
     () => import('@/pages/user/UserMediaLibraryPage'),
@@ -773,6 +778,7 @@ const coreRoutes = [
     resetPasswordRoute,
     dashboardRoute,
     userProfileRoute,
+    notificationsRoute,
     analyticsRoute,
     // Admin
     adminRoute,

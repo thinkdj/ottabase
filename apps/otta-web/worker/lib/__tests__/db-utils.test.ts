@@ -32,6 +32,10 @@ vi.mock('@ottabase/comments', () => ({
     Comment: class Comment {},
     CommentReaction: class CommentReaction {},
 }));
+vi.mock('@ottabase/notifications', () => ({
+    NotificationModel: class NotificationModel {},
+    NotificationPreference: class NotificationPreference {},
+}));
 
 vi.mock('@ottabase/db/drizzle-d1', () => ({
     createD1Driver: mockCreateD1Driver,

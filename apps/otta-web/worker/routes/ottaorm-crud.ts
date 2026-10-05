@@ -1,7 +1,13 @@
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog';
+import {
+    ContentValidationError,
+    getPublicContentPath,
+    Post,
+    validatePostWrite,
+    type ContentType,
+} from '@ottabase/ottablog';
 import {
     executeSecureCrudRequest,
     parseCrudRequest,
@@ -14,6 +20,7 @@ import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
+import { notifyUser } from '../lib/notify';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -698,6 +705,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         prepareAuthorizedMutation: prepareAuthorizedPostMutation,
     });
 
+    if (crudRequest.model === 'comments' && crudRequest.method === 'POST' && result.success) {
+        await notifyRepliedTo(result.data as Record<string, unknown>, session?.user?.name).catch(() => {});
+    }
+
     if (!result.success) {
         // Expected 4xx outcomes are not server errors and RLS denials already have
         // their own redacted audit event. For 5xx, log bounded routing metadata only;
@@ -900,4 +911,26 @@ async function resolveAffectedMembershipUsers(
     }
 
     return [...affected];
+}
+
+/** A reply lands in the parent author's inbox, unless they wrote it themselves. */
+async function notifyRepliedTo(created: Record<string, unknown> | undefined, authorName: unknown): Promise<void> {
+    const parentId = typeof created?.parentId === 'string' ? created.parentId : null;
+    if (!parentId) return;
+    const parent = await Comment.find(parentId);
+    const parentUserId = parent?.get('userId') as string | null | undefined;
+    if (!parentUserId || parentUserId === created?.userId) return;
+
+    let actionUrl: string | undefined;
+    if (created?.targetType === 'post' && typeof created.targetId === 'string') {
+        const post = await Post.first({ id: created.targetId });
+        if (post) actionUrl = getPublicContentPath(post.get('slug') as string, post.get('contentType') as ContentType);
+    }
+    await notifyUser(parentUserId, {
+        title: `${typeof authorName === 'string' && authorName ? authorName : 'Someone'} replied to your comment`,
+        message: String(created?.body ?? '').slice(0, 280),
+        category: 'comments',
+        actionUrl,
+        actionText: 'See the reply',
+    });
 }

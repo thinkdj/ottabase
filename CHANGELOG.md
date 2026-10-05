@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Notifications have an inbox.** A bell in the header shows how many notifications are new and the latest eight;
+  `/notifications` lists them all with an unread filter, Mark read and Mark all read; the account page has a switch per
+  kind. Two things write to it today: a reply to your comment (with a link to the post) and being added to an
+  organization or given a new role in one. `@ottabase/notifications` rows are the inbox; the worker gained `notifyUser`,
+  which honours the person's preferences and never fails the action that caused it, plus `/api/notifications` routes for
+  the list, marking read and preferences. `getPublicContentPath` moved into `@ottabase/ottablog` so the worker and the
+  app share it.
 - **Scheduled tasks and the queue share one Background jobs screen.** `/admin/infrastructure/jobs` replaces the Cron and
   Queues pages. Scheduled tasks are a table that says each schedule in words ("Weekdays at 09:00") with the next run,
   the last run and its state, Run now and Pause inline, and a side panel with the next three run times, the payload and

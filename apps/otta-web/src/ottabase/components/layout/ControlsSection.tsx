@@ -1,4 +1,5 @@
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { NotificationBell } from '@/components/NotificationBell';
 import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api } from '@/lib/api';
@@ -80,6 +81,7 @@ export function ControlsSection() {
                     <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
                 </span>
             )}
+            {isAuthenticated && <NotificationBell />}
             {isAuthenticated && <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />}
         </div>
     );

@@ -7,6 +7,7 @@ import { sanitizeBlockHtml, sanitizeInlineHtml, sanitizeUrl } from '@ottabase/ut
 import { isEmail, stripHtml } from '@ottabase/utils/string';
 import { requireAdminAccess, type AdminContext } from '../lib/admin-guard';
 import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
+import { notifyUser, quietly } from '../lib/notify';
 import { normalizeEmail } from '../lib/utils';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import type { ApiRouteContext } from './router';
@@ -22,6 +23,8 @@ interface UpdateMemberRequestBody {
     role?: 'owner' | 'admin' | 'member';
     status?: 'active' | 'invited' | 'suspended';
 }
+
+const ROLE_WORDS: Record<string, string> = { owner: 'an owner', admin: 'an admin', member: 'a member' };
 
 function isValidRole(role: unknown): role is 'owner' | 'admin' | 'member' {
     return role === 'owner' || role === 'admin' || role === 'member';
@@ -295,6 +298,15 @@ export async function handleAdminOrganizationInviteMember(
             // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
             // refresh their live session so it isn't served the stale snapshot until the JWT expires.
             await bumpProfileVersion(context.env, resolvedUserId);
+
+            const organization = await quietly(() => Organization.find(organizationId));
+            await notifyUser(resolvedUserId, {
+                title: `You were added to ${organization?.get('name') ?? 'an organization'}`,
+                message: `${auth.user?.name || 'An administrator'} made you ${ROLE_WORDS[role] ?? `a ${role}`}.`,
+                category: 'organizations',
+                actionUrl: '/dashboard',
+                actionText: 'Open',
+            });
         }
 
         // Only notify when the admin explicitly supplied an email (the "invite by email" flow).
@@ -413,6 +425,16 @@ export async function handleAdminOrganizationUpdateMember(
             await invalidateMembershipCache(context.env.OBCF_KV, userId);
             // Refresh the mutable session snapshot on the next request.
             await bumpProfileVersion(context.env, userId);
+            if (body.role !== undefined && body.role !== existing.role) {
+                const organization = await quietly(() => Organization.find(organizationId));
+                await notifyUser(userId, {
+                    title: `Your role in ${organization?.get('name') ?? 'your organization'} changed`,
+                    message: `You are now ${ROLE_WORDS[body.role] ?? body.role}.`,
+                    category: 'organizations',
+                    actionUrl: '/dashboard',
+                    actionText: 'Open',
+                });
+            }
             return jsonResponse({ data: result.member });
         }
 

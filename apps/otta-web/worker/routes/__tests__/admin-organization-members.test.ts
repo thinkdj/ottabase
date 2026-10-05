@@ -11,8 +11,19 @@ vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
     SYSTEM_ORGANIZATION_ID: 'system',
 }));
+vi.mock('../../lib/notify', () => ({
+    notifyUser: vi.fn(),
+    quietly: async (work: () => Promise<unknown>) => {
+        try {
+            return await work();
+        } catch {
+            return null;
+        }
+    },
+}));
 
 import { requireAdminAccess } from '../../lib/admin-guard';
+import { notifyUser } from '../../lib/notify';
 
 function rosterMember(overrides: Partial<OrganizationMemberType> = {}): OrganizationMemberType {
     return {
@@ -76,6 +87,10 @@ describe('handleAdminOrganizationInviteMember', () => {
                 invitedBy: 'admin-1',
                 invitedAt: expect.any(Number),
             }),
+        );
+        expect(notifyUser).toHaveBeenCalledWith(
+            'user-2',
+            expect.objectContaining({ category: 'organizations', message: 'An administrator made you a member.' }),
         );
     });
 
@@ -171,6 +186,10 @@ describe('handleAdminOrganizationInviteMember', () => {
             'org-1',
             { role: 'admin', status: 'active' },
             { role: 'member', status: 'invited' },
+        );
+        expect(notifyUser).toHaveBeenCalledWith(
+            'user-2',
+            expect.objectContaining({ category: 'organizations', message: 'You are now an admin.' }),
         );
     });
 

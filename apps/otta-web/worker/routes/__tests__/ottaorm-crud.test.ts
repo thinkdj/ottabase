@@ -30,7 +30,10 @@ vi.mock('@ottabase/ottablog', async () => ({
         '../../../../../packages/ottablog/src/types',
     )),
     Post: { find: vi.fn(), first: vi.fn() },
+    getPublicContentPath: (slug: string) => `/blog/${slug}`,
 }));
+
+vi.mock('../../lib/notify', () => ({ notifyUser: vi.fn() }));
 
 vi.mock('@ottabase/comments', () => ({
     Comment: { find: vi.fn(), validateReplyParent: vi.fn() },
@@ -1127,6 +1130,49 @@ describe('handleOttaormCrud (comment reports and hidden bodies)', () => {
 
         expect(response.status).toBe(200);
         expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+    });
+
+    it('puts a reply in the parent author inbox with a link to the post', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Post } = await import('@ottabase/ottablog');
+        const { Comment } = await import('@ottabase/comments');
+        const { getSession } = await import('@ottabase/auth/backend');
+        const { notifyUser } = await import('../../lib/notify');
+        (getSession as any).mockResolvedValueOnce({ user: { id: 'user-1', name: 'Ada' } });
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'comments',
+            method: 'POST',
+            body: { targetType: 'post', targetId: 'post-1', parentId: 'c0', body: 'Well said' },
+        });
+        const post: Record<string, unknown> = { organizationId: 'org-1', slug: 'hello', contentType: 'blog' };
+        (Post.first as any).mockResolvedValue({ get: (key: string) => post[key] });
+        (Comment.validateReplyParent as any).mockResolvedValue({ ok: true, depth: 1 });
+        (Comment.find as any).mockResolvedValue(stub({ id: 'c0', userId: 'user-9' }));
+        (executeSecureCrudRequest as any).mockResolvedValue({
+            success: true,
+            data: {
+                id: 'c1',
+                parentId: 'c0',
+                userId: 'user-1',
+                targetType: 'post',
+                targetId: 'post-1',
+                body: 'Well said',
+            },
+            status: 201,
+        });
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(201);
+        expect(notifyUser).toHaveBeenCalledWith(
+            'user-9',
+            expect.objectContaining({
+                category: 'comments',
+                title: 'Ada replied to your comment',
+                message: 'Well said',
+                actionUrl: '/blog/hello',
+            }),
+        );
     });
 
     it('blanks hidden comment bodies for readers and keeps them for moderators', async () => {

@@ -64,6 +64,7 @@ import {
     handleAdminRolesList,
 } from './admin-roles';
 import { handleAdminFlaggedComments } from './admin-comments';
+import { handleNotificationPreferences, handleNotificationsList, handleNotificationsMarkRead } from './notifications';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './admin-users';
 import {
     handleAiComplete,
@@ -311,6 +312,11 @@ apiRouter.post('/api/analytics/track', (c) =>
     }),
 );
 apiRouter.get('/api/audit/logs', h(handleAuditLogs));
+
+// My inbox
+apiRouter.get('/api/notifications', h(handleNotificationsList));
+apiRouter.post('/api/notifications/read', h(handleNotificationsMarkRead));
+apiRouter.on(['GET', 'PUT'], '/api/notifications/preferences', h(handleNotificationPreferences));
 
 // -------------------------------------------------------
 // Admin: users, roles, platform owner, organizations

@@ -211,3 +211,4 @@ export * from './plugins';
 
 // Studio (themes/plugins management)
 export * from './studio';
+export { getPublicContentPath } from './paths';

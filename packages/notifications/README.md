@@ -222,6 +222,23 @@ if (notification.isExpired()) {
 }
 ```
 
+## In the app (otta-web)
+
+The app treats a `notifications` row as an inbox entry, whatever its channels say. The worker writes one with
+`notifyUser(userId, { title, message, category, actionUrl })` from `worker/lib/notify.ts`, which checks the person's
+category preference first and never throws into the action that caused it. Two things write today: a reply to your
+comment, and being added to an organization or given a new role in one.
+
+| Route                                     | What it does                                                            |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /api/notifications?page&perPage`     | My inbox, newest first, with the unread count (`unread=1` filters)      |
+| `POST /api/notifications/read`            | Marks `{ ids }` read, or everything unread without ids                  |
+| `GET, PUT /api/notifications/preferences` | Which categories reach my inbox (`{ categories: { comments: false } }`) |
+
+The bell in the header shows the unread count and the latest eight; `/notifications` lists everything; the account page
+has the switches. The two models are registered with the ORM in `worker/lib/db-utils.ts`, so the tables come from the
+usual schema initialization.
+
 ## Priority Levels
 
 - `low` - Non-urgent notifications (marketing, updates)

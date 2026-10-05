@@ -79,6 +79,11 @@ vi.mock('../admin-roles', () => ({
 vi.mock('../admin-comments', () => ({
     handleAdminFlaggedComments: handlerMock('handleAdminFlaggedComments'),
 }));
+vi.mock('../notifications', () => ({
+    handleNotificationPreferences: handlerMock('handleNotificationPreferences'),
+    handleNotificationsList: handlerMock('handleNotificationsList'),
+    handleNotificationsMarkRead: handlerMock('handleNotificationsMarkRead'),
+}));
 vi.mock('../admin-users', () => ({
     handleAdminUserById: handlerMock('handleAdminUserById'),
     handleAdminUserSearch: handlerMock('handleAdminUserSearch'),
@@ -271,6 +276,7 @@ import {
     handleAdminRolesList,
 } from '../admin-roles';
 import { handleAdminFlaggedComments } from '../admin-comments';
+import { handleNotificationPreferences, handleNotificationsList, handleNotificationsMarkRead } from '../notifications';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from '../admin-users';
 import { handleAuditLogs } from '../audit';
 import {
@@ -526,6 +532,16 @@ describe('router dispatch parity', () => {
     });
 
     describe('admin users', () => {
+        it('the inbox routes reach their handlers', async () => {
+            const list = await dispatch('GET', '/api/notifications');
+            expect(await list.response!.text()).toBe('handleNotificationsList');
+            const read = await dispatch('POST', '/api/notifications/read');
+            expect(await read.response!.text()).toBe('handleNotificationsMarkRead');
+            const prefs = await dispatch('PUT', '/api/notifications/preferences');
+            expect(await prefs.response!.text()).toBe('handleNotificationPreferences');
+            expect(handleNotificationsList).toHaveBeenCalledTimes(1);
+        });
+
         it('GET /api/admin/comments/flagged dispatches to the moderation queue', async () => {
             const { response } = await dispatch('GET', '/api/admin/comments/flagged');
             expect(handleAdminFlaggedComments).toHaveBeenCalledTimes(1);

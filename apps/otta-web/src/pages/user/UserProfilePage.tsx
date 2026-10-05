@@ -42,6 +42,7 @@ import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
 import { ActiveSessions } from './ActiveSessions';
+import { NotificationSettings } from './NotificationSettings';
 import { SignInMethods, type LinkedAccountRecord } from './SignInMethods';
 
 interface UserProfileRecord {
@@ -755,6 +756,8 @@ export function UserProfilePage() {
             </Card>
 
             <ActiveSessions />
+
+            <NotificationSettings />
 
             {/* AI providers (personal keys). Dormant unless the ottaai package is enabled. */}
             {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
