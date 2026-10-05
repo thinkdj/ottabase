@@ -1308,6 +1308,9 @@ importers:
       '@ottabase/ui-datatable':
         specifier: workspace:*
         version: link:../ui-datatable
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.16(react@19.2.4)
@@ -2409,6 +2412,9 @@ importers:
 
   packages/ui-datatable:
     dependencies:
+      '@ottabase/ui-components':
+        specifier: workspace:*
+        version: link:../ui-components
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../utils

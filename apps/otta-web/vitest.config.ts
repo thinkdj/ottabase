@@ -48,6 +48,11 @@ export default defineConfig({
             ),
             '@ottabase/ottaai/react': path.resolve(__dirname, '../../packages/ottaai/src/react/index.ts'),
             '@ottabase/ottaai': path.resolve(__dirname, '../../packages/ottaai/src/index.ts'),
+            // Same four ottaorm entries as vite.config.ts: package sources must share the app's ORM module.
+            '@ottabase/ottaorm/client': path.resolve(__dirname, '../../packages/ottaorm/src/client/index.ts'),
+            '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models/index.ts'),
+            '@ottabase/ottaorm/base': path.resolve(__dirname, '../../packages/ottaorm/src/base/index.ts'),
+            '@ottabase/ottaorm': path.resolve(__dirname, '../../packages/ottaorm/src/index.ts'),
             // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json) — dist-only exports
             // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
             '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),

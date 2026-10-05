@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **CRUD is a list with a side editor.** `ModelCrud` (`@ottabase/forms`) keeps the list on screen and opens a row in a
+  side panel instead of swapping to detail, create and edit views; `selectedId` / `onSelectedIdChange` put the open
+  record in the URL (`?edit=<id|new>`), `config.prepare` fills derived fields such as the slug, and delete is a
+  confirmed action inside the panel. The blog Tags, Categories and Series pages are now one shared page over the models'
+  own metadata (`createModelConfig(PostTag)` etc.) instead of three hand-built list-plus-dialog pages. Names come from
+  one helper (`post_tags` reads "Post tag"), generated ids stay out of forms, `@ottabase/ui-datatable` declares the
+  `@ottabase/ui-components` dependency it already used, and the app's vite and vitest configs alias every
+  `@ottabase/ottaorm` entry point to source so package code and app code share one ORM module in dev.
 - **OttaSelect is a real search-as-you-type field.** Typing on the trigger opens the list filtered to what you typed
   with the first match focused, so type-then-Enter picks it (the first match used to need an arrow key first). A new
   `onCreate` prop offers "Create 'x'" when nothing matches and selects what it returns; the blog editor's tag picker

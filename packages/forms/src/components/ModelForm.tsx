@@ -12,6 +12,7 @@ import { AlertCircle, Loader2, Save, X } from 'lucide-react';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { ModelFieldDescriptor, ModelFormProps } from '../types';
+import { entityNames, humanize } from '../utils/names';
 import { FormField } from './FormField';
 import { Alert } from '@ottabase/ui-shadcn';
 
@@ -59,6 +60,7 @@ export function ModelForm<T extends Record<string, unknown>>({
     onError,
     serverErrors,
     onServerErrorClear,
+    hideHeader = false,
 }: ModelFormProps<T>) {
     const request = useFormRequest();
 
@@ -108,29 +110,11 @@ export function ModelForm<T extends Record<string, unknown>>({
         const fields: FieldEntry[] = [];
 
         for (const [key, field] of Object.entries(config.fields)) {
-            // Skip if form visibility is explicitly false
             if (field.formConfig?.visible === false) continue;
-
-            // Skip primary key in create mode
-            if (mode === 'create' && field.primaryKey) continue;
-
-            // Skip non-editable fields in edit mode (except for display)
-            if (mode === 'edit' && field.editable === false && !field.primaryKey) continue;
-
-            // For edit mode, make primary key readonly
-            const adjustedField = { ...field };
-            if (mode === 'edit' && field.primaryKey) {
-                adjustedField.formConfig = {
-                    ...adjustedField.formConfig,
-                    fieldType: 'readonly',
-                };
-            }
-
-            fields.push({
-                key,
-                field: adjustedField,
-                order: field.formConfig?.order ?? 999,
-            });
+            // Ids are generated, so a form shows one only when the model asks for it.
+            if (field.primaryKey && field.formConfig?.visible !== true) continue;
+            if (mode === 'edit' && field.editable === false) continue;
+            fields.push({ key, field, order: field.formConfig?.order ?? 999 });
         }
 
         return fields.sort((a, b) => a.order - b.order);
@@ -186,7 +170,6 @@ export function ModelForm<T extends Record<string, unknown>>({
         const submitData: Record<string, unknown> = {};
         for (const { key, field } of visibleFields) {
             if (field.editable === false) continue;
-            if (mode === 'create' && field.primaryKey) continue;
 
             const value = formData[key as keyof T];
             if (value !== undefined) {
@@ -194,7 +177,7 @@ export function ModelForm<T extends Record<string, unknown>>({
             }
         }
         return submitData as Partial<T>;
-    }, [visibleFields, formData, mode]);
+    }, [visibleFields, formData]);
 
     // Validate all fields and return the parsed DTO. Zod coercions,
     // transformations, and stripped fields are therefore honored on submit.
@@ -307,27 +290,28 @@ export function ModelForm<T extends Record<string, unknown>>({
         }
     };
 
-    const displayName = config.displayName || capitalize(singularize(config.entity));
+    const displayName = entityNames(config).singular;
     const title = mode === 'create' ? `Create ${displayName}` : `Edit ${displayName}`;
     const loading = isLoading || isSubmitting;
 
     return (
         <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate>
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-[0.9375rem] font-semibold text-foreground">{title}</h2>
-                {onCancel && (
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        disabled={loading}
-                        aria-label="Close"
-                        className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground disabled:opacity-50"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-                )}
-            </div>
+            {!hideHeader && (
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[0.9375rem] font-semibold text-foreground">{title}</h2>
+                    {onCancel && (
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            disabled={loading}
+                            aria-label="Close"
+                            className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground disabled:opacity-50"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Submit Error Banner */}
             {submitError && (
@@ -343,7 +327,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                     <FormField
                         key={key}
                         name={key}
-                        label={field.uiConfig?.label || capitalize(key)}
+                        label={field.uiConfig?.label || humanize(key)}
                         value={formData[key as keyof T]}
                         onChange={(value) => handleChange(key, value)}
                         onBlur={() => handleBlur(key)}
@@ -399,20 +383,6 @@ export function ModelForm<T extends Record<string, unknown>>({
             </div>
         </form>
     );
-}
-
-// ============================================================
-// Utility Functions
-// ============================================================
-
-function capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function singularize(str: string): string {
-    if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-    if (str.endsWith('s')) return str.slice(0, -1);
-    return str;
 }
 
 export default ModelForm;

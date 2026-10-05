@@ -409,23 +409,27 @@ const adminBlogStudioRoute = makeAdminRoute(
     () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
     'AdminBlogStudioPage',
 );
+// Taxonomy pages: the record open in the side panel lives in ?edit=<id|new>
+const editSearch = (search: Record<string, unknown>) => ({
+    edit: typeof search.edit === 'string' && search.edit ? search.edit : undefined,
+});
 const adminBlogTagsRoute = makeAdminRoute(
     '/admin/content/blog/tags',
     () => import('@/pages/admin/content/blog/AdminBlogTagsPage'),
     'AdminBlogTagsPage',
-    { scope: 'org' },
+    { scope: 'org', validateSearch: editSearch },
 );
 const adminBlogCategoriesRoute = makeAdminRoute(
     '/admin/content/blog/categories',
     () => import('@/pages/admin/content/blog/AdminBlogCategoriesPage'),
     'AdminBlogCategoriesPage',
-    { scope: 'org' },
+    { scope: 'org', validateSearch: editSearch },
 );
 const adminBlogSeriesRoute = makeAdminRoute(
     '/admin/content/blog/series',
     () => import('@/pages/admin/content/blog/AdminBlogSeriesPage'),
     'AdminBlogSeriesPage',
-    { scope: 'org' },
+    { scope: 'org', validateSearch: editSearch },
 );
 // ─── /studio — writing-first editorial surface (content-permission gated) ────
 

@@ -376,12 +376,13 @@ describe('helper functions - singularize', () => {
         expect(config.displayName).toBe('Category');
     });
 
-    it('should handle words ending in -ves', () => {
+    it('reads snake_case entities as words', () => {
         const config = defineModelConfig({
-            entity: 'wives',
+            entity: 'post_tags',
             fields: { id: { type: 'id', primaryKey: true } },
         });
-        expect(config.displayName).toBe('Wife');
+        expect(config.displayName).toBe('Post tag');
+        expect(config.displayNamePlural).toBe('Post tags');
     });
 
     it('should handle words ending in -ches', () => {
@@ -390,24 +391,6 @@ describe('helper functions - singularize', () => {
             fields: { id: { type: 'id', primaryKey: true } },
         });
         expect(config.displayName).toBe('Bench');
-    });
-
-    it('should handle irregular plurals', () => {
-        const testCases = [
-            { plural: 'people', singular: 'Person' },
-            { plural: 'children', singular: 'Child' },
-            { plural: 'men', singular: 'Man' },
-            { plural: 'women', singular: 'Woman' },
-            { plural: 'data', singular: 'Datum' },
-        ];
-
-        for (const testCase of testCases) {
-            const config = defineModelConfig({
-                entity: testCase.plural,
-                fields: { id: { type: 'id', primaryKey: true } },
-            });
-            expect(config.displayName).toBe(testCase.singular);
-        }
     });
 });
 

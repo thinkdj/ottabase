@@ -19,7 +19,7 @@ export type {
     FormFieldType,
     FormFieldProps,
     ModelConfig,
-    CrudViewMode,
+    ModelCrudSelection,
     ModelCrudProps,
     ModelTableProps,
     ModelFormProps,

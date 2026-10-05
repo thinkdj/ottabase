@@ -118,6 +118,28 @@ export function App({
 Configure custom transports once through `OttaQueryProvider`; model and field configuration cannot bypass the provider
 client. Create and update submissions are awaited, and canonical server `fieldErrors` are rendered inline.
 
+### The side panel and the URL
+
+`ModelCrud` keeps the list on screen. Clicking a row opens that record in a side panel; **Add** opens an empty one;
+saving or deleting closes it. Pass `selectedId` and `onSelectedIdChange` to own the selection, so the open record can
+live in the URL and a link to `?edit=<id>` opens it:
+
+```tsx
+const { edit } = useSearch({ strict: false }) as { edit?: string };
+
+<ModelCrud
+    config={tagsConfig}
+    selectedId={edit ?? null}
+    onSelectedIdChange={(id) => navigate({ search: { edit: id == null ? undefined : String(id) }, replace: true })}
+/>;
+```
+
+`config.prepare(data, mode)` is the last touch before a create or edit is sent, e.g. filling the slug from the name.
+
+Labels come from the config or the entity: `post_tags` reads "Post tag" / "Post tags" and a `createdAt` column reads
+"Created at". Pass `displayName` (and `displayNamePlural` when the plural is irregular) to name a model yourself.
+Generated ids stay out of forms; set `formConfig.visible: true` on the key field to show one.
+
 ### Standalone Form (no ModelCrud)
 
 ```tsx

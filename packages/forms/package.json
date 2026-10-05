@@ -35,6 +35,7 @@
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@ottabase/ui-datatable": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "clsx": "catalog:",
@@ -48,6 +49,9 @@
             "optional": true
         },
         "@ottabase/ui-components": {
+            "optional": true
+        },
+        "@ottabase/ui-shadcn": {
             "optional": true
         },
         "@ottabase/ui-datatable": {
@@ -64,6 +68,7 @@
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@ottabase/ui-datatable": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/react": "catalog:",

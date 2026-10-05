@@ -86,6 +86,8 @@ export interface ModelConfig<T = Record<string, unknown>> {
     searchFields?: string[];
     /** Pre-built Zod schema for create mode (auto-generated from fields) */
     zodCreateSchema?: z.ZodObject<any>;
+    /** Last touch before a create or edit is sent, e.g. fill the slug from the name */
+    prepare?: (data: Partial<T>, mode: 'create' | 'edit') => Partial<T>;
     /** Pre-built Zod schema for update mode (auto-generated from fields) */
     zodUpdateSchema?: z.ZodObject<any>;
 }
@@ -93,7 +95,8 @@ export interface ModelConfig<T = Record<string, unknown>> {
 /**
  * CRUD view modes
  */
-export type CrudViewMode = 'list' | 'detail' | 'create' | 'edit';
+/** What the side panel shows: a record id to edit, 'new' to create, or null when closed */
+export type ModelCrudSelection = string | number | 'new' | null;
 
 /**
  * CRUD component props
@@ -101,10 +104,10 @@ export type CrudViewMode = 'list' | 'detail' | 'create' | 'edit';
 export interface ModelCrudProps<T = Record<string, unknown>> {
     /** Model configuration */
     config: ModelConfig<T>;
-    /** Initial view mode */
-    initialMode?: CrudViewMode;
-    /** Initially selected record ID (for detail/edit modes) */
-    initialRecordId?: string | number;
+    /** Controlled selection, so the open record can live in the URL (?edit=<id|new>) */
+    selectedId?: ModelCrudSelection;
+    /** Called when a row or "Add" is clicked, or the panel closes (null) */
+    onSelectedIdChange?: (id: ModelCrudSelection) => void;
     /** Callback when record is created */
     onCreate?: (record: T) => void;
     /** Callback when record is updated */
@@ -213,6 +216,8 @@ export interface ModelFormProps<T = Record<string, unknown>> {
     serverErrors?: Record<string, string>;
     /** Clears a parent-controlled server error after the user edits a field. */
     onServerErrorClear?: (field: string) => void;
+    /** Skip the built-in title row (the host, e.g. a side panel, has its own) */
+    hideHeader?: boolean;
 }
 
 /**

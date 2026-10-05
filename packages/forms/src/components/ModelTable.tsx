@@ -16,6 +16,7 @@ import { actionsColumn, createColumns, DataTable, selectColumn } from '@ottabase
 import { Edit2, Eye, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { ModelFieldDescriptor, ModelTableProps } from '../types';
+import { entityNames, humanize } from '../utils/names';
 
 // Re-export for backwards compatibility
 export type { ModelTableProps } from '../types';
@@ -54,8 +55,7 @@ export function ModelTable<T extends Record<string, unknown>>({
     const [searchQuery, setSearchQuery] = useState('');
 
     const primaryKey = config.primaryKey || 'id';
-    const displayName = config.displayName || capitalize(singularize(config.entity));
-    const displayNamePlural = config.displayNamePlural || config.entity;
+    const { singular: displayName, plural: displayNamePlural } = entityNames(config);
 
     // ── Convert model fields to DataTable column defs ────────
 
@@ -73,7 +73,7 @@ export function ModelTable<T extends Record<string, unknown>>({
             fields.map(({ key, field }) => {
                 const col: DataTableColumnDef<T> = {
                     key: key as string & keyof T,
-                    header: field.uiConfig?.label || capitalize(key),
+                    header: field.uiConfig?.label || humanize(key),
                     sortable: field.sortable ?? false,
                     filterable: field.filterable ?? false,
                     width: field.tableConfig?.colWidth,
@@ -229,16 +229,6 @@ function mapFieldTypeToFormat(type: string): string | undefined {
         default:
             return undefined;
     }
-}
-
-function capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function singularize(str: string): string {
-    if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-    if (str.endsWith('s')) return str.slice(0, -1);
-    return str;
 }
 
 export default ModelTable;

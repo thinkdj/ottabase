@@ -53,6 +53,13 @@ export default defineConfig(({ command }) => ({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Package sources sit outside this app's tsconfig, so their ottaorm imports fall back to dist
+            // while app code maps to src. Alias every entry point so the whole graph shares one ORM
+            // module (one React context, one BaseModel). Subpaths go first: a bare key also matches them.
+            '@ottabase/ottaorm/client': path.resolve(__dirname, '../../packages/ottaorm/src/client/index.ts'),
+            '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models/index.ts'),
+            '@ottabase/ottaorm/base': path.resolve(__dirname, '../../packages/ottaorm/src/base/index.ts'),
+            '@ottabase/ottaorm': path.resolve(__dirname, '../../packages/ottaorm/src/index.ts'),
             '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),
             '@ottabase/rbac/request-context': path.resolve(__dirname, '../../packages/rbac/src/request-context.ts'),
             // Stub @sentry/node in browser build so Vite never bundles it (it uses node:inspector).

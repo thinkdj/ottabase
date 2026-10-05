@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { ArrowLeft, Check, Edit2, ExternalLink, Trash2, X } from 'lucide-react';
 import { useMemo } from 'react';
 import type { ModelDetailProps, ModelFieldDescriptor } from '../types';
+import { entityNames, humanize } from '../utils/names';
 import { LoadingState } from '@ottabase/ui-components';
 
 export type { ModelDetailProps } from '../types';
@@ -50,7 +51,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
     }, [config.fields]);
 
     const primaryKey = config.primaryKey || 'id';
-    const displayName = config.displayName || capitalize(singularize(config.entity));
+    const displayName = entityNames(config).singular;
     const recordId = data[primaryKey];
 
     if (isLoading) {
@@ -133,7 +134,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                                 {/* Label */}
                                 <td className="w-1/4 bg-muted/40 px-4 py-3 align-top">
                                     <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                        {field.uiConfig?.label || capitalize(key)}
+                                        {field.uiConfig?.label || humanize(key)}
                                     </span>
                                     {field.uiConfig?.description && (
                                         <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
@@ -367,16 +368,6 @@ function DetailValue({ value, field }: DetailValueProps) {
 // ============================================================
 // Utility Functions
 // ============================================================
-
-function capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function singularize(str: string): string {
-    if (str.endsWith('ies')) return str.slice(0, -3) + 'y';
-    if (str.endsWith('s')) return str.slice(0, -1);
-    return str;
-}
 
 function isUrl(str: string): boolean {
     try {

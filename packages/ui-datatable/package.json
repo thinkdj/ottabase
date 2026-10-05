@@ -31,6 +31,7 @@
         "test": "vitest run"
     },
     "dependencies": {
+        "@ottabase/ui-components": "workspace:*",
         "@ottabase/utils": "workspace:*",
         "@tanstack/react-table": "^8.21.3"
     },
