@@ -17,7 +17,8 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Series Support** - Group related posts into ordered series
 - **Multi-App Ready** - Built-in appId support for multi-tenant databases
 - **Original Date** - Fuzzy "originally written" date via OttaDate (e.g. "Late May 2010") — distinct from publish date
-- **Date Archives** - Filter posts by year/month via `?year=2026&month=8` query params
+- **Date Archives** - `/blog/archive/$year` and `/blog/archive/$year/$month` list posts by publish date (the API takes
+  `?year=2026&month=8`)
 - **Social Sharing** - One-button share popover (copy link, X, Facebook, LinkedIn, Email, Web Share API)
 - **Analytics Ready** - Reading time, word count, view counting
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
@@ -1155,25 +1156,29 @@ editor's rules:
 
 The response lists `created`, `skipped` (with reasons), and `warnings` per slug.
 
-## Public Archive Pages
+## Public feed and archives
 
-| Page             | Route                    | Description                                           |
-| ---------------- | ------------------------ | ----------------------------------------------------- |
-| Tag Archive      | `/blog/tag/$slug`        | Shows tag info and all posts tagged with it           |
-| Category Archive | `/blog/category/$slug`   | Shows category info and all posts in that category    |
-| Series Archive   | `/blog/series/$slug`     | Shows series info and ordered list of posts in series |
-| Author Archive   | `/blog/author/$authorId` | Shows the author's name, avatar, and published posts  |
+`/blog` and every archive are one feed. The URL carries the view, so any of them can be shared and the back button
+works:
+
+| Route                        | Scope                                         |
+| ---------------------------- | --------------------------------------------- |
+| `/blog`                      | Everything, with a featured rail on page one  |
+| `/blog/tag/$slug`            | Posts with a tag                              |
+| `/blog/category/$slug`       | Posts in a category                           |
+| `/blog/series/$slug`         | A series, every part in order on one page     |
+| `/blog/author/$authorId`     | An author's published posts                   |
+| `/blog/archive/$year`        | A year                                        |
+| `/blog/archive/$year/$month` | A month, with links to the months either side |
+
+Search params work on all of them: `q` (search as you type), `type` (a content type), `page` and `lang`. The series menu
+on the feed opens the series page rather than filtering in place, since a series is read in order.
 
 The post page links its byline to the author archive through the renderer's `onAuthorClick` prop; the default theme
 renders the name as a button only when a host passes that handler.
 
-Archive pages are **theme-aware**: they use the active theme's `renderCard` for post cards and
-`archiveContainer`/`archiveTitle` classes for layout. Both built-in themes (Default and Minimal) provide distinct card
-renderers:
-
-- **Default** — Bordered cards with shadow hover, rounded hero thumbnails, and numbered circle badges for series order
-- **Minimal** — Border-bottom dashed, grayscale hero images, uppercase tracking-wider metadata, zero-padded series
-  numbers (01, 02…)
+The feed draws its own cards for the default theme. When another theme is active, its `renderCard` draws every card in
+the feed and the archives, so the Minimal theme's dashed rows and zero-padded series numbers carry through.
 
 ## Blog Studio (themes & plugins)
 
@@ -1246,7 +1251,7 @@ const myTheme: Theme = {
         {post.photoAlbum?.map((photo) => <img key={photo.id} src={sanitizeUrl(photo.url)} alt={photo.alt ?? ''} />)}
       </div>
     ),
-    // renderCard controls post cards on archive/listing pages
+    // renderCard draws the cards of the feed and archives while this theme is active
     renderCard: (post, props) => (
       <article className="my-card">
         <h2>{post.title}</h2>
@@ -1258,8 +1263,6 @@ const myTheme: Theme = {
   config: {
     classes: {
       container: 'max-w-4xl mx-auto px-4',
-      archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
-      archiveTitle: 'text-3xl font-bold',
     },
   },
 };

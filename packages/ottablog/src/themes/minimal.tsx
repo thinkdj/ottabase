@@ -40,8 +40,6 @@ export const minimalTheme: Theme = {
             card: 'blog-card-minimal',
             blurb: 'max-w-3xl mx-auto',
             photoJournal: 'mx-auto max-w-6xl',
-            archiveContainer: 'max-w-3xl mx-auto px-6 py-12 space-y-10',
-            archiveTitle: 'text-3xl font-light tracking-tight',
         },
     },
     renderers: {

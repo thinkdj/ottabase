@@ -11,3 +11,17 @@ describe('blog links', () => {
         expect(localizedPostSearch({ language: 'ml', translationId: 'translation-1' }, 'en')).toEqual({ lang: 'ml' });
     });
 });
+
+describe('blogFeedSearch', () => {
+    it('keeps the feed state and drops the defaults and junk', async () => {
+        const { blogFeedSearch } = await import('../blogLinks');
+        expect(blogFeedSearch({ q: 'edge', type: 'photo', page: '2', lang: 'fr', junk: 1 })).toEqual({
+            q: 'edge',
+            type: 'photo',
+            page: 2,
+            lang: 'fr',
+        });
+        expect(blogFeedSearch({ q: '  ', page: 1, type: '', lang: '' })).toEqual({});
+        expect(blogFeedSearch({ page: 'x' })).toEqual({});
+    });
+});

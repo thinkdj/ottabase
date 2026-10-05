@@ -5,6 +5,7 @@ import { RouteErrorPage } from '@/components/RouteErrorPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
+import { blogFeedSearch } from '@/pages/blog/blogLinks';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES } from '@/ottabase/config/premium';
@@ -295,45 +296,48 @@ const referralsRoute = publicRoute('/referrals', () =>
  * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
  * semantic brand vars for blog subtrees only — never the app shell.
  */
-function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => Promise<{ default: ComponentType }>) {
-    return publicRoute(path, () =>
-        loader().then((m) => {
-            const Comp = m.default;
-            return {
-                default: () => (
-                    <BrandScope name="blog">
-                        <Comp />
-                    </BrandScope>
-                ),
-            };
-        }),
+function blogPublicRoute<const TPath extends string, TSearch = Record<string, unknown>>(
+    path: TPath,
+    loader: () => Promise<{ default: ComponentType }>,
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => TSearch }> = {},
+) {
+    return publicRoute(
+        path,
+        () =>
+            loader().then((m) => {
+                const Comp = m.default;
+                return {
+                    default: () => (
+                        <BrandScope name="blog">
+                            <Comp />
+                        </BrandScope>
+                    ),
+                };
+            }),
+        options,
     );
 }
 
-const blogListRoute = blogPublicRoute('/blog', () =>
-    import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
-);
+/** The feed and its archives: one page module, one URL state (search, type, page, language). */
+function blogFeedRoute<const TPath extends string>(
+    path: TPath,
+    page: keyof typeof import('@/pages/blog/BlogListPage'),
+) {
+    return blogPublicRoute(path, () => import('@/pages/blog/BlogListPage').then((m) => ({ default: m[page] })), {
+        validateSearch: blogFeedSearch,
+    });
+}
+
+const blogListRoute = blogFeedRoute('/blog', 'BlogListPage');
 const blogDetailRoute = blogPublicRoute('/blog/$slug', () =>
     import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
 );
-const blogTagArchiveRoute = blogPublicRoute('/blog/tag/$slug', () =>
-    import('@/pages/blog/BlogTagArchivePage').then((m) => ({ default: m.BlogTagArchivePage })),
-);
-const blogCategoryArchiveRoute = blogPublicRoute('/blog/category/$slug', () =>
-    import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
-);
-const blogAuthorArchiveRoute = blogPublicRoute('/blog/author/$authorId', () =>
-    import('@/pages/blog/BlogAuthorArchivePage').then((m) => ({ default: m.BlogAuthorArchivePage })),
-);
-const blogSeriesArchiveRoute = blogPublicRoute('/blog/series/$slug', () =>
-    import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
-);
-const blogDateArchiveYearRoute = blogPublicRoute('/blog/archive/$year', () =>
-    import('@/pages/blog/BlogDateArchivePage').then((m) => ({ default: m.BlogDateArchivePage })),
-);
-const blogDateArchiveMonthRoute = blogPublicRoute('/blog/archive/$year/$month', () =>
-    import('@/pages/blog/BlogDateArchivePage').then((m) => ({ default: m.BlogDateArchivePage })),
-);
+const blogTagArchiveRoute = blogFeedRoute('/blog/tag/$slug', 'BlogTagArchivePage');
+const blogCategoryArchiveRoute = blogFeedRoute('/blog/category/$slug', 'BlogCategoryArchivePage');
+const blogAuthorArchiveRoute = blogFeedRoute('/blog/author/$authorId', 'BlogAuthorArchivePage');
+const blogSeriesArchiveRoute = blogFeedRoute('/blog/series/$slug', 'BlogSeriesArchivePage');
+const blogDateArchiveYearRoute = blogFeedRoute('/blog/archive/$year', 'BlogDateArchivePage');
+const blogDateArchiveMonthRoute = blogFeedRoute('/blog/archive/$year/$month', 'BlogDateArchivePage');
 const changelogListRoute = publicRoute('/changelog', () =>
     import('@/pages/changelog/ChangelogListPage').then((m) => ({ default: m.ChangelogListPage })),
 );

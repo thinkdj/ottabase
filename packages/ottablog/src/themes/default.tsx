@@ -38,8 +38,6 @@ export const defaultTheme: Theme = {
             card: 'blog-card',
             blurb: 'max-w-3xl mx-auto',
             photoJournal: 'mx-auto max-w-6xl',
-            archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
-            archiveTitle: 'text-3xl font-bold tracking-tight',
         },
     },
     renderers: {

@@ -81,10 +81,6 @@ export interface ThemeConfig {
         card?: string;
         blurb?: string;
         photoJournal?: string;
-        /** Container class for archive/listing pages */
-        archiveContainer?: string;
-        /** Title class for archive page headers */
-        archiveTitle?: string;
     };
 }
 

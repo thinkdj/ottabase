@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **One blog feed.** `/blog` and the tag, category, series, author and date archives render the same feed: the same
+  cards, the same search box and type menu, and the same pager. Search, type, page and language live in the URL, so a
+  filtered view can be shared and the back button works, and the featured rail stays on the front page. A scoped page
+  leads with what it is about (a tag, an author with their avatar, a month with links to the months either side), and
+  the series menu opens the series page, where every part is listed in order. `@ottabase/ottablog` themes lost the
+  unused `archiveContainer` and `archiveTitle` classes; a non-default theme's `renderCard` now draws the feed too.
 - **The editor reads like the published page.** `@ottabase/ottaeditor` ships `editorjs-reader.css` with its theme:
   paragraphs, headings, lists, checklists, quotes, warnings, delimiters and inline marks take the spacing, sizes and
   colours `@ottabase/ottarenderer` gives readers, from the same tokens, and the content sits on the reader's 48rem
