@@ -112,7 +112,7 @@ export function ThemingDemoPage() {
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr] items-start">
                 <div className="space-y-4">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">
                                 Theme Switcher
@@ -200,7 +200,7 @@ export function ThemingDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">
                                 Active theme

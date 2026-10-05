@@ -1,6 +1,7 @@
 import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -26,6 +27,7 @@ import {
 import { IconChartBar, IconLink, IconLoader2, IconRefresh, IconUsers } from '@tabler/icons-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { LoadingState } from '@ottabase/ui-components';
 
 export interface AnalyticsRow {
     dimension: string;
@@ -90,7 +92,7 @@ function AnalyticsResultsCard({
     valueLabel?: string;
 }) {
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Results</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -100,7 +102,7 @@ function AnalyticsResultsCard({
                     <div className="space-y-2" aria-busy="true">
                         <span className="sr-only">Loading analytics...</span>
                         {Array.from({ length: 5 }, (_, i) => (
-                            <div key={i} className="h-11 animate-pulse rounded-lg bg-muted/40" />
+                            <LoadingState key={i} count={1} height="h-11" className="rounded-lg" />
                         ))}
                     </div>
                 ) : data.length === 0 ? (
@@ -246,7 +248,7 @@ function ShortlinkAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -307,11 +309,7 @@ function ShortlinkAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error?.message && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error.message}
-                </div>
-            )}
+            {error?.message && <Alert variant="destructive">{error.message}</Alert>}
 
             <AnalyticsResultsCard
                 loading={loading}
@@ -366,7 +364,7 @@ function ReferralAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -427,11 +425,7 @@ function ReferralAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error?.message && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error.message}
-                </div>
-            )}
+            {error?.message && <Alert variant="destructive">{error.message}</Alert>}
 
             <AnalyticsResultsCard
                 loading={loading}
@@ -487,7 +481,7 @@ function CoreAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -546,11 +540,7 @@ function CoreAnalyticsTab() {
                 </CardContent>
             </Card>
 
-            {error?.message && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error.message}
-                </div>
-            )}
+            {error?.message && <Alert variant="destructive">{error.message}</Alert>}
 
             <AnalyticsResultsCard
                 loading={loading}

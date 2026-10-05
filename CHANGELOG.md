@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Shared building blocks.** `Card` is now the house surface by default (muted tint, no border, no shadow), with
+  `variant="outline"` for the bordered look; the 248 copies of the class string are gone. `Alert` is the one notice box,
+  with `destructive`, `warning`, `success` and `info` variants replacing 48 hand-rolled boxes. New in
+  `@ottabase/ui-components`: `EmptyState` (icon, title, description, next step) and `LoadingState` (one `role="status"`
+  region of pulsing tiles, in blocks, text, table or form shapes), replacing the page-by-page versions; `MessageBox` is
+  removed. A crashed page now shows its error inside the app frame (`defaultErrorComponent`), so the header and
+  navigation stay usable.
 - **Media picker reworked around tap-to-select.** One `MediaPickerDialog` (full screen on phones) replaces the three
   hand-rolled dialogs for editor tools, the blog hero image and photo journals. Nothing is pre-selected; tap to pick,
   tap again to drop, multi-picks are numbered in tap order, and a sticky bar shows thumbnails, "N selected", Clear and

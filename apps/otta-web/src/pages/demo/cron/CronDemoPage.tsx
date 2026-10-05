@@ -3,7 +3,17 @@
  * Demonstrates @ottabase/cron: cron expression parsing, schedule presets, and next-run calculation.
  */
 import { CronPresets, getNextRun, matchesCron, parseCron, type ParsedCron } from '@ottabase/cron';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    Alert,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Calendar, CheckCircle, Clock, XCircle, Zap } from 'lucide-react';
 import { useState } from 'react';
@@ -64,7 +74,7 @@ export function CronDemoPage() {
             />
 
             {/* Overview card */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Overview</CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
@@ -92,7 +102,7 @@ export function CronDemoPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Cron expression parser */}
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Clock className="h-4 w-4" />
@@ -115,10 +125,10 @@ export function CronDemoPage() {
                         </div>
 
                         {parseError && (
-                            <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                            <Alert variant="destructive" className="flex items-center gap-2">
                                 <XCircle className="h-4 w-4 flex-shrink-0" />
                                 {parseError}
-                            </div>
+                            </Alert>
                         )}
 
                         {parsed && (
@@ -169,7 +179,7 @@ export function CronDemoPage() {
                 </Card>
 
                 {/* Next runs */}
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Calendar className="h-4 w-4" />
@@ -205,7 +215,7 @@ export function CronDemoPage() {
             </div>
 
             {/* Presets */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Zap className="h-4 w-4" />
@@ -253,7 +263,7 @@ export function CronDemoPage() {
             </Card>
 
             {/* Usage examples */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Examples</CardTitle>
                     <CardDescription>How to use @ottabase/cron in your app.</CardDescription>

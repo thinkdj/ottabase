@@ -13,6 +13,7 @@ import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 const MONTH_NAMES = [
     'January',
@@ -104,15 +105,15 @@ export function BlogDateArchivePage() {
         return (
             <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
                 <span className="sr-only">Loading archive...</span>
-                <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
+                <LoadingState count={1} height="h-8" className="w-32 rounded-lg" />
                 <div className="space-y-2">
-                    <div className="h-3 w-24 animate-pulse rounded-full bg-muted/40" />
-                    <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/40" />
+                    <LoadingState count={1} height="h-3" className="w-24 rounded-full" />
+                    <LoadingState count={1} height="h-9" className="w-64 rounded-lg" />
                 </div>
                 <div className="space-y-4">
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-28" />
+                    <LoadingState count={1} height="h-28" />
+                    <LoadingState count={1} height="h-28" />
                 </div>
             </div>
         );
@@ -191,9 +192,7 @@ export function BlogDateArchivePage() {
 
             {/* Posts list */}
             {posts.length === 0 ? (
-                <div className="rounded-xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts found from {title}.</p>
-                </div>
+                <EmptyState title={<>No posts found from {title}.</>} />
             ) : (
                 <div className="space-y-4">
                     {posts.map((post) => (

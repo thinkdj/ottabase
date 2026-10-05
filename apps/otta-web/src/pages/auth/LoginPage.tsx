@@ -5,6 +5,7 @@ import { APP_META } from '@/ottabase/config';
 import { getLoginConfig } from '@ottabase/auth/config';
 import { LoginForm } from '@ottabase/auth/components';
 import {
+    Alert,
     Button,
     Dialog,
     DialogContent,
@@ -17,7 +18,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { AUTH_CARD_CLASS, AuthShell } from './AuthShell';
+import { AuthShell } from './AuthShell';
 
 type LoginConfig = ReturnType<typeof getLoginConfig> & { authSecretConfigured: boolean };
 
@@ -166,7 +167,7 @@ export function LoginPage() {
             <LoginForm
                 title=""
                 description=""
-                className={`max-w-none ${AUTH_CARD_CLASS}`}
+                className="max-w-none"
                 socialProviders={loginConfig.socialProviders}
                 showCredentials={loginConfig.showCredentials}
                 showMagicLink={loginConfig.showMagicLink}
@@ -187,17 +188,19 @@ export function LoginPage() {
             />
 
             {devWarnings.length > 0 && (
-                <details className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-                    <summary className="cursor-pointer font-medium">
-                        Auth setup notes ({devWarnings.length}, dev only)
-                    </summary>
-                    <ul className="mt-2 list-disc space-y-1 pl-4">
-                        {devWarnings.map((warning) => (
-                            <li key={warning}>{warning}</li>
-                        ))}
-                    </ul>
-                    <p className="mt-2 text-warning/80">Configure providers in wrangler.jsonc and .env files.</p>
-                </details>
+                <Alert variant="warning" className="text-xs">
+                    <details>
+                        <summary className="cursor-pointer font-medium">
+                            Auth setup notes ({devWarnings.length}, dev only)
+                        </summary>
+                        <ul className="mt-2 list-disc space-y-1 pl-4">
+                            {devWarnings.map((warning) => (
+                                <li key={warning}>{warning}</li>
+                            ))}
+                        </ul>
+                        <p className="mt-2 text-warning/80">Configure providers in wrangler.jsonc and .env files.</p>
+                    </details>
+                </Alert>
             )}
 
             <ForgotPasswordDialog

@@ -1,5 +1,5 @@
 import { ConfirmDialog } from '@ottabase/ui-components';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -160,11 +160,7 @@ export function CloudflareR2DemoPage() {
                 backLabel="Back to Cloudflare"
             />
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
+            {error ? <Alert variant="destructive">{error}</Alert> : null}
 
             {success ? (
                 <div className="rounded-xl bg-muted/40 p-4">
@@ -172,7 +168,7 @@ export function CloudflareR2DemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Upload File</CardTitle>
                 </CardHeader>
@@ -211,7 +207,7 @@ export function CloudflareR2DemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-[0.9375rem] font-semibold">Files in Bucket</CardTitle>

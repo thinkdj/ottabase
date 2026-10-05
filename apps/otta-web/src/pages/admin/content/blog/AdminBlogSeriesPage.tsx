@@ -5,7 +5,7 @@
  */
 import { generateSlug } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -172,26 +172,24 @@ export function AdminBlogSeriesPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading series...</span>
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={5} height="h-12" />
                     </div>
                 ) : filteredSeries.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <Layers className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                        <h3 className="mt-4 text-sm font-medium">No series found</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {seriesList.length === 0
+                    <EmptyState
+                        icon={<Layers />}
+                        title="No series found"
+                        description={
+                            seriesList.length === 0
                                 ? 'Get started by creating your first series.'
-                                : 'Try adjusting your search.'}
-                        </p>
-                        {seriesList.length === 0 && (
-                            <Button className="mt-4" onClick={openCreate}>
+                                : 'Try adjusting your search.'
+                        }
+                        action={
+                            <Button onClick={openCreate}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Series
                             </Button>
-                        )}
-                    </div>
+                        }
+                    />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <div className="divide-y divide-border/60">

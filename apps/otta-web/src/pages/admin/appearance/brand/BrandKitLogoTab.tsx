@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconAlertTriangle, IconLoader2, IconPhotoUp, IconTrash } from '@tabler/icons-react';
 import { useCallback, useState, type CSSProperties } from 'react';
 import { toast } from 'sonner';
@@ -161,13 +161,13 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
             </p>
 
             {!logoBaseUrl && (
-                <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                <Alert variant="warning" className="flex items-start gap-2">
                     <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                     <p>
                         Previews are unavailable because no public asset URL is configured. Set{' '}
                         <code className="font-mono text-xs">R2_PUBLIC_URL</code> to display uploaded assets here.
                     </p>
-                </div>
+                </Alert>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

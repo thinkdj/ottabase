@@ -140,7 +140,7 @@ export function EmailDemoPage() {
             />
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Template Settings</CardTitle>
                         <CardDescription>Choose a template + email type and adjust the variables JSON.</CardDescription>
@@ -235,7 +235,7 @@ export function EmailDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Rendered Preview</CardTitle>
                         <CardDescription>Subject: {rendered.subject || '(no subject)'}</CardDescription>

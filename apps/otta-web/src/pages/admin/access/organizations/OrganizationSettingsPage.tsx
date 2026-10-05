@@ -9,8 +9,9 @@ import { useDeleteOrganization, useOrganization, useUpdateOrganization } from '@
 import { useRBACToast } from '@/hooks/useToast';
 import type { OrganizationPlan, OrganizationStatus } from '@/types/rbac';
 import { organizationIdAtom } from '@/ottabase/state/appState';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -124,9 +125,9 @@ export function OrganizationSettingsPage() {
         return (
             <div className="max-w-3xl space-y-4" aria-busy="true">
                 <span className="sr-only">Loading organization settings…</span>
-                <div className="h-8 w-64 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-8" className="w-64" />
+                <LoadingState count={1} height="h-64" />
+                <LoadingState count={1} height="h-40" />
             </div>
         );
     }
@@ -157,7 +158,7 @@ export function OrganizationSettingsPage() {
             </div>
 
             {/* General Settings */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -349,7 +350,7 @@ export function OrganizationSettingsPage() {
             </Card>
 
             {/* Danger Zone */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold text-destructive">
                         <AlertTriangle className="h-4 w-4" />
@@ -358,13 +359,13 @@ export function OrganizationSettingsPage() {
                     <CardDescription>Irreversible actions</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <Alert variant="destructive">
                         <p className="font-medium">Delete Organization</p>
                         <p className="mt-1">
                             This will permanently delete the organization and all associated data including members,
                             roles, and audit logs. This action cannot be undone.
                         </p>
-                    </div>
+                    </Alert>
 
                     <Button
                         variant="destructive"

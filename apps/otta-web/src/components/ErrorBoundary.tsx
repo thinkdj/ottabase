@@ -71,62 +71,80 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 return this.props.fallback;
             }
 
-            const { error } = this.state;
-            const showDetails = this.props.showDetails ?? process.env.NODE_ENV === 'development';
-            const apiError = error && isApiError(error) ? error : null;
-
             return (
                 <div className="flex min-h-[400px] items-center justify-center p-4">
-                    <Card className="w-full max-w-lg">
-                        <CardHeader>
-                            <CardTitle className="text-destructive">Something went wrong</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                                {apiError ? apiError.message : error?.message || 'An unexpected error occurred'}
-                            </p>
-
-                            {apiError && (
-                                <div className="space-y-2 text-sm">
-                                    {apiError.details && <p className="text-muted-foreground">{apiError.details}</p>}
-                                    {apiError.hint && (
-                                        <p className="rounded bg-muted px-2 py-1 font-mono text-xs">{apiError.hint}</p>
-                                    )}
-                                    {apiError.messages.length > 1 && (
-                                        <ul className="list-inside list-disc text-muted-foreground">
-                                            {apiError.messages.map((msg, i) => (
-                                                <li key={i}>{msg}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
-
-                            {showDetails && error && !apiError && (
-                                <details className="rounded border bg-muted/50 p-2">
-                                    <summary className="cursor-pointer text-xs text-muted-foreground">
-                                        Technical details
-                                    </summary>
-                                    <pre className="mt-2 overflow-auto text-xs">{error.stack || error.message}</pre>
-                                </details>
-                            )}
-
-                            <div className="flex gap-2">
-                                <Button onClick={this.handleReset} variant="outline">
-                                    Try again
-                                </Button>
-                                <Button onClick={this.handleReload} variant="default">
-                                    Reload page
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <ErrorPanel
+                        error={this.state.error}
+                        onRetry={this.handleReset}
+                        showDetails={this.props.showDetails}
+                    />
                 </div>
             );
         }
 
         return this.props.children;
     }
+}
+
+/** The error card itself, shared by the top-level boundary and route-level errors (RouteErrorPage) */
+export function ErrorPanel({
+    error,
+    onRetry,
+    showDetails = import.meta.env.DEV,
+}: {
+    error: unknown;
+    onRetry?: () => void;
+    showDetails?: boolean;
+}) {
+    const apiError = isApiError(error) ? error : null;
+    const message = apiError
+        ? apiError.message
+        : error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred';
+
+    return (
+        <Card className="w-full max-w-lg">
+            <CardHeader>
+                <CardTitle className="text-destructive">Something went wrong</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{message}</p>
+
+                {apiError && (
+                    <div className="space-y-2 text-sm">
+                        {apiError.details && <p className="text-muted-foreground">{apiError.details}</p>}
+                        {apiError.hint && (
+                            <p className="rounded bg-muted px-2 py-1 font-mono text-xs">{apiError.hint}</p>
+                        )}
+                        {apiError.messages.length > 1 && (
+                            <ul className="list-inside list-disc text-muted-foreground">
+                                {apiError.messages.map((msg, i) => (
+                                    <li key={i}>{msg}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+
+                {showDetails && error instanceof Error && !apiError && (
+                    <details className="rounded border bg-muted/50 p-2">
+                        <summary className="cursor-pointer text-xs text-muted-foreground">Technical details</summary>
+                        <pre className="mt-2 overflow-auto text-xs">{error.stack || error.message}</pre>
+                    </details>
+                )}
+
+                <div className="flex gap-2">
+                    {onRetry && (
+                        <Button onClick={onRetry} variant="outline">
+                            Try again
+                        </Button>
+                    )}
+                    <Button onClick={() => window.location.reload()}>Reload page</Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
 
 /**

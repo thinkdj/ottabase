@@ -1,6 +1,7 @@
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     Badge,
     Button,
     NativeSelect,
@@ -168,10 +169,10 @@ export function AdminDevMailPage() {
             </div>
 
             {isError && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <Alert variant="destructive">
                     <p className="font-semibold">Dev trap unavailable</p>
                     <p>{error?.message ?? 'Enable DEV_EMAIL_TRAP_ENABLED and OBCF_KV to capture mail locally.'}</p>
-                </div>
+                </Alert>
             )}
 
             {/* Mailbox layout — fixed height, two-pane like an email client */}
@@ -230,7 +231,12 @@ export function AdminDevMailPage() {
                                 <div className="space-y-2 p-3" aria-busy="true">
                                     <span className="sr-only">Loading emails…</span>
                                     {Array.from({ length: 4 }, (_, index) => (
-                                        <div key={index} className="h-20 animate-pulse rounded-lg bg-background/60" />
+                                        <LoadingState
+                                            key={index}
+                                            count={1}
+                                            height="h-20"
+                                            className="rounded-lg bg-background/60"
+                                        />
                                     ))}
                                 </div>
                             ) : !isError && messages.length === 0 ? (

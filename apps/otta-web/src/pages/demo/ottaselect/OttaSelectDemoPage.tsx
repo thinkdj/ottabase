@@ -3,7 +3,7 @@
  * Demonstrates @ottabase/ottaselect component
  */
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem, type OttaSelectSize } from '@ottabase/ottaselect';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -230,7 +230,7 @@ export function OttaSelectDemoPage() {
             />
 
             {/* Basic Usage */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🔘 Basic Usage</CardTitle>
                     <CardDescription>
@@ -277,7 +277,7 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Custom Renderer Examples */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🎨 Custom Item Renderers</CardTitle>
                     <CardDescription>
@@ -355,7 +355,7 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Multi Select with Custom Rendering */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">
                         ☑️ Multi Select with Custom Rendering
@@ -404,7 +404,7 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Pagination Handling */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">📄 Pagination Support</CardTitle>
                     <CardDescription>
@@ -414,11 +414,11 @@ export function OttaSelectDemoPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-info/40 bg-info/10 p-3 text-sm text-info">
+                    <Alert variant="info">
                         <strong className="font-semibold">Demo:</strong> This select uses a simulated API that only
                         returns the first 3 countries. India and Brazil are pre-selected but won't appear in the API
                         response. Notice they still appear at the top of the dropdown!
-                    </div>
+                    </Alert>
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -463,7 +463,7 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Features */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">✨ Features</CardTitle>
                     <CardDescription>Key capabilities of OttaSelect</CardDescription>
@@ -534,7 +534,7 @@ export function OttaSelectDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
                     <CardDescription>How to use custom renderers</CardDescription>

@@ -5,7 +5,7 @@
 import type { MenuItemTreeNode } from '@ottabase/ottamenu';
 import { buildItemTree } from '@ottabase/ottamenu';
 import { renderMenu } from '@ottabase/ottamenu/render';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -76,12 +76,12 @@ export function AdminMenuDetailPage() {
             <div className="flex gap-6" aria-busy="true">
                 <span className="sr-only">Loading menu...</span>
                 <div className="flex-1 min-w-0 space-y-6">
-                    <div className="h-9 w-36 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-72 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-9" className="w-36" />
+                    <LoadingState count={1} height="h-72" />
+                    <LoadingState count={1} height="h-48" />
                 </div>
                 <div className="w-72 shrink-0">
-                    <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-48" />
                 </div>
             </div>
         );
@@ -137,7 +137,7 @@ function MenuCreateView({
                             Back
                         </Button>
                     </div>
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Create Menu</CardTitle>
                             <CardDescription className="leading-relaxed">
@@ -209,7 +209,7 @@ function MenuPreviewPanel({ menu, type }: { menu: MenuWithItemsDto | null; type:
     const isWide = type === 'mega' || type === 'navbar' || type === 'footer';
 
     return (
-        <Card className="sticky top-4 rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card className="sticky top-4">
             <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                     <IconEye className="h-4 w-4 text-muted-foreground" />
@@ -267,7 +267,7 @@ function MenuEditForm({ menu, onTypeChange }: { menu: MenuWithItemsDto; onTypeCh
     });
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Menu settings</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -361,7 +361,7 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
     const tree = buildItemTree(menu.items);
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Menu items</CardTitle>
                 <CardDescription className="leading-relaxed">

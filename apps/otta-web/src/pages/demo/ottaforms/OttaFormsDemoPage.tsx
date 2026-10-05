@@ -9,7 +9,7 @@ import { createModelConfig, defineModelConfig } from '@ottabase/forms';
 import { ModelCrud } from '@ottabase/forms/react';
 import { Post } from '@ottabase/ottablog';
 import { Tag, User } from '@ottabase/ottaorm/models';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
@@ -123,7 +123,7 @@ export function OttaFormsDemoPage() {
                     </Button>
 
                     {/* CRUD Interface */}
-                    <Card className="rounded-xl border-border/60 shadow-none">
+                    <Card variant="outline">
                         <CardContent className="pt-6">
                             <ModelCrud
                                 config={modelConfigs[selectedModel]}
@@ -150,7 +150,7 @@ export function OttaFormsDemoPage() {
                         {(Object.keys(modelConfigs) as ModelKey[]).map((key) => (
                             <Card
                                 key={key}
-                                className="cursor-pointer rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
+                                className="cursor-pointer transition-colors duration-normal hover:bg-muted/70"
                                 onClick={() => setSelectedModel(key)}
                             >
                                 <CardHeader>
@@ -195,7 +195,7 @@ export function OttaFormsDemoPage() {
                     </div>
 
                     {/* Features Section */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                         </CardHeader>
@@ -230,7 +230,7 @@ export function OttaFormsDemoPage() {
                     </Card>
 
                     {/* Code Example */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                         </CardHeader>
@@ -267,7 +267,7 @@ function TagsPage() {
 
 function ProtectedUsersNotice() {
     return (
-        <div role="note" className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+        <Alert variant="warning" className="flex items-start gap-3">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
             <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -286,7 +286,7 @@ function ProtectedUsersNotice() {
                     shown once as a toast and once as persistent inline context.
                 </p>
             </div>
-        </div>
+        </Alert>
     );
 }
 

@@ -316,7 +316,7 @@ export function CloudflareAIDemoPage() {
             />
 
             {isInitialized && !authLoading && !isAuthenticated ? (
-                <Card className="border-warning/30 bg-warning/5 shadow-none">
+                <Card className="border border-warning/30 bg-warning/5">
                     <CardContent className="flex gap-3 p-4 text-sm text-warning">
                         <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>
@@ -327,7 +327,7 @@ export function CloudflareAIDemoPage() {
                 </Card>
             ) : null}
 
-            <Card className="overflow-hidden rounded-xl border-border/70 bg-card shadow-none">
+            <Card variant="outline" className="overflow-hidden">
                 <CardHeader className="border-b border-border/70 bg-muted/20 pb-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
@@ -421,7 +421,7 @@ export function CloudflareAIDemoPage() {
                 </div>
 
                 <TabsContent value="chat" className="mt-0 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
-                    <Card className="rounded-xl border-border/70 shadow-none">
+                    <Card variant="outline">
                         <CardHeader>
                             <CardTitle className="text-base">Ask the assistant</CardTitle>
                             <CardDescription>
@@ -526,7 +526,7 @@ export function CloudflareAIDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-border/70 bg-muted/15 shadow-none">
+                    <Card variant="outline" className="bg-muted/15">
                         <CardHeader>
                             <CardTitle className="text-base">Response</CardTitle>
                             <CardDescription>
@@ -583,7 +583,7 @@ export function CloudflareAIDemoPage() {
                     value="embeddings"
                     className="mt-0 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
                 >
-                    <Card className="rounded-xl border-border/70 shadow-none">
+                    <Card variant="outline">
                         <CardHeader>
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
@@ -644,7 +644,7 @@ export function CloudflareAIDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-border/70 bg-muted/15 shadow-none">
+                    <Card variant="outline" className="bg-muted/15">
                         <CardHeader>
                             <CardTitle className="text-base">Vector output</CardTitle>
                             <CardDescription>A compact preview keeps the numerical result legible.</CardDescription>
@@ -705,7 +705,7 @@ export function CloudflareAIDemoPage() {
                 </TabsContent>
             </Tabs>
 
-            <Card className="rounded-xl border-border/70 bg-muted/25 shadow-none">
+            <Card variant="outline" className="bg-muted/25">
                 <CardContent className="grid gap-5 p-5 md:grid-cols-3">
                     <div className="space-y-1.5">
                         <KeyRound className="h-4 w-4 text-muted-foreground" />

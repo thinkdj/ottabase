@@ -7,7 +7,7 @@ import {
     type LayoutPresetId,
 } from '@ottabase/ottalayout';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { EmptyState, LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -355,9 +355,9 @@ export function LayoutEditorTab() {
         return (
             <div className="space-y-6" aria-busy="true">
                 <span className="sr-only">Loading layouts...</span>
-                <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-32" />
+                <LoadingState count={1} height="h-64" />
+                <LoadingState count={1} height="h-48" />
             </div>
         );
     }
@@ -385,7 +385,7 @@ export function LayoutEditorTab() {
                 </div>
             </details>
 
-            <Card className="space-y-0 rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card className="space-y-0">
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Route mappings</CardTitle>
                     <CardDescription className="leading-relaxed">
@@ -415,7 +415,7 @@ export function LayoutEditorTab() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Layout templates</CardTitle>
                     <CardDescription className="leading-relaxed">
@@ -738,13 +738,16 @@ function MappingsEditor({
                 <p className="text-sm text-warning">Create a Brand Kit first before adding mappings.</p>
             ) : null}
             {items.length === 0 ? (
-                <div className="rounded-lg bg-background py-8 text-center ring-1 ring-border">
-                    <p className="text-sm text-muted-foreground">No mappings yet. Add one below.</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        Example: <code className="rounded bg-muted/70 px-1">/blog/**</code> or{' '}
-                        <code className="rounded bg-muted/70 px-1">/admin/**</code>
-                    </p>
-                </div>
+                <EmptyState
+                    compact
+                    title="No mappings yet. Add one below."
+                    description={
+                        <>
+                            Example: <code className="rounded bg-muted/70 px-1">/blog/**</code> or{' '}
+                            <code className="rounded bg-muted/70 px-1">/admin/**</code>
+                        </>
+                    }
+                />
             ) : (
                 <div className="overflow-x-auto rounded-lg bg-background ring-1 ring-border">
                     <table className="min-w-full divide-y divide-border/60 text-sm">

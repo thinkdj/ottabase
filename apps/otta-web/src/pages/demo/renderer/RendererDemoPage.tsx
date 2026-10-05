@@ -379,7 +379,7 @@ export function RendererDemoPage() {
                 </TabsList>
 
                 <TabsContent value="editorjs" className="space-y-4 py-4">
-                    <Card className="rounded-xl border-border/60 shadow-none">
+                    <Card variant="outline">
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">EditorJS Content</CardTitle>
                             <CardDescription>
@@ -402,7 +402,7 @@ export function RendererDemoPage() {
                 </TabsContent>
 
                 <TabsContent value="html" className="space-y-4 py-4">
-                    <Card className="rounded-xl border-border/60 shadow-none">
+                    <Card variant="outline">
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">HTML Content</CardTitle>
                             <CardDescription>
@@ -416,7 +416,7 @@ export function RendererDemoPage() {
                 </TabsContent>
             </Tabs>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Features</CardTitle>
                     <CardDescription>What's included in @ottabase/ottarenderer</CardDescription>

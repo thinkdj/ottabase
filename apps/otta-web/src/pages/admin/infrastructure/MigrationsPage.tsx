@@ -1,5 +1,5 @@
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -227,20 +227,20 @@ export function MigrationStatusPage() {
                         always enabled on the server, even when this checkbox is unchecked.
                     </p>
                     {allowDestructive && (
-                        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                        <Alert variant="warning">
                             <strong className="font-semibold">Warning:</strong> Destructive mode will remove columns
                             that exist in the database but not in the schema. Make sure you have a backup before
                             proceeding.
-                        </div>
+                        </Alert>
                     )}
                 </div>
             </div>
 
             {initError ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <Alert variant="destructive">
                     <h3 className="font-semibold">Error</h3>
                     <p>{initError.message}</p>
-                </div>
+                </Alert>
             ) : null}
 
             {initLoading && (
@@ -254,7 +254,7 @@ export function MigrationStatusPage() {
 
             {initResult && (
                 <div className="grid gap-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 Status:{' '}
@@ -473,14 +473,14 @@ export function MigrationStatusPage() {
                             )}
 
                             {initResult.details.errors.length > 0 && (
-                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <Alert variant="destructive">
                                     <h3 className="mb-2 font-semibold">Detailed Errors</h3>
                                     <ul className="list-inside list-disc space-y-1">
                                         {initResult.details.errors.map((err, i) => (
                                             <li key={err}>{err}</li>
                                         ))}
                                     </ul>
-                                </div>
+                                </Alert>
                             )}
 
                             {/* Timestamp */}

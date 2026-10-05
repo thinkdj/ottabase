@@ -13,6 +13,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { ModelFieldDescriptor, ModelFormProps } from '../types';
 import { FormField } from './FormField';
+import { Alert } from '@ottabase/ui-shadcn';
 
 // Re-export for backwards compatibility
 export type { ModelFormProps } from '../types';
@@ -330,10 +331,10 @@ export function ModelForm<T extends Record<string, unknown>>({
 
             {/* Submit Error Banner */}
             {submitError && (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <Alert variant="destructive" className="flex items-start gap-2">
                     <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>{submitError}</span>
-                </div>
+                </Alert>
             )}
 
             {/* Form Fields */}

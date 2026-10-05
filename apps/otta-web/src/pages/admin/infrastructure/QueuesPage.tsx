@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useApiMutation } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     AlertDialog,
     AlertDialogAction,
     AlertDialogContent,
@@ -331,7 +332,7 @@ export function AdminQueuePage() {
             </div>
 
             {/* Status Banner */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="flex items-center gap-3 py-3">
                     {overview?.queueBinding === 'configured' ? (
                         <>
@@ -349,7 +350,7 @@ export function AdminQueuePage() {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Total Dispatched</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{stats?.totalDispatched ?? 0}</CardTitle>
@@ -359,7 +360,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Processed</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-success">
@@ -371,7 +372,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-destructive">
@@ -383,7 +384,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Dead Letter Queue</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-warning">{stats?.totalDLQ ?? 0}</CardTitle>
@@ -393,7 +394,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Success Rate</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{successRate}%</CardTitle>
@@ -451,7 +452,7 @@ export function AdminQueuePage() {
                 {activeTab === 'overview' && (
                     <>
                         {/* Registered Handlers */}
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                     <Layers className="h-4 w-4 text-muted-foreground" />
@@ -493,7 +494,7 @@ export function AdminQueuePage() {
 
                         {/* Stats by Job Type */}
                         {stats && Object.keys(stats.byJobType).length > 0 && (
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                            <Card>
                                 <CardHeader>
                                     <CardTitle className="text-[0.9375rem] font-semibold">Stats by Job Type</CardTitle>
                                     <CardDescription>Breakdown of jobs by type</CardDescription>
@@ -548,7 +549,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'pending' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Pending Jobs</CardTitle>
                             <CardDescription>Jobs waiting to be processed</CardDescription>
@@ -557,7 +558,7 @@ export function AdminQueuePage() {
                             {loadingPending ? (
                                 <div className="space-y-3" aria-busy="true">
                                     <span className="sr-only">Loading pending jobs…</span>
-                                    <div className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                    <LoadingState count={1} height="h-16" className="rounded-lg bg-background/60" />
                                 </div>
                             ) : (overview?.pendingCount ?? 0) > 0 ? (
                                 <div className="space-y-3">
@@ -581,7 +582,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'processed' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Processed Jobs</CardTitle>
                             <CardDescription>Recently completed jobs (last 24 hours)</CardDescription>
@@ -591,7 +592,12 @@ export function AdminQueuePage() {
                                 <div className="space-y-3" aria-busy="true">
                                     <span className="sr-only">Loading processed jobs…</span>
                                     {Array.from({ length: 3 }, (_, index) => (
-                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                        <LoadingState
+                                            key={index}
+                                            count={1}
+                                            height="h-16"
+                                            className="rounded-lg bg-background/60"
+                                        />
                                     ))}
                                 </div>
                             ) : processedData?.jobs.length === 0 ? (
@@ -640,7 +646,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'failed' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Failed Jobs</CardTitle>
                             <CardDescription>Jobs that failed after all retry attempts</CardDescription>
@@ -650,7 +656,12 @@ export function AdminQueuePage() {
                                 <div className="space-y-3" aria-busy="true">
                                     <span className="sr-only">Loading failed jobs…</span>
                                     {Array.from({ length: 3 }, (_, index) => (
-                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                        <LoadingState
+                                            key={index}
+                                            count={1}
+                                            height="h-16"
+                                            className="rounded-lg bg-background/60"
+                                        />
                                     ))}
                                 </div>
                             ) : failedData?.jobs.length === 0 ? (
@@ -678,9 +689,9 @@ export function AdminQueuePage() {
                                                         ID: {job.id} | Attempts: {job.attempts}
                                                     </p>
                                                     {job.error && (
-                                                        <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2 font-mono text-xs text-destructive">
+                                                        <Alert variant="destructive" className="mt-2 font-mono text-xs">
                                                             Error: {job.error}
-                                                        </p>
+                                                        </Alert>
                                                     )}
                                                 </div>
                                                 <span className={MICRO_LABEL}>
@@ -696,7 +707,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'dlq' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -736,7 +747,12 @@ export function AdminQueuePage() {
                                 <div className="space-y-3" aria-busy="true">
                                     <span className="sr-only">Loading dead letter queue…</span>
                                     {Array.from({ length: 3 }, (_, index) => (
-                                        <div key={index} className="h-16 animate-pulse rounded-lg bg-background/60" />
+                                        <LoadingState
+                                            key={index}
+                                            count={1}
+                                            height="h-16"
+                                            className="rounded-lg bg-background/60"
+                                        />
                                     ))}
                                 </div>
                             ) : dlqData?.jobs.length === 0 ? (
@@ -774,9 +790,9 @@ export function AdminQueuePage() {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">ID: {job.id}</p>
-                                                        <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2 font-mono text-xs text-destructive">
+                                                        <Alert variant="destructive" className="mt-2 font-mono text-xs">
                                                             Error: {job.error}
-                                                        </p>
+                                                        </Alert>
                                                         <details className="mt-2">
                                                             <summary className="cursor-pointer text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground">
                                                                 View Payload

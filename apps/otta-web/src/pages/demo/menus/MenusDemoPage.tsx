@@ -40,7 +40,7 @@ export function MenusDemoPage() {
                 }
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconMenu2 className="h-5 w-5" />
@@ -86,7 +86,7 @@ export function MenusDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconLayoutNavbar className="h-5 w-5" />

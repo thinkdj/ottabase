@@ -1,7 +1,7 @@
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { api, ApiError, isApiError } from '@/lib/api';
 import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -196,15 +196,11 @@ export function CloudflareRealtimeDemoPage() {
                 </div>
             )}
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
+            {error ? <Alert variant="destructive">{error}</Alert> : null}
 
             <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Connection</CardTitle>
                         </CardHeader>
@@ -234,7 +230,7 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Subscribe to Channel</CardTitle>
                         </CardHeader>
@@ -280,7 +276,7 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Broadcast Message</CardTitle>
                         </CardHeader>
@@ -333,7 +329,7 @@ export function CloudflareRealtimeDemoPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">
                                 Messages ({messages.length})
@@ -378,7 +374,7 @@ export function CloudflareRealtimeDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">System Stats</CardTitle>
                         </CardHeader>

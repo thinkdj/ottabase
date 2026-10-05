@@ -45,7 +45,7 @@ export function MagicLinkForm({
     if (success) {
         return (
             <div className={`space-y-3 ${className}`}>
-                <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
+                <Alert variant="success">
                     <p className="flex items-center gap-2 font-medium text-success">
                         <MailCheck className="h-4 w-4" aria-hidden="true" />
                         Check your inbox
@@ -58,7 +58,7 @@ export function MagicLinkForm({
                             </>
                         )}
                     </p>
-                </div>
+                </Alert>
                 <p className="text-center text-sm text-muted-foreground">
                     Nothing yet? Check spam, or{' '}
                     <Button

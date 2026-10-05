@@ -8,7 +8,7 @@
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     DropdownMenu,
@@ -309,13 +309,11 @@ export function AdminBrandKitsListPage() {
             <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading Brand Kits...</span>
                 <div className="flex items-center justify-between">
-                    <div className="h-16 w-72 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-16" className="w-72" />
+                    <LoadingState count={1} height="h-9" className="w-64" />
                 </div>
                 <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr))]">
-                    {Array.from({ length: 6 }, (_, index) => (
-                        <div key={index} className="h-[13.75rem] animate-pulse rounded-xl bg-muted/40" />
-                    ))}
+                    <LoadingState count={6} height="h-[13.75rem]" />
                 </div>
             </div>
         );
@@ -346,17 +344,17 @@ export function AdminBrandKitsListPage() {
             </div>
 
             {kits.length === 0 ? (
-                <div className="rounded-xl bg-muted/40 py-16 text-center">
-                    <IconPalette className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                    <p className="mt-4 text-sm font-medium">No Brand Kits yet</p>
-                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                        A Brand Kit holds everything a look needs. Create one and it previews live as you design.
-                    </p>
-                    <Button className="mt-5" onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
-                        <IconPlus className="mr-2 h-4 w-4" />
-                        Create your first Brand Kit
-                    </Button>
-                </div>
+                <EmptyState
+                    icon={<IconPalette />}
+                    title="No Brand Kits yet"
+                    description="A Brand Kit holds everything a look needs. Create one and it previews live as you design."
+                    action={
+                        <Button onClick={() => navigate({ to: '/admin/appearance/brand-kits/new' })}>
+                            <IconPlus className="mr-2 h-4 w-4" />
+                            Create your first Brand Kit
+                        </Button>
+                    }
+                />
             ) : (
                 <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr))]">
                     {sortedKits.map((kit) => (

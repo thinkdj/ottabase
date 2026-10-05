@@ -1,7 +1,7 @@
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import type { RoleRecord } from '@/types/rbac';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -187,14 +187,10 @@ export function RBACRolesPage() {
                 {loading && roles.length === 0 ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading roles…</span>
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={5} height="h-12" />
                     </div>
                 ) : roles.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">No roles found. Create your first one!</p>
-                    </div>
+                    <EmptyState title="No roles found. Create your first one!" />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>

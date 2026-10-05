@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { ArrowLeft, Check, Edit2, ExternalLink, Trash2, X } from 'lucide-react';
 import { useMemo } from 'react';
 import type { ModelDetailProps, ModelFieldDescriptor } from '../types';
+import { LoadingState } from '@ottabase/ui-components';
 
 export type { ModelDetailProps } from '../types';
 
@@ -56,10 +57,10 @@ export function ModelDetail<T extends Record<string, unknown>>({
         return (
             <div className={clsx('space-y-4', className)} aria-busy="true">
                 <span className="sr-only">Loading details…</span>
-                <div className="h-8 w-1/3 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-8" className="w-1/3" />
                 <div className="space-y-3">
                     {[...Array(6)].map((_, i) => (
-                        <div key={i} className="h-12 animate-pulse rounded-xl bg-muted/40" />
+                        <LoadingState key={i} count={1} height="h-12" />
                     ))}
                 </div>
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
 interface Props {
     children: React.ReactNode;
@@ -35,7 +35,7 @@ export class AdminBrandKitErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Error in Brand Kit Editor</CardTitle>
                         <CardDescription className="leading-relaxed">
@@ -43,9 +43,9 @@ export class AdminBrandKitErrorBoundary extends React.Component<Props, State> {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                        <Alert variant="destructive">
                             <p className="font-mono">{this.state.error?.message || 'Unknown error'}</p>
-                        </div>
+                        </Alert>
                         <div className="flex gap-2">
                             <Button onClick={this.handleReset} variant="outline">
                                 Try Again

@@ -49,6 +49,11 @@ export function Example() {
 }
 ```
 
+`Card` is the house surface by default (a muted tint, no border, no shadow); pass `variant="outline"` for a bordered
+card on the page background. `Alert` is the one notice box, with `variant` set to `destructive`, `warning`, `success` or
+`info` (problems get `role="alert"`, the rest `role="status"`); children can be plain text, or `AlertTitle` plus
+`AlertDescription`, with an optional leading icon.
+
 Finally, ensure Tailwind scans the package and that the shared CSS variables are loaded:
 
 1. Add "../../packages/ui-shadcn/components/\*_/_.{ts,tsx}" to the consuming app's <code>tailwind.config</code> content

@@ -17,8 +17,9 @@ import {
     type PostStatus,
 } from '@ottabase/ottablog';
 import { createModelHooks, useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     AlertDialog,
     AlertDialogAction,
     AlertDialogContent,
@@ -397,11 +398,7 @@ export function AdminBlogListPage() {
             </div>
 
             {/* Error State */}
-            {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error.message}
-                </div>
-            )}
+            {error && <Alert variant="destructive">{error.message}</Alert>}
 
             {/* Posts List */}
             <section className="space-y-3">
@@ -416,21 +413,19 @@ export function AdminBlogListPage() {
                 {isLoading ? (
                     <div className="space-y-2" aria-busy="true">
                         <span className="sr-only">Loading posts...</span>
-                        {Array.from({ length: 6 }, (_, index) => (
-                            <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={6} height="h-16" />
                     </div>
                 ) : posts.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                        <h3 className="mt-4 text-[0.9375rem] font-semibold">No posts found</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                            {totalCount === 0
+                    <EmptyState
+                        icon={<FileText />}
+                        title="No posts found"
+                        description={
+                            totalCount === 0
                                 ? 'Get started by creating your first one.'
-                                : 'Try adjusting your search or filters.'}
-                        </p>
-                        {totalCount === 0 && (
-                            <Button asChild className="mt-4">
+                                : 'Try adjusting your search or filters.'
+                        }
+                        action={
+                            <Button asChild>
                                 <Link
                                     to={surface.newPath}
                                     search={
@@ -443,8 +438,8 @@ export function AdminBlogListPage() {
                                         : `Create ${contentTypeLabel(contentTypeFilter)}`}
                                 </Link>
                             </Button>
-                        )}
-                    </div>
+                        }
+                    />
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-border/60">
                         <Table>

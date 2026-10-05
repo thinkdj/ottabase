@@ -170,7 +170,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
     if (error) {
         return (
-            <Card className="border-destructive">
+            <Card className="border border-destructive">
                 <CardContent className="pt-6">
                     <p className="text-destructive">Error: {error}</p>
                 </CardContent>
@@ -248,7 +248,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
                     </div>
 
                     {data.user.referralUsername && (
-                        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+                        <Card className="border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
                             <CardContent className="pt-4">
                                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                                     <strong>Warning:</strong> Changing your username will invalidate your old referral
@@ -281,7 +281,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
             {/* Stored Referral Info (if user arrived via referral) */}
             {storedCode && (
-                <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
                     <CardHeader>
                         <CardTitle>You Were Referred!</CardTitle>
                     </CardHeader>

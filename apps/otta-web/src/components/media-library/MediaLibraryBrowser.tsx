@@ -442,13 +442,7 @@ export function MediaLibraryBrowser({
 
             <div className={`grid gap-6 ${isPicker ? '' : 'xl:grid-cols-[minmax(0,1fr)_20rem]'}`}>
                 {/* Inside a picker dialog the card would only add padding */}
-                <Card
-                    className={
-                        isPicker
-                            ? 'border-0 bg-transparent shadow-none'
-                            : 'min-h-[32rem] rounded-xl border-transparent bg-muted/40'
-                    }
-                >
+                <Card className={isPicker ? 'bg-transparent' : 'min-h-[32rem]'}>
                     <CardHeader className={isPicker ? 'px-0 pt-0' : undefined}>
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
@@ -611,7 +605,7 @@ export function MediaLibraryBrowser({
 
                 {/* File details: the library page only; a picker shows its pick in the bottom bar */}
                 {!isPicker && (
-                    <Card className="h-fit rounded-xl border-transparent bg-muted/40 xl:sticky xl:top-6">
+                    <Card className="h-fit xl:sticky xl:top-6">
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">File details</CardTitle>
                             <CardDescription>

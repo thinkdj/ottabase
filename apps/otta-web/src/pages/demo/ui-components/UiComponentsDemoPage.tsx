@@ -1,30 +1,27 @@
 /**
  * UI Components Demo Page — live examples for exported @ottabase/ui-components.
  */
-import type { MessageTypes } from '@ottabase/ui-components';
 import {
     BlogPagination,
     ConfirmDialog,
     DarkModeToggle,
+    EmptyState,
     HistoryGoBackButton,
+    LoadingState,
     Logo,
-    MessageBox,
 } from '@ottabase/ui-components';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconArrowLeft, IconMoon, IconPhoto } from '@tabler/icons-react';
-import { AlertTriangle, Blocks, Info } from 'lucide-react';
+import { AlertTriangle, Blocks, Inbox, Info } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
-const MESSAGE_TYPES: { type: MessageTypes; message: string }[] = [
-    { type: 'info', message: 'This is an informational message.' },
-    { type: 'success', message: 'Operation completed successfully!' },
-    { type: 'warning', message: 'Please review before continuing.' },
-    { type: 'error', message: 'Something went wrong. Please try again.' },
-    { type: 'help', message: 'Need assistance? Contact support.' },
-    { type: 'loginRequired', message: 'Please sign in to continue.' },
-    { type: 'disconnected', message: 'Connection lost. Retrying...' },
-];
+const NOTICES = [
+    ['info', 'Drafts autosave every 30 seconds.'],
+    ['success', 'Post published.'],
+    ['warning', 'This slug is already in use on another site.'],
+    ['destructive', 'Could not save. Check your connection and try again.'],
+] as const;
 
 export function UiComponentsDemoPage() {
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -37,7 +34,7 @@ export function UiComponentsDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="UI Components"
-                description="Shared React components built on shadcn/ui primitives: confirmation dialogs, message boxes, logo, pagination, and utilities."
+                description="Shared React components built on shadcn/ui primitives: confirmation dialogs, empty and loading states, logo, pagination, and utilities."
                 actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-components
@@ -46,7 +43,7 @@ export function UiComponentsDemoPage() {
             />
 
             {/* ConfirmDialog */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <AlertTriangle className="h-4 w-4" />
@@ -135,67 +132,69 @@ export function UiComponentsDemoPage() {
                 </CardContent>
             </Card>
 
-            {/* MessageBox */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            {/* Empty, loading and notice states */}
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Info className="h-4 w-4" />
-                        MessageBox
+                        EmptyState, LoadingState and Alert
                     </CardTitle>
                     <CardDescription>
-                        Status message display with icon, color, and loading states. Handles strings, Error objects, and
-                        JSON objects.
+                        One component each for "nothing here", "still loading" and "something to tell you", so every
+                        page says it the same way.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Message types grid */}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {MESSAGE_TYPES.map(({ type, message }) => (
-                            <div key={type} className="rounded-lg bg-background ring-1 ring-border">
-                                <div className="border-b border-border/60 px-3 py-1.5">
-                                    <code className="text-xs">{type}</code>
-                                </div>
-                                <MessageBox message={message} messageType={type} />
-                            </div>
-                        ))}
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="space-y-2">
+                            <code className="text-xs">EmptyState</code>
+                            <EmptyState
+                                icon={<Inbox />}
+                                title="No posts yet"
+                                description="Write the first one and it shows up here."
+                                action={
+                                    <Button size="sm" variant="outline">
+                                        New post
+                                    </Button>
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <code className="text-xs">LoadingState kind="table"</code>
+                            <LoadingState kind="table" count={3} columns={3} />
+                        </div>
                     </div>
 
-                    {/* Loading states */}
-                    <div>
-                        <h4 className="mb-3 text-sm font-medium">Loading States</h4>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-lg bg-background ring-1 ring-border">
-                                <div className="border-b border-border/60 px-3 py-1.5">
-                                    <code className="text-xs">spinner (default)</code>
-                                </div>
-                                <MessageBox isLoading loadingType="spinner" />
-                            </div>
-                            <div className="rounded-lg bg-background ring-1 ring-border">
-                                <div className="border-b border-border/60 px-3 py-1.5">
-                                    <code className="text-xs">skeleton</code>
-                                </div>
-                                <MessageBox isLoading loadingType="skeleton" />
-                            </div>
+                    <div className="space-y-2">
+                        <code className="text-xs">Alert variants (from @ottabase/ui-shadcn)</code>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {NOTICES.map(([variant, text]) => (
+                                <Alert key={variant} variant={variant}>
+                                    {text}
+                                </Alert>
+                            ))}
                         </div>
                     </div>
 
                     <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
-                        <code>{`import { MessageBox } from '@ottabase/ui-components';
+                        <code>{`import { EmptyState, LoadingState } from '@ottabase/ui-components';
+import { Alert } from '@ottabase/ui-shadcn';
 
-// Status message
-<MessageBox message="Operation completed!" messageType="success" />
+{isLoading ? (
+    <LoadingState kind="table" count={5} />
+) : rows.length === 0 ? (
+    <EmptyState icon={<Inbox />} title="No posts yet" action={<Button>New post</Button>} />
+) : (
+    <Table>…</Table>
+)}
 
-// Loading spinner
-<MessageBox isLoading />
-
-// Skeleton loader
-<MessageBox isLoading loadingType="skeleton" />`}</code>
+{error && <Alert variant="destructive">{error}</Alert>}`}</code>
                     </pre>
                 </CardContent>
             </Card>
 
             {/* Logo */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconPhoto className="h-4 w-4" aria-hidden />
@@ -219,7 +218,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* DarkModeToggle */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconMoon className="h-4 w-4" aria-hidden />
@@ -242,7 +241,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* HistoryGoBackButton */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconArrowLeft className="h-4 w-4" aria-hidden />
@@ -260,7 +259,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* BlogPagination */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />
@@ -277,7 +276,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* Component list */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />
@@ -294,9 +293,14 @@ export function UiComponentsDemoPage() {
                                 import: "import { ConfirmDialog } from '@ottabase/ui-components';",
                             },
                             {
-                                name: 'MessageBox',
-                                desc: 'Status display with icons for info/error/warning/success/help/loading states.',
-                                import: "import { MessageBox } from '@ottabase/ui-components';",
+                                name: 'EmptyState',
+                                desc: 'The "nothing here" tile: icon, title, description and next step.',
+                                import: "import { EmptyState } from '@ottabase/ui-components';",
+                            },
+                            {
+                                name: 'LoadingState',
+                                desc: 'One status region of pulsing tiles: blocks, text, table or form.',
+                                import: "import { LoadingState } from '@ottabase/ui-components';",
                             },
                             {
                                 name: 'DarkModeToggle',

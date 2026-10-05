@@ -43,7 +43,7 @@ export function AdminIndexPage() {
                                 target={item.external ? '_blank' : undefined}
                                 className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
-                                <Card className="h-full rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
+                                <Card className="h-full transition-colors duration-normal group-hover:bg-muted/70">
                                     <CardHeader className="gap-2">
                                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border transition-colors group-hover:text-foreground">
                                             <item.icon className="h-[1.125rem] w-[1.125rem]" />

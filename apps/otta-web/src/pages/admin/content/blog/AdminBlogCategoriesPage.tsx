@@ -6,7 +6,7 @@
 import { generateSlug } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -267,26 +267,24 @@ export function AdminBlogCategoriesPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading categories...</span>
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={5} height="h-12" />
                     </div>
                 ) : filteredList.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <FolderTree className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                        <h3 className="mt-4 text-sm font-medium">No categories found</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {categories.length === 0
+                    <EmptyState
+                        icon={<FolderTree />}
+                        title="No categories found"
+                        description={
+                            categories.length === 0
                                 ? 'Get started by creating your first category.'
-                                : 'Try adjusting your search.'}
-                        </p>
-                        {categories.length === 0 && (
-                            <Button className="mt-4" onClick={openCreate}>
+                                : 'Try adjusting your search.'
+                        }
+                        action={
+                            <Button onClick={openCreate}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Category
                             </Button>
-                        )}
-                    </div>
+                        }
+                    />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <div className="divide-y divide-border/60">

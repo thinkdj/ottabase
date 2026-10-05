@@ -71,10 +71,7 @@ export function CloudflareDemoIndexPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
                 {demos.map((demo) => (
-                    <Card
-                        key={demo.href}
-                        className="rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
-                    >
+                    <Card key={demo.href} className="transition-colors duration-normal hover:bg-muted/70">
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">{demo.name}</CardTitle>
                             <CardDescription className="leading-relaxed">{demo.description}</CardDescription>

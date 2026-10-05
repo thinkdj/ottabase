@@ -24,6 +24,7 @@ import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import {
+    Alert,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -54,6 +55,7 @@ import {
     Tag,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
+import { LoadingState } from '@ottabase/ui-components';
 
 interface BlogPost {
     id: string;
@@ -447,14 +449,14 @@ export function BlogDetailPage() {
         return (
             <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading post…</span>
-                <div className="h-4 w-28 animate-pulse rounded-lg bg-muted/40" />
-                <div className="h-10 w-3/4 animate-pulse rounded-xl bg-muted/40" />
-                <div className="h-4 w-48 animate-pulse rounded-lg bg-muted/40" />
-                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-4" className="w-28 rounded-lg" />
+                <LoadingState count={1} height="h-10" className="w-3/4" />
+                <LoadingState count={1} height="h-4" className="w-48 rounded-lg" />
+                <LoadingState count={1} height="h-64" />
                 <div className="space-y-3">
-                    <div className="h-4 animate-pulse rounded-lg bg-muted/40" />
-                    <div className="h-4 w-5/6 animate-pulse rounded-lg bg-muted/40" />
-                    <div className="h-4 w-2/3 animate-pulse rounded-lg bg-muted/40" />
+                    <LoadingState count={1} height="h-4" className="rounded-lg" />
+                    <LoadingState count={1} height="h-4" className="w-5/6 rounded-lg" />
+                    <LoadingState count={1} height="h-4" className="w-2/3 rounded-lg" />
                 </div>
             </div>
         );
@@ -782,9 +784,9 @@ export function BlogDetailPage() {
                             </div>
 
                             {commentError && (
-                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <Alert variant="destructive" className="mt-4">
                                     {commentError}
-                                </div>
+                                </Alert>
                             )}
 
                             {!user?.id && (
@@ -822,9 +824,9 @@ export function BlogDetailPage() {
                             </div>
 
                             {commentsError && (
-                                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <Alert variant="destructive" className="mt-4">
                                     {commentsError.message || 'Failed to load comments.'}
-                                </div>
+                                </Alert>
                             )}
 
                             <div className="mt-4">

@@ -2,7 +2,7 @@
 // Menus list – Create, navigate to detail, assign to slots (Ottamenu)
 // ---------------------------------------------------------------------------
 
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
 import { IconArrowRight, IconDotsVertical, IconMenu2, IconPlus, IconPuzzle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,11 +43,9 @@ export function AdminMenusListPage() {
         return (
             <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading menus...</span>
-                <div className="h-20 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-20" />
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }, (_, index) => (
-                        <div key={index} className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    ))}
+                    <LoadingState count={6} height="h-28" />
                 </div>
             </div>
         );
@@ -90,14 +88,16 @@ export function AdminMenusListPage() {
                     </p>
                 </div>
                 {menus.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <IconMenu2 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                        <p className="mt-4 text-sm text-muted-foreground">No menus</p>
-                        <Button className="mt-4" onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
-                            <IconPlus className="h-4 w-4 mr-2" />
-                            Create your first menu
-                        </Button>
-                    </div>
+                    <EmptyState
+                        icon={<IconMenu2 />}
+                        title="No menus"
+                        action={
+                            <Button onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
+                                <IconPlus className="h-4 w-4 mr-2" />
+                                Create your first menu
+                            </Button>
+                        }
+                    />
                 ) : (
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {menus.map((menu) => (

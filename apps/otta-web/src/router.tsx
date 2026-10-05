@@ -1,6 +1,7 @@
 import { registerAppNavigate } from '@/lib/app-navigate';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { NotFoundPage } from '@/components/NotFoundPage';
+import { RouteErrorPage } from '@/components/RouteErrorPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
@@ -861,6 +862,8 @@ export const router = new Router({
     history: createBrowserHistory(),
     defaultPendingComponent: RouteLoadingFallback,
     defaultPendingMs: 0,
+    // Renders inside the root layout, so a crashed page keeps the header and navigation
+    defaultErrorComponent: RouteErrorPage,
 });
 
 // Lets global providers above <RouterProvider> (e.g. the command palette) navigate client-side

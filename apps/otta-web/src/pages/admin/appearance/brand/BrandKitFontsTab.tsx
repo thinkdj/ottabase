@@ -288,7 +288,7 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange, ha
     };
 
     const fontEditor = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Typography</CardTitle>
                 <CardDescription className="leading-relaxed">

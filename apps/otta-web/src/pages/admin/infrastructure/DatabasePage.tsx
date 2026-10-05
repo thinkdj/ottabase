@@ -1,7 +1,8 @@
 import { api, isApiError } from '@/lib/api';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -270,7 +271,7 @@ export function AdminDbPage() {
             <div className="grid grid-cols-12 gap-6">
                 {/* Sidebar - Table List */}
                 <div className="col-span-12 md:col-span-3">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader className="gap-3 py-4">
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Database className="h-4 w-4 text-muted-foreground" />
@@ -302,7 +303,12 @@ export function AdminDbPage() {
                                 <div className="space-y-2 p-4" aria-busy="true">
                                     <span className="sr-only">Loading tables…</span>
                                     {Array.from({ length: 6 }, (_, index) => (
-                                        <div key={index} className="h-8 animate-pulse rounded-lg bg-background/60" />
+                                        <LoadingState
+                                            key={index}
+                                            count={1}
+                                            height="h-8"
+                                            className="rounded-lg bg-background/60"
+                                        />
                                     ))}
                                 </div>
                             ) : (
@@ -353,14 +359,14 @@ export function AdminDbPage() {
                 {/* Main Content - Data View */}
                 <div className="col-span-12 md:col-span-9">
                     {!selectedTable ? (
-                        <Card className="flex h-full min-h-[400px] items-center justify-center rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card className="flex h-full min-h-[400px] items-center justify-center">
                             <div className="text-center text-muted-foreground">
                                 <Database className="mx-auto mb-4 h-12 w-12 opacity-40" />
                                 <p className="text-sm">Select a table to view data</p>
                             </div>
                         </Card>
                     ) : (
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                                 <div className="space-y-1">
                                     <CardTitle className="font-mono text-xl">{selectedTable}</CardTitle>
@@ -409,18 +415,20 @@ export function AdminDbPage() {
                                     <div className="space-y-3" aria-busy="true">
                                         <span className="sr-only">Loading table data…</span>
                                         {Array.from({ length: 5 }, (_, index) => (
-                                            <div
+                                            <LoadingState
                                                 key={index}
-                                                className="h-10 animate-pulse rounded-lg bg-background/60"
+                                                count={1}
+                                                height="h-10"
+                                                className="rounded-lg bg-background/60"
                                             />
                                         ))}
                                     </div>
                                 ) : tableError ? (
-                                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                    <Alert variant="destructive">
                                         {/* error handling */}
                                         Error:{' '}
                                         {isApiError(tableError) ? tableError.message : (tableError as Error).message}
-                                    </div>
+                                    </Alert>
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="overflow-x-auto rounded-lg bg-background ring-1 ring-border">

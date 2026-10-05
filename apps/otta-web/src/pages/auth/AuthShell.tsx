@@ -4,10 +4,8 @@
  */
 
 import { APP_META } from '@/ottabase/config';
+import { Alert, Card } from '@ottabase/ui-shadcn';
 import type { ReactNode } from 'react';
-
-/** The muted card surface the auth pages sit on (also passed to LoginForm) */
-export const AUTH_CARD_CLASS = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 
 interface AuthShellProps {
     title: string;
@@ -36,14 +34,7 @@ export function AuthShell({ title, subtitle, notice, footer, children }: AuthShe
                     </div>
                 </div>
 
-                {notice && (
-                    <div
-                        role="status"
-                        className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success"
-                    >
-                        {notice}
-                    </div>
-                )}
+                {notice && <Alert variant="success">{notice}</Alert>}
 
                 {children}
 
@@ -55,5 +46,5 @@ export function AuthShell({ title, subtitle, notice, footer, children }: AuthShe
 
 /** Plain content card for pages that don't render a package form card */
 export function AuthCard({ children }: { children: ReactNode }) {
-    return <div className={`${AUTH_CARD_CLASS} space-y-4 p-6 text-sm`}>{children}</div>;
+    return <Card className="space-y-4 p-6 text-sm">{children}</Card>;
 }

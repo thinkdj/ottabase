@@ -1,5 +1,5 @@
 import { api, isApiError } from '@/lib/api';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui-shadcn';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui-shadcn';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -87,11 +87,7 @@ export function CloudflareKVDemoPage() {
                 backLabel="Back to Cloudflare"
             />
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
+            {error ? <Alert variant="destructive">{error}</Alert> : null}
 
             {result ? (
                 <div className="rounded-xl bg-muted/40 p-4">
@@ -99,7 +95,7 @@ export function CloudflareKVDemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Operations</CardTitle>
                 </CardHeader>

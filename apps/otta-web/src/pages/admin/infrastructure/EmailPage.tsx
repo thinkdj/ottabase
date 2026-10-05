@@ -1,5 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -97,7 +98,7 @@ export function AdminEmailPage() {
                 </p>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Send a test email</CardTitle>
                     <CardDescription>
@@ -164,10 +165,10 @@ export function AdminEmailPage() {
                     </Button>
 
                     {status.state === 'error' && (
-                        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                        <Alert variant="destructive" className="flex items-start gap-2">
                             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                             {status.message}
-                        </div>
+                        </Alert>
                     )}
                     {status.state === 'success' && (
                         <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
@@ -187,7 +188,7 @@ export function AdminEmailPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Provider configuration</CardTitle>
                     <CardDescription>Providers are configured via environment variables / secrets.</CardDescription>

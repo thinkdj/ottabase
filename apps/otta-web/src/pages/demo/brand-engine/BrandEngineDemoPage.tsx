@@ -27,7 +27,7 @@ export function BrandEngineDemoPage() {
                 }
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconPalette className="h-4 w-4" />
@@ -85,7 +85,7 @@ export function BrandEngineDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconRoute className="h-4 w-4" />

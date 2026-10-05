@@ -13,7 +13,7 @@ export function SplitPaneDemoPage() {
             <DemoPageHeader title="Split Pane" description="Minimal, clean split-pane component with no frills" />
 
             {/* Basic Vertical Split */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Basic Vertical Split</CardTitle>
                     <CardDescription>Simple vertical split with 50/50 default size</CardDescription>
@@ -37,7 +37,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Basic Horizontal Split */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Basic Horizontal Split</CardTitle>
                     <CardDescription>Simple horizontal split with 40/60 default size</CardDescription>
@@ -59,7 +59,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Nested Split Panes */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Nested Split Panes</CardTitle>
                     <CardDescription>Create complex layouts by nesting split panes</CardDescription>
@@ -89,7 +89,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Styled Split Pane */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Styled Split Pane</CardTitle>
                     <CardDescription>Customize the appearance with custom styles</CardDescription>
@@ -128,7 +128,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Snap Points */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Snap Points</CardTitle>
                     <CardDescription>Define specific positions where the divider will snap</CardDescription>
@@ -166,7 +166,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Percentage Configuration */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Percentage Configuration</CardTitle>
                     <CardDescription>Use percentage-based sizing for responsive layouts</CardDescription>
@@ -196,7 +196,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Min/Max Width Constraints */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Min/Max Width Constraints</CardTitle>
                     <CardDescription>
@@ -228,7 +228,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Min/Max Height Constraints */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Min/Max Height Constraints</CardTitle>
                     <CardDescription>
@@ -259,7 +259,7 @@ export function SplitPaneDemoPage() {
             </Card>
 
             {/* Complex Nested Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Complex Nested Layout</CardTitle>
                     <CardDescription>IDE-like layout with multiple nested panes</CardDescription>

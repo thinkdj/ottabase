@@ -4,7 +4,7 @@
  * Supports in-memory (default) and database-backed modes via a toggle.
  */
 import { DEFAULT_REACTIONS } from '@ottabase/comments';
-import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui-shadcn';
+import { Alert, Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui-shadcn';
 import {
     IconDatabase,
     IconFlag,
@@ -505,16 +505,16 @@ function CommentThread({
 
             {/* Mutation error banner — quiet tinted notice, matches the query-error treatment */}
             {mutationError && (
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <Alert variant="destructive" className="flex items-center justify-between gap-3">
                     <span>{mutationError}</span>
                     <Button variant="ghost" size="sm" onClick={onDismissError}>
                         Dismiss
                     </Button>
-                </div>
+                </Alert>
             )}
 
             {/* Mock target entity card */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="py-4">
                     <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
                         Target: {DEMO_TARGET_TYPE} / {DEMO_TARGET_ID}
@@ -529,11 +529,7 @@ function CommentThread({
             </Card>
 
             {/* Query error */}
-            {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error.message ?? 'Failed to load comments'}
-                </div>
-            )}
+            {error && <Alert variant="destructive">{error.message ?? 'Failed to load comments'}</Alert>}
 
             {/* New comment form */}
             <div className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4">
@@ -795,7 +791,7 @@ export function CommentsDemoPage() {
             {/* Model API */}
             <section className="flex flex-col gap-4">
                 <h2 className="text-[0.9375rem] font-semibold text-foreground">Model API</h2>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-0">
                         <pre className="overflow-x-auto rounded-xl p-4 text-xs leading-relaxed text-foreground">
                             {`// Create a comment
@@ -863,10 +859,7 @@ await comment.softDelete();`}
                             desc: 'Tenant and user rules enforced at the OttaORM level automatically.',
                         },
                     ].map((f) => (
-                        <Card
-                            key={f.title}
-                            className="flex flex-col gap-2 rounded-xl border-transparent bg-muted/40 p-4 shadow-none"
-                        >
+                        <Card key={f.title} className="flex flex-col gap-2 p-4">
                             <div className="text-2xl">{f.icon}</div>
                             <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
                             <p className="text-xs text-muted-foreground">{f.desc}</p>

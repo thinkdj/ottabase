@@ -1,4 +1,5 @@
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -122,7 +123,7 @@ export function DemoNotificationsPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -135,7 +136,7 @@ export function DemoNotificationsPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -148,7 +149,7 @@ export function DemoNotificationsPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -161,7 +162,7 @@ export function DemoNotificationsPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -179,7 +180,7 @@ export function DemoNotificationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Features */}
                 <div className="md:col-span-1 space-y-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                             <CardDescription>Test different notification channels</CardDescription>
@@ -252,7 +253,7 @@ export function DemoNotificationsPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Integration</CardTitle>
                         </CardHeader>
@@ -272,7 +273,7 @@ export function DemoNotificationsPage() {
 
                 {/* Notification Feed */}
                 <div className="md:col-span-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Notification Feed</CardTitle>
                             <CardDescription>Recent notifications across all channels</CardDescription>
@@ -409,13 +410,10 @@ export function DemoNotificationsPage() {
                                     {notifications
                                         .filter((n) => n.channel === 'system')
                                         .map((notification) => (
-                                            <div
-                                                key={notification.id}
-                                                className="rounded-lg border border-destructive/40 bg-destructive/10 p-4"
-                                            >
+                                            <Alert variant="destructive" key={notification.id}>
                                                 <h4 className="font-medium mb-2">{notification.title}</h4>
                                                 <p className="text-sm text-muted-foreground">{notification.message}</p>
-                                            </div>
+                                            </Alert>
                                         ))}
                                 </TabsContent>
                             </Tabs>
@@ -425,7 +423,7 @@ export function DemoNotificationsPage() {
             </div>
 
             {/* Code Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                     <CardDescription>How to use @ottabase/notifications in your application</CardDescription>

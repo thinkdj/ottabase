@@ -7,6 +7,7 @@ import { isPlatformAdmin, useSession } from '@/lib/auth';
 import type { BlogLanguageConfig, StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
+    Alert,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -42,6 +43,7 @@ import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { BlogLanguageSettingsCard } from './BlogLanguageSettingsCard';
 import { useBlogSurface } from './blogAdminPaths';
+import { LoadingState } from '@ottabase/ui-components';
 
 const STUDIO_ENTITY = 'blog_studio' as const;
 
@@ -224,9 +226,7 @@ export function AdminBlogStudioPage() {
     if (isError && error) {
         return (
             <div className="space-y-6">
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    Failed to load studio state.
-                </div>
+                <Alert variant="destructive">Failed to load studio state.</Alert>
                 <Button asChild variant="outline">
                     <Link to={surface.contentPath}>Back to Blog</Link>
                 </Button>
@@ -238,10 +238,10 @@ export function AdminBlogStudioPage() {
         return (
             <div className="space-y-6" aria-busy="true">
                 <span className="sr-only">Loading content studio...</span>
-                <div className="h-8 w-64 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-8" className="w-64" />
                 <div className="grid gap-6 md:grid-cols-2">
-                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-64" />
+                    <LoadingState count={1} height="h-64" />
                 </div>
             </div>
         );
@@ -269,12 +269,12 @@ export function AdminBlogStudioPage() {
             {isLoading ? (
                 <div className="grid gap-6 md:grid-cols-2" aria-busy="true">
                     <span className="sr-only">Loading themes and plugins...</span>
-                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-64" />
+                    <LoadingState count={1} height="h-64" />
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Palette className="h-4 w-4 text-muted-foreground" />
@@ -325,7 +325,7 @@ export function AdminBlogStudioPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Puzzle className="h-4 w-4 text-muted-foreground" />
@@ -377,7 +377,7 @@ export function AdminBlogStudioPage() {
             )}
 
             {canSeedDemo ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Sparkles className="h-4 w-4 text-muted-foreground" />

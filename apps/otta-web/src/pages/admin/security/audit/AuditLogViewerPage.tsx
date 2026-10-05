@@ -47,6 +47,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 type AuditLogsResponse = PaginatedResponse<AuditLogRecord>;
 
@@ -580,16 +581,14 @@ export function AuditLogViewerPage() {
                 {loading && logs.length === 0 ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading audit logs…</span>
-                        {Array.from({ length: 10 }, (_, index) => (
-                            <div key={index} className="h-10 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={10} height="h-10" />
                     </div>
                 ) : logs.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
-                        <p className="text-sm font-medium">No audit logs found</p>
-                        <p className="text-sm text-muted-foreground">Try adjusting your filters or search criteria</p>
-                    </div>
+                    <EmptyState
+                        icon={<FileText />}
+                        title="No audit logs found"
+                        description="Try adjusting your filters or search criteria"
+                    />
                 ) : (
                     <>
                         <div className="overflow-hidden rounded-xl border border-border/60">

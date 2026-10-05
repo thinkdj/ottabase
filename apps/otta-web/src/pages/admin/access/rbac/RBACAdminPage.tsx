@@ -41,7 +41,7 @@ export function RBACAdminPage() {
                     const Icon = item.icon;
                     const content = (
                         <Card
-                            className={`h-full rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal ${
+                            className={`h-full transition-colors duration-normal ${
                                 item.disabled ? 'opacity-50' : 'group-hover:bg-muted/70'
                             }`}
                         >

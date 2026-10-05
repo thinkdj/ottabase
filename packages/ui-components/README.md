@@ -46,6 +46,42 @@ import { ConfirmDialog } from '@ottabase/ui-components';
 />;
 ```
 
+### EmptyState
+
+The one "nothing here" panel: a muted tile with centred text, an optional icon and the obvious next step.
+
+```tsx
+import { EmptyState } from '@ottabase/ui-components';
+
+<EmptyState
+    icon={<Inbox />}
+    title="No posts yet"
+    description="Write the first one and it shows up here."
+    action={<Button onClick={create}>New post</Button>}
+/>;
+```
+
+- `title` (required), `description?`, `icon?` (any svg element, drawn muted), `action?` (a button or link)
+- `compact` tightens the padding for dialogs and sidebars
+
+### LoadingState
+
+The one loading placeholder: a single `role="status"` region (announced once, `aria-busy`) drawn as pulsing tiles.
+
+```tsx
+import { LoadingState } from '@ottabase/ui-components';
+
+<LoadingState count={3} height="h-28" />; // stacked blocks (lists, cards)
+<LoadingState kind="table" count={5} columns={4} />;
+<LoadingState kind="form" count={4} />;
+<LoadingState kind="text" count={3} />;
+```
+
+- `kind`: `blocks` (default), `text`, `table`, `form`
+- `count`, `height` (blocks only, a Tailwind class), `columns` (table only), `label` (default "Loading")
+
+For notices (errors, warnings, success, info) use `Alert` from `@ottabase/ui-shadcn`, which has a variant for each tone.
+
 ### JsonEditor
 
 A clean, minimal, dual-mode JSON editor with a Tree view (inline key/value editing, type switching, add/remove nodes)
@@ -188,6 +224,8 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 
 - `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
 - `@ottabase/ui-components/confirm-dialog` - ConfirmDialog component
+- `@ottabase/ui-components/empty-state` - EmptyState component
+- `@ottabase/ui-components/loading-state` - LoadingState component
 - `@ottabase/ui-components/logo` - Logo component
 
 ## Installation

@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { partitionBlogTimeline } from './blogTimeline';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 interface BlogPostTag {
     id: string;
@@ -276,17 +277,13 @@ export function BlogListPage() {
                 <div className="space-y-6" aria-busy="true">
                     <span className="sr-only">Loading posts...</span>
                     {Array.from({ length: 4 }, (_, index) => (
-                        <div key={index} className="h-40 animate-pulse rounded-2xl bg-muted/40" />
+                        <LoadingState key={index} count={1} height="h-40" className="rounded-2xl" />
                     ))}
                 </div>
             )}
 
             {/* No posts */}
-            {!isLoading && posts.length === 0 && (
-                <div className="rounded-2xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts found.</p>
-                </div>
-            )}
+            {!isLoading && posts.length === 0 && <EmptyState title="No posts found." className="rounded-2xl" />}
 
             {/* Featured Posts */}
             {featuredPosts.length > 0 && (
@@ -383,7 +380,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
-        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
+        <Card className="group h-full overflow-hidden rounded-2xl transition-colors duration-normal hover:bg-muted/70">
             {heroUrl !== '#' && (
                 <div className="relative h-48 overflow-hidden">
                     <img
@@ -481,7 +478,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
 function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
-        <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
+        <Card className="group h-full overflow-hidden rounded-2xl transition-colors duration-normal hover:bg-muted/70">
             {heroUrl !== '#' && (
                 // Print-edge frame, matching the photo journal's tiles and the article hero:
                 // a fixed ratio so the timeline does not reflow as images arrive, a hairline so

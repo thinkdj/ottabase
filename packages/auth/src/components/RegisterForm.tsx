@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui-shadcn';
+import { Alert, AlertDescription, Button, Input, Label, Spinner } from '@ottabase/ui-shadcn';
 import { CheckCircle2 } from 'lucide-react';
 import { isStrongPassword } from '../password';
 import { PasswordChecklist, PasswordInput } from './PasswordFields';
@@ -119,13 +119,10 @@ export function RegisterForm({
 
     if (success) {
         return (
-            <div
-                role="status"
-                className={`flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 p-4 text-sm font-medium text-success ${className}`}
-            >
-                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <Alert variant="success" className={`font-medium ${className}`}>
+                <CheckCircle2 aria-hidden="true" />
                 {successMessage}
-            </div>
+            </Alert>
         );
     }
 

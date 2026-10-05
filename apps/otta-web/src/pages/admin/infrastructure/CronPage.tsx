@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     AlertDialog,
     AlertDialogAction,
     AlertDialogContent,
@@ -257,7 +258,7 @@ export function AdminCronPage() {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Total Tasks</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{stats?.total ?? 0}</CardTitle>
@@ -267,7 +268,7 @@ export function AdminCronPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Active</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-success">{stats?.active ?? 0}</CardTitle>
@@ -277,7 +278,7 @@ export function AdminCronPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Total Runs</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{stats?.totalRuns ?? 0}</CardTitle>
@@ -287,7 +288,7 @@ export function AdminCronPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-destructive">
@@ -302,7 +303,7 @@ export function AdminCronPage() {
 
             {/* Create Task Form */}
             {isCreating && (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Add Scheduled Task</CardTitle>
                         <CardDescription>Create a new DB-driven cron job</CardDescription>
@@ -427,11 +428,11 @@ export function AdminCronPage() {
                             </div>
 
                             {createMutation.isError && (
-                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                                <Alert variant="destructive">
                                     {isApiError(createMutation.error)
                                         ? createMutation.error.message
                                         : 'Failed to create task'}
-                                </div>
+                                </Alert>
                             )}
                         </form>
                     </CardContent>
@@ -439,7 +440,7 @@ export function AdminCronPage() {
             )}
 
             {/* Tasks List */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Scheduled Tasks</CardTitle>
                     <CardDescription>All tasks in the database</CardDescription>
@@ -449,7 +450,12 @@ export function AdminCronPage() {
                         <div className="space-y-3" aria-busy="true">
                             <span className="sr-only">Loading scheduled tasks…</span>
                             {Array.from({ length: 3 }, (_, index) => (
-                                <div key={index} className="h-20 animate-pulse rounded-lg bg-background/60" />
+                                <LoadingState
+                                    key={index}
+                                    count={1}
+                                    height="h-20"
+                                    className="rounded-lg bg-background/60"
+                                />
                             ))}
                         </div>
                     ) : !overview?.tasks?.length ? (
@@ -618,7 +624,7 @@ export function AdminCronPage() {
 
             {/* Registered Handlers */}
             {overview?.registeredHandlers && overview.registeredHandlers.length > 0 && (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Registered Handlers</CardTitle>
                         <CardDescription>Available task handlers in your scheduler</CardDescription>

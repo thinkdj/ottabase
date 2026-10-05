@@ -268,7 +268,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="space-y-6 lg:col-span-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Thought</CardTitle>
                             <CardDescription>Plain text with line breaks and safe clickable links.</CardDescription>
@@ -327,7 +327,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Publishing</CardTitle>
                         </CardHeader>
@@ -353,7 +353,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Tag className="h-4 w-4 text-muted-foreground" />
@@ -380,7 +380,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                     </Card>
 
                     {initialData && (
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="text-[0.9375rem] font-semibold text-destructive">
                                     Danger zone

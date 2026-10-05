@@ -16,6 +16,7 @@ import {
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -531,7 +532,7 @@ export function BrandKitThemeTab({
 
     // ── Preset section ───────────────────────────────────────────────────
     const presetSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Theme preset</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -652,7 +653,7 @@ export function BrandKitThemeTab({
     const paletteTokenKeys = Object.keys(lightTokens ?? darkTokens ?? {}) as (keyof SemanticPalette)[];
 
     const colorSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Custom color overrides</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -662,7 +663,7 @@ export function BrandKitThemeTab({
             </CardHeader>
             <CardContent className="space-y-4">
                 {hasCustomColorOverrides && (
-                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                    <Alert variant="warning">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium">Custom colors active</p>
@@ -674,7 +675,7 @@ export function BrandKitThemeTab({
                                 Restore preset
                             </Button>
                         </div>
-                    </div>
+                    </Alert>
                 )}
 
                 {/* Base color picker + generate */}
@@ -945,7 +946,7 @@ export function BrandKitThemeTab({
     };
 
     const spacingRadiusShadowSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Spacing, radius &amp; shadows</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -954,7 +955,7 @@ export function BrandKitThemeTab({
             </CardHeader>
             <CardContent className="space-y-4">
                 {hasSpacingRadiusShadowOverrides && (
-                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                    <Alert variant="warning">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium">Custom overrides active</p>
@@ -969,7 +970,7 @@ export function BrandKitThemeTab({
                                 Restore preset
                             </Button>
                         </div>
-                    </div>
+                    </Alert>
                 )}
 
                 <div className="flex items-center justify-between rounded-lg bg-background p-4 ring-1 ring-border">
@@ -997,7 +998,7 @@ export function BrandKitThemeTab({
 
     // ── Token usage reference ────────────────────────────────────────────
     const tokenUsageSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader className="pb-3">
                 <CardTitle className="text-[0.9375rem] font-semibold">Token reference</CardTitle>
                 <CardDescription className="leading-relaxed">Where each color token appears in the UI.</CardDescription>

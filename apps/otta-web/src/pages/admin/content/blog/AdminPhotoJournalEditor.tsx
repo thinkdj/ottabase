@@ -476,7 +476,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="space-y-6 lg:col-span-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Story frame</CardTitle>
                             <CardDescription>
@@ -519,7 +519,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
                             <div>
                                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
@@ -717,7 +717,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Journal story</CardTitle>
                             <CardDescription>
@@ -769,7 +769,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Publishing</CardTitle>
                         </CardHeader>
@@ -804,7 +804,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Tag className="h-4 w-4 text-muted-foreground" /> Tags
@@ -829,7 +829,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                     </Card>
 
                     {initialData && (
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="text-[0.9375rem] font-semibold text-destructive">
                                     Danger zone

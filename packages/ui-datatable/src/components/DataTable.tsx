@@ -12,6 +12,7 @@ import type { DataTableProps } from '../types';
 import { DataTableColumnHeader } from './DataTableColumnHeader';
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
+import { LoadingState } from '@ottabase/ui-components';
 
 /**
  * DataTable — the primary table renderer.
@@ -177,7 +178,7 @@ export function DataTable<TData extends Record<string, unknown>>({
                                         <div className="space-y-2.5" aria-busy="true">
                                             <span className="sr-only">Loading…</span>
                                             {Array.from({ length: 5 }, (_, i) => (
-                                                <div key={i} className="h-9 animate-pulse rounded-lg bg-muted/40" />
+                                                <LoadingState key={i} count={1} height="h-9" className="rounded-lg" />
                                             ))}
                                         </div>
                                     </td>

@@ -16,6 +16,7 @@ import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, PenLine } from 'lucide-react';
 import { useMemo } from 'react';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 interface BlogPostsResponse {
     data: BlogPostData[];
@@ -56,14 +57,14 @@ export function BlogAuthorArchivePage() {
         return (
             <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" aria-busy="true">
                 <span className="sr-only">Loading author...</span>
-                <div className="h-8 w-32 animate-pulse rounded-lg bg-muted/40" />
+                <LoadingState count={1} height="h-8" className="w-32 rounded-lg" />
                 <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 animate-pulse rounded-full bg-muted/40" />
-                    <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/40" />
+                    <LoadingState count={1} height="h-16" className="w-16 rounded-full" />
+                    <LoadingState count={1} height="h-9" className="w-64 rounded-lg" />
                 </div>
                 <div className="space-y-4">
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-28 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-28" />
+                    <LoadingState count={1} height="h-28" />
                 </div>
             </div>
         );
@@ -117,9 +118,7 @@ export function BlogAuthorArchivePage() {
             </div>
 
             {posts.length === 0 ? (
-                <div className="rounded-xl bg-muted/40 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No posts in this language yet.</p>
-                </div>
+                <EmptyState title="No posts in this language yet." />
             ) : (
                 <div className="space-y-4">
                     {posts.map((post) => (

@@ -7,6 +7,7 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ReferralDashboard } from '@/components/ReferralDashboard';
 import { useSession } from '@/lib/auth';
+import { LoadingState } from '@ottabase/ui-components';
 
 export function ReferralsPage() {
     const { user } = useSession();
@@ -24,11 +25,9 @@ function ReferralsLoadingSkeleton() {
         <div className="space-y-8" aria-busy="true">
             <span className="sr-only">Loading referral dashboard...</span>
             <div className="grid gap-4 sm:grid-cols-3">
-                {Array.from({ length: 3 }, (_, i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/40" />
-                ))}
+                <LoadingState count={3} height="h-24" />
             </div>
-            <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
+            <LoadingState count={1} height="h-40" />
         </div>
     );
 }

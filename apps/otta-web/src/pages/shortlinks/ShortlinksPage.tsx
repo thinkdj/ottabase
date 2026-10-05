@@ -2,9 +2,10 @@ import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse } from '@/lib/api-types';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import { formatShortDate, type DateInput } from '@ottabase/utils/timezone';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -221,15 +222,11 @@ export function ShortlinksPage() {
             </div>
 
             {/* Error Display */}
-            {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             {/* Stats */}
             <div className="grid gap-4 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Total Links
@@ -241,7 +238,7 @@ export function ShortlinksPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Active Links
@@ -256,7 +253,7 @@ export function ShortlinksPage() {
             </div>
 
             {/* Shortlinks Table */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -276,7 +273,7 @@ export function ShortlinksPage() {
                         <div className="space-y-2" aria-busy="true">
                             <span className="sr-only">Loading shortlinks...</span>
                             {Array.from({ length: 5 }, (_, i) => (
-                                <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/40" />
+                                <LoadingState key={i} count={1} height="h-12" className="rounded-lg" />
                             ))}
                         </div>
                     ) : shortlinks.length === 0 ? (

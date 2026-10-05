@@ -31,7 +31,7 @@ export function CloudflareFileUploadDemoPage() {
             />
 
             {/* Features */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                     <CardDescription>Key capabilities of the upload package</CardDescription>
@@ -51,7 +51,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Mode Selector */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Upload Mode</CardTitle>
                     <CardDescription>Choose between dropzone or button upload variant</CardDescription>
@@ -85,7 +85,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Single File Upload */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Single File Upload</CardTitle>
                     <CardDescription>Upload a single file with automatic upload</CardDescription>
@@ -103,7 +103,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Multiple File Upload */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Multiple File Upload</CardTitle>
                     <CardDescription>Upload up to 5 files with manual upload trigger</CardDescription>
@@ -121,7 +121,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Image-Only Upload */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Image-Only Upload</CardTitle>
                     <CardDescription>Upload images only with file type validation</CardDescription>
@@ -140,7 +140,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Custom Handler */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Custom Upload Handler</CardTitle>
                     <CardDescription>Use a custom upload handler instead of automatic upload</CardDescription>
@@ -154,7 +154,7 @@ export function CloudflareFileUploadDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                     <CardDescription>How to use the FileUploader component in your code</CardDescription>
@@ -180,7 +180,7 @@ function MyComponent() {
             </Card>
 
             {/* Package Information */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Details</CardTitle>
                     <CardDescription>Information about the @ottabase/ottaupload package</CardDescription>

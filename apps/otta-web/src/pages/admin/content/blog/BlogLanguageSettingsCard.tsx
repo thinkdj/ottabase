@@ -71,7 +71,7 @@ export function BlogLanguageSettingsCard({ config, onSaved }: Props) {
     };
 
     return (
-        <Card className="rounded-2xl border-transparent bg-muted/40 shadow-none">
+        <Card className="rounded-2xl">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                     <Languages className="h-4 w-4" />

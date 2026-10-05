@@ -23,6 +23,7 @@ import type { PaginatedResponse } from '@ottabase/utils/pagination';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Mail, Search, Shield } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 const PER_PAGE = 25;
 
@@ -135,14 +136,10 @@ export function UserManagementPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading users…</span>
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={5} height="h-12" />
                     </div>
                 ) : users.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">No users found matching your search</p>
-                    </div>
+                    <EmptyState title="No users found matching your search" />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>

@@ -10,8 +10,19 @@ import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
  * reshape cards ([data-slot=card] { … }); `relative` positions the
  * [data-decor] span themes can enable for texture/ornament layers.
  */
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-    ({ className, children, ...props }, ref) => {
+const CARD_VARIANTS = {
+    /** The house surface: a muted tint, no border, no shadow */
+    default: 'bg-muted/40',
+    /** A bordered card on the page background, for standalone or nested cases */
+    outline: 'border border-border bg-card',
+} as const;
+
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+    variant?: keyof typeof CARD_VARIANTS;
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+    ({ className, variant = 'default', children, ...props }, ref) => {
         // Tier-2 escape hatch: a fork may register a wholly different card
         const Override = useBrandComponent('card');
         if (Override) {
@@ -26,7 +37,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
             <div
                 ref={ref}
                 data-slot="card"
-                className={cn('relative rounded-lg border bg-card text-card-foreground', className)}
+                data-variant={variant}
+                className={cn('relative rounded-xl text-card-foreground', CARD_VARIANTS[variant], className)}
                 {...props}
             >
                 {children}

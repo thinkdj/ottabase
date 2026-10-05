@@ -13,6 +13,7 @@ import type { CrudViewMode, ModelCrudProps } from '../types';
 import { ModelDetail } from './ModelDetail';
 import { ModelForm } from './ModelForm';
 import { ModelTable } from './ModelTable';
+import { Alert } from '@ottabase/ui-shadcn';
 
 export type { ModelCrudProps } from '../types';
 
@@ -462,26 +463,16 @@ function ErrorBanner({ error }: ErrorBannerProps) {
 
     if (status === 403) {
         return (
-            <div
-                role="alert"
-                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-            >
+            <Alert variant="destructive">
                 <p className="font-medium">Access denied</p>
                 <p className="mt-1 text-destructive/80">
                     You do not have permission to access this resource. The server blocked the request.
                 </p>
-            </div>
+            </Alert>
         );
     }
 
-    return (
-        <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-            {error.message || 'An error occurred'}
-        </div>
-    );
+    return <Alert variant="destructive">{error.message || 'An error occurred'}</Alert>;
 }
 
 // ============================================================

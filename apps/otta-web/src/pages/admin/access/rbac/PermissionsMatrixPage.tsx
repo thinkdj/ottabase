@@ -21,6 +21,7 @@ import { Link } from '@tanstack/react-router';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { useRBACToast } from '@/hooks/useToast';
 import { useRoles, useTogglePermission } from '@/hooks/useRBAC';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
@@ -113,17 +114,11 @@ export function PermissionsMatrixPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading permissions matrix…</span>
-                        <div className="h-9 w-72 max-w-full animate-pulse rounded-xl bg-muted/40" />
-                        {Array.from({ length: 4 }, (_, index) => (
-                            <div key={index} className="h-24 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={1} height="h-9" className="w-72 max-w-full" />
+                        <LoadingState count={4} height="h-24" />
                     </div>
                 ) : roles.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">
-                            No roles found. Create roles first to manage permissions.
-                        </p>
-                    </div>
+                    <EmptyState title="No roles found. Create roles first to manage permissions." />
                 ) : (
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="mb-4">
@@ -135,9 +130,7 @@ export function PermissionsMatrixPage() {
 
                         <TabsContent value={activeTab} className="overflow-x-auto">
                             {filteredRoles.length === 0 ? (
-                                <div className="rounded-xl bg-muted/40 py-12 text-center">
-                                    <p className="text-sm text-muted-foreground">No roles found for this filter.</p>
-                                </div>
+                                <EmptyState title="No roles found for this filter." />
                             ) : (
                                 <div className="space-y-6">
                                     {Object.entries(permissionsByCategory).map(([category, permissions]) => (

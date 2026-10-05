@@ -10,6 +10,7 @@
  */
 
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -45,7 +46,6 @@ import { useState } from 'react';
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
 const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const TINT_CARD_CLASS = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 
 interface SecurityTest {
     name: string;
@@ -269,7 +269,7 @@ export function RLSInspectorPage() {
 
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-4">
-                    <Card className={TINT_CARD_CLASS}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">What is RLS?</CardTitle>
                         </CardHeader>
@@ -371,7 +371,7 @@ export function RLSInspectorPage() {
                             </Table>
                         </div>
 
-                        <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success/10 p-4">
+                        <Alert variant="success" className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-success" />
                                 <span className="text-sm font-medium">All Security Tests Passed</span>
@@ -379,7 +379,7 @@ export function RLSInspectorPage() {
                             <Badge variant="outline" className={CHIP_CLASS}>
                                 {securityTests.filter((t) => t.status === 'passed').length}/{securityTests.length}
                             </Badge>
-                        </div>
+                        </Alert>
                     </section>
                 </TabsContent>
 
@@ -473,7 +473,7 @@ export function RLSInspectorPage() {
                 <TabsContent value="features" className="space-y-4">
                     <div className="grid grid-cols-1 gap-3">
                         {rlsFeatures.map((feature, idx) => (
-                            <Card key={idx} className={TINT_CARD_CLASS}>
+                            <Card key={idx}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 space-y-1">
@@ -502,7 +502,7 @@ export function RLSInspectorPage() {
                         ))}
                     </div>
 
-                    <Card className={TINT_CARD_CLASS}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Benefits</CardTitle>
                         </CardHeader>

@@ -1,5 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -138,7 +139,7 @@ export function CloudflareQueuesDemoPage() {
                 backLabel="Back to Cloudflare Features"
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader className="pb-3">
                     <CardTitle className="text-[0.9375rem] font-semibold">How it works</CardTitle>
                 </CardHeader>
@@ -164,11 +165,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 </CardContent>
             </Card>
 
-            {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             {success && (
                 <div className="rounded-xl bg-muted/40 p-4">
@@ -177,7 +174,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
             )}
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Dispatch Job</CardTitle>
                         <CardDescription>Send a job to the queue with typed payload</CardDescription>
@@ -236,7 +233,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Batch Dispatch</CardTitle>
                         <CardDescription>Send multiple jobs at once</CardDescription>
@@ -277,7 +274,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 </Card>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Registered Handlers</CardTitle>
                     <CardDescription>Job types that can be processed</CardDescription>
@@ -294,7 +291,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                         <div>

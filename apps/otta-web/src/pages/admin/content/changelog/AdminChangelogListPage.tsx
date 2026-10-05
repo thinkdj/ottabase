@@ -10,7 +10,7 @@ import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Badge, Button } from '@ottabase/ui-shadcn';
 import { IconEdit, IconEye, IconPlus, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import { useState } from 'react';
 
 const CHIP_CLASS =
@@ -105,16 +105,10 @@ export function AdminChangelogListPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading changelog entries...</span>
-                        {Array.from({ length: 4 }, (_, index) => (
-                            <div key={index} className="h-14 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={4} height="h-14" />
                     </div>
                 ) : rows.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">
-                            No entries yet. Create one to show on the public changelog.
-                        </p>
-                    </div>
+                    <EmptyState title="No entries yet. Create one to show on the public changelog." />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <ul className="divide-y divide-border/60">

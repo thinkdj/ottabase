@@ -69,7 +69,7 @@ export function TimezoneDemoPage() {
                 description="Production-ready timezone standardization for SaaS apps: store in UTC, display in the user's timezone."
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">1. Timezone Detection</CardTitle>
                     <CardDescription>Detect timezone from the browser</CardDescription>
@@ -130,7 +130,7 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">
                         2. Live Clock (UTC vs User Timezone)
@@ -170,7 +170,7 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">3. Database Storage (Always UTC)</CardTitle>
                     <CardDescription>Convert user input to UTC before storing</CardDescription>
@@ -210,7 +210,7 @@ export function TimezoneDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">4. Display (Convert from UTC)</CardTitle>
                     <CardDescription>Convert stored UTC dates into user timezone for display</CardDescription>

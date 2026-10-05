@@ -185,7 +185,7 @@ export function DataTableDemoPage() {
             </TableMessageContext.Provider>
 
             {/* Code Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                 </CardHeader>
@@ -244,7 +244,7 @@ return (
             </Card>
 
             {/* Features */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                 </CardHeader>
@@ -308,7 +308,7 @@ function BasicDemo() {
     });
 
     return (
-        <Card className="rounded-xl border-border/60 shadow-none">
+        <Card variant="outline">
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Basic Table</CardTitle>
                 <CardDescription>Client-side sorting, pagination, column visibility, and row actions</CardDescription>
@@ -357,7 +357,7 @@ function SelectionDemo() {
     });
 
     return (
-        <Card className="rounded-xl border-border/60 shadow-none">
+        <Card variant="outline">
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Row Selection + Bulk Actions</CardTitle>
                 <CardDescription>
@@ -420,7 +420,7 @@ function ServerSideDemo() {
     });
 
     return (
-        <Card className="rounded-xl border-border/60 shadow-none">
+        <Card variant="outline">
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Server-Side Pagination & Sorting</CardTitle>
                 <CardDescription>
@@ -457,7 +457,7 @@ function CompactDemo() {
     });
 
     return (
-        <Card className="rounded-xl border-border/60 shadow-none">
+        <Card variant="outline">
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Compact & Striped</CardTitle>
                 <CardDescription>Compact mode with striped rows for dense data views.</CardDescription>

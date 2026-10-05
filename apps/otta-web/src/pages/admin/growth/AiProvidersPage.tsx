@@ -34,8 +34,8 @@ import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Sparkles, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
+import { LoadingState } from '@ottabase/ui-components';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
@@ -67,7 +67,7 @@ function ResolutionInspector() {
     });
 
     return (
-        <Card className={QUIET_CARD}>
+        <Card>
             <CardHeader>
                 <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
                     <Stethoscope className="h-4 w-4 text-muted-foreground" />
@@ -100,7 +100,7 @@ function ResolutionInspector() {
                 {explain.isLoading ? (
                     <div aria-busy="true">
                         <span className="sr-only">Loading resolution…</span>
-                        <div className="h-20 animate-pulse rounded-lg bg-background/60" />
+                        <LoadingState count={1} height="h-20" className="rounded-lg bg-background/60" />
                     </div>
                 ) : explain.error ? (
                     <p className="text-sm text-destructive">{explain.error.message}</p>
@@ -196,7 +196,7 @@ export function AiProvidersPage() {
                     </p>
                 </div>
 
-                <Card className={QUIET_CARD}>
+                <Card>
                     <CardHeader>
                         <CardTitle className={SECTION_TITLE}>This deployment</CardTitle>
                         <CardDescription>

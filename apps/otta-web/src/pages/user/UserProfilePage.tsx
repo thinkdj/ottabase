@@ -14,6 +14,7 @@ import { AiPersonalProviders } from './AiPersonalProviders';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -398,7 +399,7 @@ export function UserProfilePage() {
             </div>
 
             {/* Profile Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -618,7 +619,7 @@ export function UserProfilePage() {
             </Card>
 
             {/* Account Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Account Information</CardTitle>
                     <CardDescription>Your account details and status</CardDescription>
@@ -651,11 +652,7 @@ export function UserProfilePage() {
                             <p className="text-sm text-muted-foreground">
                                 Verify your email to unlock all account features.
                             </p>
-                            {verificationError && (
-                                <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                                    {verificationError}
-                                </p>
-                            )}
+                            {verificationError && <Alert variant="destructive">{verificationError}</Alert>}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -709,7 +706,7 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Sign-in methods</CardTitle>
                     <CardDescription>Accounts you can use to sign in</CardDescription>
@@ -747,7 +744,7 @@ export function UserProfilePage() {
             </Card>
 
             {/* Security */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
                     <CardDescription>Keep your account safe</CardDescription>
@@ -833,14 +830,7 @@ export function UserProfilePage() {
                             />
                         </div>
 
-                        {passwordError && (
-                            <p
-                                role="alert"
-                                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-                            >
-                                {passwordError}
-                            </p>
-                        )}
+                        {passwordError && <Alert variant="destructive">{passwordError}</Alert>}
 
                         <div className="flex justify-end gap-2">
                             <Button

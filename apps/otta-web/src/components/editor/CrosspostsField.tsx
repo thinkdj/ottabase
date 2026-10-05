@@ -44,7 +44,7 @@ export function CrosspostsField({ value, onChange, noun = 'post' }: CrosspostsFi
     const hasOrigin = value.some((link) => link.origin);
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                     <Link2 className="h-4 w-4 text-muted-foreground" />

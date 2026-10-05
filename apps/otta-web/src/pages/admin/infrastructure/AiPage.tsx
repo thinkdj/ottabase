@@ -10,14 +10,14 @@
  */
 
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link } from '@tanstack/react-router';
 import { AlertTriangle, CheckCircle2, Copy, ExternalLink, KeyRound, Server, Sparkles, Waypoints } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { AiConfigSnapshot } from '@/ottabase/ai-config-types';
+import { LoadingState } from '@ottabase/ui-components';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
@@ -101,12 +101,12 @@ export function AdminAiPage() {
             </div>
 
             {query.isLoading ? (
-                <div aria-busy="true" className="h-32 animate-pulse rounded-xl bg-muted/40" />
+                <LoadingState count={1} height="h-32" />
             ) : query.error ? (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <Alert variant="destructive" className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     {query.error.message}
-                </div>
+                </Alert>
             ) : data ? (
                 <>
                     <div className="flex flex-wrap gap-2">
@@ -129,31 +129,31 @@ export function AdminAiPage() {
                     </div>
 
                     {data.configurationError ? (
-                        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                        <Alert variant="destructive" className="flex items-start gap-2">
                             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                             {data.configurationError}
-                        </div>
+                        </Alert>
                     ) : null}
 
                     {data.spend.warning ? (
-                        <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                        <Alert variant="warning" className="flex items-start gap-2">
                             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                             {data.spend.warning}
-                        </div>
+                        </Alert>
                     ) : null}
 
                     {data.platform.missing.length > 0 ? (
-                        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                        <Alert variant="warning">
                             <div className="mb-1 font-medium">Configuration notes</div>
                             <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
                                 {data.platform.missing.map((item) => (
                                     <li key={item}>{item}</li>
                                 ))}
                             </ul>
-                        </div>
+                        </Alert>
                     ) : null}
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
                                 <Waypoints className="h-4 w-4 text-muted-foreground" />
@@ -210,7 +210,7 @@ export function AdminAiPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={SECTION_TITLE}>Dials</CardTitle>
                             <CardDescription>
@@ -235,7 +235,7 @@ export function AdminAiPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
                                 <Server className="h-4 w-4 text-muted-foreground" />
@@ -275,7 +275,7 @@ export function AdminAiPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={SECTION_TITLE}>Tasks</CardTitle>
                             <CardDescription>
@@ -319,7 +319,7 @@ export function AdminAiPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={SECTION_TITLE}>Providers</CardTitle>
                             <CardDescription>
@@ -369,7 +369,7 @@ export function AdminAiPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className={QUIET_CARD}>
+                    <Card>
                         <CardHeader>
                             <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
                                 <KeyRound className="h-4 w-4 text-muted-foreground" />

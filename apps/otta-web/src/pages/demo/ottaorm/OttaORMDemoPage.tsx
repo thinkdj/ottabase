@@ -1,6 +1,7 @@
 import { useSession } from '@/lib/auth';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -12,6 +13,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
+import { EmptyState } from '@ottabase/ui-components';
 
 // ============================================================
 // App-specific model types (defined per-app)
@@ -120,16 +122,10 @@ export function OttaORMDemoPage() {
                 description="Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic updates"
             />
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
+            {error ? <Alert variant="destructive">{error}</Alert> : null}
 
             {!canUseCrud ? (
-                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                    Sign in to enable OttaORM CRUD requests in this demo.
-                </div>
+                <Alert variant="warning">Sign in to enable OttaORM CRUD requests in this demo.</Alert>
             ) : null}
 
             {canUseCrud && !dbReady && !error ? (
@@ -152,7 +148,7 @@ export function OttaORMDemoPage() {
 
             {dbReady ? (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Users
@@ -187,9 +183,7 @@ export function OttaORMDemoPage() {
 
                             <div className="space-y-2">
                                 {users.length === 0 ? (
-                                    <div className="rounded-lg bg-background p-8 text-center ring-1 ring-border">
-                                        <p className="text-sm text-muted-foreground">No users yet. Add one above!</p>
-                                    </div>
+                                    <EmptyState title="No users yet. Add one above!" compact />
                                 ) : (
                                     users.map((user, index) => (
                                         <div
@@ -219,7 +213,7 @@ export function OttaORMDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Posts
@@ -267,11 +261,7 @@ export function OttaORMDemoPage() {
 
                             <div className="space-y-2">
                                 {posts.length === 0 ? (
-                                    <div className="rounded-lg bg-background p-8 text-center ring-1 ring-border">
-                                        <p className="text-sm text-muted-foreground">
-                                            No posts yet. Create users first, then add posts!
-                                        </p>
-                                    </div>
+                                    <EmptyState title="No posts yet. Create users first, then add posts!" compact />
                                 ) : (
                                     posts.map((post, index) => (
                                         <div
@@ -304,7 +294,7 @@ export function OttaORMDemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">TanStack Query Benefits</CardTitle>
                 </CardHeader>

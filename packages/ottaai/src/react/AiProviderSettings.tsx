@@ -14,8 +14,9 @@
 // copy read the same declaration.
 // ============================================================
 
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -36,7 +37,6 @@ import type { CredentialView } from '../types';
 import { useAiCredentials, useAiProviders, useAiStatus, type ProviderOption, type SaveCredentialInput } from './hooks';
 
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 
 export interface AiProviderSettingsProps {
@@ -188,7 +188,7 @@ export function AiProviderSettings({
 
             {/* WHAT IS ACTUALLY IN USE — the only honest answer, and the reason the row
                 badge below says "Active" and never "In use". */}
-            <Card className={QUIET_CARD}>
+            <Card>
                 <CardHeader>
                     <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
                         <ShieldCheck className="h-4 w-4 text-muted-foreground" />
@@ -200,7 +200,7 @@ export function AiProviderSettings({
                     {statusQuery.isLoading ? (
                         <div aria-busy="true">
                             <span className="sr-only">Loading AI status…</span>
-                            <div className="h-5 w-56 animate-pulse rounded-full bg-background/60" />
+                            <LoadingState count={1} height="h-5" className="w-56 rounded-full bg-background/60" />
                         </div>
                     ) : (
                         <div className="flex flex-wrap items-center gap-2">
@@ -246,7 +246,7 @@ export function AiProviderSettings({
             </Card>
 
             {/* Saved connections */}
-            <Card className={QUIET_CARD}>
+            <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                     <div className="space-y-1.5">
                         <CardTitle className={`flex items-center gap-2 ${SECTION_TITLE}`}>
@@ -266,8 +266,8 @@ export function AiProviderSettings({
                     {credentials.isLoading ? (
                         <div aria-busy="true" className="space-y-2">
                             <span className="sr-only">Loading saved connections…</span>
-                            <div className="h-12 animate-pulse rounded-lg bg-background/60" />
-                            <div className="h-12 animate-pulse rounded-lg bg-background/60" />
+                            <LoadingState count={1} height="h-12" className="rounded-lg bg-background/60" />
+                            <LoadingState count={1} height="h-12" className="rounded-lg bg-background/60" />
                         </div>
                     ) : rows.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -360,7 +360,7 @@ export function AiProviderSettings({
 
             {/* Draft form */}
             {draft ? (
-                <Card className={QUIET_CARD}>
+                <Card>
                     <CardHeader>
                         <CardTitle className={SECTION_TITLE}>
                             {draft.id ? 'Edit connection' : 'Connect a provider'}
@@ -468,13 +468,7 @@ export function AiProviderSettings({
                         ) : null}
 
                         {credentials.test.data ? (
-                            <div
-                                className={
-                                    credentials.test.data.ok
-                                        ? 'rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success'
-                                        : 'rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive'
-                                }
-                            >
+                            <Alert variant={credentials.test.data.ok ? 'success' : 'destructive'}>
                                 <span className="inline-flex items-center gap-1.5 font-medium">
                                     {credentials.test.data.ok ? (
                                         <CheckCircle2 className="h-4 w-4" />
@@ -483,14 +477,10 @@ export function AiProviderSettings({
                                     )}
                                     {credentials.test.data.message}
                                 </span>
-                            </div>
+                            </Alert>
                         ) : null}
 
-                        {formError ? (
-                            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                                {formError}
-                            </div>
-                        ) : null}
+                        {formError ? <Alert variant="destructive">{formError}</Alert> : null}
 
                         <Separator className="bg-border/60" />
 

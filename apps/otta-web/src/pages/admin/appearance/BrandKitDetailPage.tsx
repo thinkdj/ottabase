@@ -5,7 +5,7 @@
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, ConfirmDialog } from '@ottabase/ui-components';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconActivity,
@@ -490,14 +490,14 @@ export function AdminBrandKitDetailPage() {
             <div className="space-y-8" aria-busy="true">
                 <span className="sr-only">Loading Brand Kit...</span>
                 <div className="flex items-center justify-between">
-                    <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
-                    <div className="h-9 w-48 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-9" className="w-64" />
+                    <LoadingState count={1} height="h-9" className="w-48" />
                 </div>
                 <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
-                    <div className="h-96 animate-pulse rounded-xl bg-muted/40" />
+                    <LoadingState count={1} height="h-96" />
                     <div className="space-y-4">
-                        <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
-                        <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
+                        <LoadingState count={1} height="h-48" />
+                        <LoadingState count={1} height="h-48" />
                     </div>
                 </div>
             </div>

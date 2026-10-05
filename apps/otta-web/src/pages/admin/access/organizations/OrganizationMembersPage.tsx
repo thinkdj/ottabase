@@ -12,7 +12,7 @@ import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import type { MemberRole, OrganizationMemberRecord } from '@/types/rbac';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Dialog,
@@ -214,14 +214,10 @@ export function OrganizationMembersPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading members…</span>
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={5} height="h-12" />
                     </div>
                 ) : members.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">No members found. Invite the first member!</p>
-                    </div>
+                    <EmptyState title="No members found. Invite the first member!" />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>

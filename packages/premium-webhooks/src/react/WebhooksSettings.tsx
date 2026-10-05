@@ -17,7 +17,6 @@ import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_LIMIT_ENDPOINTS, WEBHOOKS_PACKA
 import { useWebhookDeliveries, useWebhookEndpoints } from './hooks';
 import type { WebhookEndpointView } from '../ottaorm-models/WebhookEndpoint';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none dark:bg-muted/20';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 function EndpointRow({
@@ -151,7 +150,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
 
     return (
         <div className="space-y-6">
-            <Card className={QUIET_CARD}>
+            <Card>
                 <CardHeader className="gap-1.5">
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Webhook className="h-4 w-4 text-muted-foreground" />
@@ -260,7 +259,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                 </CardContent>
             </Card>
 
-            <Card className={QUIET_CARD}>
+            <Card>
                 <CardHeader className="gap-1.5">
                     <CardTitle className="text-[0.9375rem] font-semibold">Delivery log</CardTitle>
                     <CardDescription>Every attempt, with status and duration.</CardDescription>

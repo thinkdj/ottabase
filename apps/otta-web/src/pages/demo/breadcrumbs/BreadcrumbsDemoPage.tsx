@@ -21,7 +21,7 @@ export function BreadcrumbsDemoPage() {
             />
 
             {/* Current Breadcrumbs */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Current Page Breadcrumbs</CardTitle>
                     <CardDescription>Automatically generated from your current location</CardDescription>
@@ -37,7 +37,7 @@ export function BreadcrumbsDemoPage() {
             </Card>
 
             {/* Variants */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Variants</CardTitle>
                     <CardDescription>Different configurations and display options</CardDescription>
@@ -95,7 +95,7 @@ export function BreadcrumbsDemoPage() {
             </Card>
 
             {/* Features */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Key Features</CardTitle>
                 </CardHeader>
@@ -146,7 +146,7 @@ export function BreadcrumbsDemoPage() {
             </Card>
 
             {/* Configuration */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Custom Route Labels</CardTitle>
                     <CardDescription>Configure display names in the component</CardDescription>
@@ -177,7 +177,7 @@ export function BreadcrumbsDemoPage() {
             </Card>
 
             {/* Usage */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Examples</CardTitle>
                 </CardHeader>
@@ -227,7 +227,7 @@ function MyPage() {
             </Card>
 
             {/* Test Links */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Test Navigation</CardTitle>
                     <CardDescription>Navigate to these pages to see breadcrumbs in action</CardDescription>
@@ -257,7 +257,7 @@ function MyPage() {
             </Card>
 
             {/* API Props */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Component Props</CardTitle>
                 </CardHeader>

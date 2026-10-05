@@ -68,7 +68,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
     };
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none dark:bg-muted/20">
+        <Card className="dark:bg-muted/20">
             <CardHeader className="gap-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">

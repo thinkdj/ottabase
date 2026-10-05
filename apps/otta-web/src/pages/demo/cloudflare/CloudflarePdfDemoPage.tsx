@@ -16,7 +16,7 @@ export function CloudflarePdfDemoPage() {
                 backLabel="Back to Cloudflare Demos"
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">What this package does</CardTitle>
                     <CardDescription>
@@ -62,7 +62,7 @@ export function CloudflarePdfDemoPage() {
                         'The package returns a no-store PDF attachment with sanitized filename and conservative metadata.',
                     ],
                 ].map(([title, description]) => (
-                    <Card key={title} className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card key={title}>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">{title}</CardTitle>
                         </CardHeader>

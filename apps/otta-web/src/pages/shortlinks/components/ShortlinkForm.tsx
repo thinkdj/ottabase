@@ -4,6 +4,7 @@ import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ShortlinkTypes } from '@ottabase/shortlinks';
 import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@ottabase/utils/timezone';
 import {
+    Alert,
     Button,
     Input,
     Label,
@@ -101,11 +102,7 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             <div className="space-y-2">
                 <Label htmlFor="fullUrl">

@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { menuSlotsApi, type MenuSlotAssignmentItem, type MenuSlotRenderType } from '../brand/brandApi';
 import { menuApi, type MenuWithItemsDto } from './menuApi';
+import { LoadingState, EmptyState } from '@ottabase/ui-components';
 
 const RENDER_TYPES: MenuSlotRenderType[] = ['sidebar', 'flyout', 'mega', 'navbar', 'dropdown', 'footer'];
 
@@ -135,9 +136,7 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                 {isLoading ? (
                     <div className="space-y-2 py-4" aria-busy="true">
                         <span className="sr-only">Loading assignments...</span>
-                        {Array.from({ length: 3 }, (_, index) => (
-                            <div key={index} className="h-10 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={3} height="h-10" />
                     </div>
                 ) : (
                     <div className="flex flex-col min-h-0 overflow-hidden">
@@ -156,16 +155,17 @@ export function AssignToSlotsModal({ open, onOpenChange, preselectedMenuId }: As
                                 Create at least one menu before assigning slots.
                             </div>
                         ) : items.length === 0 ? (
-                            <div className="rounded-xl bg-muted/40 py-8 text-center">
-                                <p className="text-sm text-muted-foreground">No slot assignments yet.</p>
-                                <p className="mt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    Click Add to assign a menu to a layout slot (e.g. sidebar-nav, header-nav)
-                                </p>
-                                <Button size="sm" className="mt-3" onClick={add}>
-                                    <IconPlus className="h-4 w-4 mr-1" />
-                                    Add assignment
-                                </Button>
-                            </div>
+                            <EmptyState
+                                title="Click Add to assign a menu to a layout slot (e.g. sidebar-nav, header-nav)"
+                                description="No slot assignments yet."
+                                action={
+                                    <Button size="sm" onClick={add}>
+                                        <IconPlus className="h-4 w-4 mr-1" />
+                                        Add assignment
+                                    </Button>
+                                }
+                                compact
+                            />
                         ) : (
                             <div className="min-h-0 overflow-y-auto rounded-lg border border-border/60">
                                 <table className="min-w-full text-sm">

@@ -10,7 +10,7 @@
 import { useInviteMember, useOrganizations, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { LoadingState, EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import {
     Avatar,
     AvatarFallback,
@@ -238,10 +238,10 @@ export function UserRBACPage() {
                 {isUserLoading ? (
                     <div className="flex items-center gap-4" aria-busy="true">
                         <span className="sr-only">Loading user profile…</span>
-                        <div className="h-16 w-16 animate-pulse rounded-full bg-muted/70" />
+                        <LoadingState count={1} height="h-16" className="w-16 rounded-full bg-muted/70" />
                         <div className="space-y-2">
-                            <div className="h-4 w-40 animate-pulse rounded-lg bg-muted/70" />
-                            <div className="h-3 w-56 animate-pulse rounded-lg bg-muted/70" />
+                            <LoadingState count={1} height="h-4" className="w-40 rounded-lg bg-muted/70" />
+                            <LoadingState count={1} height="h-3" className="w-56 rounded-lg bg-muted/70" />
                         </div>
                     </div>
                 ) : (
@@ -354,14 +354,10 @@ export function UserRBACPage() {
                 {isLoading ? (
                     <div className="space-y-3" aria-busy="true">
                         <span className="sr-only">Loading memberships…</span>
-                        {Array.from({ length: 3 }, (_, index) => (
-                            <div key={index} className="h-12 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
+                        <LoadingState count={3} height="h-12" />
                     </div>
                 ) : userOrgs.length === 0 ? (
-                    <div className="rounded-xl bg-muted/40 py-12 text-center">
-                        <p className="text-sm text-muted-foreground">User is not a member of any organizations</p>
-                    </div>
+                    <EmptyState title="User is not a member of any organizations" />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-border/60">
                         <Table>

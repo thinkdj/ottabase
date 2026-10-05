@@ -61,7 +61,7 @@ function DatePickerDemo() {
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Date Picker</CardTitle>
                 <CardDescription>Single date selection. Returns UTC unix timestamp by default.</CardDescription>
@@ -89,7 +89,7 @@ function DatePickerInlineDemo() {
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Inline Date Picker</CardTitle>
                 <CardDescription>Always-visible calendar, no popover trigger.</CardDescription>
@@ -117,7 +117,7 @@ function DateRangeDemo() {
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Date Range Picker</CardTitle>
                 <CardDescription>
@@ -149,7 +149,7 @@ function DateRangePresetsDemo() {
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Date Range — Presets</CardTitle>
                 <CardDescription>
@@ -180,7 +180,7 @@ function DateTimeDemo() {
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">DateTime Picker</CardTitle>
                 <CardDescription>Calendar with time inputs. Combines date and time selection.</CardDescription>
@@ -223,7 +223,7 @@ function ProgrammaticApiDemo() {
     }, []);
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Programmatic API</CardTitle>
                 <CardDescription>Control the picker via JavaScript: open, close, setValue, getValue.</CardDescription>
@@ -292,7 +292,7 @@ export function OttaDateDemoPage() {
                         with the exact range it covers, so it stays sortable and searchable.
                     </p>
                 </div>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-4 sm:p-6">
                         <FuzzyPlayground />
                     </CardContent>

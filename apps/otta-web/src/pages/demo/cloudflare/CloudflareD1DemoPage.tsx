@@ -1,6 +1,6 @@
 import { api, isApiError } from '@/lib/api';
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { EmptyState, ConfirmDialog } from '@ottabase/ui-components';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -116,11 +116,7 @@ export function CloudflareD1DemoPage() {
                 backLabel="Back to Cloudflare"
             />
 
-            {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                </div>
-            ) : null}
+            {error ? <Alert variant="destructive">{error}</Alert> : null}
 
             {!dbReady && !error ? (
                 <div className="rounded-xl bg-muted/40 p-4">
@@ -130,7 +126,7 @@ export function CloudflareD1DemoPage() {
 
             {dbReady ? (
                 <>
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Add Todo</CardTitle>
                         </CardHeader>
@@ -152,9 +148,7 @@ export function CloudflareD1DemoPage() {
 
                     <div className="space-y-2">
                         {todos.length === 0 ? (
-                            <div className="rounded-xl bg-muted/40 p-8 text-center">
-                                <p className="text-sm text-muted-foreground">No todos yet. Add one above!</p>
-                            </div>
+                            <EmptyState title="No todos yet. Add one above!" compact />
                         ) : (
                             todos.map((todo) => (
                                 <div

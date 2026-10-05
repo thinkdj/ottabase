@@ -61,7 +61,10 @@ function MediaTile({ item }: { item: MediaLibraryItemLike }) {
     const { open } = useMediaLightboxRegistration(item.id, viewerItem);
 
     return (
-        <Card className="overflow-hidden rounded-xl border-border/60 shadow-none transition-colors duration-normal hover:border-border">
+        <Card
+            variant="outline"
+            className="border overflow-hidden transition-colors duration-normal hover:border-border"
+        >
             <div className="h-48 w-full bg-muted/40">
                 <MediaPreview item={viewerItem} mode="tile" />
             </div>
@@ -105,7 +108,7 @@ export function MediaLibraryDemoPage() {
                 </Badge>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Interactive Gallery</CardTitle>
                     <CardDescription>

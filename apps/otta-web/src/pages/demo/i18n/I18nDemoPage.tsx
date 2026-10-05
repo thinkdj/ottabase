@@ -32,7 +32,7 @@ export function I18nDemoPage() {
             />
 
             {/* Language Switcher Component */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Language Switcher</CardTitle>
                     <CardDescription>Interactive component to change the application language</CardDescription>
@@ -44,7 +44,7 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Supported Languages */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Supported Languages</CardTitle>
                     <CardDescription>
@@ -72,7 +72,7 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Translation Examples */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Translation Examples</CardTitle>
                     <CardDescription>
@@ -148,7 +148,7 @@ export function I18nDemoPage() {
             </Card>
 
             {/* Advanced Examples */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Advanced Examples</CardTitle>
                     <CardDescription>Interpolation, pluralization, and rich text rendering</CardDescription>
@@ -220,7 +220,7 @@ export function I18nDemoPage() {
             </Card>
 
             {/* App Config Overrides */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">App Config Overrides</CardTitle>
                     <CardDescription>How this app configures i18n using ottabase/config/i18n.config.ts</CardDescription>
@@ -280,7 +280,7 @@ export const i18nConfig = {
             </Card>
 
             {/* Global State Integration */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Global State Integration</CardTitle>
                     <CardDescription>Language syncs with @ottabase/state via Jotai atom</CardDescription>
@@ -331,7 +331,7 @@ export const i18nConfig = {
             </Card>
 
             {/* Persistence Demonstration */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Persistence Demonstration</CardTitle>
                     <CardDescription>Language selection persists to localStorage</CardDescription>
@@ -367,7 +367,7 @@ export const i18nConfig = {
             </Card>
 
             {/* Resource Override Comparison */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Resource Override Example</CardTitle>
                     <CardDescription>App resources override package defaults via deep merge</CardDescription>
@@ -421,7 +421,7 @@ export const i18nConfig = {
             </Card>
 
             {/* Package Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Information</CardTitle>
                 </CardHeader>
