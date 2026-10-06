@@ -562,10 +562,10 @@ export function AdminBrandKitDetailPage() {
                         </div>
                         {!isNew ? (
                             <Link
-                                to="/admin/appearance/layouts"
+                                to="/admin/appearance"
                                 className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                Configure layouts & route mappings
+                                Site design: routes, layouts and menus
                                 <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-normal group-hover:translate-x-0.5" />
                             </Link>
                         ) : null}

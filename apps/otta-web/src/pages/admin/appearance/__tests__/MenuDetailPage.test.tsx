@@ -52,7 +52,6 @@ vi.mock('../menus/menuApi', () => ({
         uploadImage: vi.fn(),
     },
 }));
-vi.mock('../menus/AssignToSlotsModal', () => ({ AssignToSlotsModal: () => null }));
 
 import { AdminMenuDetailPage } from '../MenuDetailPage';
 

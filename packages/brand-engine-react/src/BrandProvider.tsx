@@ -566,6 +566,18 @@ export function BrandPathSync({ pathname }: { pathname: string }) {
     return null;
 }
 
+/** Children see exactly this config, as if the site were running on it; nothing is fetched (previews) */
+export function BrandConfigProvider({ config, children }: { config: BrandConfig; children: React.ReactNode }) {
+    const value = useMemo<BrandContextValue>(
+        () => ({ config, isLoading: false, error: null, refresh: async () => {} }),
+        [config],
+    );
+    return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;
+}
+
+/** A cached path matcher over route mappings (highest priority wins), for resolveConfigForPath */
+export const createRouteMatcher = createRouteMatcherCache;
+
 export function useBrand(): BrandContextValue {
     const context = useContext(BrandContext);
     if (!context) {

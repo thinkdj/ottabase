@@ -132,6 +132,24 @@ import { BrandPathSync } from '@ottabase/brand-engine-react';
 <BrandPathSync pathname={serverSidePathname} />;
 ```
 
+## BrandConfigProvider (previews)
+
+`BrandConfigProvider` makes its children see one given `BrandConfig`, as if the site were running on it; nothing is
+fetched. The admin's site design workspace renders the real app shell inside it with an unsaved draft. Build the config
+with `resolveConfigForPath` and `createRouteMatcher`, which match a path against route mappings the way the provider
+does:
+
+```tsx
+import { BrandConfigProvider, createRouteMatcher, resolveConfigForPath } from '@ottabase/brand-engine-react';
+
+const mappings = full.routeMappings ?? [];
+const config = resolveConfigForPath(full, '/blog', createRouteMatcher(mappings), 'light', mappings);
+
+<BrandConfigProvider config={config}>
+    <AppShell>...</AppShell>
+</BrandConfigProvider>;
+```
+
 ## Accessibility, SSR & performance
 
 - **SSR (the headline feature)** — the edge resolves the brand config once and injects both the critical CSS (light

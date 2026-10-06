@@ -17,7 +17,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AssignToSlotsModal } from './menus/AssignToSlotsModal';
 import { menuApi, type MenuWithItemsDto } from './menus/menuApi';
 import { slotLabel, slotsForMenu } from './menus/menuSlots';
 
@@ -25,8 +24,6 @@ export function AdminMenusListPage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { config } = useBrand();
-    const [slotsModalOpen, setSlotsModalOpen] = useState(false);
-    const [slotsModalMenuId, setSlotsModalMenuId] = useState<string | null>(null);
     const [deleteMenuId, setDeleteMenuId] = useState<string | null>(null);
 
     const { data: menus = [], isLoading } = useQuery({
@@ -43,11 +40,6 @@ export function AdminMenusListPage() {
         },
         onError: () => toast.error('Failed to delete'),
     });
-
-    const openSlotsModal = (menuId?: string) => {
-        setSlotsModalMenuId(menuId ?? null);
-        setSlotsModalOpen(true);
-    };
 
     if (isLoading) {
         return (
@@ -70,9 +62,11 @@ export function AdminMenusListPage() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => openSlotsModal()}>
-                        <IconPuzzle className="mr-2 h-4 w-4" />
-                        Assign to slots
+                    <Button asChild variant="outline">
+                        <Link to="/admin/appearance">
+                            <IconPuzzle className="mr-2 h-4 w-4" />
+                            Menu slots
+                        </Link>
                     </Button>
                     <Button onClick={() => navigate({ to: '/admin/appearance/menus/new' })}>
                         <IconPlus className="mr-2 h-4 w-4" />
@@ -80,12 +74,6 @@ export function AdminMenusListPage() {
                     </Button>
                 </div>
             </div>
-
-            <AssignToSlotsModal
-                open={slotsModalOpen}
-                onOpenChange={setSlotsModalOpen}
-                preselectedMenuId={slotsModalMenuId}
-            />
 
             {menus.length === 0 ? (
                 <EmptyState
@@ -106,7 +94,6 @@ export function AdminMenusListPage() {
                             key={menu.id}
                             menu={menu}
                             slots={slotsForMenu(config?.menuSlots, menu.id)}
-                            onAssignToSlots={() => openSlotsModal(menu.id)}
                             onDelete={() => setDeleteMenuId(menu.id)}
                             deleting={deleteMutation.isPending}
                         />
@@ -131,13 +118,11 @@ export function AdminMenusListPage() {
 function MenuCard({
     menu,
     slots,
-    onAssignToSlots,
     onDelete,
     deleting,
 }: {
     menu: MenuWithItemsDto;
     slots: string[];
-    onAssignToSlots: () => void;
     onDelete: () => void;
     deleting: boolean;
 }) {
@@ -171,16 +156,6 @@ function MenuCard({
                         <DropdownMenuItem
                             onClick={(e) => {
                                 e.preventDefault();
-                                e.stopPropagation();
-                                onAssignToSlots();
-                            }}
-                        >
-                            <IconPuzzle className="mr-2 h-4 w-4" />
-                            Assign to slots
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault();
                                 onDelete();
                             }}
                             disabled={deleting}
@@ -193,7 +168,7 @@ function MenuCard({
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {slots.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">Not shown anywhere yet</span>
+                    <span className="text-xs text-muted-foreground">Not in a slot yet</span>
                 ) : (
                     slots.map((slot) => (
                         <Badge key={slot} variant="secondary" className="rounded-full font-normal">

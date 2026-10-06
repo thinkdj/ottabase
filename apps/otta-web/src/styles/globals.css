@@ -114,3 +114,8 @@ canvas.interactive {
 [data-movable='true'] {
     cursor: var(--cursor-move);
 }
+
+/* Site preview (admin): the shell's min-h-screen fills the scaled frame, not the viewport */
+.site-preview-page > .min-h-screen {
+    min-height: 100%;
+}

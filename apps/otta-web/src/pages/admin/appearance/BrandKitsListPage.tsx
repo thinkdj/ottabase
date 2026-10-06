@@ -331,7 +331,7 @@ export function AdminBrandKitsListPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                     <Button asChild variant="outline">
-                        <Link to="/admin/appearance/layouts">
+                        <Link to="/admin/appearance">
                             <IconRoute className="mr-2 h-4 w-4" />
                             Layouts &amp; routes
                         </Link>

@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Site design is one workspace with a live preview.** `/admin/appearance` shows how the site is put together: which
+  brand kit and layout each route gets, which menu fills each slot, the layout templates and the brand kits, beside a
+  preview of the real site chrome (header, navigation, sidebar, footer around a sample page) rendered with the unsaved
+  draft, for any mapped path, in light or dark. One Save stores the routes and the slots. The Layouts page and the
+  "Assign to slots" dialog are gone; the menu pages link to the workspace instead. `@ottabase/brand-engine-react` gained
+  `BrandConfigProvider` (children see a given config as if the site ran on it) and `createRouteMatcher`.
 - **Every date picker is the same picker.** `@ottabase/ottadate`'s DatePicker, DateRangePicker and DateTimePicker now
   sit on the shell the fuzzy pickers introduced: the same field, a type-to-parse entry ("5 jan 2026", "tomorrow 9am", "5
   jan to 12 jan", or a preset by name), a result line that says what is stored in words ("Tuesday, January 20, 2026",

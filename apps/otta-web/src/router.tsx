@@ -368,10 +368,10 @@ const adminBrandKitDetailRoute = makeAdminRoute(
     () => import('@/pages/admin/appearance/BrandKitDetailPage'),
     'AdminBrandKitDetailPage',
 );
-const adminBrandLayoutsRoute = makeAdminRoute(
-    '/admin/appearance/layouts',
-    () => import('@/pages/admin/appearance/BrandLayoutsPage'),
-    'AdminBrandLayoutsPage',
+const adminSiteDesignRoute = makeAdminRoute(
+    '/admin/appearance',
+    () => import('@/pages/admin/appearance/SiteDesignPage'),
+    'AdminSiteDesignPage',
 );
 const adminMenusRoute = makeAdminRoute(
     '/admin/appearance/menus',
@@ -789,7 +789,7 @@ const coreRoutes = [
     adminBrandKitsRoute,
     adminBrandKitNewRoute,
     adminBrandKitDetailRoute,
-    adminBrandLayoutsRoute,
+    adminSiteDesignRoute,
     adminMenusRoute,
     adminMenuNewRoute,
     adminMenuDetailRoute,

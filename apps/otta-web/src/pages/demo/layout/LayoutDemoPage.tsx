@@ -61,7 +61,7 @@ export function LayoutDemoPage() {
                         Each link is its own route that pins one preset with <code>useLayoutMeta</code>, so moving
                         between them swaps the whole app shell. The rest of the app keeps its layout. Per-route rules
                         for real pages live in{' '}
-                        <Link to="/admin/appearance/layouts" className="underline underline-offset-4">
+                        <Link to="/admin/appearance" className="underline underline-offset-4">
                             Admin → Appearance → Layouts
                         </Link>
                         .

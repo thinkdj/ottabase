@@ -54,7 +54,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
-import { AssignToSlotsModal } from './menus/AssignToSlotsModal';
 import { menuApi, type MenuItemDto, type MenuRenderType, type MenuWithItemsDto } from './menus/menuApi';
 import { slotLabel, slotsForMenu } from './menus/menuSlots';
 
@@ -115,7 +114,6 @@ function MenuWorkspace({ menu }: { menu: MenuWithItemsDto }) {
     const [previewType, setPreviewType] = useState<MenuRenderType>(menu.type);
     const [panel, setPanel] = useState<PanelTarget | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [assignOpen, setAssignOpen] = useState(false);
 
     // The server copy wins whenever it changes (after any save)
     useEffect(() => setItems(menu.items), [menu.items]);
@@ -160,7 +158,7 @@ function MenuWorkspace({ menu }: { menu: MenuWithItemsDto }) {
 
     return (
         <div className="space-y-6">
-            <MenuHeader menu={menu} onAssign={() => setAssignOpen(true)} />
+            <MenuHeader menu={menu} />
 
             <div className="flex flex-col gap-6 lg:flex-row">
                 <div className="min-w-0 flex-1 space-y-6">
@@ -227,8 +225,6 @@ function MenuWorkspace({ menu }: { menu: MenuWithItemsDto }) {
                 }}
             />
 
-            <AssignToSlotsModal open={assignOpen} onOpenChange={setAssignOpen} preselectedMenuId={menu.id} />
-
             <ConfirmDialog
                 open={deleteId !== null}
                 onOpenChange={(open) => !open && setDeleteId(null)}
@@ -246,7 +242,7 @@ function MenuWorkspace({ menu }: { menu: MenuWithItemsDto }) {
     );
 }
 
-function MenuHeader({ menu, onAssign }: { menu: MenuWithItemsDto; onAssign: () => void }) {
+function MenuHeader({ menu }: { menu: MenuWithItemsDto }) {
     const { config } = useBrand();
     const slots = slotsForMenu(config?.menuSlots, menu.id);
     return (
@@ -275,9 +271,11 @@ function MenuHeader({ menu, onAssign }: { menu: MenuWithItemsDto; onAssign: () =
                         )}
                     </div>
                 </div>
-                <Button variant="outline" onClick={onAssign}>
-                    <IconPuzzle className="mr-2 h-4 w-4" />
-                    Assign to slots
+                <Button asChild variant="outline">
+                    <Link to="/admin/appearance">
+                        <IconPuzzle className="mr-2 h-4 w-4" />
+                        Menu slots
+                    </Link>
                 </Button>
             </div>
         </div>

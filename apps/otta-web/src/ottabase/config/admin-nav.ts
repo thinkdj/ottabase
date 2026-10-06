@@ -107,20 +107,20 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Palette,
         items: [
             {
-                title: 'Brand Kits',
-                description: 'Theme, layout, typography, and design tokens with real-time preview.',
-                href: '/admin/appearance/brand-kits',
+                title: 'Site design',
+                description: 'Which kit and layout each route gets, menus in their slots, with a live preview.',
+                href: '/admin/appearance',
                 icon: Layout,
             },
             {
-                title: 'Layouts',
-                description: 'Map routes to layouts (sidebar, topbar, drawer, minimal).',
-                href: '/admin/appearance/layouts',
+                title: 'Brand kits',
+                description: 'Colours, logos, type, motion and cursors, with a live specimen.',
+                href: '/admin/appearance/brand-kits',
                 icon: Layers,
             },
             {
                 title: 'Menus',
-                description: 'Define navigation menus (sidebar, header, footer, mobile).',
+                description: 'Navigation menus for the header, sidebar, footer and more.',
                 href: '/admin/appearance/menus',
                 icon: IconMenu2,
             },
