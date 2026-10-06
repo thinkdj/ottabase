@@ -66,19 +66,18 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Trigger input — the button/input that opens the picker
+ * Field: the open button and the clear button are siblings, never nested
  * --------------------------------------------------------------------------- */
 
 .ottadate-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    width: 100%;
     min-height: 2.25rem;
+    padding: 0 0.375rem 0 0;
     background: var(--od-bg);
     border: 1px solid var(--od-border);
     border-radius: var(--od-radius);
-    cursor: pointer;
     font-family: var(--od-font);
     font-size: var(--od-font-size);
     color: var(--od-fg);
@@ -88,17 +87,14 @@
         box-shadow var(--od-transition);
     user-select: none;
     white-space: nowrap;
-    outline: none;
-    width: 100%;
-    text-align: left;
 }
 
-.ottadate-trigger:hover {
+.ottadate-trigger:hover,
+.ottadate-trigger:focus-within {
     border-color: var(--od-ring);
 }
 
-.ottadate-trigger:focus-visible {
-    border-color: var(--od-ring);
+.ottadate-trigger:focus-within {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
@@ -106,6 +102,26 @@
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
+}
+
+.ottadate-trigger-main {
+    flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+}
+
+.ottadate-trigger-main:disabled {
+    cursor: not-allowed;
 }
 
 .ottadate-trigger-icon {
@@ -186,6 +202,10 @@
 }
 
 .ottadate-header-title {
+    border: none;
+    background: transparent;
+    font-family: var(--od-font);
+    color: var(--od-fg);
     font-weight: 600;
     font-size: var(--od-font-size);
     cursor: pointer;
@@ -196,6 +216,12 @@
 
 .ottadate-header-title:hover {
     background: var(--od-tint-hover);
+}
+
+.ottadate-header-title--static,
+.ottadate-header-title--static:hover {
+    cursor: default;
+    background: transparent;
 }
 
 .ottadate-nav-btn {
@@ -280,6 +306,14 @@
 /* Resting day is a quiet hover-tint chip. */
 .ottadate-day:hover {
     background: var(--od-tint-hover);
+}
+
+.ottadate-day:focus-visible,
+.ottadate-month-cell:focus-visible,
+.ottadate-year-cell:focus-visible,
+.ottadate-range-preset:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--od-ring);
 }
 
 .ottadate-day--outside {
@@ -392,32 +426,30 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Time selector
+ * Time row (DateTimePicker): hour : minute : second, AM/PM, three quick times
  * --------------------------------------------------------------------------- */
+
+.ottadate-time-block {
+    width: 100%;
+    padding-top: 0.625rem;
+    margin-top: 0.625rem;
+    border-top: 1px solid var(--od-border);
+}
 
 .ottadate-time {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding-top: 0.75rem;
-    margin-top: 0.75rem;
-    border-top: 1px solid var(--od-border);
+    gap: 0.125rem;
 }
 
 .ottadate-time-label {
     display: flex;
     align-items: center;
     gap: 0.375rem;
+    margin-right: 0.5rem;
     font-size: var(--od-font-size-sm);
     color: var(--od-muted-fg);
-    margin-right: 0.375rem;
     flex-shrink: 0;
-}
-
-.ottadate-time-scroll {
-    display: flex;
-    align-items: center;
-    gap: 0.125rem;
 }
 
 .ottadate-time-input {
@@ -463,91 +495,71 @@
     color: var(--od-muted-fg);
 }
 
-/* AM/PM toggle — a background chip with a hairline ring (the segment/chip pattern). */
+/* AM/PM: a background chip with a hairline ring */
 .ottadate-time-period {
+    margin-left: 0.375rem;
     padding: 0.25rem 0.5rem;
     border: 1px solid var(--od-border);
     border-radius: var(--od-radius-inner);
     font-size: var(--od-font-size-sm);
+    font-family: var(--od-font);
     cursor: pointer;
     background: var(--od-bg);
     color: var(--od-fg);
     transition:
         background var(--od-transition),
         color var(--od-transition);
-    margin-left: 0.25rem;
 }
 
 .ottadate-time-period:hover {
     background: var(--od-tint-hover);
 }
 
-/* ---------------------------------------------------------------------------
- * Range trigger (dual inputs)
- * --------------------------------------------------------------------------- */
-
-.ottadate-range-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-}
-
-.ottadate-range-separator {
-    color: var(--od-muted-fg);
-    font-size: var(--od-font-size-sm);
-    flex-shrink: 0;
-}
-
-/* ---------------------------------------------------------------------------
- * Range preset panel — sidebar + calendars + bottom footer
- * Activated when `presets` option is provided to DateRangePicker.
- * Layout mirrors the classic DateRange layout: left sidebar, right calendars, bottom actions.
- * --------------------------------------------------------------------------- */
-
-/* Wider popover for preset mode — larger floating surface, deeper shadow. */
-.ottadate-popover--wide {
-    padding: 0;
-    min-width: 44rem;
+.ottadate-time-presets {
     display: flex;
-    flex-direction: column;
-    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07));
+    gap: 0.25rem;
+    margin-top: 0.375rem;
 }
 
-/* Main two-column layout: sidebar | calendars */
-.ottadate-range-panel {
-    display: flex;
+.ottadate-time-presets .ottadate-footer-btn {
     flex: 1;
+    font-variant-numeric: tabular-nums;
 }
 
-/* Left: preset sidebar list */
+/* ---------------------------------------------------------------------------
+ * Range body (DateRangePicker): presets beside two months; wraps when squeezed
+ * --------------------------------------------------------------------------- */
+
+.ottadate-range {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
 .ottadate-range-presets {
     display: flex;
     flex-direction: column;
-    padding: 0.5rem 0;
+    gap: 0.125rem;
+    min-width: 9rem;
+    padding-right: 0.75rem;
     border-right: 1px solid var(--od-border);
-    min-width: 9.5rem;
-    flex-shrink: 0;
-    overflow-y: auto;
 }
 
-/* Individual preset item — clean text button with left-border highlight */
 .ottadate-range-preset {
     display: flex;
     align-items: center;
     width: 100%;
-    text-align: left;
-    padding: 0.5rem 0.875rem;
+    padding: 0.375rem 0.625rem;
     border: none;
+    border-radius: var(--od-radius-inner);
     background: transparent;
     cursor: pointer;
     font-family: var(--od-font);
     font-size: var(--od-font-size);
+    text-align: left;
     color: var(--od-fg);
-    border-left: 3px solid transparent;
     transition:
         background var(--od-transition),
-        border-color var(--od-transition),
         color var(--od-transition);
 }
 
@@ -555,138 +567,72 @@
     background: var(--od-tint-hover);
 }
 
-.ottadate-range-preset--active {
-    border-left-color: var(--od-primary);
-    color: var(--od-primary);
-    font-weight: 600;
-    background: color-mix(in srgb, var(--od-primary) 6%, transparent);
-}
-
-/* Preset label and › icon inside the first "Custom" preset */
-.ottadate-range-preset-label {
-    flex: 1;
-}
-
-.ottadate-range-preset-icon {
-    flex-shrink: 0;
-    font-weight: 700;
-    margin-left: 0.375rem;
-    opacity: 0.6;
-}
-
-/* Two-calendar row inside preset panel */
-.ottadate-range-calendars {
-    display: flex;
-    gap: 1rem;
-    flex: 1;
-    padding: 0.75rem;
-}
-
-/* Bottom footer: Cancel + Apply — mirrors classic footer placement */
-.ottadate-range-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-top: 1px solid var(--od-border);
-}
-
-/* Cancel button — ghost style with border */
-.ottadate-range-cancel-btn {
-    padding: 0.375rem 0.875rem;
-    border: 1px solid var(--od-border);
-    border-radius: var(--od-radius);
-    background: var(--od-bg);
-    color: var(--od-fg);
-    font-family: var(--od-font);
-    font-size: var(--od-font-size);
-    cursor: pointer;
-    transition:
-        background var(--od-transition),
-        border-color var(--od-transition);
-}
-
-.ottadate-range-cancel-btn:hover {
-    background: var(--od-tint-hover);
-}
-
-/* Apply button — primary solid */
-.ottadate-range-apply-btn {
-    padding: 0.375rem 1.125rem;
-    border: none;
-    border-radius: var(--od-radius);
+.ottadate-range-preset[aria-pressed='true'] {
     background: var(--od-primary);
     color: var(--od-primary-fg);
-    font-family: var(--od-font);
-    font-size: var(--od-font-size);
     font-weight: 500;
-    cursor: pointer;
-    transition:
-        background var(--od-transition),
-        opacity var(--od-transition);
 }
 
-.ottadate-range-apply-btn:hover {
-    opacity: 0.9;
+.ottadate-range-calendars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.ottadate-range-apply-btn--disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
+/* On a phone the presets sit above the months and read as a row of chips */
+@container (max-width: 36rem) {
+    .ottadate-range-presets {
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: 0;
+        width: 100%;
+        padding-right: 0;
+        padding-bottom: 0.5rem;
+        border-right: none;
+        border-bottom: 1px solid var(--od-border);
+    }
+
+    .ottadate-range-preset {
+        width: auto;
+    }
 }
 
 /* ---------------------------------------------------------------------------
- * Fuzzy pickers: shared shell: field trigger, entry, result line.
- * The panel keeps one width; the zoom body swaps one grid at a time.
+ * The shell every picker shares: panel, type-to-parse entry, result line.
+ * Each variant sets its panel width; the body sits between entry and result.
  * --------------------------------------------------------------------------- */
 
 .ottadate--fuzzy {
-    --od-fz-width: 19rem;
+    --od-panel-width: 19rem;
     /* Part band (solid) and "~ Roughly" spill (hatched) drawn over grid cells */
     --od-fz-band: color-mix(in srgb, var(--od-primary) 14%, transparent);
     --od-fz-approx: color-mix(in srgb, var(--od-primary) 12%, transparent);
 }
 
 .ottadate--compact {
-    --od-fz-width: 17rem;
+    --od-panel-width: 17rem;
 }
 
-/* Field trigger: the open button and the clear button are siblings, never nested */
-.ottadate-trigger--field {
-    padding: 0 0.375rem 0 0;
-    cursor: default;
+.ottadate--date,
+.ottadate--datetime {
+    --od-panel-width: 19rem;
 }
 
-.ottadate-trigger--field:focus-within {
-    border-color: var(--od-ring);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
+/* Two months side by side (16.5rem each), and the presets beside them; squeezed panels wrap below */
+.ottadate--range {
+    --od-panel-width: 36rem;
 }
 
-.ottadate-trigger-main {
-    flex: 1;
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0 0.5rem 0.75rem;
-    border: none;
-    background: transparent;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-    outline: none;
+.ottadate--range-presets {
+    --od-panel-width: 46.5rem;
 }
 
-.ottadate-trigger-main:disabled {
-    cursor: not-allowed;
-}
-
-.ottadate-fz {
-    width: var(--od-fz-width);
+.ottadate-panel {
+    width: var(--od-panel-width, 19rem);
     max-width: calc(100vw - 1rem);
+    /* A tall panel (two months on a phone) scrolls inside itself, so the footer stays reachable */
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
@@ -694,26 +640,28 @@
     container-type: inline-size;
 }
 
-.ottadate-fz [hidden] {
+.ottadate-panel [hidden] {
     display: none;
 }
 
 /* Inline panels shrink to a narrow container (small phones, slim sidebars) instead of overflowing */
-.ottadate--inline .ottadate-popover.ottadate-fz {
+.ottadate--inline .ottadate-popover.ottadate-panel {
     max-width: 100%;
+    max-height: none;
+    overflow: visible;
 }
 
-.ottadate-fz .ottadate-footer {
+.ottadate-panel .ottadate-footer {
     margin-top: 0;
 }
 
-.ottadate--disabled .ottadate-fz {
+.ottadate--disabled .ottadate-panel {
     opacity: 0.55;
     pointer-events: none;
 }
 
 /* Type-to-parse entry: a quiet tinted well that lifts onto --od-bg on focus */
-.ottadate-fz-entry {
+.ottadate-entry {
     width: 100%;
     height: 2.125rem;
     padding: 0 0.625rem;
@@ -730,25 +678,36 @@
         box-shadow var(--od-transition);
 }
 
-.ottadate-fz-entry::placeholder {
+.ottadate-entry::placeholder {
     color: var(--od-muted-fg);
 }
 
-.ottadate-fz-entry:focus {
+.ottadate-entry:focus {
     background: var(--od-bg);
     border-color: var(--od-ring);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-ring) 30%, transparent);
 }
 
 /* Unreadable or too-vague entry: a red ring, never a silent guess */
-.ottadate-fz-entry--invalid,
-.ottadate-fz-entry--invalid:focus {
+.ottadate-entry--invalid,
+.ottadate-entry--invalid:focus {
     border-color: var(--od-destructive);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--od-destructive) 25%, transparent);
 }
 
+/* The calendar sits centred in the panel */
+.ottadate-cal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ottadate-cal {
+    width: fit-content;
+}
+
 /* Result line: what will be stored, live. Dashed while previewing typed text. */
-.ottadate-fz-result {
+.ottadate-result {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -759,29 +718,29 @@
     background: var(--od-tint);
 }
 
-.ottadate-fz-result--preview {
+.ottadate-result--preview {
     background: transparent;
     border-style: dashed;
     border-color: var(--od-border);
 }
 
-.ottadate-fz-result-text {
+.ottadate-result-text {
     flex: 1;
     min-width: 0;
 }
 
-.ottadate-fz-label {
+.ottadate-result-label {
     font-weight: 600;
     line-height: 1.3;
     overflow-wrap: anywhere;
 }
 
-.ottadate-fz-label--muted {
+.ottadate-result-label--muted {
     font-weight: 500;
     color: var(--od-muted-fg);
 }
 
-.ottadate-fz-sub {
+.ottadate-result-sub {
     font-size: var(--od-font-size-xs);
     line-height: 1.4;
     color: var(--od-muted-fg);
@@ -1162,49 +1121,6 @@
     animation: none;
     margin-top: 0;
     max-width: fit-content;
-}
-
-/* ---------------------------------------------------------------------------
- * 12h/24h clock toggle
- * --------------------------------------------------------------------------- */
-
-/* 12h/24h segment toggle — a muted-tint track; the active button lifts out
-   onto --od-bg with a hairline ring (the canonical segment pattern). */
-.ottadate-clock-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    background: var(--od-tint);
-    border-radius: var(--od-radius-pill);
-    margin-left: auto;
-    flex-shrink: 0;
-}
-
-.ottadate-clock-toggle-btn {
-    padding: 0.125rem 0.5rem;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    border-radius: var(--od-radius-pill);
-    font-size: var(--od-font-size-xs);
-    font-family: var(--od-font);
-    color: var(--od-muted-fg);
-    transition:
-        background var(--od-transition),
-        color var(--od-transition),
-        box-shadow var(--od-transition);
-    line-height: 1.5;
-}
-
-.ottadate-clock-toggle-btn:hover:not(.ottadate-clock-toggle-btn--active) {
-    color: var(--od-fg);
-}
-
-.ottadate-clock-toggle-btn--active {
-    background: var(--od-bg);
-    color: var(--od-fg);
-    box-shadow: inset 0 0 0 1px var(--od-border);
 }
 
 /* ---------------------------------------------------------------------------

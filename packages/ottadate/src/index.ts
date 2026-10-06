@@ -70,9 +70,11 @@ export {
 export { createFuzzySelection } from './core/fuzzy-selection';
 export type { FuzzySelectAt, FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';
 
-// Type-to-parse ("early 90s", "summer 98", "21 july 2026" → FuzzyDateTime)
+// Type-to-parse ("early 90s", "summer 98" → FuzzyDateTime; "5 jan 2026", "tomorrow 9am" → Date)
 export { parseFuzzyInput } from './core/parse';
 export type { ParseFuzzyOptions } from './core/parse';
+export { parseExactDate } from './core/parse-exact';
+export type { ParseExactOptions } from './core/parse-exact';
 
 // Range presets
 export { getDefaultRangePresets } from './core/range-presets';
@@ -99,6 +101,7 @@ import {
     snapToResolution,
 } from './core/fuzzy';
 import { parseFuzzyInput } from './core/parse';
+import { parseExactDate } from './core/parse-exact';
 import { getDefaultRangePresets } from './core/range-presets';
 import { detectTimezone, formatDate, fromDate, resolveTimezone, toDate } from './core/utils';
 import { createDatePicker } from './pickers/DatePicker';
@@ -147,4 +150,5 @@ export const OttaDate = {
     decodeFuzzyDateTime,
     formatFuzzyRange,
     parseFuzzyInput,
+    parseExactDate,
 } as const;

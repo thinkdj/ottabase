@@ -47,7 +47,7 @@ describe('FuzzyDateTimePicker: first view', () => {
         expect(t.title()).toBe(`${DECADE}s`);
         expect(t.cells()).toHaveLength(10);
         expect(t.chipLabels()).toEqual([]); // a decade can't be stored by default, so no decade chips
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe('Pick what you remember');
+        expect(t.$('.ottadate-result-label')!.textContent).toBe('Pick what you remember');
         expect(t.$<HTMLButtonElement>('.ottadate-fz-approx')!.hidden).toBe(true);
         // This year is marked, but nothing is selected (no fake pre-filled year)
         expect(t.cell(String(YEAR)).classList.contains('ottadate-fz-cell--now')).toBe(true);
@@ -169,7 +169,7 @@ describe('FuzzyDateTimePicker: chips answer for the period on screen', () => {
         expect(t.title()).toBe('1998'); // no zoom
         const banded = t.$$('.ottadate-fz-cell--band').map((c) => c.textContent);
         expect(banded).toEqual(['Jun', 'Jul', 'Aug']);
-        expect(t.$('.ottadate-fz-sub')!.textContent).toBe('Jun 1 to Aug 31, 1998');
+        expect(t.$('.ottadate-result-sub')!.textContent).toBe('Jun 1 to Aug 31, 1998');
     });
 
     it('tapping the active part drops it; naming a month replaces it', () => {
@@ -240,7 +240,7 @@ describe('FuzzyDateTimePicker: ~ Roughly', () => {
         expect(around.label).toBe('Around 1998');
         expect(around.earliest).toBeLessThan(plain.earliest);
         expect(t.$('.ottadate-fz-approx')!.getAttribute('aria-pressed')).toBe('true');
-        expect(t.$('.ottadate-fz-sub')!.textContent).toBe('1997 to 1999');
+        expect(t.$('.ottadate-result-sub')!.textContent).toBe('1997 to 1999');
 
         t.$<HTMLButtonElement>('.ottadate-fz-title')!.click(); // 1990s
         expect(t.$$('.ottadate-fz-cell--approx').map((c) => c.textContent)).toEqual(['1997', '1999']);
@@ -255,7 +255,7 @@ describe('FuzzyDateTimePicker: ~ Roughly', () => {
 
 describe('FuzzyDateTimePicker: type it', () => {
     const type = (t: ReturnType<typeof setup>, text: string) => {
-        const entry = t.$<HTMLInputElement>('.ottadate-fz-entry')!;
+        const entry = t.$<HTMLInputElement>('.ottadate-entry')!;
         entry.value = text;
         entry.dispatchEvent(new Event('input'));
         return entry;
@@ -266,8 +266,8 @@ describe('FuzzyDateTimePicker: type it', () => {
     it('previews live, applies on Enter, and jumps the view to the value', () => {
         const t = setup();
         const entry = type(t, 'summer 98');
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe('Summer 1998');
-        expect(t.$('.ottadate-fz-sub')!.textContent).toBe('Press Enter to use it');
+        expect(t.$('.ottadate-result-label')!.textContent).toBe('Summer 1998');
+        expect(t.$('.ottadate-result-sub')!.textContent).toBe('Press Enter to use it');
         expect(t.changes).toHaveLength(0);
 
         enter(entry);
@@ -287,9 +287,9 @@ describe('FuzzyDateTimePicker: type it', () => {
     it('flags unreadable input without emitting', () => {
         const t = setup();
         const entry = type(t, 'banana');
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe("Can't read that yet");
+        expect(t.$('.ottadate-result-label')!.textContent).toBe("Can't read that yet");
         enter(entry);
-        expect(entry.classList.contains('ottadate-fz-entry--invalid')).toBe(true);
+        expect(entry.classList.contains('ottadate-entry--invalid')).toBe(true);
         expect(entry.getAttribute('aria-invalid')).toBe('true');
         expect(t.changes).toHaveLength(0);
     });
@@ -297,7 +297,7 @@ describe('FuzzyDateTimePicker: type it', () => {
     it('rejects a decade in a year-based field, accepts it when decades are allowed', () => {
         const t = setup();
         enter(type(t, 'early 90s'));
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe('Too vague for this field');
+        expect(t.$('.ottadate-result-label')!.textContent).toBe('Too vague for this field');
         expect(t.changes).toHaveLength(0);
 
         const d = setup({ resolutions: ['decade', 'year'] });
@@ -310,12 +310,12 @@ describe('FuzzyDateTimePicker: type it', () => {
         const entry = type(t, 'summer');
         entry.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         expect(entry.value).toBe('');
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe('Pick what you remember');
+        expect(t.$('.ottadate-result-label')!.textContent).toBe('Pick what you remember');
     });
 
     it('hides the field when quickEntry is false', () => {
         const t = setup({ quickEntry: false });
-        expect(t.$<HTMLInputElement>('.ottadate-fz-entry')!.hidden).toBe(true);
+        expect(t.$<HTMLInputElement>('.ottadate-entry')!.hidden).toBe(true);
     });
 });
 
@@ -324,7 +324,7 @@ describe('FuzzyDateTimePicker: result line, value API, keyboard', () => {
         const t = setup();
         t.pickYear(2010);
         t.cell('May').click();
-        expect(t.$('.ottadate-fz-sub')!.textContent).toBe('Precise to the month');
+        expect(t.$('.ottadate-result-sub')!.textContent).toBe('Precise to the month');
     });
 
     it('setValue anchors the view inside the value', () => {
@@ -372,7 +372,7 @@ describe('FuzzyDateTimePicker: popover', () => {
         const main = t.$<HTMLButtonElement>('.ottadate-trigger-main')!;
         expect(main.querySelector('button')).toBeNull();
         expect(main.textContent).toBe('Sometime in 1998');
-        expect(t.$('.ottadate-fz')!.style.display).toBe('none');
+        expect(t.$('.ottadate-panel')!.style.display).toBe('none');
 
         main.click();
         expect(t.picker.isOpen()).toBe(true);
@@ -398,7 +398,7 @@ describe('FuzzyDateTimePicker: popover', () => {
     it('Enter in the entry applies and closes', () => {
         const t = setup({ inline: false });
         t.picker.open();
-        const entry = t.$<HTMLInputElement>('.ottadate-fz-entry')!;
+        const entry = t.$<HTMLInputElement>('.ottadate-entry')!;
         entry.value = '1996ish';
         entry.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         expect(t.last()!.label).toBe('Around 1996');
@@ -426,7 +426,7 @@ describe('FuzzyDateTimeCompact: selects in label order', () => {
         const t = setupCompact();
         expect(order(t)).toEqual(['part', 'year']);
         expect(t.$<HTMLSelectElement>('.ottadate-fzc-select--year select')!.value).toBe('');
-        expect(t.$('.ottadate-fz-label')!.textContent).toBe('Pick what you remember');
+        expect(t.$('.ottadate-result-label')!.textContent).toBe('Pick what you remember');
     });
 
     it('reveals month then day, ordered like the label', () => {
@@ -468,7 +468,7 @@ describe('FuzzyDateTimeCompact: selects in label order', () => {
         t.$<HTMLButtonElement>('.ottadate-fz-approx')!.click();
         expect(t.last()!.label).toBe('Around 1996');
 
-        const entry = t.$<HTMLInputElement>('.ottadate-fz-entry')!;
+        const entry = t.$<HTMLInputElement>('.ottadate-entry')!;
         entry.value = 'winter 2001';
         entry.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         expect(t.last()!.label).toBe('Winter 2001');
@@ -491,8 +491,8 @@ describe('FuzzyDateTimeCompact: keyboard', () => {
 describe('FuzzyDateTimePicker: disabled', () => {
     it('makes an inline panel inert and re-enables it via setOptions', () => {
         const t = setup({ disabled: true });
-        expect(t.$('.ottadate-fz')!.hasAttribute('inert')).toBe(true);
+        expect(t.$('.ottadate-panel')!.hasAttribute('inert')).toBe(true);
         t.picker.setOptions({ disabled: false });
-        expect(t.$('.ottadate-fz')!.hasAttribute('inert')).toBe(false);
+        expect(t.$('.ottadate-panel')!.hasAttribute('inert')).toBe(false);
     });
 });

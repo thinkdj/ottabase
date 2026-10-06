@@ -46,15 +46,7 @@ import type { OttaDateConfig, TimestampFormat } from './types';
 const DEFAULT_CONFIG: Required<
     Pick<
         OttaDateConfig,
-        | 'timezone'
-        | 'timestampFormat'
-        | 'firstDayOfWeek'
-        | 'displayFormat'
-        | 'timeDisplayFormat'
-        | 'classPrefix'
-        | 'inline'
-        | 'placeholder'
-        | 'disabled'
+        'timezone' | 'timestampFormat' | 'firstDayOfWeek' | 'displayFormat' | 'inline' | 'placeholder' | 'disabled'
     >
 > & { locale: any } = {
     timezone: 'auto',
@@ -62,8 +54,6 @@ const DEFAULT_CONFIG: Required<
     locale: 'en-US',
     firstDayOfWeek: 1,
     displayFormat: 'MMM d, yyyy',
-    timeDisplayFormat: 'HH:mm',
-    classPrefix: 'ottadate',
     inline: false,
     placeholder: 'Select date…',
     disabled: false,

@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Every date picker is the same picker.** `@ottabase/ottadate`'s DatePicker, DateRangePicker and DateTimePicker now
+  sit on the shell the fuzzy pickers introduced: the same field, a type-to-parse entry ("5 jan 2026", "tomorrow 9am", "5
+  jan to 12 jan", or a preset by name), a result line that says what is stored in words ("Tuesday, January 20, 2026",
+  "In 5 days") and a Today, Clear, Done footer. The calendars are keyboard-driven (arrows, Home, End, PageUp, PageDown).
+  A range drafts on the first click and stores on the second, and presets store at once, so the Apply and Cancel buttons
+  are gone, as are the `allowSameDay`, `startPlaceholder`, `endPlaceholder`, `timeDisplayFormat` and `classPrefix`
+  options and the in-panel 12h/24h switch (`use12Hour` decides). `parseExactDate` is exported beside `parseFuzzyInput`.
+  The shell's classes lost their fuzzy prefix (`ottadate-entry`, `ottadate-result-label`, `ottadate-panel`).
 - **One blog feed.** `/blog` and the tag, category, series, author and date archives render the same feed: the same
   cards, the same search box and type menu, and the same pager. Search, type, page and language live in the URL, so a
   filtered view can be shared and the back button works, and the featured rail stays on the front page. A scoped page

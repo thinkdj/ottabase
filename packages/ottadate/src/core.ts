@@ -67,3 +67,7 @@ export {
     resolutionIndex,
     snapToResolution,
 } from './core/fuzzy';
+
+// Typed exact dates ("5 jan 2026", "tomorrow 9am")
+export { parseExactDate } from './core/parse-exact';
+export type { ParseExactOptions } from './core/parse-exact';

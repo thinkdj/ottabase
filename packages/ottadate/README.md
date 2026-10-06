@@ -5,22 +5,26 @@ JS — no React, Vue, or Angular required.
 
 ## Features
 
-- **DatePicker** — Single date selection with calendar popover or inline mode
-- **DateRangePicker** — Two-calendar layout for start/end range selection
-- **DateRangePicker (with Presets)** — Sidebar with quick-select presets + Apply/Cancel footer
-- **DateTimePicker** — Calendar + time inputs (hours, minutes, optional seconds, 12h/24h toggle)
+- **One shell** - every picker is the same field, panel, type-to-parse entry, result line and footer; only the body
+  differs, so a reader who has used one has used them all
+- **DatePicker** - one day; a click stores it and closes, the result line names it in words and says how far off it is
+- **DateRangePicker** - a first and last day on two months side by side, with optional quick ranges beside them
+- **DateTimePicker** - a day and a time (hour, minute, optional seconds, a 12 or 24 hour clock, three quick times)
 - **FuzzyDateTimePicker**: half-remembered dates ("Early 1990s", "Summer 1998", "Late May 2010") in one fixed-size panel
   that zooms like a map (decades → years → months → days → hours). Tap what you remember, as roughly as you like; parts
   and "~ Roughly" are drawn as bands on the grid, and the panel spells out the stored range
 - **FuzzyDateTimeCompact**: same shell with native `<select>`s in label order ("Late · May · 2010"): the smallest
   footprint, and the OS wheel on phones
-- **Type it**: both fuzzy pickers take typed memories ("summer 98", "early 90s", "last night") with a live preview
+- **Type it**: every picker takes typed input with a live preview: dates ("5 jan 2026", "tomorrow 9am", "5 jan to 12
+  jan", a preset by name) and memories ("summer 98", "early 90s", "last night"); nothing is ever guessed
+- **Keyboard-driven** - one tab stop per grid, arrows move through it, Home and End jump, PageUp and PageDown turn the
+  month, Escape closes
 - **UTC-first** — Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
   objects
 - **Auto timezone** — Displays dates in user's detected timezone automatically
 - **Inline or popover** — Both modes supported for all picker variants
-- **Popover not clipped in scroll panes** — `DatePicker` / `DateTimePicker` popovers use `position: fixed` with viewport
-  clamping so narrow sidebars (`overflow: auto`) do not cut off the calendar
+- **Popover not clipped in scroll panes** - every popover uses `position: fixed` with viewport clamping, so narrow
+  sidebars (`overflow: auto`) do not cut it off
 - **Theme-aware** — CSS custom properties integrate with shadcn/tailwind design tokens; dark mode supported
 - **Tree-shakeable** — Import only what you need via sub-path exports
 
@@ -46,15 +50,16 @@ const picker = OttaDate.createDatePicker(document.getElementById('container')!, 
 
 ### `OttaDate.createDatePicker(container, options)`
 
-Single date selector.
+One day. A click on a day stores it and closes the popover; Today does the same with today. The result line names the
+day in words ("Tuesday, January 20, 2026") and says how far off it is ("In 5 days").
 
 ```typescript
 const picker = OttaDate.createDatePicker(container, {
     value: 1704067200, // UTC unix timestamp (seconds)
-    onChange: (ts) => {}, // Called on selection
+    onChange: (ts) => {}, // Called when a day is stored or cleared
     timezone: 'auto', // 'auto' detects browser TZ (default)
     timestampFormat: 'unix', // 'unix' | 'iso' | 'date'
-    displayFormat: 'MMM d, yyyy', // date-fns format string
+    displayFormat: 'MMM d, yyyy', // date-fns format string for the field
     firstDayOfWeek: 1, // 0 = Sunday, 1 = Monday
     inline: false, // true = always visible, no popover
     placeholder: 'Select date…',
@@ -74,26 +79,29 @@ picker.destroy(); // Clean up DOM
 picker.isOpen(); // Check open state
 ```
 
+Typed: "2026-01-05", "5 jan 2026", "jan 5", "tomorrow", "next friday". A day outside `minDate` / `maxDate` is refused
+with the allowed span on the result line.
+
 ### `OttaDate.createDateRangePicker(container, options)`
 
-Start/end date range selector with dual calendar.
+A first day and a last day, on two months side by side. The first click starts a draft (the result line says "Jan 20,
+2026 to …", nothing is stored yet, and the span follows the pointer); the second click stores the range in order and
+closes. Closing with only a first day drops it. `onChange` only ever reports a whole range, or
+`{ start: null, end: null }` after Clear.
 
 ```typescript
-// Basic — auto-apply on selection, Today/Clear footer
 const range = OttaDate.createDateRangePicker(container, {
     value: { start: 1704067200, end: 1704672000 },
     onChange: ({ start, end }) => console.log(start, end),
-    allowSameDay: true, // Allow same start/end (default: true)
-    startPlaceholder: 'Start date',
-    endPlaceholder: 'End date',
 });
 
 range.getValue(); // { start: 1704067200, end: 1704672000 }
 ```
 
-#### With Preset Sidebar
+#### With presets
 
-Pass `presets` to enable a quick-select sidebar with Apply/Cancel footer:
+Pass `presets` for quick ranges beside the months. A preset stores at once and shows as pressed while the stored range
+matches it; the result line names it ("Last 7 Days, 7 days").
 
 ```typescript
 import { OttaDate, getDefaultRangePresets } from '@ottabase/ottadate';
@@ -129,26 +137,26 @@ const range = OttaDate.createDateRangePicker(container, {
 });
 ```
 
-**Preset mode behavior:**
-
-- Sidebar lists presets with a "Customised »" first item for manual calendar selection
-- Selecting a preset highlights it and auto-navigates both calendars to show the range
-- Cancel reverts to the previously committed selection; Apply commits the draft
-- Without `presets`, the picker behaves as classic mode (auto-apply, Today/Clear footer)
+Typed: "5 jan to 12 jan", "2026-01-05 - 2026-01-12", a single day ("tomorrow") for a one-day range, or a preset by its
+name ("last 7 days").
 
 ### `OttaDate.createDateTimePicker(container, options)`
 
-Calendar + time inputs.
+A day and a time. The calendar picks the day and keeps the time; the time row under it (hour, minute, optional seconds,
+AM/PM on a 12-hour clock, and the quick times 00:00, 12:00 and 23:59) stores on every edit. Done closes. The result line
+names the moment and the zone it is in ("Asia/Kolkata (UTC+05:30)").
 
 ```typescript
 const dt = OttaDate.createDateTimePicker(container, {
     value: 1704067200,
     onChange: (ts) => console.log(ts),
-    showSeconds: false, // Show seconds input (default: false)
-    use12Hour: false, // 12h AM/PM pill toggle (default: false, 24h)
+    showSeconds: false, // Show a seconds input (default: false)
+    use12Hour: false, // 12-hour clock with an AM/PM switch (default: false, 24h)
     minuteStep: 1, // Minute increment (default: 1)
 });
 ```
+
+Typed: "5 jan 2026 14:30", "tomorrow 9am", "12:15 pm" (today at that time). A date on its own lands at 00:00.
 
 ### `OttaDate.createFuzzyDateTimePicker(container, options)`
 
@@ -324,22 +332,40 @@ decades resolve to the most recent past occurrence ("98" → 1998, "30s" → 193
 tonight, last night, this morning) cover the journaling hot path; a time requires a full date. Pass `{ now }` for a
 deterministic reference date.
 
+## The shell
+
+Every picker is built on one shell, so the parts are always in the same place:
+
+```text
+[ Jan 20, 2026            × ]   field: the open button and a clear button, siblings
+┌───────────────────────────┐
+│ Type it: 5 jan, tomorrow… │   type-to-parse entry (quickEntry), previewed live, stored on Enter
+│ <body>                    │   the calendar, the two months, the zoom grid, the selects
+│ Tuesday, January 20, 2026 │   result line: what is stored, in words, with the fuzzy "~ Roughly" beside it
+│ In 5 days                 │
+│ Today  Clear         Done │   footer (Done only in popover mode, and only where a pick does not close)
+└───────────────────────────┘
+```
+
+The body stores through the shell, so every variant gets the same field text, `onChange`, disabled state (the panel goes
+inert), focus handling (keyboard focus survives a re-render) and popover positioning. `parseExactDate` and
+`parseFuzzyInput` are the two parsers behind the entry and are exported on their own.
+
 ## Shared Options (all pickers)
 
-| Option              | Type                        | Default          | Description                     |
-| ------------------- | --------------------------- | ---------------- | ------------------------------- |
-| `timezone`          | `string \| 'auto'`          | `'auto'`         | Timezone for display            |
-| `timestampFormat`   | `'unix' \| 'iso' \| 'date'` | `'unix'`         | Format for getter/setter values |
-| `locale`            | `string`                    | `'en-US'`        | Locale for date formatting      |
-| `firstDayOfWeek`    | `0 \| 1`                    | `1`              | 0 = Sunday, 1 = Monday          |
-| `displayFormat`     | `string`                    | `'MMM d, yyyy'`  | date-fns format string          |
-| `timeDisplayFormat` | `string`                    | `'HH:mm'`        | Time format string              |
-| `classPrefix`       | `string`                    | `'ottadate'`     | CSS class prefix                |
-| `inline`            | `boolean`                   | `false`          | Always visible, no popover      |
-| `placeholder`       | `string`                    | `'Select date…'` | Placeholder text                |
-| `disabled`          | `boolean`                   | `false`          | Disable the picker              |
-| `minDate`           | `number \| Date`            | —                | Min selectable date             |
-| `maxDate`           | `number \| Date`            | —                | Max selectable date             |
+| Option            | Type                        | Default          | Description                      |
+| ----------------- | --------------------------- | ---------------- | -------------------------------- |
+| `timezone`        | `string \| 'auto'`          | `'auto'`         | Timezone for display             |
+| `timestampFormat` | `'unix' \| 'iso' \| 'date'` | `'unix'`         | Format for getter/setter values  |
+| `locale`          | `string`                    | `'en-US'`        | Locale for date formatting       |
+| `firstDayOfWeek`  | `0 \| 1`                    | `1`              | 0 = Sunday, 1 = Monday           |
+| `displayFormat`   | `string`                    | `'MMM d, yyyy'`  | date-fns format string           |
+| `inline`          | `boolean`                   | `false`          | Always visible, no popover       |
+| `placeholder`     | `string`                    | `'Select date…'` | Placeholder text                 |
+| `disabled`        | `boolean`                   | `false`          | Disable the picker               |
+| `quickEntry`      | `boolean`                   | `true`           | Type-to-parse entry in the panel |
+| `minDate`         | `number \| Date`            | none             | Min selectable date              |
+| `maxDate`         | `number \| Date`            | none             | Max selectable date              |
 
 ## Programmatic API (all pickers)
 
@@ -376,8 +402,8 @@ import { createFuzzyDateTime, snapToResolution, buildFuzzyLabel, formatFuzzyRang
 // `select(level, at)` names a period exactly (the one move a zoomable UI needs).
 import { createFuzzySelection } from '@ottabase/ottadate/fuzzy';
 
-// Type-to-parse (no DOM): "early 90s" / "summer 98" → FuzzyDateTime
-import { parseFuzzyInput } from '@ottabase/ottadate/parse';
+// Type-to-parse (no DOM): "early 90s" / "summer 98" → FuzzyDateTime; "5 jan 2026" / "tomorrow 9am" → Date
+import { parseFuzzyInput, parseExactDate } from '@ottabase/ottadate/parse';
 
 // Stylesheet
 import '@ottabase/ottadate/styles.css';
@@ -447,11 +473,9 @@ function MyDatePicker({ value, onChange }) {
   handles both.
 - **FuzzyDateTime timestamp is snapped.** For resolution `'month'`, the timestamp points to the 1st of that month at
   00:00 UTC. The `resolution` field tells renderers to only display down to that granularity.
-- **Preset mode is opt-in.** Pass `presets` to `createDateRangePicker` to enable the sidebar + Apply/Cancel footer.
-  Without it, the picker auto-applies on selection (classic mode). This is fully backward-compatible.
+- **Ranges store whole.** `onChange` fires with both days, or with `{ start: null, end: null }` after Clear. A first day
+  on its own is a draft on the result line and is dropped when the popover closes.
 - **Inline mode disables close.** When `inline: true`, `open()` / `close()` are no-ops; the calendar is always rendered.
-- **Popover positioning.** `DatePicker`, `DateTimePicker` and both fuzzy pickers use `position: fixed` with viewport
-  clamping, so scroll panes never clip them. `DateRangePicker` uses `position: absolute` relative to the picker root;
-  give its parent `position: relative` or normal flow.
-- **Keyboard navigation.** The fuzzy pickers are fully keyboard-driven (see above). The calendar pickers (`DatePicker`,
-  `DateRangePicker`, `DateTimePicker`) do not have arrow-key navigation yet.
+- **Popover positioning.** Every picker uses `position: fixed` with viewport clamping, so scroll panes never clip them.
+- **Keyboard navigation.** Every picker is keyboard-driven: one tab stop per grid, arrows move through it, Home and End
+  jump, PageUp and PageDown turn the month, Enter stores a typed entry, Escape drops typed text and then closes.

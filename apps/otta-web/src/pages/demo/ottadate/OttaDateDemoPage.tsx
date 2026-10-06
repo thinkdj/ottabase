@@ -64,7 +64,9 @@ function DatePickerDemo() {
         <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Date Picker</CardTitle>
-                <CardDescription>Single date selection. Returns UTC unix timestamp by default.</CardDescription>
+                <CardDescription>
+                    One day. Click it, or type it (5 jan 2026, tomorrow). Returns a UTC unix timestamp by default.
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />
@@ -121,7 +123,7 @@ function DateRangeDemo() {
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Date Range Picker</CardTitle>
                 <CardDescription>
-                    Two-calendar layout for start/end selection. Click once for start, again for end.
+                    Two months side by side. The first click starts the range, the second stores it.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -151,9 +153,9 @@ function DateRangePresetsDemo() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="text-[0.9375rem] font-semibold">Date Range — Presets</CardTitle>
+                <CardTitle className="text-[0.9375rem] font-semibold">Date Range with presets</CardTitle>
                 <CardDescription>
-                    Sidebar with quick-select presets (Today, Last 7 days, etc.) plus Apply / Cancel flow.
+                    Quick ranges beside the months. A preset stores at once; the months still take a custom range.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -183,7 +185,9 @@ function DateTimeDemo() {
         <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">DateTime Picker</CardTitle>
-                <CardDescription>Calendar with time inputs. Combines date and time selection.</CardDescription>
+                <CardDescription>
+                    Calendar with a time row. A day keeps the time; every time edit stores.
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div ref={ref} />

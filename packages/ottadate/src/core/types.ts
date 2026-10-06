@@ -88,16 +88,17 @@ export interface OttaDateConfig {
     maxDate?: number | Date;
     /** Date display format string (date-fns pattern). Default: 'MMM d, yyyy' */
     displayFormat?: string;
-    /** Time display format string (date-fns pattern). Default: 'HH:mm' */
-    timeDisplayFormat?: string;
-    /** CSS class prefix for custom styling. Default: 'ottadate' */
-    classPrefix?: string;
     /** Whether the picker opens inline (true) or as a popover (false). Default: false */
     inline?: boolean;
     /** Placeholder text for the input trigger. Default: 'Select date...' */
     placeholder?: string;
     /** Whether the field is disabled */
     disabled?: boolean;
+    /**
+     * Type-to-parse entry at the top of the panel: "5 jan 2026", "tomorrow 9am",
+     * "5 jan to 12 jan", or a memory like "summer 98" in the fuzzy pickers. Default: true
+     */
+    quickEntry?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,17 +132,10 @@ export interface DateRangePreset {
 export interface DateRangePickerOptions extends OttaDateConfig {
     /** Current value — start/end pair */
     value?: DateRange;
-    /** Called when the user selects a range */
+    /** Called when a whole range is stored (never with only a first day) */
     onChange?: (value: DateRange) => void;
-    /** Allow same-day start/end. Default: true */
-    allowSameDay?: boolean;
-    /** Placeholder for start input */
-    startPlaceholder?: string;
-    /** Placeholder for end input */
-    endPlaceholder?: string;
     /**
-     * Preset quick-select options displayed in a sidebar.
-     * When provided, the picker shows a sidebar list + Apply/Cancel footer.
+     * Quick ranges beside the months, stored as soon as one is chosen.
      * Use `getDefaultRangePresets()` for a sensible starter list.
      */
     presets?: DateRangePreset[];
@@ -183,11 +177,6 @@ export interface FuzzyDateTimePickerOptions extends OttaDateConfig {
     parts?: boolean;
     /** Offer the "~ Roughly" toggle that widens the window. Default: true */
     allowApproximate?: boolean;
-    /**
-     * Type-to-parse field at the top of the full picker ("early 90s",
-     * "summer 98", "21 jul 2010" → parsed into the selection). Default: true
-     */
-    quickEntry?: boolean;
     /** Hemisphere for season → month mapping. Default: 'north' */
     hemisphere?: Hemisphere;
     /** Override label generation (e.g. "Watched in 1996" instead of "Sometime in 1996") */
