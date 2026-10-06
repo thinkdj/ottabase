@@ -1,7 +1,7 @@
 /**
  * Roles: pick a role, tick the permissions the server actually checks, review
- * what changed, then save. One screen in place of the roles table and the
- * all-roles-by-all-permissions matrix (which saved on every tick).
+ * what changed, then save. Compare shows every role against every permission,
+ * read-only, for the glance the old matrix gave without its save-on-every-tick.
  */
 
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
@@ -14,8 +14,8 @@ import { ConfirmDialog, EmptyState, LoadingState } from '@ottabase/ui-components
 import { Alert, Button, Checkbox, Input, Label, Textarea } from '@ottabase/ui-shadcn';
 import { findGrantingPermission, PERMISSION_CATALOG, type PermissionDefinition } from '@ottabase/utils/permissions';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { Plus, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Check, Columns3, Plus, Trash2, X } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 interface Draft {
     name: string;
@@ -42,7 +42,8 @@ const roleLabel = (role: RoleRecord) => role.displayName || role.name;
 
 export function RolesPage() {
     const navigate = useNavigate();
-    const { role: selectedId } = useSearch({ strict: false }) as { role?: string };
+    const { role: selectedId, view } = useSearch({ strict: false }) as { role?: string; view?: 'compare' };
+    const comparing = view === 'compare';
     const toast = useRBACToast();
     const { data: roles = [], isLoading, error, refetch } = useRoles();
     const createRole = useCreateRole();
@@ -61,7 +62,13 @@ export function RolesPage() {
     }, [creating, selected]);
 
     const select = (id: string | null) =>
-        navigate({ to: '/admin/access/rbac', search: { role: id ?? undefined }, replace: true });
+        navigate({ to: '/admin/access/rbac', search: { role: id ?? undefined, view: undefined }, replace: true });
+    const compare = (on: boolean) =>
+        navigate({
+            to: '/admin/access/rbac',
+            search: { role: on ? undefined : selectedId, view: on ? 'compare' : undefined },
+            replace: true,
+        });
 
     const added = draft && original ? draft.grants.filter((g) => !original.grants.includes(g)) : [];
     const removed = draft && original ? original.grants.filter((g) => !draft.grants.includes(g)) : [];
@@ -127,16 +134,29 @@ export function RolesPage() {
                         A role is a bundle of permissions. Pick one to see and change what it allows.
                     </p>
                 </div>
-                <Button onClick={() => select(NEW_ROLE)} disabled={creating} className="shrink-0 gap-2">
-                    <Plus className="h-4 w-4" />
-                    New role
-                </Button>
+                <div className="flex shrink-0 gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => compare(!comparing)}
+                        aria-pressed={comparing}
+                        className="gap-2"
+                    >
+                        <Columns3 className="h-4 w-4" />
+                        {comparing ? 'Edit roles' : 'Compare roles'}
+                    </Button>
+                    <Button onClick={() => select(NEW_ROLE)} disabled={creating} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        New role
+                    </Button>
+                </div>
             </div>
 
             {error && <ApiErrorDisplay error={error} onRetry={() => refetch()} />}
 
             {isLoading && roles.length === 0 ? (
                 <LoadingState count={5} height="h-12" />
+            ) : comparing ? (
+                <RoleComparison roles={[...custom, ...system]} onPick={select} />
             ) : (
                 <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
                     <nav aria-label="Roles" className="space-y-4">
@@ -334,6 +354,101 @@ export function RolesPage() {
                 primaryActionText="Delete"
                 onConfirm={remove}
             />
+        </div>
+    );
+}
+
+/** Every role against every permission, read-only; a role name opens it in the editor */
+function RoleComparison({ roles, onPick }: { roles: RoleRecord[]; onPick: (id: string) => void }) {
+    if (roles.length === 0) return <EmptyState compact title="No roles yet" description="Create the first one." />;
+    const grant = (role: RoleRecord, id: string) => {
+        const grants = role.permissions ?? [];
+        if (grants.includes(id)) return { on: true, via: null };
+        return { on: false, via: findGrantingPermission(grants, id) };
+    };
+    return (
+        <div className="overflow-x-auto rounded-xl ring-1 ring-border">
+            <table className="w-full min-w-[40rem] text-sm">
+                <caption className="sr-only">Which permissions each role grants</caption>
+                <thead>
+                    <tr className="bg-muted/40 text-left">
+                        <th scope="col" className="sticky left-0 bg-muted/40 px-3 py-2 font-medium">
+                            Permission
+                        </th>
+                        {roles.map((role) => (
+                            <th key={role.id} scope="col" className="px-3 py-2 text-center font-medium">
+                                <button
+                                    type="button"
+                                    onClick={() => onPick(role.id)}
+                                    className="rounded-md px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    {roleLabel(role)}
+                                </button>
+                                {role.isSystem && (
+                                    <span className="block text-[0.6875rem] font-normal text-muted-foreground">
+                                        system
+                                    </span>
+                                )}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {Object.entries(GROUPS).map(([group, perms]) => (
+                        <Fragment key={group}>
+                            <tr>
+                                <th
+                                    scope="rowgroup"
+                                    colSpan={roles.length + 1}
+                                    className="px-3 pb-1 pt-4 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
+                                >
+                                    {group}
+                                </th>
+                            </tr>
+                            {perms.map((perm) => (
+                                <tr key={perm.id} className="border-t border-border/60">
+                                    <th
+                                        scope="row"
+                                        className="sticky left-0 bg-background px-3 py-1.5 text-left font-normal"
+                                    >
+                                        {perm.label}{' '}
+                                        <code className="font-mono text-xs text-muted-foreground">{perm.id}</code>
+                                    </th>
+                                    {roles.map((role) => {
+                                        const { on, via } = grant(role, perm.id);
+                                        return (
+                                            <td key={role.id} className="px-3 py-1.5 text-center">
+                                                {on || via ? (
+                                                    <Check
+                                                        className={`mx-auto h-4 w-4 ${via ? 'text-muted-foreground' : 'text-success'}`}
+                                                        aria-hidden="true"
+                                                    />
+                                                ) : null}
+                                                <span className="sr-only">
+                                                    {on ? 'Yes' : via ? `Yes, via ${via}` : 'No'}
+                                                </span>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </Fragment>
+                    ))}
+                    <tr className="border-t border-border/60">
+                        <th scope="row" className="sticky left-0 bg-background px-3 py-2 text-left font-normal">
+                            Wildcard grants
+                        </th>
+                        {roles.map((role) => (
+                            <td key={role.id} className="px-3 py-2 text-center font-mono text-xs text-muted-foreground">
+                                {(role.permissions ?? []).filter((g) => !CATALOG_IDS.has(g)).join(' ') || null}
+                            </td>
+                        ))}
+                    </tr>
+                </tbody>
+            </table>
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+                A green tick is a direct grant; a grey one comes from a wildcard. Pick a role name to edit it.
+            </p>
         </div>
     );
 }

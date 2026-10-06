@@ -2,7 +2,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { languageAtom } from '@/ottabase/state/appState';
 import { DemoPageHeader } from '../DemoPageHeader';
-import { languageNames, supportedLanguages, Trans, useTranslation } from '@ottabase/i18n/react';
+import { languageNames, supportedLanguages, Trans, useTranslation, type SupportedLanguage } from '@ottabase/i18n/react';
 import {
     Badge,
     Card,
@@ -18,27 +18,37 @@ import {
     TableRow,
 } from '@ottabase/ui-shadcn';
 import { useAtomValue } from 'jotai';
+import { useState } from 'react';
 
 export function I18nDemoPage() {
     const { t, i18n } = useTranslation('common');
     const globalLanguage = useAtomValue(languageAtom);
+    // The preview reads another language's strings without touching the app's language or storage
+    const [preview, setPreview] = useState<SupportedLanguage>(i18n.language as SupportedLanguage);
+    const tp = i18n.getFixedT(preview, 'common');
 
     return (
         <div className="space-y-8">
             <DemoPageHeader
                 title="i18n"
-                description="Demonstrating i18n hybrid model: package defaults + app overrides + global state integration"
+                description="Package translations, app overrides and the global language, with a preview of every package language."
             />
 
             {/* Language Switcher Component */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Language Switcher</CardTitle>
-                    <CardDescription>Interactive component to change the application language</CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Language switcher</CardTitle>
+                    <CardDescription>
+                        The header's switcher: it changes the app's language and offers only the enabled languages.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-4">
                     <LanguageSwitcher languages={i18nConfig.enabledLanguages} />
-                    <p className="text-sm text-muted-foreground">Click to switch between available languages</p>
+                    <p className="text-sm text-muted-foreground">
+                        {i18nConfig.enabledLanguages.length > 1
+                            ? 'Pick a language to switch the whole app.'
+                            : 'Only one language is enabled, so there is nothing to switch to yet.'}
+                    </p>
                 </CardContent>
             </Card>
 
@@ -73,12 +83,34 @@ export function I18nDemoPage() {
             {/* Translation Examples */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Translation Examples</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Translation examples</CardTitle>
                     <CardDescription>
-                        Below are examples of common translations. Switch languages to see them change in real-time.
+                        Common strings in the language you pick here. The preview is local to this page: the app's
+                        language and the saved choice stay as they are.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    <div
+                        role="group"
+                        aria-label="Preview language"
+                        className="inline-flex flex-wrap rounded-lg bg-muted/40 p-0.5"
+                    >
+                        {supportedLanguages.map((lang) => (
+                            <button
+                                key={lang}
+                                type="button"
+                                onClick={() => setPreview(lang)}
+                                aria-pressed={preview === lang}
+                                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                                    preview === lang
+                                        ? 'bg-background text-foreground ring-1 ring-border'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                {languageNames[lang]}
+                            </button>
+                        ))}
+                    </div>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -91,55 +123,55 @@ export function I18nDemoPage() {
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">welcome</code>
                                 </TableCell>
-                                <TableCell>{t('welcome')}</TableCell>
+                                <TableCell>{tp('welcome')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">language</code>
                                 </TableCell>
-                                <TableCell>{t('language')}</TableCell>
+                                <TableCell>{tp('language')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">save</code>
                                 </TableCell>
-                                <TableCell>{t('save')}</TableCell>
+                                <TableCell>{tp('save')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">cancel</code>
                                 </TableCell>
-                                <TableCell>{t('cancel')}</TableCell>
+                                <TableCell>{tp('cancel')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">loading</code>
                                 </TableCell>
-                                <TableCell>{t('loading')}</TableCell>
+                                <TableCell>{tp('loading')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">error</code>
                                 </TableCell>
-                                <TableCell>{t('error')}</TableCell>
+                                <TableCell>{tp('error')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">success</code>
                                 </TableCell>
-                                <TableCell>{t('success')}</TableCell>
+                                <TableCell>{tp('success')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">login</code>
                                 </TableCell>
-                                <TableCell>{t('login')}</TableCell>
+                                <TableCell>{tp('login')}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">logout</code>
                                 </TableCell>
-                                <TableCell>{t('logout')}</TableCell>
+                                <TableCell>{tp('logout')}</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -149,8 +181,10 @@ export function I18nDemoPage() {
             {/* Advanced Examples */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Advanced Examples</CardTitle>
-                    <CardDescription>Interpolation, pluralization, and rich text rendering</CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Advanced examples</CardTitle>
+                    <CardDescription>
+                        Interpolation, pluralization and rich text, in the preview language
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -166,7 +200,7 @@ export function I18nDemoPage() {
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Interpolation</code>
                                 </TableCell>
-                                <TableCell>{t('greeting', { name: 'Developer' })}</TableCell>
+                                <TableCell>{tp('greeting', { name: 'Developer' })}</TableCell>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                         t('greeting', &#123; name: 'Developer' &#125;)
@@ -177,7 +211,7 @@ export function I18nDemoPage() {
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Pluralization (1)</code>
                                 </TableCell>
-                                <TableCell>{t('messages', { count: 1 })}</TableCell>
+                                <TableCell>{tp('messages', { count: 1 })}</TableCell>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                         t('messages', &#123; count: 1 &#125;)
@@ -188,7 +222,7 @@ export function I18nDemoPage() {
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Pluralization (5)</code>
                                 </TableCell>
-                                <TableCell>{t('messages', { count: 5 })}</TableCell>
+                                <TableCell>{tp('messages', { count: 5 })}</TableCell>
                                 <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                         t('messages', &#123; count: 5 &#125;)
@@ -201,6 +235,7 @@ export function I18nDemoPage() {
                                 </TableCell>
                                 <TableCell>
                                     <Trans
+                                        t={tp}
                                         i18nKey="agreement"
                                         components={{
                                             1: <a href="/docs" className="text-primary underline" />,
@@ -356,8 +391,10 @@ export const i18nConfig = {
             {/* Resource Override Comparison */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Resource Override Example</CardTitle>
-                    <CardDescription>App resources override package defaults via deep merge</CardDescription>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Resource override example</CardTitle>
+                    <CardDescription>
+                        App resources override package defaults via deep merge, shown in the app's language
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>

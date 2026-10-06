@@ -200,3 +200,59 @@ describe('handleAdminUserById', () => {
         expect(body.data.memberships).toEqual([]);
     });
 });
+
+describe('handleAdminUsers', () => {
+    it('lists users with their platform-admin flag and the counts above the list', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue({
+            user: { id: 'admin-1' },
+            organizationId: 'system',
+            appId: 'web',
+            rbac: {} as any,
+            session: {},
+        });
+        const paginateSpy = vi.spyOn(User, 'paginate').mockResolvedValue({
+            data: [
+                { toJson: () => ({ id: 'u1', email: 'ada@example.com' }) },
+                { toJson: () => ({ id: 'u2', email: 'bob@example.com' }) },
+            ],
+            total: 2,
+            page: 1,
+            perPage: 25,
+        } as any);
+        const bound: unknown[][] = [];
+        const db = {
+            prepare: (sql: string) => ({
+                bind: (...values: unknown[]) => {
+                    bound.push(values);
+                    return { sql };
+                },
+            }),
+            batch: vi.fn(async (statements: { sql: string }[]) =>
+                statements.map(({ sql }) =>
+                    sql.includes('AS total')
+                        ? { results: [{ total: 2, verified: 1, new_this_month: 2, admins: 1 }] }
+                        : { results: [{ user_id: 'u1' }] },
+                ),
+            ),
+        };
+
+        const { handleAdminUsers } = await import('../admin-users');
+        const response = await handleAdminUsers({
+            request: new Request('http://localhost/api/admin/users'),
+            env: { OBCF_D1: db },
+        } as any);
+        const body = (await response.json()) as any;
+
+        expect(response.status).toBe(200);
+        expect(body.data.map((u: any) => [u.id, u.role])).toEqual([
+            ['u1', 'admin'],
+            ['u2', 'user'],
+        ]);
+        expect(body.stats).toEqual({ total: 2, admins: 1, verified: 1, newThisMonth: 2 });
+        // The per-row admin lookup is scoped to the listed ids
+        expect(bound[1]).toEqual(['u1', 'u2']);
+        expect(db.batch).toHaveBeenCalledTimes(1);
+
+        paginateSpy.mockRestore();
+    });
+});

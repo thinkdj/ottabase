@@ -2,7 +2,8 @@ import { MAX_SEARCH_TERM_BYTES } from '@ottabase/ottaorm';
 import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { createPaginatedResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/rbac/admin-guard';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
 
@@ -40,13 +41,73 @@ export async function handleAdminUsers(context: ApiRouteContext): Promise<Respon
         });
     }
 
-    return paginatedJsonResponse({
-        data: paginationResult.data.map((u) => u.toJson()),
-        total: paginationResult.total,
-        page: paginationResult.page,
-        perPage: paginationResult.perPage,
-        path: '/api/admin/users',
+    const users = paginationResult.data.map((u) => u.toJson());
+    const { stats, adminIds } = await userStats(
+        context.env.OBCF_D1,
+        users.map((u) => String(u.id)),
+    );
+
+    return jsonResponse({
+        ...createPaginatedResponse({
+            data: users.map((u) => ({ ...u, role: adminIds.has(String(u.id)) ? 'admin' : 'user' })),
+            total: paginationResult.total,
+            page: paginationResult.page,
+            perPage: paginationResult.perPage,
+            path: '/api/admin/users',
+        }),
+        stats,
     });
+}
+
+/** Admin here means the control plane: a system-scoped grant carrying platform:admin or the *:* wildcard */
+const PLATFORM_ADMIN_GRANTS = `SELECT DISTINCT ur.user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+    WHERE ur.organization_id = '${SYSTEM_ORGANIZATION_ID}'
+      AND (r.permissions LIKE '%"*:*"%' OR r.permissions LIKE '%"platform:admin"%')`;
+
+export interface UserStats {
+    total: number;
+    admins: number;
+    verified: number;
+    newThisMonth: number;
+}
+
+/** The counts above the Users list, and which of the listed users are platform admins; one D1 round trip */
+async function userStats(
+    db: D1Database | undefined,
+    listedIds: string[],
+): Promise<{ stats: UserStats | null; adminIds: Set<string> }> {
+    if (!db) return { stats: null, adminIds: new Set() };
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const statements = [
+        db
+            .prepare(
+                `SELECT (SELECT count(*) FROM users) AS total,
+                        (SELECT count(*) FROM users WHERE email_verified IS NOT NULL) AS verified,
+                        (SELECT count(*) FROM users WHERE created_at >= ?) AS new_this_month,
+                        (SELECT count(*) FROM (${PLATFORM_ADMIN_GRANTS})) AS admins`,
+            )
+            .bind(monthStart.getTime()),
+    ];
+    if (listedIds.length > 0) {
+        statements.push(
+            db
+                .prepare(`${PLATFORM_ADMIN_GRANTS} AND ur.user_id IN (${listedIds.map(() => '?').join(', ')})`)
+                .bind(...listedIds),
+        );
+    }
+    const [counts, admins] = await db.batch<Record<string, unknown>>(statements);
+    const row = counts.results?.[0] ?? {};
+    return {
+        stats: {
+            total: Number(row.total ?? 0),
+            admins: Number(row.admins ?? 0),
+            verified: Number(row.verified ?? 0),
+            newThisMonth: Number(row.new_this_month ?? 0),
+        },
+        adminIds: new Set((admins?.results ?? []).map((r) => String(r.user_id))),
+    };
 }
 
 /**

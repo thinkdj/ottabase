@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Three things the uplift had dropped are back.** The Users page shows its counts again (total, platform admins,
+  verified emails, new this month) from one D1 query, and its Role column now reflects a real system-scoped grant
+  instead of a field the API never set. The roles screen has a Compare view (`?view=compare`): every role against every
+  permission, read-only, a green tick for a direct grant and a grey one for a wildcard, with a role name opening the
+  editor. The i18n demo previews any package language (English, Spanish, French, German) on the page itself, through
+  `getFixedT`, without touching the app's language or the saved choice. The overview and the Users page share one
+  `StatList`.
 - **Final UI, UX and IA pass over the packages, the demo gallery and the content.** One name per demo: the sidebar, the
   gallery cards, the page heading and the breadcrumb all read the same label, the Cloudflare overview is built from the
   same registry, and a demo of a disabled package (OttaAI, Comments) is left out everywhere. Demo pages that could not

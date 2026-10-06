@@ -3,6 +3,7 @@
  * The section list comes from `ottabase/config/admin-nav.ts`, so a new admin page needs one entry there.
  */
 import { timeAgo } from '@/hooks/useLastRefreshed';
+import { StatList } from '@/components/admin/StatList';
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
 import { LoadingState } from '@ottabase/ui-components';
@@ -58,16 +59,7 @@ export function AdminIndexPage() {
                 )}
             </section>
 
-            {glance.length > 0 && (
-                <dl className="flex flex-wrap gap-x-10 gap-y-3">
-                    {glance.map((stat) => (
-                        <div key={stat.label}>
-                            <dt className="text-sm text-muted-foreground">{stat.label}</dt>
-                            <dd className="text-2xl font-semibold tabular-nums">{stat.value.toLocaleString()}</dd>
-                        </div>
-                    ))}
-                </dl>
-            )}
+            <StatList stats={glance} />
 
             <section aria-labelledby="activity-title" className="space-y-3">
                 <div className="flex items-baseline justify-between gap-4">

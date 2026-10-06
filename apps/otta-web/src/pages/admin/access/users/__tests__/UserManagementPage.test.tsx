@@ -46,6 +46,7 @@ describe('UserManagementPage', () => {
             return {
                 data,
                 pagination: { page: 1, perPage: 25, total: data.length, totalPages: 1, next: null, prev: null },
+                stats: { total: 2, admins: 1, verified: 1, newThisMonth: 2 },
             };
         });
     });
@@ -59,6 +60,9 @@ describe('UserManagementPage', () => {
         expect(screen.getByText('Unverified')).toBeInTheDocument();
         expect(screen.getByText('No name')).toBeInTheDocument();
         expect(screen.getByText('1 to 2 of 2')).toBeInTheDocument();
+        // The counts strip above the table
+        expect(screen.getByText('Platform admins').nextElementSibling).toHaveTextContent('1');
+        expect(screen.getByText('New this month').nextElementSibling).toHaveTextContent('2');
 
         fireEvent.click(screen.getByText('Ada Lovelace'));
         expect(navigate).toHaveBeenCalledWith({ to: '/admin/access/users/$userId/rbac', params: { userId: 'u1' } });

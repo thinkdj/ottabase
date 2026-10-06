@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { navigate, search, updateMutateAsync, createMutateAsync, roles } = vi.hoisted(() => ({
     navigate: vi.fn(),
-    search: { value: {} as { role?: string } },
+    search: { value: {} as { role?: string; view?: 'compare' } },
     updateMutateAsync: vi.fn(async () => ({})),
     createMutateAsync: vi.fn(async () => ({ id: 'r-new' })),
     roles: [
@@ -122,5 +122,23 @@ describe('RolesPage', () => {
             permissions: ['comments:moderate'],
         });
         expect(navigate).toHaveBeenLastCalledWith(expect.objectContaining({ search: { role: 'r-new' } }));
+    });
+
+    it('compares every role against every permission, read-only', () => {
+        search.value = { view: 'compare' };
+        render(<RolesPage />);
+        const table = screen.getByRole('table', { name: 'Which permissions each role grants' });
+        expect(within(table).getByRole('columnheader', { name: /editor/ })).toBeInTheDocument();
+        expect(within(table).getByRole('columnheader', { name: /platform_owner/ })).toBeInTheDocument();
+        const row = within(table).getByRole('row', { name: /posts:create/ });
+        const cells = within(row).getAllByRole('cell');
+        expect(cells[0]).toHaveTextContent('Yes');
+        expect(cells[1]).toHaveTextContent('Yes, via *:*');
+        const missing = within(within(table).getByRole('row', { name: /posts:publish/ })).getAllByRole('cell');
+        expect(missing[0]).toHaveTextContent('No');
+        expect(screen.queryByRole('form')).not.toBeInTheDocument();
+
+        fireEvent.click(within(table).getByRole('button', { name: 'editor' }));
+        expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { role: 'r-editor' } }));
     });
 });

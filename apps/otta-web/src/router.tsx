@@ -563,7 +563,8 @@ const adminOrganizationSettingsRoute = makeAdminRoute(
     'OrganizationSettingsPage',
     { scope: 'org' },
 );
-// One page: the role list, its permissions and the pending changes; ?role=<id|new> selects
+// One page: the role list, its permissions and the pending changes; ?role=<id|new> selects,
+// ?view=compare shows every role against every permission
 const adminRBACRoute = makeAdminRoute(
     '/admin/access/rbac',
     () => import('@/pages/admin/access/rbac/RolesPage'),
@@ -571,6 +572,7 @@ const adminRBACRoute = makeAdminRoute(
     {
         validateSearch: (search: Record<string, unknown>) => ({
             role: typeof search.role === 'string' && search.role ? search.role : undefined,
+            view: search.view === 'compare' ? ('compare' as const) : undefined,
         }),
     },
 );

@@ -1,6 +1,7 @@
 /**
  * Users (admin): everyone with an account, and the way into what each person may do.
  */
+import { StatList } from '@/components/admin/StatList';
 import type { PaginatedResponse } from '@/lib/api-types';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Chip } from '@ottabase/ui-components';
@@ -23,6 +24,13 @@ interface User {
     role?: 'admin' | 'user';
 }
 
+interface UserStats {
+    total: number;
+    admins: number;
+    verified: number;
+    newThisMonth: number;
+}
+
 const NO_USERS: User[] = [];
 
 const initials = (user: User) =>
@@ -37,7 +45,7 @@ const initials = (user: User) =>
 export function UserManagementPage() {
     const navigate = useNavigate();
     const list = useListState();
-    const users = useApiQuery<PaginatedResponse<User>>({
+    const users = useApiQuery<PaginatedResponse<User> & { stats?: UserStats | null }>({
         entity: 'users',
         queryKey: ['admin-users', list.params],
         endpoint: `/api/admin/users?${list.params}`,
@@ -45,6 +53,7 @@ export function UserManagementPage() {
     });
     const rows = users.data?.data ?? NO_USERS;
     const total = users.data?.pagination.total;
+    const stats = users.data?.stats;
 
     const openAccess = useCallback(
         (user: User) => void navigate({ to: '/admin/access/users/$userId/rbac', params: { userId: user.id } }),
@@ -118,6 +127,17 @@ export function UserManagementPage() {
             </header>
 
             {users.error && <Alert variant="destructive">{users.error.message}</Alert>}
+
+            {stats && (
+                <StatList
+                    stats={[
+                        { label: 'Total', value: stats.total },
+                        { label: 'Platform admins', value: stats.admins },
+                        { label: 'Verified emails', value: stats.verified },
+                        { label: 'New this month', value: stats.newThisMonth },
+                    ]}
+                />
+            )}
 
             <DataTable
                 table={table}
