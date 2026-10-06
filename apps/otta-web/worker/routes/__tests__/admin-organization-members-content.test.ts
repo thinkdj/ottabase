@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOrganizationInviteEmailContent } from '../admin-organization-members';
+import { buildOrganizationInviteEmailContent } from '../../../src/email/catalog';
 
 describe('organization invitation email content', () => {
     it('sanitizes tenant-controlled names and destination URLs before rendering HTML', () => {

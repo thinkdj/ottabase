@@ -39,7 +39,6 @@ vi.mock('@ottabase/ottaorm/models', () => ({
 }));
 vi.mock('../../../ottabase/config.loader', () => ({ getOttabaseConfig: vi.fn(() => ({ packages: {} })) }));
 vi.mock('../../../ottabase/helpers/referral-attribution', () => ({ processReferralAttribution: vi.fn() }));
-vi.mock('../../../src/email/templates', () => ({ registerAppEmailTemplates: vi.fn() }));
 vi.mock('../../lib/auth-utils', () => ({
     getAuthOptions: vi.fn(() => ({})),
     getUserLinkedAccounts: mocks.linkedAccounts,

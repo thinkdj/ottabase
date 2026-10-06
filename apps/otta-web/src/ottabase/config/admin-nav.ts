@@ -247,7 +247,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             },
             {
                 title: 'Email',
-                description: 'Provider status and test-send to verify email delivery.',
+                description: 'Every email the app sends, rendered, with a test send and provider status.',
                 href: '/admin/infrastructure/email',
                 icon: Mail,
             },

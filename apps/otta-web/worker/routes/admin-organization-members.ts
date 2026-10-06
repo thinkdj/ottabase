@@ -3,13 +3,12 @@ import { sendTemplatedEmail } from '@ottabase/email';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import { sanitizeBlockHtml, sanitizeInlineHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { isEmail, stripHtml } from '@ottabase/utils/string';
+import { isEmail } from '@ottabase/utils/string';
 import { requireAdminAccess, type AdminContext } from '../lib/admin-guard';
 import { bumpProfileVersion, invalidateMembershipCache, resolveMailer } from '../lib/auth-utils';
 import { notifyUser, quietly } from '../lib/notify';
 import { normalizeEmail } from '../lib/utils';
-import { registerAppEmailTemplates } from '../../src/email/templates';
+import { composeAppEmail } from '../../src/email/catalog';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
@@ -32,40 +31,6 @@ function isValidRole(role: unknown): role is 'owner' | 'admin' | 'member' {
 
 function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspended' {
     return status === 'active' || status === 'invited' || status === 'suspended';
-}
-
-export function buildOrganizationInviteEmailContent(params: {
-    organizationName: string;
-    destinationUrl: string;
-    alreadyHasAccount: boolean;
-}): { subject: string; header: string; body: string } {
-    const organizationNameText = stripHtml(sanitizeInlineHtml(params.organizationName))
-        .replace(/[\r\n]+/g, ' ')
-        .trim()
-        .slice(0, 200);
-    const displayName = organizationNameText || 'your organization';
-    const organizationNameHtml = displayName.replace(
-        /[&<>"']/g,
-        (character) =>
-            ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;',
-            })[character] as string,
-    );
-    const destinationUrl = sanitizeUrl(params.destinationUrl);
-    const action = params.alreadyHasAccount ? 'Sign in' : 'Create your account';
-    const lead = params.alreadyHasAccount
-        ? `You've been added to <strong>${organizationNameHtml}</strong>. Sign in to get started.`
-        : `You've been invited to join <strong>${organizationNameHtml}</strong>. Create an account with this email address to accept.`;
-
-    return {
-        subject: `You've been invited to join ${displayName}`,
-        header: `Join ${displayName}`,
-        body: sanitizeBlockHtml(`<p>${lead}</p><p><a href="${destinationUrl}">${action}</a></p>`),
-    };
 }
 
 /**
@@ -146,28 +111,16 @@ async function sendOrgInviteEmail(
         const organization = await Organization.find(params.organizationId);
         const orgName = (organization?.get('name') as string | undefined) ?? 'the organization';
 
-        registerAppEmailTemplates();
-
         const destinationUrl = new URL(context.env.AUTH_URL || context.request.url);
         destinationUrl.pathname = params.alreadyHasAccount ? '/login' : '/register';
         destinationUrl.searchParams.set('email', params.toEmail);
-        const content = buildOrganizationInviteEmailContent({
-            organizationName: orgName,
-            destinationUrl: destinationUrl.toString(),
-            alreadyHasAccount: params.alreadyHasAccount,
-        });
-
         await sendTemplatedEmail(mailer, {
             from,
             to: params.toEmail,
-            template: 'minimalist',
-            subject: content.subject,
-            variables: {
-                subject: content.subject,
-                header: content.header,
-                body: content.body,
-                footer: '',
-            },
+            ...composeAppEmail(params.alreadyHasAccount ? 'organization-added' : 'organization-invite', {
+                organizationName: orgName,
+                destinationUrl: destinationUrl.toString(),
+            }),
         });
     } catch (error) {
         console.warn(

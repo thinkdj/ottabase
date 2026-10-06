@@ -22,7 +22,7 @@ import { isEmail } from '@ottabase/utils/string';
 import { isValidUrl } from '@ottabase/utils/url';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
-import { registerAppEmailTemplates } from '../../src/email/templates';
+import { composeAppEmail } from '../../src/email/catalog';
 import {
     bumpProfileVersion,
     createVerificationToken,
@@ -108,7 +108,6 @@ export async function handleVerifyEmailResend(context: AuthRouteContext): Promis
         );
     }
 
-    registerAppEmailTemplates();
     const identifier = `verify:${email}`;
     const { token } = await createVerificationToken(env, identifier, 24 * 60 * 60);
 
@@ -120,16 +119,7 @@ export async function handleVerifyEmailResend(context: AuthRouteContext): Promis
     await sendTemplatedEmail(mailer, {
         from,
         to: email,
-        template: 'minimalist',
-        subject: 'Verify your email',
-        variables: {
-            subject: 'Verify your email',
-            header: 'Verify your email',
-            body: `<p>Welcome! Please verify your email to activate your account.</p>
-<p><a href="${verifyUrl.toString()}">Verify email</a></p>
-<p>If you did not create this account, you can ignore this email.</p>`,
-            footer: `<p>For security, this link expires in 24 hours.</p>`,
-        },
+        ...composeAppEmail('verify-email', { url: verifyUrl.toString() }),
     });
 
     return withAuthCors(jsonResponse({ success: true, sent: true }));
@@ -238,7 +228,6 @@ export async function handlePasswordResetRequest(context: AuthRouteContext): Pro
         );
     }
 
-    registerAppEmailTemplates();
     const identifier = `reset:${email}`;
     const { token } = await createVerificationToken(env, identifier, 60 * 60);
 
@@ -250,16 +239,7 @@ export async function handlePasswordResetRequest(context: AuthRouteContext): Pro
     await sendTemplatedEmail(mailer, {
         from,
         to: email,
-        template: 'minimalist',
-        subject: 'Reset your password',
-        variables: {
-            subject: 'Reset your password',
-            header: 'Reset your password',
-            body: `<p>We received a request to reset your password.</p>
-<p><a href="${resetUrl.toString()}">Reset password</a></p>
-<p>If you did not request a password reset, you can ignore this email.</p>`,
-            footer: `<p>This link expires in 60 minutes.</p>`,
-        },
+        ...composeAppEmail('password-reset', { url: resetUrl.toString() }),
     });
 
     return withAuthCors(jsonResponse({ success: true, sent: true }));
@@ -770,7 +750,6 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 );
             }
 
-            registerAppEmailTemplates();
             const identifier = `verify:${email}`;
             const { token } = await createVerificationToken(env, identifier, 24 * 60 * 60);
 
@@ -782,16 +761,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             await sendTemplatedEmail(mailer, {
                 from,
                 to: email,
-                template: 'minimalist',
-                subject: 'Verify your email',
-                variables: {
-                    subject: 'Verify your email',
-                    header: 'Verify your email',
-                    body: `<p>Thanks for signing up! Please verify your email to activate your account.</p>
-<p><a href="${verifyUrl.toString()}">Verify email</a></p>
-<p>If you did not create this account, you can ignore this email.</p>`,
-                    footer: `<p>This link expires in 24 hours.</p>`,
-                },
+                ...composeAppEmail('verify-email', { url: verifyUrl.toString() }),
             });
             verificationSent = true;
         }

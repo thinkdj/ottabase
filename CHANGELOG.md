@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The Email page shows every email the app sends.** `/admin/infrastructure/email` renders each one as it goes out
+  (verify email, password reset, organization invite, added to an organization, the test email), with its subject, when
+  it is sent, and a Send test button that delivers that email to the signed-in admin, or any recipients, over the chosen
+  provider; providers show as configured or not, with a link to Dev Mail. The emails themselves moved into one catalogue
+  (`src/email/catalog.ts`) that the worker composes from and the page renders, so the preview is the truth.
+  `POST /api/email/test` now takes `{ recipients, email, provider }`. Email footers no longer print raw `<p>` tags (the
+  template escapes that section; the catalogue keeps it plain text).
 - **Site design is one workspace with a live preview.** `/admin/appearance` shows how the site is put together: which
   brand kit and layout each route gets, which menu fills each slot, the layout templates and the brand kits, beside a
   preview of the real site chrome (header, navigation, sidebar, footer around a sample page) rendered with the unsaved

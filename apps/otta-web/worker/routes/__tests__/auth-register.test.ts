@@ -54,10 +54,6 @@ vi.mock('../../../ottabase/helpers/referral-attribution', () => ({
     processReferralAttribution: vi.fn(),
 }));
 
-vi.mock('../../../src/email/templates', () => ({
-    registerAppEmailTemplates: vi.fn(),
-}));
-
 vi.mock('../../lib/auth-utils', () => ({
     bumpProfileVersion: vi.fn(),
     createVerificationToken: vi.fn(),

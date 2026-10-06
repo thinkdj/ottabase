@@ -4,8 +4,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
 import { isDevTrapAvailable, resolveAppMailer } from '../lib/email-provider';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { registerAppEmailTemplates } from '../../src/email/templates';
-import type { TemplateContent, TemplateVariables } from '@ottabase/email';
+import { appEmail, composeAppEmail } from '../../src/email/catalog';
 import type { ApiRouteContext } from './router';
 
 export async function handleEmailProviders(context: ApiRouteContext): Promise<Response> {
@@ -46,61 +45,29 @@ export async function handleEmailTest(context: ApiRouteContext): Promise<Respons
     const { request, env } = context;
     const body = await readJson<{
         recipients?: string[];
-        template?: string;
-        emailType?: string;
-        subject?: string;
-        content?: TemplateContent;
-        variables?: TemplateVariables;
+        /** Which app email to send; its sample values fill it. Default: the test email */
+        email?: string;
         provider?: 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer';
     }>(request);
     const recipients = body.recipients || [];
-
     if (!recipients.length) {
-        return errorResponse('Recipients list is required', 400, {
-            code: 'VALIDATION_ERROR',
-        });
+        return errorResponse('Recipients list is required', 400, { code: 'VALIDATION_ERROR' });
     }
+    const email = appEmail(body.email ?? 'test');
+    if (!email) return errorResponse('Unknown email', 400, { code: 'VALIDATION_ERROR' });
 
-    registerAppEmailTemplates();
-
-    const selectedProvider = body.provider || 'auto';
-    const { mailer, from, provider, error } = await resolveAppMailer(env, selectedProvider);
-
+    const { mailer, from, provider, error } = await resolveAppMailer(env, body.provider || 'auto');
     if (!mailer) {
-        return errorResponse(error || 'No email provider configured', 400, {
-            code: 'CONFIG_ERROR',
-        });
+        return errorResponse(error || 'No email provider configured', 400, { code: 'CONFIG_ERROR' });
     }
 
+    const message = composeAppEmail(email.id, email.sample);
     const results = await Promise.all(
-        recipients.map(async (email) => {
-            const response = await sendTemplatedEmail(mailer, {
-                from,
-                to: email,
-                template: body.template || 'default',
-                subject: body.subject || 'Test Email',
-                variables: body.variables,
-                content: body.content || {
-                    header: 'Test Email',
-                    body: '<p>Hello from Ottabase.</p>',
-                    footer: '<p>Sent from /api/email/test</p>',
-                },
-            });
-
-            return {
-                email,
-                ok: response.success,
-                provider: provider || 'unknown',
-            };
+        recipients.map(async (to) => {
+            const response = await sendTemplatedEmail(mailer, { from, to, ...message });
+            return { email: to, ok: response.success, provider: provider || 'unknown' };
         }),
     );
 
-    return jsonResponse(
-        {
-            ok: true,
-            emailType: body.emailType,
-            results,
-        },
-        200,
-    );
+    return jsonResponse({ ok: true, email: email.id, results });
 }

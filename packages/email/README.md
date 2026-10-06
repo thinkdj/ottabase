@@ -58,6 +58,10 @@ export function registerAppEmailTemplates() {
 Then call `registerAppEmailTemplates()` before rendering or sending emails (for example in your Cloudflare worker or
 demo page).
 
+The template app goes one step further: `src/email/catalog.ts` lists every email the app sends (what it says, which
+template renders it, sample values), the worker composes real emails from it, and Admin > Infrastructure > Email renders
+each entry with a test send. One list, so the gallery is what goes out.
+
 ```ts
 import { createResendMailer } from '@ottabase/email/providers/resend';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
