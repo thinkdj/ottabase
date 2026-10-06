@@ -86,8 +86,6 @@ export interface MediaLightboxOptions {
     loop?: boolean;
     showMetadata?: boolean;
     variant?: MediaLightboxVariant;
-    /** Override the z-index of the lightbox overlay (default: 100). */
-    zIndex?: number;
 }
 
 export interface CreateMediaLibraryRecordInput {

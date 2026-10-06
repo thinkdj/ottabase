@@ -7,7 +7,7 @@ import {
     IconX,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { LightboxDialog } from './LightboxDialog';
 import type { MediaLightboxProps } from './MediaLightbox';
 import { MediaPreview } from './MediaPreview';
 import { prefersReducedMotion } from './motion';
@@ -97,7 +97,6 @@ export function MediaImmersiveLightbox({
     loop = false,
     canGoPrevious = true,
     canGoNext = true,
-    zIndex = 100,
     zoomStart = 'single',
     onClose,
     onPrevious,
@@ -109,6 +108,7 @@ export function MediaImmersiveLightbox({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [counterPulse, setCounterPulse] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const dialogRef = useRef<HTMLDialogElement>(null);
     const thumbnailStripRef = useRef<HTMLDivElement>(null);
     const mediaContainerRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -223,7 +223,7 @@ export function MediaImmersiveLightbox({
         if (document.fullscreenElement) {
             document.exitFullscreen().catch(() => {});
         } else {
-            document.documentElement.requestFullscreen().catch(() => {});
+            dialogRef.current?.requestFullscreen().catch(() => {});
         }
     }, []);
 
@@ -245,44 +245,12 @@ export function MediaImmersiveLightbox({
     }, [cancelDragNavigation, isOpen]);
 
     useEffect(() => {
-        if (!isOpen) {
-            return undefined;
-        }
-
-        const originalOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        if (!isOpen) return undefined;
         resetHideTimer();
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            resetHideTimer();
-            if (event.key === 'Escape') {
-                handleClose();
-                return;
-            }
-            if (isBusy) return;
-            if (event.key === 'ArrowLeft' && canGoPrevious) {
-                onPrevious();
-                return;
-            }
-            if (event.key === 'ArrowRight' && canGoNext) {
-                onNext();
-            }
-        };
-
-        const handlePointerMove = () => resetHideTimer();
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('pointermove', handlePointerMove);
-
         return () => {
-            document.body.style.overflow = originalOverflow;
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('pointermove', handlePointerMove);
-            if (hideTimerRef.current) {
-                clearTimeout(hideTimerRef.current);
-            }
+            if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
         };
-    }, [canGoNext, canGoPrevious, handleClose, isBusy, isOpen, onNext, onPrevious, resetHideTimer]);
+    }, [isOpen, resetHideTimer]);
 
     /** Spring an uncommitted drag back to rest (animated, unlike {@link cancelDragNavigation}). */
     const springBack = useCallback(
@@ -451,7 +419,10 @@ export function MediaImmersiveLightbox({
         return null;
     }
 
-    const controlsClass = controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none';
+    // Hidden controls come back while a keyboard user has one of them focused
+    const controlsClass = controlsVisible
+        ? 'opacity-100'
+        : 'pointer-events-none opacity-0 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100';
     const caption = currentItem.caption || currentItem.title;
     const hasMultiple = items.length > 1;
     // Reserve bottom space: thumbnails ~80px, or minimal padding
@@ -478,22 +449,18 @@ export function MediaImmersiveLightbox({
         ];
     });
 
-    return createPortal(
-        <div
-            className="pointer-events-auto fixed inset-0 overflow-hidden bg-black"
-            style={{ zIndex }}
-            data-medialightbox
+    return (
+        <LightboxDialog
+            ref={dialogRef}
+            label="Gallery"
+            className="group overflow-hidden bg-black text-white"
+            onClose={handleClose}
+            onPrevious={canGoPrevious && !isBusy ? onPrevious : undefined}
+            onNext={canGoNext && !isBusy ? onNext : undefined}
+            onKeyDown={resetHideTimer}
             onPointerMove={resetHideTimer}
             onClick={resetHideTimer}
         >
-            {/* Backdrop (click to close) */}
-            <button
-                type="button"
-                className="absolute inset-0 h-full w-full"
-                onClick={handleClose}
-                aria-label="Close gallery"
-            />
-
             {/* ── Top bar ────────────────────────────────────────────── */}
             <div
                 className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-4 pb-10 transition-opacity duration-normal md:px-6 ${controlsClass}`}
@@ -502,6 +469,7 @@ export function MediaImmersiveLightbox({
                     <span
                         className="pointer-events-auto select-none rounded-full bg-white/15 px-3 py-1 text-[0.6875rem] font-medium uppercase tabular-nums tracking-wide text-white backdrop-blur-md"
                         style={counterStyle}
+                        aria-live="polite"
                     >
                         {activeIndex + 1} / {items.length}
                     </span>
@@ -544,83 +512,80 @@ export function MediaImmersiveLightbox({
                 </div>
             </div>
 
-            {/* ── Main media area — constrained between top bar and bottom controls ── */}
-            <div className="relative flex h-full w-full items-center justify-center">
-                {/* Navigation arrows */}
-                {hasMultiple && (
-                    <>
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (isBusy) return;
-                                onPrevious();
-                            }}
-                            disabled={!canGoPrevious || isBusy}
-                            className={`absolute left-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:left-5 md:h-12 md:w-12 ${controlsClass}`}
-                            aria-label="Previous"
-                        >
-                            <IconChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (isBusy) return;
-                                onNext();
-                            }}
-                            disabled={!canGoNext || isBusy}
-                            className={`absolute right-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:right-5 md:h-12 md:w-12 ${controlsClass}`}
-                            aria-label="Next"
-                        >
-                            <IconChevronRight className="h-5 w-5 md:h-6 md:w-6" />
-                        </button>
-                    </>
-                )}
-
-                {/* Media content — absolutely positioned to fit between top bar and thumbnails */}
-                <div
-                    ref={mediaContainerRef}
-                    className="absolute inset-x-0 z-10 flex items-center justify-center px-14 md:px-20"
-                    style={{ top: 56, bottom: bottomInset }}
-                    onPointerDown={handleMediaPointerDown}
-                    onPointerMove={handleMediaPointerMove}
-                    onPointerUp={handleMediaPointerEnd}
-                    onPointerCancel={handleMediaPointerEnd}
-                >
-                    <div
-                        ref={viewportRef}
-                        className="relative h-full w-full overflow-hidden"
-                        data-medialightbox-viewport
-                        style={{ touchAction: 'pan-y' }}
+            {/* Navigation arrows */}
+            {hasMultiple && (
+                <>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isBusy) return;
+                            onPrevious();
+                        }}
+                        disabled={!canGoPrevious || isBusy}
+                        className={`absolute left-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:left-5 md:h-12 md:w-12 ${controlsClass}`}
+                        aria-label="Previous"
                     >
-                        {mediaSlides.map(({ item, slotId, position, active, name }) => (
-                            <div
-                                key={slotId}
-                                className={`absolute inset-0 ${active ? '' : 'pointer-events-none'}`}
-                                data-medialightbox-slide={name}
-                                // Off-screen neighbours stay mounted (and decoded) for a seamless swipe,
-                                // but are out of the tab order and the accessibility tree.
-                                inert={!active}
-                                style={{
-                                    transform: `translate3d(calc(${position} + var(--media-drag-offset, 0px)), 0, 0)`,
-                                    transition: slideTransition,
-                                    willChange: phase === 'idle' ? 'auto' : 'transform',
-                                    contain: 'layout paint',
-                                }}
-                            >
-                                <MediaPreview
-                                    item={item}
-                                    mode="immersive"
-                                    fit="contain"
-                                    controls={active}
-                                    interactive={active}
-                                    preload={active ? 'metadata' : 'none'}
-                                    zoomStart={zoomStart}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                        <IconChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isBusy) return;
+                            onNext();
+                        }}
+                        disabled={!canGoNext || isBusy}
+                        className={`absolute right-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:right-5 md:h-12 md:w-12 ${controlsClass}`}
+                        aria-label="Next"
+                    >
+                        <IconChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+                    </button>
+                </>
+            )}
+
+            {/* Media content, placed between the top bar and the thumbnails */}
+            <div
+                ref={mediaContainerRef}
+                className="absolute inset-x-0 z-10 flex items-center justify-center px-14 md:px-20"
+                style={{ top: 56, bottom: bottomInset }}
+                onPointerDown={handleMediaPointerDown}
+                onPointerMove={handleMediaPointerMove}
+                onPointerUp={handleMediaPointerEnd}
+                onPointerCancel={handleMediaPointerEnd}
+            >
+                <div
+                    ref={viewportRef}
+                    className="relative h-full w-full overflow-hidden"
+                    data-medialightbox-viewport
+                    style={{ touchAction: 'pan-y' }}
+                >
+                    {mediaSlides.map(({ item, slotId, position, active, name }) => (
+                        <div
+                            key={slotId}
+                            className={`absolute inset-0 ${active ? '' : 'pointer-events-none'}`}
+                            data-medialightbox-slide={name}
+                            // Off-screen neighbours stay mounted (and decoded) for a seamless swipe,
+                            // but are out of the tab order and the accessibility tree.
+                            inert={!active}
+                            style={{
+                                transform: `translate3d(calc(${position} + var(--media-drag-offset, 0px)), 0, 0)`,
+                                transition: slideTransition,
+                                willChange: phase === 'idle' ? 'auto' : 'transform',
+                                contain: 'layout paint',
+                            }}
+                        >
+                            <MediaPreview
+                                item={item}
+                                mode="immersive"
+                                fit="contain"
+                                controls={active}
+                                interactive={active}
+                                preload={active ? 'metadata' : 'none'}
+                                zoomStart={zoomStart}
+                            />
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -665,6 +630,7 @@ export function MediaImmersiveLightbox({
                                     }`}
                                     style={{ borderRadius: 'var(--lb-thumb-radius, 0.5rem)' }}
                                     aria-label={`View image ${index + 1}`}
+                                    aria-current={isActive ? 'true' : undefined}
                                 >
                                     <MediaPreview item={item} mode="thumb" />
                                 </button>
@@ -673,7 +639,6 @@ export function MediaImmersiveLightbox({
                     </div>
                 </div>
             )}
-        </div>,
-        document.body,
+        </LightboxDialog>
     );
 }

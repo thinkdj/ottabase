@@ -86,6 +86,7 @@ function dragLeft(node: Element, distance = 130) {
 }
 
 const query = <T extends Element = HTMLElement>(selector: string) => document.body.querySelector<T>(selector);
+const dialog = () => query('[data-medialightbox]')!;
 const viewport = () => query('[data-medialightbox-viewport]')!;
 const container = () => viewport().parentElement!;
 const offset = () => container().style.getPropertyValue('--media-drag-offset');
@@ -227,7 +228,7 @@ describe('MediaImmersiveLightbox drag navigation', () => {
         const { onClose, onNext } = renderLightbox();
 
         dragLeft(viewport());
-        fireEvent.keyDown(window, { key: 'Escape' });
+        fireEvent.keyDown(dialog(), { key: 'Escape' });
         act(() => {
             vi.advanceTimersByTime(220);
         });
@@ -262,7 +263,7 @@ describe('MediaImmersiveLightbox drag navigation', () => {
         const { onNext } = renderLightbox();
 
         dragLeft(viewport());
-        fireEvent.keyDown(window, { key: 'ArrowRight' });
+        fireEvent.keyDown(dialog(), { key: 'ArrowRight' });
         act(() => {
             vi.advanceTimersByTime(220);
         });

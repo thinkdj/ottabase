@@ -43,7 +43,7 @@ describe('MediaLightboxProvider', () => {
         const onNavigate = vi.fn();
         const onClose = vi.fn();
 
-        const { getByText } = render(
+        const { getByRole, getByText } = render(
             <MediaLightboxProvider syncWithUrl onOpen={onOpen} onNavigate={onNavigate} onClose={onClose}>
                 <TestGallery />
             </MediaLightboxProvider>,
@@ -57,7 +57,7 @@ describe('MediaLightboxProvider', () => {
             expect(window.location.search).toContain('mgi=gallery-a');
         });
 
-        fireEvent.keyDown(window, { key: 'ArrowRight' });
+        fireEvent.keyDown(getByRole('dialog'), { key: 'ArrowRight' });
 
         await waitFor(() => {
             expect(onNavigate).toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('MediaLightboxProvider', () => {
             expect(window.location.search).toContain('mgi=gallery-b');
         });
 
-        fireEvent.keyDown(window, { key: 'Escape' });
+        fireEvent.keyDown(getByRole('dialog'), { key: 'Escape' });
 
         await waitFor(() => {
             expect(onClose).toHaveBeenCalledTimes(1);

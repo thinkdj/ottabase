@@ -38,7 +38,6 @@ export function MediaLightboxProvider({
     loop = true,
     showMetadata = true,
     variant = 'default',
-    zIndex = 100,
     syncWithUrl = false,
     onOpen,
     onNavigate,
@@ -260,7 +259,6 @@ export function MediaLightboxProvider({
                 showMetadata={showMetadata}
                 canGoPrevious={lightboxState.canGoPrevious}
                 canGoNext={lightboxState.canGoNext}
-                zIndex={zIndex}
                 onClose={close}
                 onPrevious={goPrevious}
                 onNext={goNext}

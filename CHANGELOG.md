@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The lightbox is a real modal dialog.** Both variants open a native `<dialog>` with `showModal()`: the page behind is
+  inert, focus moves into the viewer and returns to the opener on close, Escape and the arrow keys work from anywhere
+  inside while a focused video keeps its own arrow keys, the counter is announced, the current thumbnail is marked, and
+  the immersive gallery keeps its controls visible while a keyboard user has one focused. Fullscreen goes on the viewer
+  itself. The `zIndex` option is gone; the top layer needs none.
 - **The Email page shows every email the app sends.** `/admin/infrastructure/email` renders each one as it goes out
   (verify email, password reset, organization invite, added to an organization, the test email), with its subject, when
   it is sent, and a Send test button that delivers that email to the signed-in admin, or any recipients, over the chosen

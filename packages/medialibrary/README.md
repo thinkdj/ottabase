@@ -104,7 +104,9 @@ When the renderer's image blocks are inside the provider, they automatically reg
 
 - fullscreen preview
 - previous / next navigation
-- keyboard controls (Escape, Arrow keys)
+- keyboard controls (Escape closes, the arrow keys move; a focused player or field keeps its own arrow keys)
+- a real modal: a native `<dialog>` in the top layer, the page behind it inert, focus moved into the viewer on open and
+  returned to the opener on close, labelled controls, a live counter, and the current thumbnail marked
 - bottom thumbnail rail
 - auto-hiding controls after inactivity (immersive only)
 - caption/title overlay (immersive only)
